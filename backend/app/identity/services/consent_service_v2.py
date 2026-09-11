@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.base import _ulid
 from app.identity.models.consent import NiamConsent, NiamConsentSource, NiamConsentStatus
@@ -27,7 +27,7 @@ class NiamConsentService:
     )
     ALLOWED_STATUSES = frozenset(item.value for item in NiamConsentStatus)
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = CanonicalAuditService(session)
 
@@ -46,8 +46,8 @@ class NiamConsentService:
             raise NiamConsentError(f"expires_at must be within {cls.MAX_CONSENT_HOURS} hours")
         return expiry
 
-    async def _organization_for_account(self, account_id: str) -> str | None:
-        result = await self.session.execute(
+    def _organization_for_account(self, account_id: str) -> str | None:
+        result = self.session.execute(
             select(Membership.organization_id)
             .where(Membership.account_id == account_id, Membership.status == "active")
             .order_by(Membership.created_at.asc())
@@ -55,7 +55,7 @@ class NiamConsentService:
         )
         return result.scalar_one_or_none()
 
-    async def grant(
+    def grant(
         self,
         *,
         actor_account_id: str,
@@ -80,7 +80,7 @@ class NiamConsentService:
         clean_scope = self._validate_scope(scope)
         expiry = self._validate_expiry(expires_at)
         previous = (
-            await self.session.execute(
+            self.session.execute(
                 select(NiamConsent)
                 .where(
                     NiamConsent.subject_account_id == subject_account_id,
@@ -117,14 +117,14 @@ class NiamConsentService:
             is_active=True,
         )
         self.session.add(consent)
-        await self.session.flush()
-        await self.audit.record(
+        self.session.flush()
+        self.audit.record(
             AuditEventInput(
                 event_type="CONSENT_GRANTED",
                 category="CONSENT",
                 action="consent.grant",
                 actor_id=actor_account_id,
-                organization_id=await self._organization_for_account(actor_account_id),
+                organization_id=self._organization_for_account(actor_account_id),
                 target_type="consent",
                 target_id=consent.id,
                 decision="ALLOW",
@@ -135,8 +135,8 @@ class NiamConsentService:
         )
         return consent
 
-    async def withdraw(self, *, actor_account_id: str, consent_id: str, reason: str | None = None) -> NiamConsent:
-        consent = await self.session.get(NiamConsent, consent_id)
+    def withdraw(self, *, actor_account_id: str, consent_id: str, reason: str | None = None) -> NiamConsent:
+        consent = self.session.get(NiamConsent, consent_id)
         if consent is None:
             raise NiamConsentError("consent not found")
         if actor_account_id not in {consent.subject_account_id, consent.grantee_account_id}:
@@ -147,14 +147,14 @@ class NiamConsentService:
         consent.withdrawn_at = datetime.now(UTC)
         consent.reason = reason
         consent.is_active = False
-        await self.session.flush()
-        await self.audit.record(
+        self.session.flush()
+        self.audit.record(
             AuditEventInput(
                 event_type="CONSENT_WITHDRAWN",
                 category="CONSENT",
                 action="consent.withdraw",
                 actor_id=actor_account_id,
-                organization_id=await self._organization_for_account(actor_account_id),
+                organization_id=self._organization_for_account(actor_account_id),
                 target_type="consent",
                 target_id=consent.id,
                 decision="ALLOW",
@@ -164,8 +164,8 @@ class NiamConsentService:
         )
         return consent
 
-    async def check(self, *, actor_account_id: str, consent_id: str) -> NiamConsent | None:
-        consent = await self.session.get(NiamConsent, consent_id)
+    def check(self, *, actor_account_id: str, consent_id: str) -> NiamConsent | None:
+        consent = self.session.get(NiamConsent, consent_id)
         if consent is None:
             return None
         if actor_account_id not in {consent.subject_account_id, consent.grantee_account_id}:
@@ -173,14 +173,14 @@ class NiamConsentService:
         if consent.status == NiamConsentStatus.active.value and not consent.is_valid_now():
             consent.status = NiamConsentStatus.expired.value
             consent.is_active = False
-            await self.session.flush()
-        await self.audit.record(
+            self.session.flush()
+        self.audit.record(
             AuditEventInput(
                 event_type="CONSENT_CHECKED",
                 category="CONSENT",
                 action="consent.check",
                 actor_id=actor_account_id,
-                organization_id=await self._organization_for_account(actor_account_id),
+                organization_id=self._organization_for_account(actor_account_id),
                 target_type="consent",
                 target_id=consent.id,
                 decision="ALLOW" if consent.is_valid_now() else "DENY",
@@ -190,8 +190,8 @@ class NiamConsentService:
         )
         return consent if consent.is_valid_now() else None
 
-    async def list_for_account(self, *, actor_account_id: str, limit: int = 100, offset: int = 0) -> list[NiamConsent]:
-        result = await self.session.execute(
+    def list_for_account(self, *, actor_account_id: str, limit: int = 100, offset: int = 0) -> list[NiamConsent]:
+        result = self.session.execute(
             select(NiamConsent)
             .where(
                 (NiamConsent.subject_account_id == actor_account_id)

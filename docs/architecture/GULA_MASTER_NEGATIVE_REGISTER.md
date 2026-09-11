@@ -55,6 +55,22 @@ raises `UndefinedColumn` and the resolver reports it as `invalid_context`.
 NR-044.1 therefore stays PARTIALLY VERIFIED, with a different and more precisely
 located blocker than before._
 
+_NR-047 is now repaired and verified, and the clinical ALLOW path returns 200.
+**NR-044.2** then converted `identity/services`, `identity/api`,
+`identity/policy_engine.py` and `services/clinical_scope_bridge_service.py` to
+the synchronous Session and deleted `SyncSessionAsyncFacade`, dropping the
+unreachable-async ledger from 40 modules to 20. It added **NR-048** (the gateway
+reported any internal fault as an authorization denial — the mechanism that hid
+NR-047, now fixed) and **NR-049** (the ledger's own owner rule could not see a
+module that named its session `self._session`, so one had been invisible since
+the ledger was written; the rule is fixed, the module is NR-044.3's to convert)._
+
+_NR-038 and AUTH-F5/NR-043 still may not be re-graded. Both live in
+`identity/trust/services.py` and `identity/services/workspace_service.py`
+respectively; the second is now executable, but NR-038's assurance writer is not,
+and NR-043's narrowing is only half the story until the trust routes that call it
+can run. That is NR-044.3._
+
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
 
@@ -106,11 +122,13 @@ since the first pass and now reflects all findings, not one session's._
 | NR-040 | P2  | Identity Platform | The canonical verification domain had a reader and no writer | FIXED — VERIFIED (AUTH-005; VerificationWorkflow) |
 | NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
 | NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
-| NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; narrowed, still unexecutable — `list_eligible` is NR-044.2) |
-| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED — **NR-044.1 is now VERIFIED**: the authorization ALLOW path returns 200 against migrated PostgreSQL, which was its last missing proof. NR-044.2–.5 remain open |
+| NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; `list_eligible` is executable since NR-044.2 and proven against PostgreSQL, but the trust routes that consume it are NR-044.3) |
+| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED — **NR-044.1 and NR-044.2 are VERIFIED**. The ALLOW path returns 200, and the service layer (authentication, workspace, membership, authorization decision, both audit writers) now reaches PostgreSQL. Ledger 40 → 20 modules. NR-044.3–.5 remain open |
 | NR-045 | P1  | Clinical Gateway | `CanonicalAuditService` cannot write a row, so every clinical-gateway request answers 503 | **VERIFIED** — `IdentityAuditEntry.uuid` now carries the canonical default; the gateway answers 403 where it answered 503 and the denial is readable in `niam_audit_entries` with a valid hash chain. No migration, no constraint weakened |
 | NR-047 | P1  | Operational models | The `Organization` ORM does not match the `organizations` table | **VERIFIED** — `org_id`/`org_type` mapped onto the existing `organization_id`/`organization_type`; `updated_at` removed from the ORM (read by nothing) rather than added; only `parent_org_id` added, by additive migration `20260913_0001`. Bootstrap now completes and is idempotent for organizations; the clinical ALLOW path returns **200** |
 | NR-046 | P2  | Identity Platform | The NIAM actor dependency does not consult `UserSession.expires_at` | OPEN — pre-existing, not a NR-044.1 regression; bounded by the access token's own enforced `exp` |
+| NR-048 | P1  | Clinical Gateway | The gateway reported any internal fault as an authorization denial | **VERIFIED** (NR-044.2) — `except Exception → invalid_context` narrowed to the context service's own denial vocabulary. This is how NR-047's `UndefinedColumn` reached clients as a 403 and was written into the audit chain as a decision nobody made |
+| NR-049 | P2  | Identity Platform | The NR-044 ledger could not see a module that stored its session as `self._session` | OPEN (module) / FIXED (guard) — widening the owner rule raised the ledger from 19 to 20 and surfaced `reference/infrastructure/repositories.py`, invisible for as long as the ledger has existed. Converting it belongs to NR-044.3 |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

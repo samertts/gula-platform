@@ -915,12 +915,10 @@ def test_the_canonical_audit_writer_satisfies_the_schema_contract_nr045(db) -> N
     satisfies the contract `AuditService` was already meeting. The assertion is
     inverted rather than deleted: the row must now be written.
     """
-    import asyncio
-
     from sqlalchemy import text
 
     marker = f"nr045-{uuid.uuid4()}"
-    entry = asyncio.run(_canonical_audit(db).record(_audit_event(
+    entry = (_canonical_audit(db).record(_audit_event(
         actor_id="acct-nr045", request_id=marker, decision="deny",
         reason_code="missing_workspace", outcome="denied",
     )))
@@ -1341,10 +1339,13 @@ def test_the_actor_and_the_repositories_share_one_session_and_transaction(db, ni
 
 
 def _canonical_audit(db):
-    from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
     from app.identity.services.canonical_audit import CanonicalAuditService
 
-    return CanonicalAuditService(SyncSessionAsyncFacade(db))
+    # NR-044.2: the canonical audit writer takes the session the application
+    # actually has. It used to be handed `SyncSessionAsyncFacade`, a shim that
+    # made a synchronous Session look awaitable; the writer is synchronous now
+    # and the shim is deleted.
+    return CanonicalAuditService(db)
 
 
 def _audit_event(**overrides):
@@ -1371,9 +1372,7 @@ def test_the_canonical_audit_writer_produces_a_schema_valid_row(db) -> None:
     deliberately absent from v2's `_canonical_payload`, so populating it cannot
     change any entry hash — past entries verify exactly as before.
     """
-    import asyncio
-
-    entry = asyncio.run(_canonical_audit(db).record(_audit_event(organization_id="org-nr045")))
+    entry = (_canonical_audit(db).record(_audit_event(organization_id="org-nr045")))
     db.flush()
 
     assert entry.uuid, "uuid is still unpopulated — NR-045 has regressed"
@@ -1388,13 +1387,11 @@ def test_the_canonical_audit_writer_produces_a_schema_valid_row(db) -> None:
 
 def test_the_canonical_audit_entry_carries_a_valid_hash_chain(db) -> None:
     """Hash-chain fields populated, and the chain verifies as the service defines it."""
-    import asyncio
-
     from app.identity.services.canonical_audit import CanonicalAuditService, IntegrityStatus
 
     service = _canonical_audit(db)
-    first = asyncio.run(service.record(_audit_event(organization_id="org-chain")))
-    second = asyncio.run(service.record(_audit_event(organization_id="org-chain", decision="deny", reason_code="permission_denied", outcome="denied")))
+    first = (service.record(_audit_event(organization_id="org-chain")))
+    second = (service.record(_audit_event(organization_id="org-chain", decision="deny", reason_code="permission_denied", outcome="denied")))
     db.flush()
 
     assert first.entry_hash and second.entry_hash
@@ -1402,7 +1399,7 @@ def test_the_canonical_audit_entry_carries_a_valid_hash_chain(db) -> None:
     assert second.entry_hash == CanonicalAuditService._hash(second)
     assert second.previous_hash == first.entry_hash, "the second entry does not chain to the first"
 
-    report = asyncio.run(service.verify(organization_id="org-chain"))
+    report = (service.verify(organization_id="org-chain"))
     assert report["status"] == IntegrityStatus.valid.value, report["violations"]
     assert report["entries_checked"] == 2
     assert report["violations"] == []
@@ -1414,20 +1411,19 @@ def test_the_audit_service_never_commits_on_its_own(db) -> None:
     An audit service that committed would make the protected operation
     un-rollbackable: the audit row would survive a failure it was recording.
     """
-    import asyncio
-
     from sqlalchemy import text
 
     db.execute(text("SELECT 1"))            # a Session begins lazily; make it real first
     assert db.in_transaction()
-    asyncio.run(_canonical_audit(db).record(_audit_event(organization_id="org-tx")))
+    (_canonical_audit(db).record(_audit_event(organization_id="org-tx")))
     assert db.in_transaction(), "the audit service committed the caller's transaction"
 
     source = (
         pathlib.Path(__file__).resolve().parents[1]
         / "app" / "identity" / "services" / "canonical_audit.py"
     ).read_text(encoding="utf-8")
-    record_body = source[source.index("async def record("):source.index("async def search(")]
+    # NR-044.2: `record` is a plain def now — it was `async def` and could not run.
+    record_body = source[source.index("def record("):source.index("def search(")]
     assert "commit" not in record_body, "CanonicalAuditService.record() now commits"
 
 
@@ -1438,8 +1434,6 @@ def test_a_rolled_back_operation_leaves_no_committed_audit_row(db, engine) -> No
     rolled back. A separate connection must not see it. This is the property
     that makes "audit before deny" meaningful rather than decorative.
     """
-    import asyncio
-
     from sqlalchemy import text
 
     marker = f"rollback-probe-{uuid.uuid4()}"
@@ -1447,7 +1441,7 @@ def test_a_rolled_back_operation_leaves_no_committed_audit_row(db, engine) -> No
     transaction = connection.begin()
     scratch = Session(bind=connection, future=True)
     try:
-        asyncio.run(_canonical_audit(scratch).record(_audit_event(request_id=marker)))
+        (_canonical_audit(scratch).record(_audit_event(request_id=marker)))
         scratch.flush()
         # Visible inside its own transaction ...
         assert scratch.execute(
@@ -2005,21 +1999,16 @@ def test_an_allowed_read_is_audited_with_a_valid_chain(db) -> None:
     assert entry.data_classification == "CLINICAL_SENSITIVE"
     assert entry.occurred_at is not None
 
-    report = asyncio_run_verify(db, organization_id=entry.organization_id)
+    report = verify_chain(db, organization_id=entry.organization_id)
     assert report["status"] == "VALID", report["violations"]
     assert report["entries_checked"] >= 1
     assert CanonicalAuditService  # imported for the reader's benefit
 
 
-def asyncio_run_verify(db, *, organization_id):
-    import asyncio
-
-    from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
+def verify_chain(db, *, organization_id):
     from app.identity.services.canonical_audit import CanonicalAuditService
 
-    return asyncio.run(
-        CanonicalAuditService(SyncSessionAsyncFacade(db)).verify(organization_id=organization_id),
-    )
+    return CanonicalAuditService(db).verify(organization_id=organization_id)
 
 
 def test_a_valid_context_never_reaches_the_broad_exception_path(db) -> None:
@@ -2047,3 +2036,257 @@ def test_a_valid_context_never_reaches_the_broad_exception_path(db) -> None:
     assert resolved is not None
     assert not raised
     assert resolved.scope.niam_organization_id == ctx.niam_org.id
+
+
+# ── NR-044.2: the service layer, executed against migrated PostgreSQL ─────────
+#
+# Until this batch, every test below would have failed with
+# `TypeError: object ChunkedIteratorResult can't be used in 'await' expression`
+# before a statement reached the database. None of them uses a fake session, a
+# monkeypatched service or a mocked decision: a fake proves the shape of a call,
+# and the shape was never what was broken.
+
+
+def _password_account(db, *, suffix: str, password: str, **overrides) -> Account:
+    """A real account with a real Argon2/bcrypt hash, on the migrated schema."""
+    from app.security.auth import hash_password
+
+    identity_id = _identity_chain(db, f"authn-{suffix}")
+    fields = {
+        "id": f"acct-authn-{suffix}",
+        "uuid": str(uuid.uuid4()),
+        "identity_id": identity_id,
+        "email": f"authn-{suffix}@example.iq",
+        "status": AccountStatus.active.value,
+        "is_active": True,
+        "is_locked": False,
+        "failed_login_attempts": 0,
+        "password_hash": hash_password(password),
+    }
+    fields.update(overrides)
+    account = Account(**fields)
+    db.add(account)
+    db.flush()
+    return account
+
+
+def test_the_authentication_service_now_logs_in_against_postgresql(db) -> None:
+    """NR-044.2 — the NIAM login path reaches the database and mints a session.
+
+    `AuthenticationService.login` walks `AccountService.authenticate` (a SELECT
+    and a flush), `SessionRepository.create` (an INSERT) and
+    `WorkspaceService.ensure_citizen_workspace` (another SELECT and INSERT).
+    Every one of those was an `await` on a synchronous Session, so the whole
+    flow raised on its first statement. It runs now, and the session row it
+    claims to have created is read back from PostgreSQL rather than trusted.
+    """
+    from app.identity.models.session import UserSession
+    from app.identity.services.authentication_service import AuthenticationService
+
+    account = _password_account(db, suffix="ok", password="correct horse battery staple")
+
+    result = AuthenticationService(db).login(
+        login="authn-ok@example.iq", password="correct horse battery staple",
+    )
+
+    assert result is not None, "login returned None on a valid credential"
+    assert result["account_uuid"] == account.uuid
+    assert result["access_token"] and result["refresh_token"]
+
+    stored = (
+        db.query(UserSession)
+        .filter(UserSession.uuid == result["session_uuid"])
+        .one()
+    )
+    assert stored.account_id == account.id
+    assert stored.is_active is True
+    assert stored.token_jti and stored.refresh_token_jti
+    assert stored.expires_at is not None
+
+    db.refresh(account)
+    assert account.last_login is not None, "the successful login was not recorded"
+    assert account.failed_login_attempts == 0
+
+
+def test_a_wrong_password_is_denied_and_creates_no_session(db) -> None:
+    """The denial half, and the counter that makes lockout possible.
+
+    Reading the failure counter back from PostgreSQL is the point: an
+    unreachable service incremented nothing, so the lockout policy that depends
+    on it could not have worked either.
+    """
+    from app.identity.models.session import UserSession
+    from app.identity.services.authentication_service import AuthenticationService
+
+    account = _password_account(db, suffix="wrong", password="correct horse battery staple")
+    before = db.query(UserSession).filter(UserSession.account_id == account.id).count()
+
+    result = AuthenticationService(db).login(
+        login="authn-wrong@example.iq", password="not the password",
+    )
+
+    assert result is None
+    after = db.query(UserSession).filter(UserSession.account_id == account.id).count()
+    assert after == before, "a denied login created a session row"
+    db.refresh(account)
+    assert account.failed_login_attempts == 1
+
+
+def test_an_unknown_login_is_denied_without_a_session(db) -> None:
+    from app.identity.services.authentication_service import AuthenticationService
+
+    assert AuthenticationService(db).login(
+        login="nobody-at-all@example.iq", password="anything",
+    ) is None
+
+
+def test_a_suspended_account_cannot_authenticate_even_with_the_right_password(db) -> None:
+    """Status is checked before the password is believed, against real rows."""
+    from app.identity.services.authentication_service import AuthenticationService
+
+    _password_account(
+        db, suffix="susp", password="correct horse battery staple",
+        status=AccountStatus.suspended.value,
+    )
+
+    assert AuthenticationService(db).login(
+        login="authn-susp@example.iq", password="correct horse battery staple",
+    ) is None
+
+
+def test_a_locked_account_within_its_lockout_window_cannot_authenticate(db) -> None:
+    """The lock is honoured while `locked_until` is in the future.
+
+    After it expires the account is released — asserted here too, so the test
+    pins the policy rather than only its denial half.
+    """
+    from app.identity.services.authentication_service import AuthenticationService
+
+    account = _password_account(
+        db, suffix="locked", password="correct horse battery staple",
+        is_locked=True, status=AccountStatus.locked.value,
+        locked_until=_now() + timedelta(minutes=30),
+    )
+
+    assert AuthenticationService(db).login(
+        login="authn-locked@example.iq", password="correct horse battery staple",
+    ) is None
+
+    account.locked_until = _now() - timedelta(minutes=1)
+    db.flush()
+    released = AuthenticationService(db).login(
+        login="authn-locked@example.iq", password="correct horse battery staple",
+    )
+    assert released is not None, "an expired lockout still refused a valid credential"
+
+
+def test_logout_terminates_the_real_session_row(db) -> None:
+    """Session lifecycle, read back from PostgreSQL rather than asserted."""
+    from app.identity.models.session import UserSession
+    from app.identity.services.authentication_service import AuthenticationService
+
+    _password_account(db, suffix="logout", password="correct horse battery staple")
+    service = AuthenticationService(db)
+    result = service.login(
+        login="authn-logout@example.iq", password="correct horse battery staple",
+    )
+    assert result is not None
+
+    service.logout(result["session_uuid"])
+    db.flush()
+
+    stored = db.query(UserSession).filter(UserSession.uuid == result["session_uuid"]).one()
+    assert stored.is_active is False
+    assert stored.termination_reason == "user_logout"
+
+
+def test_the_workspace_service_reads_eligibility_from_postgresql(db) -> None:
+    """`WorkspaceService` was the headline unreachable service; it executes now.
+
+    The citizen workspace is the one every account gets, so creating it twice
+    must be idempotent — a property that could not previously be tested because
+    the first call never completed.
+    """
+    from app.identity.services.workspace_service import WorkspaceService
+
+    account = _password_account(db, suffix="ws", password="correct horse battery staple")
+    service = WorkspaceService(db)
+
+    first = service.ensure_citizen_workspace(account)
+    db.flush()
+    second = service.ensure_citizen_workspace(account)
+    db.flush()
+
+    assert first is not None
+    assert second is not None
+    assert first.id == second.id, "a second call created a duplicate citizen workspace"
+    assert any(w.id == first.id for w in service.list_eligible(account))
+
+
+def test_a_database_fault_is_no_longer_reported_as_a_policy_denial(db) -> None:
+    """NR-048 — the gateway used to translate *any* exception into a 403.
+
+    That is how NR-047 presented: `column organizations.org_id does not exist`
+    reached the client as `invalid_context`, indistinguishable from a genuine
+    authorization denial both in the response and in the audit row. NR-044's
+    `TypeError` was swallowed by the same handler.
+
+    Here a real `SQLAlchemyError` is raised from inside the context service. It
+    must propagate — the read is still refused, but as a fault rather than as a
+    decision. The denial ladder above proves the other half: real denials still
+    produce `invalid_context`.
+    """
+    from app.clinical_gateway.context import ClinicalGatewayContextResolver
+    from app.identity.api.workspaces import get_current_niam_actor
+    from app.identity.services.clinical_authorization_context_service import (
+        ClinicalAuthorizationContextService,
+    )
+    from sqlalchemy.exc import OperationalError
+
+    ctx = _authorized_clinical_context(db, suffix="nr048")
+    actor = get_current_niam_actor(ctx.request, None, db)
+
+    original = ClinicalAuthorizationContextService.resolve_for_legacy_lab_user
+
+    def _explode(self, **kwargs):
+        raise OperationalError("SELECT 1", {}, Exception("connection reset"))
+
+    ClinicalAuthorizationContextService.resolve_for_legacy_lab_user = _explode
+    try:
+        with pytest.raises(OperationalError):
+            ClinicalGatewayContextResolver(db).resolve(actor)
+    finally:
+        ClinicalAuthorizationContextService.resolve_for_legacy_lab_user = original
+
+    # And the same resolver, unperturbed, still completes.
+    assert ClinicalGatewayContextResolver(db).resolve(actor) is not None
+
+
+def test_a_genuine_context_denial_is_still_translated_to_invalid_context(db) -> None:
+    """The other side of NR-048: the service's own vocabulary keeps its meaning."""
+    from app.clinical_gateway.context import (
+        ClinicalGatewayBlocked,
+        ClinicalGatewayContextResolver,
+    )
+    from app.identity.api.workspaces import get_current_niam_actor
+    from app.identity.services.clinical_authorization_context_service import (
+        ClinicalActiveAssignmentUnavailable,
+        ClinicalAuthorizationContextService,
+    )
+
+    ctx = _authorized_clinical_context(db, suffix="nr048b")
+    actor = get_current_niam_actor(ctx.request, None, db)
+
+    original = ClinicalAuthorizationContextService.resolve_for_legacy_lab_user
+
+    def _deny(self, **kwargs):
+        raise ClinicalActiveAssignmentUnavailable("no active clinical assignment")
+
+    ClinicalAuthorizationContextService.resolve_for_legacy_lab_user = _deny
+    try:
+        with pytest.raises(ClinicalGatewayBlocked) as blocked:
+            ClinicalGatewayContextResolver(db).resolve(actor)
+    finally:
+        ClinicalAuthorizationContextService.resolve_for_legacy_lab_user = original
+
+    assert blocked.value.reason_code == "invalid_context"

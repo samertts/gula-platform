@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
@@ -20,10 +20,10 @@ PASSWORD_EXPIRY_DAYS = 90
 
 class AccountService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.repo = AccountRepository(session)
 
-    async def create_account(
+    def create_account(
         self,
         identity_id: str,
         account_type: AccountType = AccountType.human,
@@ -64,10 +64,10 @@ class AccountService:
             phone_verified=False,
             identity_verified=False,
         )
-        return await self.repo.create(account)
+        return self.repo.create(account)
 
-    async def authenticate(self, login: str, password: str) -> Account | None:
-        account = await self.repo.find_by_login(login)
+    def authenticate(self, login: str, password: str) -> Account | None:
+        account = self.repo.find_by_login(login)
         if not account:
             verify_password(password, _DUMMY_HASH)
             return None
@@ -88,7 +88,7 @@ class AccountService:
                 return None
             AccountLifecycleService.transition(account, AccountStatus.active)
             account.failed_login_attempts = 0
-            await self.repo.session.flush()
+            self.repo.session.flush()
 
         if not account.password_hash or not password_is_valid:
             account.failed_login_attempts += 1
@@ -99,22 +99,22 @@ class AccountService:
                     minutes=ACCOUNT_LOCKOUT_DURATION_MINUTES,
                 )
                 account.lock_reason = f"Account locked after {ACCOUNT_LOCKOUT_THRESHOLD} failed attempts"
-            await self.repo.session.flush()
+            self.repo.session.flush()
             return None
 
         account.failed_login_attempts = 0
         account.last_login = datetime.now(UTC)
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return account
 
-    async def get_account(self, account_id: str) -> Account | None:
-        return await self.repo.get_by_id(account_id)
+    def get_account(self, account_id: str) -> Account | None:
+        return self.repo.get_by_id(account_id)
 
-    async def find_by_email(self, email: str) -> Account | None:
-        return await self.repo.find_by_email(email)
+    def find_by_email(self, email: str) -> Account | None:
+        return self.repo.find_by_email(email)
 
-    async def change_password(self, account_id: str, old_password: str, new_password: str) -> bool:
-        account = await self.repo.get_by_id(account_id)
+    def change_password(self, account_id: str, old_password: str, new_password: str) -> bool:
+        account = self.repo.get_by_id(account_id)
         if not account or not account.password_hash:
             return False
         if not verify_password(old_password, account.password_hash):
@@ -122,26 +122,26 @@ class AccountService:
         account.password_hash = hash_password(new_password)
         account.password_changed_at = datetime.now(UTC)
         account.password_expires_at = datetime.now(UTC) + timedelta(days=PASSWORD_EXPIRY_DAYS)
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return True
 
-    async def lock_account(self, account_id: str, reason: str) -> bool:
-        account = await self.repo.get_by_id(account_id)
+    def lock_account(self, account_id: str, reason: str) -> bool:
+        account = self.repo.get_by_id(account_id)
         if not account:
             return False
         AccountLifecycleService.transition(account, AccountStatus.locked)
         account.locked_until = None
         account.lock_reason = reason
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return True
 
-    async def unlock_account(self, account_id: str) -> bool:
-        account = await self.repo.get_by_id(account_id)
+    def unlock_account(self, account_id: str) -> bool:
+        account = self.repo.get_by_id(account_id)
         if not account:
             return False
         AccountLifecycleService.transition(account, AccountStatus.active)
         account.locked_until = None
         account.lock_reason = None
         account.failed_login_attempts = 0
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return True

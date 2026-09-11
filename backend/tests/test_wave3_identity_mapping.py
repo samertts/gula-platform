@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -68,17 +68,16 @@ def test_source_fingerprint_is_stable_and_does_not_store_raw_identifier():
         make_source_fingerprint("user", 42, "short")
 
 
-@pytest.mark.asyncio
-async def test_service_rejects_invalid_rollback_token(pending_link: LegacyAccountLink):
+def test_service_rejects_invalid_rollback_token(pending_link: LegacyAccountLink):
     session = MagicMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = pending_link
-    session.execute = AsyncMock(return_value=result)
+    session.execute = MagicMock(return_value=result)
     service = LegacyMappingService(session, "k" * 64)
-    service.audit.record_event = AsyncMock()
+    service.audit.record_event = MagicMock()
 
     with pytest.raises(LegacyMappingRollbackDenied, match="Invalid rollback token"):
-        await service.rollback(
+        service.rollback(
             pending_link.id,
             "wrong-token",
             actor_id="operator-1",

@@ -22,7 +22,7 @@ async def _require_compliance_permission(
     organization_id: str,
     permission_key: str,
 ) -> None:
-    decision = await AuthorizationDecisionService(db).authorize(
+    decision = AuthorizationDecisionService(db).authorize(
         AuthorizationActor(account=actor.account, session=actor.session),
         AuthorizationRequest(
             subject_account_id=actor.account.id,

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus
@@ -73,7 +73,7 @@ class InvitationError(ValueError):
 
 
 class MembershipService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @staticmethod
@@ -126,7 +126,7 @@ class MembershipService:
         application.version = (application.version or 1) + 1
         return application
 
-    async def _audit(
+    def _audit(
         self,
         action: AuditAction,
         actor_id: str | None,
@@ -136,7 +136,7 @@ class MembershipService:
         metadata: dict | None = None,
         outcome: str = "success",
     ) -> None:
-        await AuditService(self.session).record(
+        AuditService(self.session).record(
             action,
             actor_id=actor_id,
             actor_type="account",
@@ -147,14 +147,14 @@ class MembershipService:
             outcome=outcome,
         )
 
-    async def _require_active_account(self, account_id: str) -> Account:
-        result = await self.session.execute(select(Account).where(Account.id == account_id))
+    def _require_active_account(self, account_id: str) -> Account:
+        result = self.session.execute(select(Account).where(Account.id == account_id))
         account = result.scalar_one_or_none()
         if account is None or account.status != AccountStatus.active.value or not account.is_active:
             raise MembershipAccessDenied("Account is not active")
         return account
 
-    async def _validate_context(
+    def _validate_context(
         self,
         organization_id: str,
         scope_type: str,
@@ -163,7 +163,7 @@ class MembershipService:
         unit_id: str | None,
         workspace_id: str | None,
     ) -> None:
-        organization = await self.session.scalar(select(NIAMOrganization).where(NIAMOrganization.id == organization_id))
+        organization = self.session.scalar(select(NIAMOrganization).where(NIAMOrganization.id == organization_id))
         if organization is None or organization.status != "active" or not organization.is_active:
             raise MembershipValidationError("Organization is not active")
 
@@ -181,28 +181,28 @@ class MembershipService:
             raise MembershipValidationError("Scope identifiers do not match scope_type")
 
         if facility_id:
-            facility = await self.session.scalar(select(NIAMAdminFacility).where(NIAMAdminFacility.id == facility_id))
+            facility = self.session.scalar(select(NIAMAdminFacility).where(NIAMAdminFacility.id == facility_id))
             if facility is None or facility.organization_id != organization_id or not facility.is_active:
                 raise MembershipValidationError("Facility is outside the organization context")
         if department_id:
-            department = await self.session.scalar(select(NIAMAdminDepartment).where(NIAMAdminDepartment.id == department_id))
+            department = self.session.scalar(select(NIAMAdminDepartment).where(NIAMAdminDepartment.id == department_id))
             if department is None or not department.is_active:
                 raise MembershipValidationError("Department is not active")
             if facility_id and department.facility_id != facility_id:
                 raise MembershipValidationError("Department is outside the facility context")
         if unit_id:
-            unit = await self.session.scalar(select(NIAMAdminUnit).where(NIAMAdminUnit.id == unit_id))
+            unit = self.session.scalar(select(NIAMAdminUnit).where(NIAMAdminUnit.id == unit_id))
             if unit is None or not unit.is_active:
                 raise MembershipValidationError("Unit is not active")
             if department_id and unit.department_id != department_id:
                 raise MembershipValidationError("Unit is outside the department context")
         if workspace_id:
-            workspace = await self.session.scalar(select(Workspace).where(Workspace.id == workspace_id))
+            workspace = self.session.scalar(select(Workspace).where(Workspace.id == workspace_id))
             if workspace is None or workspace.organization_id != organization_id:
                 raise MembershipValidationError("Workspace is outside the organization context")
 
-    async def _can_manage_organization(self, actor_id: str, organization_id: str) -> bool:
-        ownership = await self.session.scalar(
+    def _can_manage_organization(self, actor_id: str, organization_id: str) -> bool:
+        ownership = self.session.scalar(
             select(OrganizationOwnership.id).where(
                 OrganizationOwnership.account_id == actor_id,
                 OrganizationOwnership.organization_id == organization_id,
@@ -211,7 +211,7 @@ class MembershipService:
         )
         if ownership:
             return True
-        representative = await self.session.scalar(
+        representative = self.session.scalar(
             select(OrganizationRepresentative.id).where(
                 OrganizationRepresentative.account_id == actor_id,
                 OrganizationRepresentative.organization_id == organization_id,
@@ -220,7 +220,7 @@ class MembershipService:
         )
         return representative is not None
 
-    async def create_application(
+    def create_application(
         self,
         account_id: str,
         identity_id: str | None,
@@ -235,10 +235,10 @@ class MembershipService:
     ) -> MembershipApplication:
         if actor_id != account_id:
             raise MembershipAccessDenied("An application can only be submitted for the authenticated account")
-        await self._require_active_account(account_id)
-        await self._validate_context(organization_id, scope_type, facility_id, department_id, unit_id, workspace_id)
+        self._require_active_account(account_id)
+        self._validate_context(organization_id, scope_type, facility_id, department_id, unit_id, workspace_id)
         key = self.relationship_key(account_id, organization_id, relationship_type, scope_type, facility_id, department_id, unit_id, workspace_id)
-        existing = await self.session.scalar(select(MembershipApplication).where(MembershipApplication.application_key == key))
+        existing = self.session.scalar(select(MembershipApplication).where(MembershipApplication.application_key == key))
         if existing:
             return existing
         application = MembershipApplication(
@@ -257,15 +257,15 @@ class MembershipService:
             submitted_at=self._now(),
         )
         self.session.add(application)
-        await self.session.flush()
-        await self._audit(AuditAction.membership_application_submitted, account_id, "membership_application", application.id, organization_id, {"scope_type": scope_type})
+        self.session.flush()
+        self._audit(AuditAction.membership_application_submitted, account_id, "membership_application", application.id, organization_id, {"scope_type": scope_type})
         return application
 
-    async def approve_application(self, application_id: str, actor_id: str) -> Membership:
-        application = await self.session.scalar(select(MembershipApplication).where(MembershipApplication.id == application_id))
+    def approve_application(self, application_id: str, actor_id: str) -> Membership:
+        application = self.session.scalar(select(MembershipApplication).where(MembershipApplication.id == application_id))
         if application is None:
             raise MembershipValidationError("Membership application not found")
-        if not await self._can_manage_organization(actor_id, application.organization_id):
+        if not self._can_manage_organization(actor_id, application.organization_id):
             raise MembershipAccessDenied("Actor cannot approve memberships in this organization")
         if application.status == MembershipApplicationStatus.submitted.value:
             self.transition_application(application, MembershipApplicationStatus.under_review)
@@ -273,7 +273,7 @@ class MembershipService:
         application.reviewed_by = actor_id
         application.reviewed_at = self._now()
         key = self.relationship_key(application.account_id, application.organization_id, application.relationship_type, application.scope_type, application.facility_id, application.department_id, application.unit_id, application.workspace_id)
-        membership = await self.session.scalar(select(Membership).where(Membership.membership_key == key))
+        membership = self.session.scalar(select(Membership).where(Membership.membership_key == key))
         if membership is None:
             membership = Membership(
                 uuid=secrets.token_hex(16),
@@ -292,17 +292,17 @@ class MembershipService:
                 created_by=actor_id,
             )
             self.session.add(membership)
-            await self.session.flush()
+            self.session.flush()
         if membership.status != MembershipStatus.active.value:
             self.transition_membership(membership, MembershipStatus.active)
         membership.activated_by = actor_id
         membership.activated_at = self._now()
-        await self.session.flush()
-        await self._audit(AuditAction.membership_application_approved, actor_id, "membership_application", application.id, application.organization_id, {"membership_id": membership.id})
-        await self._audit(AuditAction.membership_created, actor_id, "membership", membership.id, membership.organization_id, {"source": membership.source})
+        self.session.flush()
+        self._audit(AuditAction.membership_application_approved, actor_id, "membership_application", application.id, application.organization_id, {"membership_id": membership.id})
+        self._audit(AuditAction.membership_created, actor_id, "membership", membership.id, membership.organization_id, {"source": membership.source})
         return membership
 
-    async def create_invitation(
+    def create_invitation(
         self,
         actor_id: str,
         organization_id: str,
@@ -315,13 +315,13 @@ class MembershipService:
         workspace_id: str | None = None,
         ttl: timedelta = timedelta(hours=24),
     ) -> tuple[MembershipInvitation, str]:
-        if not await self._can_manage_organization(actor_id, organization_id):
+        if not self._can_manage_organization(actor_id, organization_id):
             raise MembershipAccessDenied("Actor cannot invite members in this organization")
-        await self._validate_context(organization_id, scope_type, facility_id, department_id, unit_id, workspace_id)
+        self._validate_context(organization_id, scope_type, facility_id, department_id, unit_id, workspace_id)
         if recipient_account_id:
-            await self._require_active_account(recipient_account_id)
+            self._require_active_account(recipient_account_id)
         invitation_key = self.relationship_key(recipient_account_id or "unresolved", organization_id, relationship_type, scope_type, facility_id, department_id, unit_id, workspace_id)
-        existing = await self.session.scalar(
+        existing = self.session.scalar(
             select(MembershipInvitation).where(
                 MembershipInvitation.invitation_key == invitation_key,
                 MembershipInvitation.status == InvitationStatus.pending.value,
@@ -349,31 +349,31 @@ class MembershipService:
         )
         self.session.add(invitation)
         try:
-            await self.session.flush()
+            self.session.flush()
         except IntegrityError as exc:
-            await self.session.rollback()
+            self.session.rollback()
             raise InvitationError("Invitation could not be created idempotently") from exc
-        await self._audit(AuditAction.invitation_created, actor_id, "membership_invitation", invitation.id, organization_id, {"expires_at": invitation.expires_at.isoformat()})
+        self._audit(AuditAction.invitation_created, actor_id, "membership_invitation", invitation.id, organization_id, {"expires_at": invitation.expires_at.isoformat()})
         return invitation, raw_token
 
-    async def accept_invitation(self, invitation_id: str, actor_id: str, raw_token: str) -> Membership:
-        invitation = await self.session.scalar(select(MembershipInvitation).where(MembershipInvitation.id == invitation_id))
+    def accept_invitation(self, invitation_id: str, actor_id: str, raw_token: str) -> Membership:
+        invitation = self.session.scalar(select(MembershipInvitation).where(MembershipInvitation.id == invitation_id))
         if invitation is None or invitation.status != InvitationStatus.pending.value:
             raise InvitationError("Invitation is not available")
         if invitation.expires_at <= self._now():
             invitation.status = InvitationStatus.expired.value
             invitation.version += 1
-            await self.session.flush()
-            await self._audit(AuditAction.invitation_expired, actor_id, "membership_invitation", invitation.id, invitation.organization_id, outcome="denied")
+            self.session.flush()
+            self._audit(AuditAction.invitation_expired, actor_id, "membership_invitation", invitation.id, invitation.organization_id, outcome="denied")
             raise InvitationError("Invitation has expired")
         if not secrets.compare_digest(invitation.token_hash, self.token_hash(raw_token)):
-            await self._audit(AuditAction.invitation_accepted, actor_id, "membership_invitation", invitation.id, invitation.organization_id, outcome="denied")
+            self._audit(AuditAction.invitation_accepted, actor_id, "membership_invitation", invitation.id, invitation.organization_id, outcome="denied")
             raise InvitationError("Invitation token is invalid")
         if invitation.recipient_account_id and invitation.recipient_account_id != actor_id:
             raise InvitationError("Invitation recipient mismatch")
-        account = await self._require_active_account(actor_id)
+        account = self._require_active_account(actor_id)
         key = self.relationship_key(actor_id, invitation.organization_id, invitation.relationship_type, invitation.scope_type, invitation.facility_id, invitation.department_id, invitation.unit_id, invitation.workspace_id)
-        membership = await self.session.scalar(select(Membership).where(Membership.membership_key == key))
+        membership = self.session.scalar(select(Membership).where(Membership.membership_key == key))
         if membership is None:
             membership = Membership(
                 uuid=secrets.token_hex(16),
@@ -392,7 +392,7 @@ class MembershipService:
                 created_by=invitation.created_by,
             )
             self.session.add(membership)
-            await self.session.flush()
+            self.session.flush()
         self.transition_membership(membership, MembershipStatus.active)
         membership.activated_by = actor_id
         membership.activated_at = self._now()
@@ -400,70 +400,70 @@ class MembershipService:
         invitation.accepted_at = self._now()
         invitation.membership_id = membership.id
         invitation.version += 1
-        await self.session.flush()
-        await self._audit(AuditAction.invitation_accepted, actor_id, "membership_invitation", invitation.id, invitation.organization_id, {"membership_id": membership.id})
-        await self._audit(AuditAction.membership_accepted, actor_id, "membership", membership.id, membership.organization_id, {"source": membership.source})
+        self.session.flush()
+        self._audit(AuditAction.invitation_accepted, actor_id, "membership_invitation", invitation.id, invitation.organization_id, {"membership_id": membership.id})
+        self._audit(AuditAction.membership_accepted, actor_id, "membership", membership.id, membership.organization_id, {"source": membership.source})
         return membership
 
-    async def revoke_membership(self, membership_id: str, actor_id: str, reason: str | None = None) -> Membership:
-        membership = await self.session.scalar(select(Membership).where(Membership.id == membership_id))
+    def revoke_membership(self, membership_id: str, actor_id: str, reason: str | None = None) -> Membership:
+        membership = self.session.scalar(select(Membership).where(Membership.id == membership_id))
         if membership is None:
             raise MembershipValidationError("Membership not found")
-        if not await self._can_manage_organization(actor_id, membership.organization_id):
+        if not self._can_manage_organization(actor_id, membership.organization_id):
             raise MembershipAccessDenied("Actor cannot revoke memberships in this organization")
         self.transition_membership(membership, MembershipStatus.revoked)
         membership.revoked_at = self._now()
         membership.revocation_reason = reason
-        await self.session.flush()
-        await self._audit(AuditAction.membership_revoked, actor_id, "membership", membership.id, membership.organization_id, {"reason": reason})
+        self.session.flush()
+        self._audit(AuditAction.membership_revoked, actor_id, "membership", membership.id, membership.organization_id, {"reason": reason})
         return membership
 
-    async def suspend_membership(self, membership_id: str, actor_id: str, reason: str | None = None) -> Membership:
-        membership = await self.session.scalar(select(Membership).where(Membership.id == membership_id))
+    def suspend_membership(self, membership_id: str, actor_id: str, reason: str | None = None) -> Membership:
+        membership = self.session.scalar(select(Membership).where(Membership.id == membership_id))
         if membership is None:
             raise MembershipValidationError("Membership not found")
-        if not await self._can_manage_organization(actor_id, membership.organization_id):
+        if not self._can_manage_organization(actor_id, membership.organization_id):
             raise MembershipAccessDenied("Actor cannot suspend memberships in this organization")
         self.transition_membership(membership, MembershipStatus.suspended)
         membership.suspended_at = self._now()
         membership.revocation_reason = reason
-        await self.session.flush()
-        await self._audit(AuditAction.membership_suspended, actor_id, "membership", membership.id, membership.organization_id, {"reason": reason})
+        self.session.flush()
+        self._audit(AuditAction.membership_suspended, actor_id, "membership", membership.id, membership.organization_id, {"reason": reason})
         return membership
 
-    async def reactivate_membership(self, membership_id: str, actor_id: str) -> Membership:
-        membership = await self.session.scalar(select(Membership).where(Membership.id == membership_id))
+    def reactivate_membership(self, membership_id: str, actor_id: str) -> Membership:
+        membership = self.session.scalar(select(Membership).where(Membership.id == membership_id))
         if membership is None:
             raise MembershipValidationError("Membership not found")
-        if not await self._can_manage_organization(actor_id, membership.organization_id):
+        if not self._can_manage_organization(actor_id, membership.organization_id):
             raise MembershipAccessDenied("Actor cannot reactivate memberships in this organization")
         self.transition_membership(membership, MembershipStatus.active)
         membership.suspended_at = None
         membership.revocation_reason = None
         membership.activated_by = actor_id
         membership.activated_at = self._now()
-        await self.session.flush()
-        await self._audit(AuditAction.membership_reactivated, actor_id, "membership", membership.id, membership.organization_id)
+        self.session.flush()
+        self._audit(AuditAction.membership_reactivated, actor_id, "membership", membership.id, membership.organization_id)
         return membership
 
-    async def revoke_invitation(self, invitation_id: str, actor_id: str) -> MembershipInvitation:
-        invitation = await self.session.scalar(select(MembershipInvitation).where(MembershipInvitation.id == invitation_id))
+    def revoke_invitation(self, invitation_id: str, actor_id: str) -> MembershipInvitation:
+        invitation = self.session.scalar(select(MembershipInvitation).where(MembershipInvitation.id == invitation_id))
         if invitation is None:
             raise InvitationError("Invitation not found")
-        if not await self._can_manage_organization(actor_id, invitation.organization_id):
+        if not self._can_manage_organization(actor_id, invitation.organization_id):
             raise MembershipAccessDenied("Actor cannot revoke invitations in this organization")
         if invitation.status != InvitationStatus.pending.value:
             raise InvitationError("Invitation is not pending")
         invitation.status = InvitationStatus.revoked.value
         invitation.revoked_at = self._now()
         invitation.version += 1
-        await self.session.flush()
-        await self._audit(AuditAction.invitation_revoked, actor_id, "membership_invitation", invitation.id, invitation.organization_id)
+        self.session.flush()
+        self._audit(AuditAction.invitation_revoked, actor_id, "membership_invitation", invitation.id, invitation.organization_id)
         return invitation
 
-    async def list_for_account(self, account_id: str) -> list[Membership]:
-        await self._require_active_account(account_id)
-        result = await self.session.execute(
+    def list_for_account(self, account_id: str) -> list[Membership]:
+        self._require_active_account(account_id)
+        result = self.session.execute(
             select(Membership).where(
                 Membership.account_id == account_id,
                 Membership.status.in_([MembershipStatus.pending.value, MembershipStatus.invited.value, MembershipStatus.active.value, MembershipStatus.suspended.value]),
@@ -475,5 +475,5 @@ class MembershipService:
             if membership.expires_at and membership.expires_at <= now and membership.status in {MembershipStatus.pending.value, MembershipStatus.invited.value, MembershipStatus.active.value, MembershipStatus.suspended.value}:
                 self.transition_membership(membership, MembershipStatus.expired)
                 membership.revoked_at = now
-        await self.session.flush()
+        self.session.flush()
         return memberships

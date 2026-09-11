@@ -45,7 +45,7 @@ class _AuthorizationSession:
         self.policies = policies or []
         self.fail = fail
 
-    async def execute(self, statement):
+    def execute(self, statement):
         if self.fail:
             raise RuntimeError("simulated policy store failure")
         sql = str(statement)
@@ -57,7 +57,7 @@ class _AuthorizationSession:
             return _Result(self.policies)
         return _Result([])
 
-    async def scalar(self, statement):
+    def scalar(self, statement):
         if self.fail:
             raise RuntimeError("simulated catalog failure")
         return "permission-id" if self.permission_exists else None
@@ -65,7 +65,7 @@ class _AuthorizationSession:
     def add(self, entry) -> None:
         del entry
 
-    async def flush(self) -> None:
+    def flush(self) -> None:
         return None
 
 
@@ -117,75 +117,66 @@ def _request(**overrides) -> AuthorizationRequest:
     return AuthorizationRequest(**values)
 
 
-@pytest.mark.asyncio
-async def test_missing_trusted_actor_denies_compatibility_engine() -> None:
-    result = await PolicyEngine().evaluate(
+def test_missing_trusted_actor_denies_compatibility_engine() -> None:
+    result = PolicyEngine().evaluate(
         PolicyContext(subject_id="account-1", subject_type="account", action="read", resource_type="lab_result"),
     )
     assert result is False
 
 
-@pytest.mark.asyncio
-async def test_actor_mismatch_denies_before_database_access() -> None:
+def test_actor_mismatch_denies_before_database_access() -> None:
     service = AuthorizationDecisionService(_AuthorizationSession())
-    decision = await service._evaluate(_actor(), _request(subject_account_id="other-account"))
+    decision = service._evaluate(_actor(), _request(subject_account_id="other-account"))
     assert decision.reason_code is AuthorizationReason.actor_mismatch
 
 
-@pytest.mark.asyncio
-async def test_inactive_account_denies() -> None:
+def test_inactive_account_denies() -> None:
     service = AuthorizationDecisionService(_AuthorizationSession())
-    decision = await service._evaluate(_actor(active=False), _request())
+    decision = service._evaluate(_actor(active=False), _request())
     assert decision.reason_code is AuthorizationReason.account_inactive
 
 
-@pytest.mark.asyncio
-async def test_resource_id_requires_server_resolution() -> None:
+def test_resource_id_requires_server_resolution() -> None:
     service = AuthorizationDecisionService(_AuthorizationSession(membership=_membership(), effective_permissions=["lab_result.read"]))
-    decision = await service._evaluate(_actor(), _request(resource_context={"organization_id": "org-1"}))
+    decision = service._evaluate(_actor(), _request(resource_context={"organization_id": "org-1"}))
     assert decision.reason_code is AuthorizationReason.resource_unresolved
 
 
-@pytest.mark.asyncio
-async def test_scope_mismatch_denies_cross_tenant_request() -> None:
+def test_scope_mismatch_denies_cross_tenant_request() -> None:
     service = AuthorizationDecisionService(_AuthorizationSession())
-    decision = await service._evaluate(
+    decision = service._evaluate(
         _actor(),
         _request(organization_id="org-2", resource_context={"exists": True, "organization_id": "org-2"}),
     )
     assert decision.reason_code is AuthorizationReason.membership_unresolved
 
 
-@pytest.mark.asyncio
-async def test_unknown_permission_denies() -> None:
+def test_unknown_permission_denies() -> None:
     service = AuthorizationDecisionService(
         _AuthorizationSession(membership=_membership(), permission_exists=False),
     )
-    decision = await service._evaluate(_actor(), _request())
+    decision = service._evaluate(_actor(), _request())
     assert decision.reason_code is AuthorizationReason.permission_unknown
 
 
-@pytest.mark.asyncio
-async def test_missing_effective_permission_denies() -> None:
+def test_missing_effective_permission_denies() -> None:
     service = AuthorizationDecisionService(
         _AuthorizationSession(membership=_membership(), permission_exists=True, effective_permissions=[]),
     )
-    decision = await service._evaluate(_actor(), _request())
+    decision = service._evaluate(_actor(), _request())
     assert decision.reason_code is AuthorizationReason.permission_missing
 
 
-@pytest.mark.asyncio
-async def test_active_rbac_and_context_allow() -> None:
+def test_active_rbac_and_context_allow() -> None:
     service = AuthorizationDecisionService(
         _AuthorizationSession(membership=_membership(), effective_permissions=["lab_result.read"]),
     )
-    decision = await service._evaluate(_actor(), _request())
+    decision = service._evaluate(_actor(), _request())
     assert decision.allowed is True
     assert decision.reason_code is AuthorizationReason.allowed
 
 
-@pytest.mark.asyncio
-async def test_explicit_deny_policy_overrides_rbac_allow() -> None:
+def test_explicit_deny_policy_overrides_rbac_allow() -> None:
     deny = IdentityPolicy(
         policy_id="clinical-deny-v2",
         effect="deny",
@@ -213,28 +204,26 @@ async def test_explicit_deny_policy_overrides_rbac_allow() -> None:
             policies=[allow, deny],
         ),
     )
-    decision = await service._evaluate(_actor(), _request())
+    decision = service._evaluate(_actor(), _request())
     assert decision.reason_code is AuthorizationReason.policy_denied
     assert decision.policy_id == "clinical-deny-v2"
     assert decision.policy_version == "2.0"
 
 
-@pytest.mark.asyncio
-async def test_invalid_purpose_denies_without_fallback() -> None:
+def test_invalid_purpose_denies_without_fallback() -> None:
     service = AuthorizationDecisionService(_AuthorizationSession())
-    decision = await service._evaluate(
+    decision = service._evaluate(
         _actor(),
         _request(purpose="UNTRUSTED_PURPOSE", purpose_validated=False),
     )
     assert decision.reason_code is AuthorizationReason.purpose_invalid
 
 
-@pytest.mark.asyncio
-async def test_sensitive_action_requires_mfa_step_up() -> None:
+def test_sensitive_action_requires_mfa_step_up() -> None:
     service = AuthorizationDecisionService(
         _AuthorizationSession(membership=_membership(), effective_permissions=["lab_result.export"]),
     )
-    decision = await service._evaluate(
+    decision = service._evaluate(
         _actor(mfa=False),
         _request(action="export", permission_key="lab_result.export", sensitivity="high"),
     )
@@ -242,10 +231,9 @@ async def test_sensitive_action_requires_mfa_step_up() -> None:
     assert decision.required_assurance == "MFA"
 
 
-@pytest.mark.asyncio
-async def test_break_glass_is_not_an_admin_bypass() -> None:
+def test_break_glass_is_not_an_admin_bypass() -> None:
     service = AuthorizationDecisionService(_AuthorizationSession())
-    decision = await service._evaluate(
+    decision = service._evaluate(
         _actor(mfa=True),
         _request(
             break_glass=True,
@@ -256,10 +244,9 @@ async def test_break_glass_is_not_an_admin_bypass() -> None:
     assert decision.reason_code is AuthorizationReason.break_glass_workflow_required
 
 
-@pytest.mark.asyncio
-async def test_database_failure_fails_closed() -> None:
+def test_database_failure_fails_closed() -> None:
     service = AuthorizationDecisionService(_AuthorizationSession(fail=True))
-    decision = await service.authorize(_actor(), _request())
+    decision = service.authorize(_actor(), _request())
     assert decision.allowed is False
     assert decision.reason_code is AuthorizationReason.internal_failure
 
@@ -277,18 +264,17 @@ def test_scope_helper_rejects_workspace_crossing() -> None:
     assert reason is AuthorizationReason.workspace_boundary_denied
 
 
-@pytest.mark.asyncio
-async def test_role_assignment_rejects_client_selected_account_mismatch() -> None:
+def test_role_assignment_rejects_client_selected_account_mismatch() -> None:
     from app.identity.api.roles import RoleAssignmentRequest, assign_role
     from fastapi import HTTPException
 
     class _Db:
-        async def get(self, model, object_id):
+        def get(self, model, object_id):
             del model, object_id
             return _membership()
 
     with pytest.raises(HTTPException) as error:
-        await assign_role(
+        assign_role(
             RoleAssignmentRequest(
                 account_id="attacker-account",
                 membership_id="membership-1",
@@ -325,14 +311,13 @@ class _RelationshipSession(_AuthorizationSession):
         super().__init__(**kwargs)
         self.relationship = relationship
 
-    async def execute(self, statement):
+    def execute(self, statement):
         if "niam_citizen_relationships" in str(statement):
             return _Result([self.relationship])
-        return await super().execute(statement)
+        return super().execute(statement)
 
 
-@pytest.mark.asyncio
-async def test_relationship_access_requires_explicit_scope_and_purpose() -> None:
+def test_relationship_access_requires_explicit_scope_and_purpose() -> None:
     relationship = SimpleNamespace(
         patient_id="patient-1",
         citizen_id=None,
@@ -347,7 +332,7 @@ async def test_relationship_access_requires_explicit_scope_and_purpose() -> None
             effective_permissions=["patient_record.read"],
         ),
     )
-    decision = await service._evaluate(
+    decision = service._evaluate(
         _actor(),
         _request(
             resource_type="patient_record",
@@ -365,8 +350,7 @@ async def test_relationship_access_requires_explicit_scope_and_purpose() -> None
     assert decision.allowed is True
 
 
-@pytest.mark.asyncio
-async def test_relationship_purpose_mismatch_denies() -> None:
+def test_relationship_purpose_mismatch_denies() -> None:
     relationship = SimpleNamespace(
         patient_id="patient-1",
         citizen_id=None,
@@ -381,7 +365,7 @@ async def test_relationship_purpose_mismatch_denies() -> None:
             effective_permissions=["patient_record.read"],
         ),
     )
-    decision = await service._evaluate(
+    decision = service._evaluate(
         _actor(),
         _request(
             resource_type="patient_record",

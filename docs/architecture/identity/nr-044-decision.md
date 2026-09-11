@@ -423,3 +423,125 @@ shape of work M3/M4 did for Pharmacy, and probably belongs with NR-022.
 **So NR-044.1 stays PARTIALLY VERIFIED.** The blocker moved and became far more
 precisely located, but the ALLOW half is still unproven, and half an
 authorization proof is not a verified conversion.
+
+## 15. NR-044.2 — the service layer executes (recorded after implementation)
+
+### 15.1 What was measured first
+
+The ledger was re-derived from source before anything was edited. Eighteen
+modules under `app/identity/services/` annotated `AsyncSession`; sixteen of them
+awaited a session directly and were in the ledger, and two more
+(`authentication_service.py`, `authorization_service.py`) awaited only
+repositories — which NR-044.1 had already made synchronous, so they were broken
+*by* that batch rather than in spite of it.
+
+Classification of every remaining item, by the rule the batch was given:
+
+| Class | Meaning | Count |
+| --- | --- | --- |
+| **A** — DB-only async, convert | no `asyncio`, no `httpx`, no `async with`, no `async for`; every await is a database call or a call to another converted function | **18 of 18** in `identity/services`, plus `services/clinical_scope_bridge_service.py` (a direct dependency of a converted service) |
+| **B** — DB plus genuine async I/O | — | **0** |
+| **C** — no database, deliberate async seam | `OrganizationVerificationProvider.verify` and the `verification_service.py` provider protocol: not-connected stubs that hold no session and exist as the boundary where a future external HTTP call will land | **2**, left async |
+
+There was no judgement call inside the scope. A grep for `asyncio`, `httpx`,
+`aiohttp`, `anyio`, `async with` and `async for` across all 27 files in
+`identity/services/` returns only the `AsyncSession` import lines themselves.
+
+### 15.2 What changed
+
+* **`identity/services/` (16 modules, 109 `async def`, 245 `await`)** — converted
+  to the synchronous `Session`. Authentication, accounts, persons, sessions,
+  devices, memberships, workspaces, consents, incidents, legacy mapping, the
+  clinical authorization context, the authorization decision service, the RBAC
+  service and both audit writers.
+* **`services/clinical_scope_bridge_service.py`** — converted. It is awaited by
+  `ClinicalAuthorizationContextService`, so it had to move with it.
+* **`identity/api/` (13 modules)** — converted. Two reasons, and the second is
+  the important one. Its handlers call the services, so the call sites had to
+  change; and a handler left as `async def` while calling a now-synchronous
+  service would run blocking psycopg work **on the event loop**, which is worse
+  than the unreachable code it replaced. FastAPI runs a plain `def` handler in a
+  threadpool, which is where blocking database work belongs. The one handler
+  left `async` is `niam_health`, which touches nothing.
+* **`identity/policy_engine.py`** — converted; it is a thin facade over
+  `AuthorizationDecisionService`.
+* **`clinical_gateway/session_facade.py` — deleted.** `SyncSessionAsyncFacade`
+  wrapped a synchronous `Session` in awaitable methods so the gateway could reuse
+  the async identity services, and the gateway drove them with `asyncio.run()` —
+  a fresh event loop per authorization and per audit write, inside a request.
+  With the services synchronous, the shim and the loops are gone and the gateway
+  passes its own `Session` straight through.
+
+Four `AsyncSession` annotations on parameters fed by `Depends(get_db)` were
+removed along the way. That annotation was the original lie: it said one thing
+and the provider did another, which is how NR-044 stayed invisible for so long.
+
+### 15.3 Ledger movement
+
+40 modules → **20**. Twenty-one removed, **none added**, and one *discovered*.
+
+What remains is the identity sub-package layer — `trust`, `admin`, `compliance`,
+`federation`, `governance`, `notifications`, `certificates`, `adaptive_auth`,
+`bootstrap`, `workflows` — plus `capabilities/` (4), `national/` (2) and
+`reference/` (1). That is NR-044.3.
+
+### 15.4 Two findings this batch produced
+
+**NR-048 — the gateway reported any internal fault as an authorization denial.**
+`ClinicalGatewayContextResolver.resolve` caught `Exception` and converted
+everything into `invalid_context`, rendered as 403. That is precisely how NR-047
+presented: `column organizations.org_id does not exist` reached the client as
+what looked like a policy decision, and was written into the immutable audit
+chain as one. NR-044's `TypeError` was swallowed by the same handler. The catch
+is now `(ClinicalAuthorizationContextError, ClinicalScopeBridgeError)` — the two
+vocabularies that actually mean "refused". Anything else propagates and surfaces
+as a 500: still denied, but as a fault rather than as a decision. Fixed here
+because the spec permits changing exception semantics where the current
+behaviour is demonstrably incorrect and directly related — and NR-047 is the
+demonstration.
+
+**NR-049 — the ledger had a blind spot, and it had one all along.** The AST
+guard matched a session owner only as a bare name or an attribute chain ending
+`.session` / `.db`. `app/reference/infrastructure/repositories.py` stores its
+session on `self._session` and awaits it twenty-odd times, so the guard had
+never seen it. Widening the rule to `._session` and `.facade` raised the count
+from 19 to 20. The guard is fixed here; converting the module belongs to
+NR-044.3. A guard that under-reports is how this whole finding stayed hidden in
+the first place, so the correction matters more than the one module it found.
+
+### 15.5 Evidence
+
+Against migrated PostgreSQL 16.13, single head `20260913_0001`, **no migration
+and no schema change in this batch**.
+
+| Proof | Where |
+| --- | --- |
+| Authentication success — login mints a session row, read back from PostgreSQL | `test_the_authentication_service_now_logs_in_against_postgresql` |
+| Authentication denial — wrong password, no session row, failure counter incremented | `test_a_wrong_password_is_denied_and_creates_no_session` |
+| Unknown login denied | `test_an_unknown_login_is_denied_without_a_session` |
+| Suspended account refused despite a correct password | `test_a_suspended_account_cannot_authenticate_even_with_the_right_password` |
+| Lockout honoured while `locked_until` is future, released after | `test_a_locked_account_within_its_lockout_window_cannot_authenticate` |
+| Session lifecycle — logout terminates the real row | `test_logout_terminates_the_real_session_row` |
+| Workspace eligibility, and citizen-workspace idempotency | `test_the_workspace_service_reads_eligibility_from_postgresql` |
+| Authorization ALLOW — HTTP 200, read executes | `test_a_fully_authorized_actor_is_allowed_and_the_read_executes` |
+| Authorization DENY ladder — each boundary broken alone from the allowing context | `test_every_denial_boundary_still_holds_from_an_otherwise_valid_context` |
+| Audit on an allowed read, valid hash chain | `test_an_allowed_read_is_audited_with_a_valid_chain` |
+| Audit on a denial | `test_a_valid_actor_passes_the_gate_and_the_denial_is_audited` |
+| Tenant isolation | `test_tenant_isolation_matrix.py`, and the cross-tenant rungs of the denial ladder |
+| NR-048 both directions | `test_a_database_fault_is_no_longer_reported_as_a_policy_denial`, `test_a_genuine_context_denial_is_still_translated_to_invalid_context` |
+| One engine, one sessionmaker, no `create_async_engine` | `test_exactly_one_database_engine_architecture_exists` |
+| Service layer synchronous, seams exempted explicitly | `test_the_identity_service_layer_is_synchronous` |
+| No blocking DB work on the event loop | `test_the_identity_api_layer_does_not_block_the_event_loop` |
+| The facade and its event loops stay deleted | `test_the_session_facade_shim_is_gone_and_stays_gone` |
+
+Full backend suite: **2916 passed, 173 skipped, 0 failed**.
+
+### 15.6 What may not yet be re-graded
+
+**NR-038** (client-authored assurance level) and **AUTH-F5 / NR-043** (workspace
+eligibility ignoring the organization's standing) stay **PARTIALLY VERIFIED**.
+`WorkspaceService.list_eligible` is now executable and proven, which is half of
+NR-043; but `identity/trust/services.py` — where the assurance writer lives and
+where the trust routes consume eligibility — is still in the ledger. Promoting
+either on the strength of NR-044.2 alone would be claiming a proof that has not
+been run.

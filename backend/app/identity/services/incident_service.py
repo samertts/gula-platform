@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.base import _ulid
 from app.identity.models.security import IncidentSeverity, IncidentStatus, SecurityIncident
@@ -30,11 +30,11 @@ class IncidentService:
         IncidentStatus.false_positive.value: frozenset(),
     }
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = CanonicalAuditService(session)
 
-    async def create(
+    def create(
         self,
         *,
         actor_id: str,
@@ -60,8 +60,8 @@ class IncidentService:
             is_active=True,
         )
         self.session.add(incident)
-        await self.session.flush()
-        await self.audit.record(
+        self.session.flush()
+        self.audit.record(
             AuditEventInput(
                 event_type="SECURITY_INCIDENT_CREATED",
                 category="SECURITY",
@@ -78,7 +78,7 @@ class IncidentService:
         )
         return incident
 
-    async def transition(
+    def transition(
         self,
         *,
         actor_id: str,
@@ -90,7 +90,7 @@ class IncidentService:
     ) -> SecurityIncident:
         if target_status not in {item.value for item in IncidentStatus}:
             raise IncidentError("invalid incident status")
-        incident = await self.session.get(SecurityIncident, incident_id, with_for_update=True)
+        incident = self.session.get(SecurityIncident, incident_id, with_for_update=True)
         if incident is None:
             raise IncidentError("incident not found")
         if incident.version != expected_version:
@@ -105,8 +105,8 @@ class IncidentService:
             incident.resolution = resolution[:4000]
         if target_status in {IncidentStatus.closed.value, IncidentStatus.false_positive.value}:
             incident.closed_at = datetime.now(UTC)
-        await self.session.flush()
-        await self.audit.record(
+        self.session.flush()
+        self.audit.record(
             AuditEventInput(
                 event_type="SECURITY_INCIDENT_STATUS_CHANGED",
                 category="SECURITY",
@@ -123,11 +123,11 @@ class IncidentService:
         )
         return incident
 
-    async def list(self, *, organization_id: str | None, limit: int = 100, offset: int = 0) -> list[SecurityIncident]:
+    def list(self, *, organization_id: str | None, limit: int = 100, offset: int = 0) -> list[SecurityIncident]:
         conditions = []
         if organization_id is not None:
             conditions.append(SecurityIncident.organization_id == organization_id)
-        result = await self.session.execute(
+        result = self.session.execute(
             select(SecurityIncident)
             .where(*conditions)
             .order_by(SecurityIncident.detected_at.desc())

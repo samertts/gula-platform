@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
@@ -51,14 +51,14 @@ def _serialize(entry: Any, *, sensitive: bool = False) -> dict[str, Any]:
     return data
 
 
-async def _require_audit_permission(
+def _require_audit_permission(
     actor: NiamActor,
-    db: AsyncSession,
+    db: Session,
     *,
     organization_id: str,
     permission_key: str,
 ) -> None:
-    decision = await AuthorizationDecisionService(db).authorize(
+    decision = AuthorizationDecisionService(db).authorize(
         AuthorizationActor(account=actor.account, session=actor.session),
         AuthorizationRequest(
             subject_account_id=actor.account.id,
@@ -75,7 +75,7 @@ async def _require_audit_permission(
 
 
 @router.get("")
-async def search_audit_events(
+def search_audit_events(
     organization_id: str = Query(min_length=1, max_length=26),
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -88,10 +88,10 @@ async def search_audit_events(
     occurred_from: datetime | None = None,
     occurred_to: datetime | None = None,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_audit_permission(actor, db, organization_id=organization_id, permission_key="audit.read")
-    entries = await CanonicalAuditService(db).search(
+    _require_audit_permission(actor, db, organization_id=organization_id, permission_key="audit.read")
+    entries = CanonicalAuditService(db).search(
         organization_id=organization_id,
         limit=limit,
         offset=offset,
@@ -108,23 +108,23 @@ async def search_audit_events(
 
 
 @router.get("/export")
-async def export_audit_events(
+def export_audit_events(
     request: Request,
     organization_id: str = Query(min_length=1, max_length=26),
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     event_type: str | None = Query(default=None, max_length=120),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_audit_permission(actor, db, organization_id=organization_id, permission_key="audit.export")
-    entries = await CanonicalAuditService(db).search(
+    _require_audit_permission(actor, db, organization_id=organization_id, permission_key="audit.export")
+    entries = CanonicalAuditService(db).search(
         organization_id=organization_id,
         limit=limit,
         offset=offset,
         event_type=event_type,
     )
-    await CanonicalAuditService(db).record(
+    CanonicalAuditService(db).record(
         AuditEventInput(
             event_type="DATA_EXPORT_REQUESTED",
             category="DATA_EXPORT",
@@ -147,15 +147,15 @@ async def export_audit_events(
 
 
 @router.get("/integrity")
-async def verify_audit_integrity(
+def verify_audit_integrity(
     organization_id: str = Query(min_length=1, max_length=26),
     occurred_from: datetime | None = None,
     occurred_to: datetime | None = None,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_audit_permission(actor, db, organization_id=organization_id, permission_key="audit.verify_integrity")
-    return await CanonicalAuditService(db).verify(
+    _require_audit_permission(actor, db, organization_id=organization_id, permission_key="audit.verify_integrity")
+    return CanonicalAuditService(db).verify(
         organization_id=organization_id,
         occurred_from=occurred_from,
         occurred_to=occurred_to,

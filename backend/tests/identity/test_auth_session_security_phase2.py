@@ -20,7 +20,7 @@ class _AccountRepository:
     def __init__(self, session):
         self.session = session
 
-    async def get_by_id(self, account_id: str):
+    def get_by_id(self, account_id: str):
         if self.account and self.account.id == account_id:
             return self.account
         return None
@@ -32,7 +32,7 @@ class _AccountService:
     def __init__(self, session):
         self.session = session
 
-    async def authenticate(self, login: str, password: str):
+    def authenticate(self, login: str, password: str):
         return self.account
 
 
@@ -44,31 +44,31 @@ class _SessionRepository:
         self.created = []
         self.deleted = []
 
-    async def create(self, session):
+    def create(self, session):
         self.created.append(session)
         self.session_record = session
         return session
 
-    async def find_by_refresh_token_jti(self, refresh_jti: str):
+    def find_by_refresh_token_jti(self, refresh_jti: str):
         session = self.session_record
         if session and session.is_active and session.refresh_token_jti == refresh_jti:
             return session
         return None
 
-    async def soft_delete(self, session_id: str):
+    def soft_delete(self, session_id: str):
         session = self.session_record
         if session and session.id == session_id:
             session.is_active = False
             self.deleted.append(session_id)
 
-    async def get_by_uuid(self, session_uuid: str):
+    def get_by_uuid(self, session_uuid: str):
         return self.session_record if self.session_record and self.session_record.uuid == session_uuid else None
 
-    async def terminate_session(self, session_id: str, reason: str, terminated_by: str):
+    def terminate_session(self, session_id: str, reason: str, terminated_by: str):
         if self.session_record and self.session_record.id == session_id:
             self.session_record.is_active = False
 
-    async def terminate_all_for_account(self, account_id: str, reason: str):
+    def terminate_all_for_account(self, account_id: str, reason: str):
         if self.session_record and self.session_record.account_id == account_id:
             self.session_record.is_active = False
 
@@ -120,7 +120,7 @@ def _build_service(monkeypatch, *, active_account: bool = True):
         lambda jti, seconds: blacklisted.append((jti, seconds)),
     )
 
-    async def no_op_workspace_provisioning(self, account):
+    def no_op_workspace_provisioning(self, account):
         return None
 
     monkeypatch.setattr(
@@ -131,11 +131,10 @@ def _build_service(monkeypatch, *, active_account: bool = True):
     return service, old_session, blacklisted
 
 
-@pytest.mark.asyncio
-async def test_refresh_rotates_jti_blacklists_old_token_and_deactivates_old_session(monkeypatch):
+def test_refresh_rotates_jti_blacklists_old_token_and_deactivates_old_session(monkeypatch):
     service, old_session, blacklisted = _build_service(monkeypatch)
 
-    result = await service.refresh_session("old-token")
+    result = service.refresh_session("old-token")
 
     assert result is not None
     assert result["access_token"].startswith("access:")
@@ -147,19 +146,17 @@ async def test_refresh_rotates_jti_blacklists_old_token_and_deactivates_old_sess
     assert service.session_repo.created[0].refresh_token_jti != "old-refresh-jti"
 
 
-@pytest.mark.asyncio
-async def test_refresh_replay_is_rejected_after_rotation(monkeypatch):
+def test_refresh_replay_is_rejected_after_rotation(monkeypatch):
     service, _, _ = _build_service(monkeypatch)
 
-    assert await service.refresh_session("old-token") is not None
-    assert await service.refresh_session("old-token") is None
+    assert service.refresh_session("old-token") is not None
+    assert service.refresh_session("old-token") is None
 
 
-@pytest.mark.asyncio
-async def test_refresh_is_rejected_for_inactive_account_without_blacklisting(monkeypatch):
+def test_refresh_is_rejected_for_inactive_account_without_blacklisting(monkeypatch):
     service, old_session, blacklisted = _build_service(monkeypatch, active_account=False)
 
-    assert await service.refresh_session("old-token") is None
+    assert service.refresh_session("old-token") is None
     assert old_session.is_active is True
     assert blacklisted == []
 

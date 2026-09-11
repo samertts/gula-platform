@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
@@ -34,14 +34,14 @@ class IncidentTransitionRequest(BaseModel):
     containment_status: str | None = Field(default=None, max_length=120)
 
 
-async def _require_security_permission(
+def _require_security_permission(
     actor: NiamActor,
-    db: AsyncSession,
+    db: Session,
     *,
     organization_id: str,
     permission_key: str,
 ) -> None:
-    decision = await AuthorizationDecisionService(db).authorize(
+    decision = AuthorizationDecisionService(db).authorize(
         AuthorizationActor(account=actor.account, session=actor.session),
         AuthorizationRequest(
             subject_account_id=actor.account.id,
@@ -79,17 +79,17 @@ def _serialize(incident: SecurityIncident) -> dict[str, Any]:
 
 
 @router.get("/incidents")
-async def list_incidents(
+def list_incidents(
     organization_id: str = Query(min_length=1, max_length=26),
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    await _require_security_permission(
+    _require_security_permission(
         actor, db, organization_id=organization_id, permission_key="security.incident.read"
     )
-    incidents = await IncidentService(db).list(
+    incidents = IncidentService(db).list(
         organization_id=organization_id, limit=limit, offset=offset
     )
     return {
@@ -100,16 +100,16 @@ async def list_incidents(
 
 
 @router.post("/incidents", status_code=status.HTTP_201_CREATED)
-async def create_incident(
+def create_incident(
     body: IncidentCreateRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    await _require_security_permission(
+    _require_security_permission(
         actor, db, organization_id=body.organization_id, permission_key="security.incident.manage"
     )
     try:
-        incident = await IncidentService(db).create(
+        incident = IncidentService(db).create(
             actor_id=actor.account.id,
             severity=body.severity,
             category=body.category,
@@ -124,27 +124,27 @@ async def create_incident(
 
 
 @router.patch("/incidents/{incident_id}")
-async def transition_incident(
+def transition_incident(
     incident_id: str,
     body: IncidentTransitionRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    incident = await db.get(SecurityIncident, incident_id)
+    incident = db.get(SecurityIncident, incident_id)
     if incident is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     if incident.organization_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Incident scope unavailable"
         )
-    await _require_security_permission(
+    _require_security_permission(
         actor,
         db,
         organization_id=incident.organization_id,
         permission_key="security.incident.manage",
     )
     try:
-        updated = await IncidentService(db).transition(
+        updated = IncidentService(db).transition(
             actor_id=actor.account.id,
             incident_id=incident_id,
             target_status=body.status,
@@ -158,15 +158,15 @@ async def transition_incident(
 
 
 @router.get("/dashboard")
-async def security_dashboard(
+def security_dashboard(
     organization_id: str = Query(min_length=1, max_length=26),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    await _require_security_permission(
+    _require_security_permission(
         actor, db, organization_id=organization_id, permission_key="security.incident.read"
     )
-    result = await db.execute(
+    result = db.execute(
         select(SecurityIncident.status, SecurityIncident.severity, func.count(SecurityIncident.id))
         .where(SecurityIncident.organization_id == organization_id)
         .group_by(SecurityIncident.status, SecurityIncident.severity),

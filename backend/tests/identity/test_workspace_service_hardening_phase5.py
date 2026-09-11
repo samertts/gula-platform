@@ -36,14 +36,14 @@ class _AsyncSession:
         self.added = []
         self.flush_count = 0
 
-    async def execute(self, statement):
+    def execute(self, statement):
         assert self.results, "Unexpected database query in workspace test"
         return self.results.pop(0)
 
     def add(self, value):
         self.added.append(value)
 
-    async def flush(self):
+    def flush(self):
         self.flush_count += 1
 
 
@@ -78,8 +78,7 @@ def workspace(workspace_id="workspace-1", *, status=WorkspaceStatus.active.value
     )
 
 
-@pytest.mark.asyncio
-async def test_switch_creates_server_context_for_eligible_active_workspace():
+def test_switch_creates_server_context_for_eligible_active_workspace():
     target = workspace()
     session = _AsyncSession(
         [
@@ -89,7 +88,7 @@ async def test_switch_creates_server_context_for_eligible_active_workspace():
         ],
     )
 
-    context = await WorkspaceService(session).switch(account(), "session-1", target.id)
+    context = WorkspaceService(session).switch(account(), "session-1", target.id)
 
     assert context.account_id == "account-1"
     assert context.identity_id == "identity-1"
@@ -99,19 +98,17 @@ async def test_switch_creates_server_context_for_eligible_active_workspace():
     assert session.flush_count == 1
 
 
-@pytest.mark.asyncio
-async def test_switch_rejects_restricted_workspace_even_when_listed():
+def test_switch_rejects_restricted_workspace_even_when_listed():
     target = workspace(status=WorkspaceStatus.restricted.value)
     session = _AsyncSession([_Result(rows=[target]), _Result(rows=[])])
 
     with pytest.raises(WorkspaceAccessDenied, match="not available"):
-        await WorkspaceService(session).switch(account(), "session-1", target.id)
+        WorkspaceService(session).switch(account(), "session-1", target.id)
 
     assert session.added == []
 
 
-@pytest.mark.asyncio
-async def test_switch_rejects_existing_context_owned_by_another_account():
+def test_switch_rejects_existing_context_owned_by_another_account():
     target = workspace()
     foreign_context = SimpleNamespace(
         account_id="account-2",
@@ -124,38 +121,35 @@ async def test_switch_rejects_existing_context_owned_by_another_account():
     )
 
     with pytest.raises(WorkspaceAccessDenied, match="does not belong"):
-        await WorkspaceService(session).switch(account(), "session-1", target.id)
+        WorkspaceService(session).switch(account(), "session-1", target.id)
 
     assert session.added == []
 
 
-@pytest.mark.asyncio
-async def test_existing_citizen_workspace_is_returned_without_duplicate_side_effect():
+def test_existing_citizen_workspace_is_returned_without_duplicate_side_effect():
     existing = workspace()
     session = _AsyncSession([_Result(scalar=existing)])
 
-    result = await WorkspaceService(session).ensure_citizen_workspace(account())
+    result = WorkspaceService(session).ensure_citizen_workspace(account())
 
     assert result is existing
     assert session.added == []
     assert session.flush_count == 0
 
 
-@pytest.mark.asyncio
-async def test_ineligible_account_cannot_provision_citizen_workspace():
+def test_ineligible_account_cannot_provision_citizen_workspace():
     inactive = account()
     inactive.status = AccountStatus.suspended.value
     session = _AsyncSession([])
 
-    assert await WorkspaceService(session).ensure_citizen_workspace(inactive) is None
+    assert WorkspaceService(session).ensure_citizen_workspace(inactive) is None
     assert session.added == []
 
 
-@pytest.mark.asyncio
-async def test_professional_workspace_requires_verified_record_before_lookup():
+def test_professional_workspace_requires_verified_record_before_lookup():
     session = _AsyncSession([_Result(scalar=None)])
 
-    result = await WorkspaceService(session).ensure_professional_workspace(account(), "physician")
+    result = WorkspaceService(session).ensure_professional_workspace(account(), "physician")
 
     assert result is None
     assert session.added == []

@@ -10,9 +10,8 @@ from typing import Any
 
 from cryptography.fernet import Fernet
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
-from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
 from app.identity.models.account_request import AccountCreationRequest, AccountRequestStatus
 from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 from shared.security.encryption import encrypt_value
@@ -33,7 +32,7 @@ class NormalizedAccountRequest:
 class AccountRequestService:
     """Secure, review-gated account intake; approval is a separate governed action."""
 
-    def __init__(self, session: AsyncSession | SyncSessionAsyncFacade) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = CanonicalAuditService(session)
         self._encryption_key = os.getenv("ENCRYPTION_KEY", "")
@@ -93,7 +92,7 @@ class AccountRequestService:
         )
         return self._blind_index(material)
 
-    async def submit(
+    def submit(
         self,
         *,
         email: str | None,
@@ -112,7 +111,7 @@ class AccountRequestService:
             requested_account_type=requested_account_type,
         )
         idempotency_hash = self._blind_index(idempotency_key.strip())
-        existing_by_key = await self.session.scalar(
+        existing_by_key = self.session.scalar(
             select(AccountCreationRequest).where(
                 AccountCreationRequest.idempotency_key_hash == idempotency_hash,
             ),
@@ -128,14 +127,14 @@ class AccountRequestService:
         if phone_lookup:
             duplicate_conditions.append(AccountCreationRequest.contact_phone_lookup == phone_lookup)
         if duplicate_conditions:
-            duplicate = await self.session.scalar(
+            duplicate = self.session.scalar(
                 select(AccountCreationRequest).where(
                     AccountCreationRequest.status == AccountRequestStatus.pending_review.value,
                     or_(*duplicate_conditions),
                 ),
             )
             if duplicate is not None:
-                await self.audit.record(
+                self.audit.record(
                     AuditEventInput(
                         event_type="account_request_duplicate_suppressed",
                         category="account_request",
@@ -150,7 +149,7 @@ class AccountRequestService:
                         outcome="denied",
                     ),
                 )
-                await self.session.commit()
+                self.session.commit()
                 return None
 
         account_request = AccountCreationRequest(
@@ -176,8 +175,8 @@ class AccountRequestService:
             is_active=True,
         )
         self.session.add(account_request)
-        await self.session.flush()
-        await self.audit.record(
+        self.session.flush()
+        self.audit.record(
             AuditEventInput(
                 event_type="account_request_submitted",
                 category="account_request",
@@ -195,7 +194,7 @@ class AccountRequestService:
                 outcome="success",
             ),
         )
-        await self.session.commit()
+        self.session.commit()
         return account_request
 
     @staticmethod

@@ -34,7 +34,7 @@ async def _require_permission(
     organization_id: str,
     permission_key: str,
 ) -> None:
-    decision = await AuthorizationDecisionService(db).authorize(
+    decision = AuthorizationDecisionService(db).authorize(
         AuthorizationActor(account=actor.account, session=actor.session),
         AuthorizationRequest(
             subject_account_id=actor.account.id,
@@ -327,5 +327,5 @@ async def get_audit_log(
     db: AsyncSession = Depends(get_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="audit.read")
-    entries = await CanonicalAuditService(db).search(organization_id=org_id, limit=limit)
+    entries = CanonicalAuditService(db).search(organization_id=org_id, limit=limit)
     return {"audit_log": [{"id": entry.id, "event_type": entry.event_type, "action": entry.action, "decision": entry.decision, "occurred_at": entry.occurred_at.isoformat()} for entry in entries]}

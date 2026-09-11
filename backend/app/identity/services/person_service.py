@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.models.person import Person
 from app.identity.repositories.person_repository import PersonRepository
@@ -11,10 +11,10 @@ from app.identity.repositories.person_repository import PersonRepository
 
 class PersonService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.repo = PersonRepository(session)
 
-    async def create_person(
+    def create_person(
         self,
         given_name: str,
         family_name: str,
@@ -50,32 +50,32 @@ class PersonService:
             tags=tags,
             is_active=True,
         )
-        return await self.repo.create(person)
+        return self.repo.create(person)
 
-    async def get_person(self, person_id: str) -> Person | None:
-        return await self.repo.get_by_id(person_id)
+    def get_person(self, person_id: str) -> Person | None:
+        return self.repo.get_by_id(person_id)
 
-    async def get_person_by_uuid(self, uuid_str: str) -> Person | None:
-        return await self.repo.get_by_uuid(uuid_str)
+    def get_person_by_uuid(self, uuid_str: str) -> Person | None:
+        return self.repo.get_by_uuid(uuid_str)
 
-    async def find_by_health_id(self, health_id: str) -> Person | None:
-        return await self.repo.find_by_health_id(health_id)
+    def find_by_health_id(self, health_id: str) -> Person | None:
+        return self.repo.find_by_health_id(health_id)
 
-    async def find_by_phone(self, phone: str) -> Person | None:
-        return await self.repo.find_by_phone(phone)
+    def find_by_phone(self, phone: str) -> Person | None:
+        return self.repo.find_by_phone(phone)
 
-    async def find_by_email(self, email: str) -> Person | None:
-        return await self.repo.find_by_email(email)
+    def find_by_email(self, email: str) -> Person | None:
+        return self.repo.find_by_email(email)
 
-    async def deactivate_person(self, person_id: str) -> None:
-        await self.repo.soft_delete(person_id)
+    def deactivate_person(self, person_id: str) -> None:
+        self.repo.soft_delete(person_id)
 
-    async def update_person(self, person_id: str, **kwargs) -> Person | None:
-        person = await self.repo.get_by_id(person_id)
+    def update_person(self, person_id: str, **kwargs) -> Person | None:
+        person = self.repo.get_by_id(person_id)
         if not person:
             return None
         for key, value in kwargs.items():
             if hasattr(person, key) and value is not None:
                 setattr(person, key, value)
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return person

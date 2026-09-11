@@ -6,15 +6,29 @@ reading a function signature — and doing so surfaced why the signature was all
 there was to read.
 
 `get_db` yields a synchronous `sqlalchemy.orm.Session`. Thirty-six modules under
-`app/identity/` annotate `AsyncSession` and `await session.execute(...)`, and no
+`app/identity/` annotated `AsyncSession` and `await session.execute(...)`, and no
 `create_async_engine` exists anywhere in `app/`. Awaiting a sync result raises
 `TypeError: object ChunkedIteratorResult can't be used in 'await' expression`
 before any statement reaches the database.
 
 So the NIAM async service layer — the trust/assurance routes, workspace
-eligibility, membership, the repositories — is unreachable at runtime. That is
-recorded as NR-044, and it reframes two earlier findings rather than excusing
-them:
+eligibility, membership, the repositories — was unreachable at runtime. That is
+recorded as NR-044 and is being closed in batches against the synchronous
+architecture the application already has (Option B: no second engine, no second
+pool, no second transaction boundary):
+
+* NR-044.1 converted the repositories and the actor dependency.
+* NR-044.2 converted `identity/services/` (16 modules), `identity/api/`,
+  `identity/policy_engine.py` and `services/clinical_scope_bridge_service.py`,
+  and deleted `SyncSessionAsyncFacade` — the shim that made a synchronous
+  Session look awaitable so the clinical gateway could drive async services
+  through `asyncio.run()`. The ledger below fell from 40 modules to 20.
+* NR-044.3 owns what remains: the identity sub-packages (trust, admin,
+  compliance, federation, governance, notifications, certificates,
+  adaptive_auth, bootstrap, workflows), `capabilities/`, `national/` and
+  `reference/`.
+
+NR-044 reframes two earlier findings rather than excusing them:
 
 * NR-038 was never exploitable. The route raised before writing a row, so the
   client-authored assurance level could not be persisted. Removing the client's
@@ -26,14 +40,18 @@ them:
 The synchronous half *does* run and is where the clinical risk lives:
 `CitizenRelationshipService`, `identity_link_policy` and `verification_workflow`
 are all sync, reachable, and proven against migrated PostgreSQL in
-`test_identity_link_and_assurance.py`.
+`test_identity_link_and_assurance.py`. Since NR-044.2 the authentication,
+workspace, membership, authorization-decision and canonical-audit services are
+in that half too.
 
-These tests pin the defect. When the async runtime is fixed they fail, which is
-the signal to rewrite them to pin the resolution — not to delete them.
+These tests pin the defect. When a batch fixes part of it they fail, which is
+the signal to rewrite them to pin the resolution — not to delete them. That has
+now happened twice.
 """
 
 from __future__ import annotations
 
+import ast
 import inspect
 import pathlib
 import typing
@@ -82,20 +100,30 @@ def test_the_unconverted_async_surface_matches_the_ledger() -> None:
     )
 
     # Still unconverted, and named so their conversion is visible when it lands.
+    # NR-044.2 took the first two of the original three; what is left is the
+    # sub-package layer (trust, admin, compliance, federation, ...) that NR-044.3
+    # owns.
     for expected in (
-        "identity/services/workspace_service.py",
-        "identity/services/membership_service.py",
         "identity/trust/services.py",
+        "identity/admin/services.py",
+        "identity/compliance/services.py",
     ):
         assert expected in modules, (
             f"{expected} no longer awaits a session — a later NR-044 batch landed; "
             "shrink the ledger and re-derive this list"
         )
-    # Converted by NR-044.1 and therefore required to be absent.
+    # Converted by NR-044.1 and NR-044.2, and therefore required to be absent.
     for converted in ("identity/repositories/base.py",
-                      "identity/repositories/account_repository.py"):
+                      "identity/repositories/account_repository.py",
+                      "identity/services/workspace_service.py",
+                      "identity/services/membership_service.py",
+                      "identity/services/canonical_audit.py",
+                      "identity/services/authorization_decision.py",
+                      "identity/api/memberships.py",
+                      "identity/api/roles.py",
+                      "services/clinical_scope_bridge_service.py"):
         assert converted not in modules, (
-            f"{converted} awaits a session again; NR-044.1 has regressed"
+            f"{converted} awaits a session again; the NR-044 conversion has regressed"
         )
 
 
@@ -170,24 +198,20 @@ DECLARED_UNREACHABLE_ASYNC_DB_MODULES = frozenset({
     "capabilities/provider_management/infrastructure/repository.py",
     "capabilities/workflow_engine/infrastructure/repository.py",
     "identity/adaptive_auth/routes.py", "identity/adaptive_auth/services.py",
-    "identity/admin/routes.py", "identity/admin/services.py", "identity/api/memberships.py",
-    "identity/api/roles.py", "identity/api/security.py", "identity/api/workspaces.py",
+    "identity/admin/routes.py", "identity/admin/services.py",
     "identity/bootstrap/seed.py", "identity/certificates/services.py",
     "identity/compliance/services.py", "identity/federation/services.py",
     "identity/governance/services.py", "identity/notifications/services.py",
-    "identity/services/account_request_service.py", "identity/services/account_service.py",
-    "identity/services/audit_service.py", "identity/services/authorization_decision.py",
-    "identity/services/authorization_service_v2.py", "identity/services/canonical_audit.py",
-    "identity/services/clinical_authorization_context_service.py",
-    "identity/services/consent_service_v2.py", "identity/services/device_service.py",
-    "identity/services/identity_service.py", "identity/services/incident_service.py",
-    "identity/services/legacy_mapping_service.py", "identity/services/membership_service.py",
-    "identity/services/person_service.py", "identity/services/session_service.py",
-    "identity/services/workspace_service.py", "identity/trust/routes.py",
-    "identity/trust/services.py", "identity/workflows/engine.py",
+    "identity/trust/routes.py", "identity/trust/services.py",
+    "identity/workflows/engine.py",
     "national/task_engine/infrastructure/repository.py",
     "national/workflow_runtime/infrastructure/repository.py",
-    "services/clinical_scope_bridge_service.py"
+    # NR-049. This one was always unreachable and the ledger never saw it: it
+    # keeps its session on `self._session`, and `_SESSION_OWNERS` below only
+    # accepted owners ending in `.session` or `.db`. Widening that rule in
+    # NR-044.2 surfaced it. Converting `reference/` is not NR-044.2's scope, so
+    # it is recorded here rather than fixed — but it can no longer hide.
+    "reference/infrastructure/repositories.py",
 })
 
 _DB_METHODS = frozenset({
@@ -198,7 +222,10 @@ _DB_METHODS = frozenset({
     # closes the hole if someone writes it tomorrow.
     "add",
 })
-_SESSION_OWNERS = frozenset({"session", "db", "self.session", "self.db", "_session", "sess"})
+# NR-049: `self._session` and `self.facade` were missing here, so a module
+# that named its session either way was invisible to the ledger. The suffix
+# test below now covers the attribute forms; these are the bare-name forms.
+_SESSION_OWNERS = frozenset({"session", "db", "self.session", "self.db", "_session", "sess", "facade"})
 
 
 def _attr_chain(node) -> str:
@@ -223,7 +250,7 @@ def _awaits_a_session_call(await_node) -> bool:
     owner, _, method = chain.rpartition(".")
     if method not in _DB_METHODS:
         return False
-    return owner in _SESSION_OWNERS or owner.endswith((".session", ".db"))
+    return owner in _SESSION_OWNERS or owner.endswith((".session", ".db", "._session", ".facade"))
 
 
 def _modules_awaiting_the_database() -> set[str]:
@@ -417,4 +444,140 @@ def test_the_one_genuine_async_io_site_is_still_async() -> None:
     assert "identity/admin/services.py" in DECLARED_UNREACHABLE_ASYNC_DB_MODULES, (
         "identity/admin/services.py left the ledger — if it was converted, this test's "
         "caveat about reachability is stale and should be rewritten"
+    )
+
+
+# ── NR-044.2 closeout: the service and API layers, and the shim that hid them ──
+
+
+def test_the_identity_service_layer_is_synchronous() -> None:
+    """The sixteen modules NR-044.2 converted, pinned against reversion.
+
+    `identity/services/` is where authentication, membership, workspace
+    eligibility, the authorization decision and both audit writers live. Every
+    one of them annotated `AsyncSession` and awaited a session that is not one,
+    so none of them could reach PostgreSQL. They are plain synchronous services
+    now and their controls execute.
+
+    Two files are deliberately exempt and named rather than silently skipped:
+    `organization_service.py` keeps one `async def verify` — it is the seam for
+    an external verification provider (a future HTTP call), performs no database
+    work, and is a not-connected stub today. Converting it would be the error in
+    the other direction. `verification_service.py` has no session at all.
+    """
+    services = APP / "identity" / "services"
+    # The two provider seams. Both are external-verification interfaces with no
+    # session of any kind; the exemption is asserted, not assumed.
+    exempt = {"organization_service.py", "verification_service.py"}
+    for path in sorted(services.glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert "AsyncSession" not in source, f"{path.name} references AsyncSession again"
+        if path.name in exempt:
+            assert "Session" not in source.replace("VerificationSession", "").replace(
+                "session_id", ""
+            ), f"{path.name} acquired a database session; it is no longer a provider seam"
+            continue
+        assert "await " not in source, f"{path.name} awaits again"
+        assert "async def " not in source, f"{path.name} has an async def again"
+
+    from app.identity.services.organization_service import OrganizationVerificationProvider
+
+    assert inspect.iscoroutinefunction(OrganizationVerificationProvider.verify), (
+        "the external organization-verification seam was converted; it is the one "
+        "place in this package where genuine async I/O is expected to land"
+    )
+    assert not OrganizationVerificationProvider.connected
+
+
+def test_the_identity_api_layer_does_not_block_the_event_loop() -> None:
+    """A sync database call inside an `async def` handler blocks every request.
+
+    This is the failure NR-044.2 could have introduced and did not. Once the
+    services became synchronous, an `async def` route calling them would run
+    blocking psycopg work on the event loop — slower and less stable than the
+    unreachable code it replaced. FastAPI runs a plain `def` handler in a
+    threadpool instead, which is where blocking database work belongs.
+
+    So every handler in `identity/api/` that touches the database is `def`. The
+    one permitted exception is the health route, which touches nothing.
+    """
+    api = APP / "identity" / "api"
+    offenders: list[str] = []
+    for path in sorted(api.glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert "AsyncSession" not in source, f"{path.name} annotates AsyncSession again"
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.AsyncFunctionDef):
+                continue
+            takes_db = any(
+                arg.arg in {"db", "session"} for arg in node.args.args + node.args.kwonlyargs
+            )
+            if takes_db:
+                offenders.append(f"{path.name}::{node.name}")
+    assert offenders == [], (
+        f"{offenders} are async handlers holding a synchronous Session — they would "
+        "run blocking database work on the event loop"
+    )
+
+
+def test_the_session_facade_shim_is_gone_and_stays_gone() -> None:
+    """`SyncSessionAsyncFacade` made a sync Session look awaitable.
+
+    It existed so the clinical gateway could reuse the async identity services
+    without duplicating authorization or audit logic, and the gateway drove them
+    with `asyncio.run()` — a fresh event loop per authorization and per audit
+    write, inside a request. The services are synchronous now, so the shim and
+    the loop are both deleted. Re-introducing either would mean the async layer
+    came back without an async engine.
+    """
+    assert not (APP / "clinical_gateway" / "session_facade.py").exists(), (
+        "SyncSessionAsyncFacade is back; NR-044.2 has been reverted"
+    )
+    users = sorted(
+        path.relative_to(APP).as_posix()
+        for path in APP.rglob("*.py")
+        if "__pycache__" not in path.parts
+        and "SyncSessionAsyncFacade" in path.read_text(encoding="utf-8", errors="ignore")
+    )
+    assert users == [], f"{users} still reference the deleted facade"
+
+    # Checked by AST, not by substring: this file's own comments describe the
+    # `asyncio.run()` that used to be here, and a textual search would match them.
+    for module in ("clinical_gateway/service.py", "clinical_gateway/context.py",
+                   "clinical_gateway/routes.py"):
+        tree = ast.parse((APP / module).read_text(encoding="utf-8"))
+        drivers = [
+            node for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "run"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "asyncio"
+        ]
+        assert drivers == [], (
+            f"{module} drives a coroutine with asyncio.run() again — the gateway is "
+            "synchronous and its dependencies are too"
+        )
+
+
+def test_the_gateway_does_not_report_a_database_fault_as_a_policy_denial() -> None:
+    """NR-048 — `except Exception` turned any failure into `invalid_context`.
+
+    That is how NR-047 presented: a column the ORM named and PostgreSQL did not
+    became a 403 that looked exactly like an authorization denial, in the
+    response and in the audit trail. NR-044's `TypeError` was swallowed the same
+    way. Only the context service's own denial vocabulary may be translated now;
+    anything else propagates and surfaces as a 500 — still denied, but honestly.
+
+    The behavioural half of this is proved against migrated PostgreSQL in
+    tests/test_identity_link_and_assurance.py.
+    """
+    source = (APP / "clinical_gateway" / "context.py").read_text(encoding="utf-8")
+    assert "except (ClinicalAuthorizationContextError, ClinicalScopeBridgeError) as exc:" in source, (
+        "the gateway context resolver catches something other than the two denial "
+        "vocabularies; a database fault could again be reported as a policy decision"
+    )
+    assert "except Exception" not in source, (
+        "the broad exception handler is back in the gateway context resolver"
     )

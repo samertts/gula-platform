@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 
 import pytest
 from app.identity.api.roles import RoleAssignmentRequest
@@ -47,18 +47,17 @@ def test_role_scope_match_requires_exact_context() -> None:
     assert not RolePermissionService._scope_matches_membership(membership, "organization", None, None, None, None)
 
 
-@pytest.mark.asyncio
-async def test_grant_role_rejects_self_escalation_before_database_mutation() -> None:
+def test_grant_role_rejects_self_escalation_before_database_mutation() -> None:
     service = RolePermissionService(SimpleNamespace())
-    service._audit = AsyncMock()
+    service._audit = MagicMock()
     with pytest.raises(RoleAuthorizationDenied):
-        await service.grant_role(
+        service.grant_role(
             actor_id="same-account",
             account_id="same-account",
             membership_id="membership",
             role_id="role",
         )
-    service._audit.assert_awaited_once()
+    service._audit.assert_called_once()
 
 
 def test_role_assignment_request_does_not_accept_status_or_assigned_by() -> None:

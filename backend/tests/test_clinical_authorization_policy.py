@@ -10,7 +10,7 @@ class _AssignmentRepository:
     def __init__(self, assignments):
         self.assignments = assignments
 
-    async def find_by_person_id(self, person_id):
+    def find_by_person_id(self, person_id):
         assert person_id == "PERSON-1"
         return self.assignments
 
@@ -19,7 +19,7 @@ class _PolicyRepository:
     def __init__(self, policies):
         self.policies = policies
 
-    async def find_enabled_for_action(self, permission):
+    def find_enabled_for_action(self, permission):
         return [policy for policy in self.policies if permission in policy.actions]
 
 
@@ -65,11 +65,10 @@ def _service(*, assignments=None, policies=None):
     return service
 
 
-@pytest.mark.asyncio
-async def test_exact_scoped_policy_allows_the_matching_assignment_only():
+def test_exact_scoped_policy_allows_the_matching_assignment_only():
     service = _service(policies=[_policy()])
 
-    allowed = await service.has_permission(
+    allowed = service.has_permission(
         person_id="PERSON-1",
         permission="clinical.ehr.record.read",
         organization_id="41",
@@ -79,11 +78,10 @@ async def test_exact_scoped_policy_allows_the_matching_assignment_only():
     assert allowed is True
 
 
-@pytest.mark.asyncio
-async def test_missing_exact_policy_denies_by_default():
+def test_missing_exact_policy_denies_by_default():
     service = _service()
 
-    allowed = await service.has_permission(
+    allowed = service.has_permission(
         person_id="PERSON-1",
         permission="clinical.ehr.record.read",
         organization_id="41",
@@ -93,11 +91,10 @@ async def test_missing_exact_policy_denies_by_default():
     assert allowed is False
 
 
-@pytest.mark.asyncio
-async def test_scope_mismatch_denies_even_when_role_policy_exists():
+def test_scope_mismatch_denies_even_when_role_policy_exists():
     service = _service(policies=[_policy(facility_ids=[99])])
 
-    allowed = await service.has_permission(
+    allowed = service.has_permission(
         person_id="PERSON-1",
         permission="clinical.ehr.record.read",
         organization_id="41",
@@ -107,11 +104,10 @@ async def test_scope_mismatch_denies_even_when_role_policy_exists():
     assert allowed is False
 
 
-@pytest.mark.asyncio
-async def test_matching_deny_policy_overrides_matching_allow_policy():
+def test_matching_deny_policy_overrides_matching_allow_policy():
     service = _service(policies=[_policy(effect="allow"), _policy(effect="deny")])
 
-    allowed = await service.has_permission(
+    allowed = service.has_permission(
         person_id="PERSON-1",
         permission="clinical.ehr.record.read",
         organization_id="41",

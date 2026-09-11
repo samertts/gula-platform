@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
@@ -47,7 +47,7 @@ LEGAL_WORKSPACE_TRANSITIONS: dict[str, frozenset[str]] = {
 
 
 class WorkspaceService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @staticmethod
@@ -58,11 +58,11 @@ class WorkspaceService:
     def professional_key(account_id: str, professional_type: str) -> str:
         return f"professional:{account_id}:{professional_type}"
 
-    async def ensure_citizen_workspace(self, account: Account) -> Workspace | None:
+    def ensure_citizen_workspace(self, account: Account) -> Workspace | None:
         if account.account_type != AccountType.human.value or account.status != AccountStatus.active.value or not account.is_active:
             return None
         key = self.citizen_key(account.id)
-        result = await self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
+        result = self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
         existing = result.scalar_one_or_none()
         if existing:
             return existing
@@ -77,13 +77,13 @@ class WorkspaceService:
             is_personal=True,
         )
         self.session.add(workspace)
-        await self.session.flush()
+        self.session.flush()
         self.transition(workspace, WorkspaceStatus.active)
-        await self.session.flush()
+        self.session.flush()
         from app.identity.models.audit import AuditAction
         from app.identity.services.audit_service import AuditService
 
-        await AuditService(self.session).record(
+        AuditService(self.session).record(
             AuditAction.workspace_created,
             actor_id=account.id,
             actor_type="account",
@@ -93,11 +93,11 @@ class WorkspaceService:
         )
         return workspace
 
-    async def ensure_professional_workspace(self, account: Account, professional_type: str) -> Workspace | None:
-        if not await self._professional_eligible(account.id, professional_type):
+    def ensure_professional_workspace(self, account: Account, professional_type: str) -> Workspace | None:
+        if not self._professional_eligible(account.id, professional_type):
             return None
         key = self.professional_key(account.id, professional_type)
-        result = await self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
+        result = self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
         existing = result.scalar_one_or_none()
         if existing:
             return existing
@@ -113,19 +113,19 @@ class WorkspaceService:
             is_personal=False,
         )
         self.session.add(workspace)
-        await self.session.flush()
+        self.session.flush()
         self.transition(workspace, WorkspaceStatus.active)
-        await self.session.flush()
+        self.session.flush()
         return workspace
 
-    async def list_eligible(self, account: Account) -> list[Workspace]:
+    def list_eligible(self, account: Account) -> list[Workspace]:
         if account.status != AccountStatus.active.value or not account.is_active:
             return []
         direct = select(Workspace).where(
             Workspace.owner_account_id == account.id,
             Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
         )
-        result = await self.session.execute(direct)
+        result = self.session.execute(direct)
         workspaces = {workspace.id: workspace for workspace in result.scalars().all()}
 
         # AUTH-F5. Eligibility is a conjunction, not a single fact: an active
@@ -150,7 +150,7 @@ class WorkspaceService:
             NIAMOrganization.is_active.is_(True),
             NIAMOrganization.status == "active",
         )
-        organization_result = await self.session.execute(
+        organization_result = self.session.execute(
             select(Workspace).where(
                 Workspace.organization_id.in_(live_organization_ids),
                 Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
@@ -160,15 +160,15 @@ class WorkspaceService:
             workspaces[workspace.id] = workspace
         return list(workspaces.values())
 
-    async def switch(self, account: Account, session_id: str, workspace_id: str) -> WorkspaceSessionContext:
+    def switch(self, account: Account, session_id: str, workspace_id: str) -> WorkspaceSessionContext:
         if account.status != AccountStatus.active.value or not account.is_active:
             raise WorkspaceAccessDenied("Account is not eligible for workspace access")
-        eligible = await self.list_eligible(account)
+        eligible = self.list_eligible(account)
         workspace = next((item for item in eligible if item.id == workspace_id), None)
         if workspace is None or workspace.status != WorkspaceStatus.active.value:
             raise WorkspaceAccessDenied("Workspace is not available to this account")
 
-        result = await self.session.execute(
+        result = self.session.execute(
             select(WorkspaceSessionContext).where(WorkspaceSessionContext.session_id == session_id),
         )
         context = result.scalar_one_or_none()
@@ -187,11 +187,11 @@ class WorkspaceService:
                 raise WorkspaceAccessDenied("Workspace context does not belong to this account")
             context.workspace_id = workspace.id
             context.version += 1
-        await self.session.flush()
+        self.session.flush()
         return context
 
-    async def _professional_eligible(self, account_id: str, professional_type: str) -> bool:
-        result = await self.session.execute(
+    def _professional_eligible(self, account_id: str, professional_type: str) -> bool:
+        result = self.session.execute(
             select(VerificationRecord.id).where(
                 VerificationRecord.account_id == account_id,
                 VerificationRecord.record_type == VerificationRecordType.professional.value,

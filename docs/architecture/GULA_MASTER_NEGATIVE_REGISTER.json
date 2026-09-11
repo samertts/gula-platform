@@ -1,15 +1,15 @@
 {
   "document": "GULA Master Negative Register",
-  "generated": "2026-09-10T16:14:22Z",
+  "generated": "2026-09-11T14:09:05Z",
   "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 47,
+    "total": 49,
     "by_severity": {
       "P0": 10,
-      "P1": 18,
-      "P2": 13,
+      "P1": 19,
+      "P2": 14,
       "P3": 6
     }
   },
@@ -1514,7 +1514,7 @@
       "domain": "Identity Platform",
       "category": "Runtime",
       "title": "The NIAM async service layer cannot execute — there is no async engine",
-      "status": "PARTIALLY RESOLVED (NR-044.1 VERIFIED; NR-044.2-.5 open)",
+      "status": "PARTIALLY RESOLVED (NR-044.1 and NR-044.2 VERIFIED; NR-044.3-.5 open)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 44,
@@ -1529,8 +1529,8 @@
       "discovered_by": "AUTH-005 finalization",
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/nr-044-decision.md; docs/architecture/identity/nr-044-blast-radius.json",
-      "next_batch": "NR-044.2 (identity/services/, ~20 modules), NR-044.3 (trust/admin/governance/compliance/federation sub-packages and their routes), NR-044.4 (capabilities/national/services stragglers, 7 modules), NR-044.5 (test conversion and ledger retirement). Still blocks the AUTH-F5 and NR-038 behavioural proofs and organization workspace access, all of which need NR-044.2/.3.",
-      "resolution": "NR-044.1 converted the ten modules of app/identity/repositories/ and the actor dependency in app/identity/api/workspaces.py to the synchronous Session. No AsyncEngine, AsyncSession, asyncpg, second pool or migration was introduced. The AST ledger shrank from 50 modules to 40 — exactly the ten repositories, added: []. PRECISE REACHABILITY: get_current_niam_actor now executes against PostgreSQL, so every /niam/* route passes its gate; the route handlers are still async and still await AsyncSession-annotated services, so an individual handler still raises TypeError past the gate. /niam/* is gated, not yet served — serving it is NR-044.2 (services) and NR-044.3 (routes). NR-038 and NR-043 therefore stay PARTIALLY VERIFIED; their behavioural proof needs the service layer, not the gate. TWO BEHAVIOUR CHANGES, not refactors: (1) the converged gate keeps the sync implementation's Account.is_locked filter, which the async twin omitted, so the gate is strictly tighter than either predecessor; (2) a latent ModuleNotFoundError was fixed — IdentityRepositoryBase.count read 'from sqlalchemy.func import count', and sqlalchemy.func is an attribute of the package, not a module; it was unreachable while the layer could not execute and surfaced on the first real call.",
+      "next_batch": "NR-044.3: the remaining 20 ledger modules — identity/trust, identity/admin, identity/compliance, identity/federation, identity/governance, identity/notifications, identity/certificates, identity/adaptive_auth, identity/bootstrap, identity/workflows, capabilities/ (4), national/ (2) and reference/ (NR-049). NR-038 and AUTH-F5/NR-043 stay PARTIALLY VERIFIED until identity/trust/services.py is among them.",
+      "resolution": "NR-044.1 converted the ten modules of app/identity/repositories/ and the actor dependency in app/identity/api/workspaces.py to the synchronous Session. No AsyncEngine, AsyncSession, asyncpg, second pool or migration was introduced. The AST ledger shrank from 50 modules to 40 — exactly the ten repositories, added: []. PRECISE REACHABILITY: get_current_niam_actor now executes against PostgreSQL, so every /niam/* route passes its gate; the route handlers are still async and still await AsyncSession-annotated services, so an individual handler still raises TypeError past the gate. /niam/* is gated, not yet served — serving it is NR-044.2 (services) and NR-044.3 (routes). NR-038 and NR-043 therefore stay PARTIALLY VERIFIED; their behavioural proof needs the service layer, not the gate. TWO BEHAVIOUR CHANGES, not refactors: (1) the converged gate keeps the sync implementation's Account.is_locked filter, which the async twin omitted, so the gate is strictly tighter than either predecessor; (2) a latent ModuleNotFoundError was fixed — IdentityRepositoryBase.count read 'from sqlalchemy.func import count', and sqlalchemy.func is an attribute of the package, not a module; it was unreachable while the layer could not execute and surfaced on the first real call. NR-044.2 converted identity/services (16 modules), identity/api (13), identity/policy_engine.py and services/clinical_scope_bridge_service.py to the synchronous Session, and deleted SyncSessionAsyncFacade — the shim that made a sync Session look awaitable so the clinical gateway could drive async services with asyncio.run() inside a request. Ledger 40 -> 20 modules, none added. No AsyncEngine, AsyncSession, asyncpg or second pool was introduced; one Engine and one sessionmaker remain, asserted by test_exactly_one_database_engine_architecture_exists.",
       "fixed_by": "NR-044.1 (partial)"
     },
     {
@@ -1605,6 +1605,54 @@
       "next_batch": "Unblocked the NR-044.1 authorization ALLOW proof. Separate observation, not folded in: lims_departments gains 16 rows on a second bootstrap pass and is stable from the third - a pre-existing seeder behaviour in a different seeder, recorded rather than scope-crept.",
       "fixed_by": "NR-047",
       "resolution": "Three of the four phantom columns were naming, one was real, and they were treated differently. org_id and org_type are now MAPPED onto the existing physical columns (Column('organization_id', ...) / Column('organization_type', ...)), so every caller in app/core/bootstrap/ is unchanged and no physical column was renamed. updated_at was REMOVED from the ORM rather than added to the table, because nothing reads, writes or serialises it - adding a column only to make a model and a table look alike would be drift in the other direction. parent_org_id was ADDED by migration 20260913_0001 because the bootstrap genuinely seeds a ministry-to-directorate hierarchy through it: VARCHAR(100) nullable indexed, matching OrganizationDef.parent_org_id: str|None which carries a public identifier - deliberately NOT NIAMOrganization's integer self-FK of the same name. No foreign key was declared, recorded as a deliberate omission. The migration is additive, nullable, idempotent and reversible; no rename, no drop, no type change, no data movement."
+    },
+    {
+      "id": "NR-048",
+      "severity": "P1",
+      "domain": "Clinical Gateway",
+      "category": "Error classification / observability",
+      "title": "The clinical gateway reported any internal fault as an authorization denial",
+      "status": "VERIFIED (NR-044.2)",
+      "blocker": false,
+      "can_fix_now": true,
+      "priority": 48,
+      "description": "ClinicalGatewayContextResolver.resolve wrapped the context-service call in `except Exception` and converted every exception into ClinicalGatewayBlocked('invalid_context'), rendered as HTTP 403. A schema fault, a dropped connection and a programming error were therefore indistinguishable from a genuine policy denial — in the response, in the logs and in the canonical audit row, which recorded reason_code=invalid_context either way.",
+      "root_cause": "A broad catch written to keep the gateway fail-closed. It does fail closed; what it also does is destroy the distinction between 'the policy refused you' and 'this service is broken', which is the distinction an operator needs first.",
+      "evidence": "NR-047 is the worked example: `column organizations.org_id does not exist` reached the client as a 403 that looked exactly like an authorization denial, and stayed hidden behind that appearance until the allow path was built. NR-044's `TypeError: object ChunkedIteratorResult can't be used in 'await' expression` was swallowed by the same handler.",
+      "security_impact": "No weakening — every affected request was refused. The cost is diagnostic and audit-integrity: an availability fault was recorded in the immutable audit chain as an access decision that was never made.",
+      "clinical_impact": "A clinician reading 'access denied' when the true cause was a broken database mapping has no route to the real problem, and neither does whoever reviews the audit trail.",
+      "recommended_fix": "Catch only the context service's own denial vocabulary.",
+      "verification": "backend/tests/test_identity_link_and_assurance.py::test_a_database_fault_is_no_longer_reported_as_a_policy_denial raises a real sqlalchemy OperationalError from inside the context service and asserts it propagates; ::test_a_genuine_context_denial_is_still_translated_to_invalid_context asserts the other half; the denial ladder continues to produce invalid_context for real context failures. tests/test_identity_platform_runtime.py::test_the_gateway_does_not_report_a_database_fault_as_a_policy_denial pins the handler itself.",
+      "affected_components": "backend/app/clinical_gateway/context.py",
+      "discovered_by": "NR-047 implementation; fixed in NR-044.2",
+      "owner": "Clinical Gateway",
+      "artifact": "docs/architecture/identity/nr-044-decision.md",
+      "next_batch": "",
+      "fixed_by": "NR-044.2",
+      "resolution": "The handler now catches (ClinicalAuthorizationContextError, ClinicalScopeBridgeError) — the two ValueError hierarchies the context service and the scope bridge raise to mean 'refused'. Anything else propagates and surfaces as a 500: still denied, but as a fault rather than as a decision, and no longer written into the audit chain as one."
+    },
+    {
+      "id": "NR-049",
+      "severity": "P2",
+      "domain": "Identity Platform",
+      "category": "Guard coverage",
+      "title": "The NR-044 ledger could not see a module that stored its session as self._session",
+      "status": "OPEN (module unconverted; the guard blind spot is FIXED)",
+      "blocker": false,
+      "can_fix_now": true,
+      "priority": 49,
+      "description": "The AST guard that enumerates unreachable async database modules matched a session owner only when it was a bare name in _SESSION_OWNERS or an attribute chain ending in `.session` or `.db`. app/reference/infrastructure/repositories.py keeps its session on `self._session` and awaits it 20+ times, so it was invisible to the ledger for as long as the ledger has existed.",
+      "root_cause": "The owner rule was written from the modules that were already known, so it encoded their naming conventions rather than the property being measured.",
+      "evidence": "Widening the rule to also accept `._session` and `.facade` raised the module count from 19 to 20; the one addition is reference/infrastructure/repositories.py, which declares `def __init__(self, session: AsyncSession) -> None: self._session = session` and then `await self._session.execute(...)` throughout. app/identity/services/device_service.py had the same shape and was only in the ledger because of unrelated lines.",
+      "security_impact": "None directly. The cost is that a guard designed to make unreachable code visible was under-reporting, which is how NR-044 stayed hidden in the first place.",
+      "clinical_impact": "None established — reference/ is reference-data infrastructure, not a clinical path.",
+      "recommended_fix": "Two parts, one done here: widen the guard (done), and convert reference/infrastructure/repositories.py with the rest of NR-044.3 (not done).",
+      "verification": "backend/tests/test_identity_platform_runtime.py — _SESSION_OWNERS and the suffix test now cover both forms, and reference/infrastructure/repositories.py is named in DECLARED_UNREACHABLE_ASYNC_DB_MODULES with the reason.",
+      "affected_components": "backend/tests/test_identity_platform_runtime.py, backend/app/reference/infrastructure/repositories.py",
+      "discovered_by": "NR-044.2",
+      "owner": "Identity Platform",
+      "artifact": "docs/architecture/identity/nr-044-decision.md",
+      "next_batch": "NR-044.3"
     }
   ]
 }

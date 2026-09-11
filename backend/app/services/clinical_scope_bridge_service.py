@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.services.audit_service import AuditService
 from app.models.clinical_scope import (
@@ -28,11 +28,11 @@ class ClinicalFacilityScopeAmbiguous(ClinicalScopeBridgeError):
 class ClinicalScopeBridgeService:
     """Resolve reviewed laboratory-to-facility scope without any implicit ID conversion."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = AuditService(session)
 
-    async def create_pending_binding(
+    def create_pending_binding(
         self,
         *,
         legacy_lab_id: int,
@@ -48,8 +48,8 @@ class ClinicalScopeBridgeService:
             mapping_version=1,
         )
         self.session.add(binding)
-        await self.session.flush()
-        await self.audit.record_event(
+        self.session.flush()
+        self.audit.record_event(
             action="clinical_lab_facility_binding_created",
             actor_id=actor_id,
             target_type="clinical_lab_facility_binding",
@@ -58,7 +58,7 @@ class ClinicalScopeBridgeService:
         )
         return binding
 
-    async def transition(
+    def transition(
         self,
         binding: ClinicalLabFacilityBinding,
         target: ClinicalLabFacilityBindingStatus | str,
@@ -68,8 +68,8 @@ class ClinicalScopeBridgeService:
     ) -> ClinicalLabFacilityBinding:
         previous_status = binding.status
         binding.transition(target, reason=reason)
-        await self.session.flush()
-        await self.audit.record_event(
+        self.session.flush()
+        self.audit.record_event(
             action="clinical_lab_facility_binding_transition",
             actor_id=actor_id,
             target_type="clinical_lab_facility_binding",
@@ -83,7 +83,7 @@ class ClinicalScopeBridgeService:
         )
         return binding
 
-    async def resolve_active_binding(self, legacy_lab_id: int) -> ClinicalLabFacilityBinding:
+    def resolve_active_binding(self, legacy_lab_id: int) -> ClinicalLabFacilityBinding:
         """Return exactly one active binding with an active facility and organization.
 
         The query joins internal resources by their foreign keys, so a caller never
@@ -103,7 +103,7 @@ class ClinicalScopeBridgeService:
                 Organization.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         bindings = list(result.scalars().all())
         if not bindings:
             raise ClinicalFacilityScopeUnavailable("No active reviewed facility scope exists for this lab")
@@ -115,11 +115,11 @@ class ClinicalScopeBridgeService:
 class ClinicalEhrFacilityScopeBridgeService:
     """Resolve a reviewed national-EHR-facility to NIAM-facility bridge."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = AuditService(session)
 
-    async def create_pending_binding(
+    def create_pending_binding(
         self,
         *,
         national_facility_id: str,
@@ -137,8 +137,8 @@ class ClinicalEhrFacilityScopeBridgeService:
             mapping_version=1,
         )
         self.session.add(binding)
-        await self.session.flush()
-        await self.audit.record_event(
+        self.session.flush()
+        self.audit.record_event(
             action="clinical_ehr_facility_binding_created",
             actor_id=actor_id,
             target_type="clinical_ehr_facility_binding",
@@ -147,7 +147,7 @@ class ClinicalEhrFacilityScopeBridgeService:
         )
         return binding
 
-    async def transition(
+    def transition(
         self,
         binding: ClinicalEhrFacilityBinding,
         target: ClinicalEhrFacilityBindingStatus | str,
@@ -157,8 +157,8 @@ class ClinicalEhrFacilityScopeBridgeService:
     ) -> ClinicalEhrFacilityBinding:
         previous_status = binding.status
         binding.transition(target, reason=reason)
-        await self.session.flush()
-        await self.audit.record_event(
+        self.session.flush()
+        self.audit.record_event(
             action="clinical_ehr_facility_binding_transition",
             actor_id=actor_id,
             target_type="clinical_ehr_facility_binding",
@@ -172,7 +172,7 @@ class ClinicalEhrFacilityScopeBridgeService:
         )
         return binding
 
-    async def resolve_active_binding(self, national_facility_id: str) -> ClinicalEhrFacilityBinding:
+    def resolve_active_binding(self, national_facility_id: str) -> ClinicalEhrFacilityBinding:
         """Return exactly one active bridge with an active NIAM facility and organization."""
 
         if not national_facility_id.strip():
@@ -188,7 +188,7 @@ class ClinicalEhrFacilityScopeBridgeService:
                 Organization.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         bindings = list(result.scalars().all())
         if not bindings:
             raise ClinicalFacilityScopeUnavailable("No active reviewed NIAM scope exists for this EHR facility")

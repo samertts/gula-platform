@@ -46,7 +46,7 @@ class EnterprisePortalService:
         metadata: dict[str, Any] | None = None,
         outcome: str = "success",
     ) -> None:
-        await self.audit.record(
+        self.audit.record(
             AuditEventInput(
                 event_type=event_type,
                 category="ADMINISTRATION",

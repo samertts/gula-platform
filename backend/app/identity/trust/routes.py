@@ -174,7 +174,7 @@ async def create_assurance_profile(
         identity_id=identity_id,
         assessed_by=f"account:{actor.account.id}",
     )
-    await AuditService(db).record(
+    AuditService(db).record(
         AuditAction.assurance_profile_assigned,
         actor_id=actor.account.id,
         actor_type="account",

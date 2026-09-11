@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
@@ -52,9 +52,9 @@ class MembershipActionRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
-async def _require_phase8_management(
+def _require_phase8_management(
     actor: NiamActor,
-    db: AsyncSession,
+    db: Session,
     *,
     action: str,
     organization_id: str,
@@ -62,7 +62,7 @@ async def _require_phase8_management(
     resource_type: str = "membership",
     resource_exists: bool = False,
 ) -> None:
-    decision = await AuthorizationDecisionService(db).authorize(
+    decision = AuthorizationDecisionService(db).authorize(
         AuthorizationActor(account=actor.account, session=actor.session),
         AuthorizationRequest(
             subject_account_id=actor.account.id,
@@ -139,22 +139,22 @@ def serialize_invitation(invitation: MembershipInvitation, raw_token: str | None
 
 
 @router.get("/me")
-async def list_my_memberships(
+def list_my_memberships(
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    memberships = await MembershipService(db).list_for_account(actor.account.id)
+    memberships = MembershipService(db).list_for_account(actor.account.id)
     return {"memberships": [serialize_membership(item) for item in memberships]}
 
 
 @router.post("/applications", status_code=status.HTTP_201_CREATED)
-async def submit_membership_application(
+def submit_membership_application(
     body: MembershipApplicationRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     try:
-        application = await MembershipService(db).create_application(
+        application = MembershipService(db).create_application(
             account_id=actor.account.id,
             identity_id=body.identity_id or actor.account.identity_id,
             organization_id=body.organization_id,
@@ -174,15 +174,15 @@ async def submit_membership_application(
 
 
 @router.post("/applications/{application_id}/approve")
-async def approve_membership_application(
+def approve_membership_application(
     application_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    application = await db.get(MembershipApplication, application_id)
+    application = db.get(MembershipApplication, application_id)
     if application is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership application not found")
-    await _require_phase8_management(
+    _require_phase8_management(
         actor,
         db,
         action="approve",
@@ -192,7 +192,7 @@ async def approve_membership_application(
         resource_exists=True,
     )
     try:
-        membership = await MembershipService(db).approve_application(application_id, actor.account.id)
+        membership = MembershipService(db).approve_application(application_id, actor.account.id)
     except MembershipAccessDenied as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Membership approval denied") from exc
     except MembershipValidationError as exc:
@@ -203,19 +203,19 @@ async def approve_membership_application(
 
 
 @router.post("/invitations", status_code=status.HTTP_201_CREATED)
-async def create_membership_invitation(
+def create_membership_invitation(
     body: MembershipInvitationRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_phase8_management(
+    _require_phase8_management(
         actor,
         db,
         action="invite",
         organization_id=body.organization_id,
     )
     try:
-        invitation, raw_token = await MembershipService(db).create_invitation(
+        invitation, raw_token = MembershipService(db).create_invitation(
             actor_id=actor.account.id,
             organization_id=body.organization_id,
             relationship_type=body.relationship_type,
@@ -237,14 +237,14 @@ async def create_membership_invitation(
 
 
 @router.post("/invitations/{invitation_id}/accept")
-async def accept_membership_invitation(
+def accept_membership_invitation(
     invitation_id: str,
     body: InvitationTokenRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     try:
-        membership = await MembershipService(db).accept_invitation(invitation_id, actor.account.id, body.token)
+        membership = MembershipService(db).accept_invitation(invitation_id, actor.account.id, body.token)
     except InvitationError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Invitation is invalid or unavailable") from exc
     except MembershipAccessDenied as exc:
@@ -255,15 +255,15 @@ async def accept_membership_invitation(
 
 
 @router.post("/invitations/{invitation_id}/revoke")
-async def revoke_membership_invitation(
+def revoke_membership_invitation(
     invitation_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    invitation = await db.get(MembershipInvitation, invitation_id)
+    invitation = db.get(MembershipInvitation, invitation_id)
     if invitation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
-    await _require_phase8_management(
+    _require_phase8_management(
         actor,
         db,
         action="revoke",
@@ -273,7 +273,7 @@ async def revoke_membership_invitation(
         resource_exists=True,
     )
     try:
-        invitation = await MembershipService(db).revoke_invitation(invitation_id, actor.account.id)
+        invitation = MembershipService(db).revoke_invitation(invitation_id, actor.account.id)
     except MembershipAccessDenied as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invitation revocation denied") from exc
     except InvitationError as exc:
@@ -282,16 +282,16 @@ async def revoke_membership_invitation(
 
 
 @router.post("/{membership_id}/revoke")
-async def revoke_membership(
+def revoke_membership(
     membership_id: str,
     body: MembershipActionRequest | None = None,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    membership = await db.get(Membership, membership_id)
+    membership = db.get(Membership, membership_id)
     if membership is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
-    await _require_phase8_management(
+    _require_phase8_management(
         actor,
         db,
         action="revoke",
@@ -300,7 +300,7 @@ async def revoke_membership(
         resource_exists=True,
     )
     try:
-        membership = await MembershipService(db).revoke_membership(membership_id, actor.account.id, body.reason if body else None)
+        membership = MembershipService(db).revoke_membership(membership_id, actor.account.id, body.reason if body else None)
     except MembershipAccessDenied as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Membership revocation denied") from exc
     except MembershipValidationError as exc:
@@ -311,16 +311,16 @@ async def revoke_membership(
 
 
 @router.post("/{membership_id}/suspend")
-async def suspend_membership(
+def suspend_membership(
     membership_id: str,
     body: MembershipActionRequest | None = None,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    membership = await db.get(Membership, membership_id)
+    membership = db.get(Membership, membership_id)
     if membership is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
-    await _require_phase8_management(
+    _require_phase8_management(
         actor,
         db,
         action="suspend",
@@ -329,7 +329,7 @@ async def suspend_membership(
         resource_exists=True,
     )
     try:
-        membership = await MembershipService(db).suspend_membership(membership_id, actor.account.id, body.reason if body else None)
+        membership = MembershipService(db).suspend_membership(membership_id, actor.account.id, body.reason if body else None)
     except MembershipAccessDenied as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Membership suspension denied") from exc
     except MembershipValidationError as exc:
@@ -340,15 +340,15 @@ async def suspend_membership(
 
 
 @router.post("/{membership_id}/reactivate")
-async def reactivate_membership(
+def reactivate_membership(
     membership_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    membership = await db.get(Membership, membership_id)
+    membership = db.get(Membership, membership_id)
     if membership is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
-    await _require_phase8_management(
+    _require_phase8_management(
         actor,
         db,
         action="reactivate",
@@ -357,7 +357,7 @@ async def reactivate_membership(
         resource_exists=True,
     )
     try:
-        membership = await MembershipService(db).reactivate_membership(membership_id, actor.account.id)
+        membership = MembershipService(db).reactivate_membership(membership_id, actor.account.id)
     except MembershipAccessDenied as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Membership reactivation denied") from exc
     except MembershipValidationError as exc:

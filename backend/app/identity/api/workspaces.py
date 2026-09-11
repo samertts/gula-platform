@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -98,19 +97,19 @@ def serialize_workspace(workspace: Workspace) -> dict[str, object]:
 
 
 @router.get("")
-async def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db: Session = Depends(get_db)):
     service = WorkspaceService(db)
-    citizen = await service.ensure_citizen_workspace(actor.account)
-    workspaces = await service.list_eligible(actor.account)
+    citizen = service.ensure_citizen_workspace(actor.account)
+    workspaces = service.list_eligible(actor.account)
     if citizen and all(item.id != citizen.id for item in workspaces):
         workspaces.append(citizen)
     return {"workspaces": [serialize_workspace(item) for item in workspaces]}
 
 
 @router.get("/{workspace_id}")
-async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: Session = Depends(get_db)):
     service = WorkspaceService(db)
-    workspaces = await service.list_eligible(actor.account)
+    workspaces = service.list_eligible(actor.account)
     workspace = next((item for item in workspaces if item.id == workspace_id), None)
     if workspace is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
@@ -118,12 +117,12 @@ async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_curren
 
 
 @router.post("/{workspace_id}/switch")
-async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: Session = Depends(get_db)):
     service = WorkspaceService(db)
     try:
-        context = await service.switch(actor.account, actor.session.id, workspace_id)
+        context = service.switch(actor.account, actor.session.id, workspace_id)
     except WorkspaceAccessDenied as exc:
-        await AuditService(db).record_event(
+        AuditService(db).record_event(
             AuditAction.workspace_switched.value,
             actor_id=actor.account.id,
             target_type="workspace",
@@ -132,8 +131,8 @@ async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_cur
             outcome="denied",
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace access denied") from exc
-    workspace = await db.get(Workspace, context.workspace_id)
-    await AuditService(db).record(
+    workspace = db.get(Workspace, context.workspace_id)
+    AuditService(db).record(
         AuditAction.workspace_switched,
         actor_id=actor.account.id,
         actor_type="account",

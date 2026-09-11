@@ -39,7 +39,7 @@ class ComplianceService:
         )
         self.session.add(framework)
         await self.session.flush()
-        await self.audit.record(
+        self.audit.record(
             AuditEventInput(
                 event_type="COMPLIANCE_FRAMEWORK_REGISTERED",
                 category="COMPLIANCE",
@@ -108,7 +108,7 @@ class ComplianceService:
         )
         self.session.add(check)
         await self.session.flush()
-        await self.audit.record(
+        self.audit.record(
             AuditEventInput(
                 event_type="COMPLIANCE_CHECK_EXECUTED",
                 category="COMPLIANCE",
@@ -188,7 +188,7 @@ class ComplianceService:
         )
         self.session.add(report)
         await self.session.flush()
-        await self.audit.record(
+        self.audit.record(
             AuditEventInput(
                 event_type="COMPLIANCE_REPORT_GENERATED",
                 category="COMPLIANCE",

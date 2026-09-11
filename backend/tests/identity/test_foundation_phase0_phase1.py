@@ -20,15 +20,14 @@ class _AccountRepository:
     def __init__(self, session):
         self.session = session
 
-    async def create(self, account):
+    def create(self, account):
         return account
 
 
-@pytest.mark.asyncio
-async def test_account_creation_normalizes_identifiers_and_keeps_pending_status(monkeypatch):
+def test_account_creation_normalizes_identifiers_and_keeps_pending_status(monkeypatch):
     monkeypatch.setattr(account_service_module, "AccountRepository", _AccountRepository)
 
-    result = await AccountService(SimpleNamespace()).create_account(
+    result = AccountService(SimpleNamespace()).create_account(
         identity_id="identity-1",
         account_type=AccountType.human,
         email="  PERSON@EXAMPLE.COM ",
@@ -46,16 +45,15 @@ async def test_account_creation_normalizes_identifiers_and_keeps_pending_status(
     assert result.password_hash != "correct horse battery staple"
 
 
-@pytest.mark.asyncio
-async def test_account_creation_rejects_missing_identifier_and_short_password(monkeypatch):
+def test_account_creation_rejects_missing_identifier_and_short_password(monkeypatch):
     monkeypatch.setattr(account_service_module, "AccountRepository", _AccountRepository)
     service = AccountService(SimpleNamespace())
 
     with pytest.raises(ValueError, match="identifier"):
-        await service.create_account(identity_id="identity-1")
+        service.create_account(identity_id="identity-1")
 
     with pytest.raises(ValueError, match="at least"):
-        await service.create_account(
+        service.create_account(
             identity_id="identity-1",
             email="person@example.com",
             password="too-short",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 
 import pytest
 from app.identity.models.membership import (
@@ -68,11 +68,10 @@ def test_invitation_token_hash_is_one_way_and_stable() -> None:
     assert MembershipService.token_hash(token) != token
 
 
-@pytest.mark.asyncio
-async def test_application_cannot_be_submitted_for_another_account() -> None:
+def test_application_cannot_be_submitted_for_another_account() -> None:
     service = MembershipService(SimpleNamespace())
     with pytest.raises(MembershipAccessDenied):
-        await service.create_application(
+        service.create_application(
             account_id="target-account",
             identity_id="identity",
             organization_id="organization",
@@ -82,20 +81,19 @@ async def test_application_cannot_be_submitted_for_another_account() -> None:
         )
 
 
-@pytest.mark.asyncio
-async def test_application_provisioning_is_idempotent_for_same_context() -> None:
+def test_application_provisioning_is_idempotent_for_same_context() -> None:
     account = SimpleNamespace(id="account", status="active", is_active=True, identity_id="identity")
     organization = SimpleNamespace(id="organization", status="active", is_active=True)
     existing = None
     session = SimpleNamespace()
-    session.execute = AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: account))
-    session.scalar = AsyncMock(side_effect=[organization, existing])
+    session.execute = MagicMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: account))
+    session.scalar = MagicMock(side_effect=[organization, existing])
     session.add = lambda item: None
-    session.flush = AsyncMock()
+    session.flush = MagicMock()
     service = MembershipService(session)
-    service._audit = AsyncMock()
+    service._audit = MagicMock()
 
-    first = await service.create_application(
+    first = service.create_application(
         account_id="account",
         identity_id="identity",
         organization_id="organization",
@@ -104,8 +102,8 @@ async def test_application_provisioning_is_idempotent_for_same_context() -> None
         actor_id="account",
     )
 
-    session.scalar = AsyncMock(side_effect=[organization, first])
-    second = await service.create_application(
+    session.scalar = MagicMock(side_effect=[organization, first])
+    second = service.create_application(
         account_id="account",
         identity_id="identity",
         organization_id="organization",
@@ -114,7 +112,7 @@ async def test_application_provisioning_is_idempotent_for_same_context() -> None
         actor_id="account",
     )
     assert second is first
-    assert service._audit.await_count == 1
+    assert service._audit.call_count == 1
 
 
 def test_membership_serialization_does_not_include_invitation_secret() -> None:

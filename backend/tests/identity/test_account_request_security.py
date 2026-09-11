@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from app.identity.api import accounts
@@ -64,21 +64,20 @@ def test_public_result_contains_no_contact_or_secret_fields() -> None:
     assert not {"email", "phone", "password", "token"}.intersection(result)
 
 
-@pytest.mark.asyncio
-async def test_submit_encrypts_contact_and_never_stores_password() -> None:
+def test_submit_encrypts_contact_and_never_stores_password() -> None:
     session = Mock()
-    session.scalar = AsyncMock(side_effect=[None, None])
-    session.flush = AsyncMock()
-    session.commit = AsyncMock()
+    session.scalar = MagicMock(side_effect=[None, None])
+    session.flush = MagicMock()
+    session.commit = MagicMock()
     session.add = Mock()
     service = object.__new__(AccountRequestService)
     service.session = session
     service._encryption_key = Fernet.generate_key().decode()
     service._blind_index_key = "blind-index-test-key"
-    service.audit = Mock(record=AsyncMock())
+    service.audit = Mock(record=MagicMock())
 
     request_arguments = {"idempotency" + "_key": "request-key-value"}
-    result = await service.submit(
+    result = service.submit(
         email="Person@example.com",
         phone=None,
         display_name="Person Example",
@@ -95,8 +94,8 @@ async def test_submit_encrypts_contact_and_never_stores_password() -> None:
     assert stored.contact_email_lookup != "person@example.com"
     assert not hasattr(stored, "password")
     assert stored.status == AccountRequestStatus.pending_review.value
-    service.audit.record.assert_awaited_once()
-    session.commit.assert_awaited_once()
+    service.audit.record.assert_called_once()
+    session.commit.assert_called_once()
 
 
 def test_identity_model_serialization_redacts_sensitive_columns() -> None:
@@ -111,18 +110,16 @@ def test_identity_model_serialization_redacts_sensitive_columns() -> None:
     assert payload["mfa_secret"] == "[REDACTED]"
 
 
-@pytest.mark.asyncio
-async def test_direct_account_creation_is_fail_closed() -> None:
+def test_direct_account_creation_is_fail_closed() -> None:
     with pytest.raises(HTTPException) as exc_info:
-        await accounts.create_account()
+        accounts.create_account()
     assert exc_info.value.status_code == 410
 
 
-@pytest.mark.asyncio
-async def test_direct_account_mutations_are_fail_closed() -> None:
+def test_direct_account_mutations_are_fail_closed() -> None:
     with pytest.raises(HTTPException) as lock_exc:
-        await accounts.lock_account("account-id")
+        accounts.lock_account("account-id")
     with pytest.raises(HTTPException) as unlock_exc:
-        await accounts.unlock_account("account-id")
+        accounts.unlock_account("account-id")
     assert lock_exc.value.status_code == 410
     assert unlock_exc.value.status_code == 410

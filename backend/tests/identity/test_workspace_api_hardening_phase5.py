@@ -50,10 +50,10 @@ class _Db:
     def query(self, *entities):
         return _Query(self.row)
 
-    async def execute(self, statement):
+    def execute(self, statement):
         return _Result(self.row)
 
-    async def get(self, model, workspace_id):
+    def get(self, model, workspace_id):
         return self.workspace
 
 
@@ -69,10 +69,10 @@ class _Audit:
     def __init__(self, db):
         self.db = db
 
-    async def record(self, *args, **kwargs):
+    def record(self, *args, **kwargs):
         self.records.append((args, kwargs))
 
-    async def record_event(self, *args, **kwargs):
+    def record_event(self, *args, **kwargs):
         self.denied.append((args, kwargs))
 
 
@@ -83,7 +83,7 @@ class _WorkspaceService:
     def __init__(self, db):
         self.db = db
 
-    async def switch(self, account, session_id, workspace_id):
+    def switch(self, account, session_id, workspace_id):
         if self.error:
             raise self.error
         return self.context
@@ -155,8 +155,7 @@ def test_valid_token_requires_matching_active_account_and_session(monkeypatch):
     assert result.session is session
 
 
-@pytest.mark.asyncio
-async def test_switch_route_returns_server_context_and_audits_success(monkeypatch):
+def test_switch_route_returns_server_context_and_audits_success(monkeypatch):
     _Audit.records = []
     _WorkspaceService.context = SimpleNamespace(
         account_id="account-1",
@@ -168,7 +167,7 @@ async def test_switch_route_returns_server_context_and_audits_success(monkeypatc
     monkeypatch.setattr(workspace_api, "WorkspaceService", _WorkspaceService)
     monkeypatch.setattr(workspace_api, "AuditService", _Audit)
 
-    result = await workspace_api.switch_workspace(
+    result = workspace_api.switch_workspace(
         "workspace-1",
         actor=actor(),
         db=_Db(workspace=workspace()),
@@ -180,15 +179,14 @@ async def test_switch_route_returns_server_context_and_audits_success(monkeypatc
     assert len(_Audit.records) == 1
 
 
-@pytest.mark.asyncio
-async def test_switch_route_returns_403_and_audits_denial(monkeypatch):
+def test_switch_route_returns_403_and_audits_denial(monkeypatch):
     _Audit.denied = []
     _WorkspaceService.error = WorkspaceAccessDenied("not eligible")
     monkeypatch.setattr(workspace_api, "WorkspaceService", _WorkspaceService)
     monkeypatch.setattr(workspace_api, "AuditService", _Audit)
 
     with pytest.raises(HTTPException) as error:
-        await workspace_api.switch_workspace("foreign-workspace", actor=actor(), db=_Db())
+        workspace_api.switch_workspace("foreign-workspace", actor=actor(), db=_Db())
 
     assert error.value.status_code == 403
     assert len(_Audit.denied) == 1

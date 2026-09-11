@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
@@ -88,31 +88,31 @@ def serialize_assignment(assignment: RoleAssignment) -> dict[str, object]:
 
 
 @router.get("")
-async def list_roles(
+def list_roles(
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     del actor
-    roles = await RolePermissionService(db).list_roles()
+    roles = RolePermissionService(db).list_roles()
     return {"roles": [serialize_role(role) for role in roles]}
 
 
 @router.get("/permissions")
-async def list_permissions(
+def list_permissions(
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     del actor
-    permissions = await RolePermissionService(db).list_permissions()
+    permissions = RolePermissionService(db).list_permissions()
     return {"permissions": [serialize_permission(permission) for permission in permissions]}
 
 
-async def _require_phase8_decision(
+def _require_phase8_decision(
     actor: NiamActor,
-    db: AsyncSession,
+    db: Session,
     request: AuthorizationRequest,
 ) -> None:
-    decision = await AuthorizationDecisionService(db).authorize(
+    decision = AuthorizationDecisionService(db).authorize(
         AuthorizationActor(account=actor.account, session=actor.session),
         request,
     )
@@ -121,16 +121,16 @@ async def _require_phase8_decision(
 
 
 @router.get("/effective")
-async def effective_permissions(
+def effective_permissions(
     organization_id: str = Query(min_length=1, max_length=26),
     facility_id: str | None = Query(default=None, max_length=26),
     department_id: str | None = Query(default=None, max_length=26),
     unit_id: str | None = Query(default=None, max_length=26),
     workspace_id: str | None = Query(default=None, max_length=26),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_phase8_decision(
+    _require_phase8_decision(
         actor,
         db,
         AuthorizationRequest(
@@ -152,7 +152,7 @@ async def effective_permissions(
             },
         ),
     )
-    permissions = await RolePermissionService(db).effective_permissions(
+    permissions = RolePermissionService(db).effective_permissions(
         actor.account.id,
         organization_id,
         facility_id=facility_id,
@@ -164,15 +164,15 @@ async def effective_permissions(
 
 
 @router.post("/assignments", status_code=status.HTTP_201_CREATED)
-async def assign_role(
+def assign_role(
     body: RoleAssignmentRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    target_membership = await db.get(Membership, body.membership_id)
+    target_membership = db.get(Membership, body.membership_id)
     if target_membership is None or target_membership.account_id != body.account_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role assignment denied")
-    await _require_phase8_decision(
+    _require_phase8_decision(
         actor,
         db,
         AuthorizationRequest(
@@ -196,7 +196,7 @@ async def assign_role(
         ),
     )
     try:
-        assignment = await RolePermissionService(db).grant_role(
+        assignment = RolePermissionService(db).grant_role(
             actor_id=actor.account.id,
             account_id=body.account_id,
             membership_id=body.membership_id,
@@ -216,16 +216,16 @@ async def assign_role(
 
 
 @router.post("/assignments/{assignment_id}/revoke")
-async def revoke_role(
+def revoke_role(
     assignment_id: str,
     body: RoleRevokeRequest | None = None,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    existing_assignment = await db.get(RoleAssignment, assignment_id)
+    existing_assignment = db.get(RoleAssignment, assignment_id)
     if existing_assignment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role assignment not found")
-    await _require_phase8_decision(
+    _require_phase8_decision(
         actor,
         db,
         AuthorizationRequest(
@@ -242,7 +242,7 @@ async def revoke_role(
         ),
     )
     try:
-        assignment = await RolePermissionService(db).revoke_role(assignment_id, actor.account.id, body.reason if body else None)
+        assignment = RolePermissionService(db).revoke_role(assignment_id, actor.account.id, body.reason if body else None)
     except RoleAuthorizationDenied as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role revocation denied") from exc
     except RoleAssignmentStateError as exc:
@@ -251,16 +251,16 @@ async def revoke_role(
 
 
 @router.get("/assignments")
-async def list_role_assignments(
+def list_role_assignments(
     organization_id: str = Query(min_length=1, max_length=26),
     account_id: str | None = Query(default=None, max_length=26),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     target_account = account_id or actor.account.id
-    if target_account != actor.account.id and not await MembershipService(db)._can_manage_organization(actor.account.id, organization_id):
+    if target_account != actor.account.id and not MembershipService(db)._can_manage_organization(actor.account.id, organization_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role assignment listing denied")
-    result = await db.execute(
+    result = db.execute(
         select(RoleAssignment).where(
             RoleAssignment.account_id == target_account,
             RoleAssignment.organization_id == organization_id,

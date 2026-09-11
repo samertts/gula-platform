@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.identity import IdentityRecord, IdentityType
@@ -12,10 +12,10 @@ from app.identity.repositories.identity_repository import IdentityRepository
 
 class IdentityService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.repo = IdentityRepository(session)
 
-    async def create_identity(
+    def create_identity(
         self,
         person_id: str,
         identity_type: IdentityType,
@@ -35,25 +35,25 @@ class IdentityService:
             notes=notes,
             is_active=True,
         )
-        return await self.repo.create(identity)
+        return self.repo.create(identity)
 
-    async def get_identity(self, identity_id: str) -> IdentityRecord | None:
-        return await self.repo.get_by_id(identity_id)
+    def get_identity(self, identity_id: str) -> IdentityRecord | None:
+        return self.repo.get_by_id(identity_id)
 
-    async def verify_identity(
+    def verify_identity(
         self,
         identity_id: str,
         verified_by: str,
         verification_method: str,
     ) -> IdentityRecord | None:
-        identity = await self.repo.get_by_id(identity_id)
+        identity = self.repo.get_by_id(identity_id)
         if not identity:
             return None
         identity.verified_at = datetime.now(UTC)
         identity.verified_by = verified_by
         identity.verification_method = verification_method
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return identity
 
-    async def revoke_identity(self, identity_id: str) -> None:
-        await self.repo.soft_delete(identity_id)
+    def revoke_identity(self, identity_id: str) -> None:
+        self.repo.soft_delete(identity_id)

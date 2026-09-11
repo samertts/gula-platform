@@ -1,7 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.services.person_service import PersonService
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/persons", tags=["NIAM Persons"])
 
 
 @router.post("/")
-async def create_person(
+def create_person(
     given_name: str,
     family_name: str,
     middle_name: str | None = None,
@@ -22,10 +22,10 @@ async def create_person(
     phone: str | None = None,
     national_id_hash: str | None = None,
     health_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = PersonService(db)
-    person = await service.create_person(
+    person = service.create_person(
         given_name=given_name,
         family_name=family_name,
         middle_name=middle_name,
@@ -42,12 +42,12 @@ async def create_person(
 
 
 @router.get("/{person_uuid}")
-async def get_person(
+def get_person(
     person_uuid: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = PersonService(db)
-    person = await service.get_person_by_uuid(person_uuid)
+    person = service.get_person_by_uuid(person_uuid)
     if not person:
         return {"error": "not_found"}
     return {"uuid": person.uuid, "given_name": person.given_name, "family_name": person.family_name}

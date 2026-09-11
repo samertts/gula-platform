@@ -113,7 +113,7 @@ def test_context_blocks_when_reviewed_niam_mapping_is_missing(monkeypatch):
         def __init__(self, _session):
             pass
 
-        async def resolve_for_legacy_lab_user(self, **_kwargs):
+        def resolve_for_legacy_lab_user(self, **_kwargs):
             nonlocal proof_called
             proof_called = True
 
@@ -130,7 +130,7 @@ def test_denied_authorization_never_executes_patient_query(monkeypatch):
     context = _context()
     query_called = False
 
-    async def deny(_self, _actor, _request):
+    def deny(_self, _actor, _request):
         return AuthorizationDecision.deny(AuthorizationReason.permission_missing)
 
     def no_query(*_args, **_kwargs):
@@ -156,7 +156,7 @@ def test_allowed_patient_read_maps_minimal_fields_and_excludes_legacy_fields(mon
     service = ClinicalGatewayService(SimpleNamespace())
     context = _context()
 
-    async def allow(_self, _actor, _request):
+    def allow(_self, _actor, _request):
         return AuthorizationDecision.allow()
 
     monkeypatch.setattr(service_module.AuthorizationDecisionService, "authorize", allow)
