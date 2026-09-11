@@ -420,3 +420,139 @@ def test_a_professional_record_does_not_satisfy_the_identity_threshold(db, accou
         target_citizen_id="citizen-auth005-1",
     )
     assert not decision.allowed
+
+
+# ── Phase 8: the lifecycle, end to end, on the migrated schema ───────────────
+
+
+def test_the_whole_lifecycle_from_registration_to_activation(db) -> None:
+    """Registration → contact → identity evidence → assurance → VERIFIED → link.
+
+    One test walking the path a real citizen takes, against migrated
+    PostgreSQL with its real foreign keys, so each step is proven to follow
+    from the previous one rather than from a fixture shortcut.
+    """
+    from app.identity.models.verification_record import VerificationRecord
+
+    # 1. an account exists, and a legacy registration is mapped to it
+    account = _linked_account(db, suffix="e2e", legacy_id=880060)
+    db.add(User(
+        id=880060, full_name="End To End", email="e2e@example.invalid",
+        phone="07800600000", password_hash="!x", role="citizen",
+        is_active=True, is_verified=False,
+    ))
+    db.flush()
+
+    # 2. contact verification — what /auth/verification/confirm establishes
+    _verify(db, account.id, VerificationMethod.email, identity_id=account.identity_id)
+    profile = VerificationWorkflow(db).profile(account.id)
+    assert profile.level_for(VerificationPurpose.contact) == AssuranceLevel.L1
+    assert profile.level_for(VerificationPurpose.identity) == AssuranceLevel.L0
+
+    # 3. contact alone cannot link a health identity
+    blocked = can_link_health_identity(
+        db, legacy_account_id=880060,
+        source_kind=LegacyAccountLinkSource.user.value,
+        target_citizen_id="citizen-e2e",
+    )
+    assert not blocked.allowed
+    assert blocked.reason_code == "insufficient_identity_assurance"
+
+    # 4. identity evidence, created only through the workflow's state machine
+    record = _verify(
+        db, account.id, VerificationMethod.official_identity,
+        identity_id=account.identity_id,
+    )
+    assert record.status == VerificationRecordStatus.verified.value
+
+    # 5. the record is persisted and readable — this is the row that was missing
+    persisted = (
+        db.query(VerificationRecord)
+        .filter(VerificationRecord.id == record.id)
+        .one()
+    )
+    assert persisted.record_type == "identity"
+    assert persisted.assurance_level == AssuranceLevel.L2.value
+    assert persisted.account_id == account.id
+
+    # 6. assurance is now sufficient, and says so per purpose
+    allowed = can_link_health_identity(
+        db, legacy_account_id=880060,
+        source_kind=LegacyAccountLinkSource.user.value,
+        target_citizen_id="citizen-e2e",
+    )
+    assert allowed.allowed
+    assert allowed.identity_assurance == IDENTITY_LINK_MINIMUM
+    assert str(record.id) in allowed.evidence_ids
+
+    # 7. the legacy boolean was never touched and never consulted
+    legacy = db.query(User).filter(User.id == 880060).one()
+    assert legacy.is_verified is False, (
+        "identity verification must not write the legacy contact boolean"
+    )
+
+
+# ── Phase 9: security-sensitive transitions are auditable ────────────────────
+
+
+def test_every_verification_transition_writes_the_canonical_audit(db, account) -> None:
+    """One audit architecture, not a second one.
+
+    The workflow writes through `app.services.audit_service.log_action`, the
+    same hash-chained log the rest of the platform uses.
+    """
+    from sqlalchemy import text
+
+    before = db.execute(text("SELECT count(*) FROM audit_logs")).scalar_one()
+    record = _verify(db, account.id, VerificationMethod.official_identity)
+    VerificationWorkflow(db).revoke(record, reason="security_event")
+    db.flush()
+
+    rows = db.execute(text(
+        "SELECT action, details FROM audit_logs ORDER BY id DESC LIMIT 8"
+    )).all()
+    actions = {row[0] for row in rows}
+    assert db.execute(text("SELECT count(*) FROM audit_logs")).scalar_one() > before
+    for expected in ("verification_requested", "verification_started",
+                     "verification_verified", "verification_revoked"):
+        assert expected in actions, f"{expected} was not audited; saw {sorted(actions)}"
+
+    # The record and account are identifiable from the entry.
+    detail = next(row[1] for row in rows if row[0] == "verification_verified")
+    assert f"account_id={account.id}" in detail
+    assert "assurance=L2" in detail
+
+
+def test_a_refused_linkage_is_audited_with_its_reason(db, account) -> None:
+    """A denial is a security event and must leave a trace."""
+    from types import SimpleNamespace
+
+    from app.identity.services.citizen_relationship_service import (
+        CitizenRelationshipConflict,
+        CitizenRelationshipWorkflow,
+    )
+    from sqlalchemy import text
+
+    _verify(db, account.id, VerificationMethod.email)   # contact only
+
+    relationship = SimpleNamespace(
+        id="REL-AUDIT-0001", status="pending", legacy_user_id=880051,
+        citizen_id="citizen-auth005-1", version=1, metadata_={},
+    )
+    workflow = CitizenRelationshipWorkflow.__new__(CitizenRelationshipWorkflow)
+    workflow.db = db
+    workflow.actor = SimpleNamespace(id=9001, role="ministry_admin")
+    workflow.request_ip = "127.0.0.1"
+    workflow._for_update = lambda _id: relationship
+
+    with pytest.raises(CitizenRelationshipConflict, match="Identity evidence is insufficient"):
+        workflow.activate(relationship.id, verification_reference="review-audit-1")
+
+    row = db.execute(text(
+        "SELECT action, details FROM audit_logs "
+        "WHERE action = 'citizen_relationship_link_denied' ORDER BY id DESC LIMIT 1"
+    )).first()
+    assert row is not None, "a refused health-identity linkage was not audited"
+    assert "reason=insufficient_identity_assurance" in row[1]
+    assert "identity_assurance=L0" in row[1]
+    assert relationship.status == "pending", "a refused activation changed state"

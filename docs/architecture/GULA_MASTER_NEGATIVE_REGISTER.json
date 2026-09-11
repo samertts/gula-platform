@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 43,
+    "total": 44,
     "by_severity": {
       "P0": 10,
-      "P1": 15,
+      "P1": 16,
       "P2": 12,
       "P3": 6
     }
@@ -1367,7 +1367,7 @@
       "domain": "Identity Platform",
       "category": "Identity assurance",
       "title": "The client supplies its own identity assurance level, assessor and evidence",
-      "status": "FIXED — VERIFIED (AUTH-005)",
+      "status": "PARTIALLY VERIFIED (AUTH-005)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 38,
@@ -1377,13 +1377,13 @@
       "security_impact": "Identity assurance can be asserted rather than earned. Latent in the same way NR-035 was: the route sits behind NIAM authentication, which the application cannot reach with a legacy token, so it goes live with the AUTH-002 bridge.",
       "clinical_impact": "Any future gate on assurance before clinical access would be satisfiable by assertion.",
       "recommended_fix": "Derive the profile from VerificationRecord rows via AssuranceEngine; make ial/aal/fal server-computed and never request fields; bind the caller's authority to assert for that person_id.",
-      "verification": "backend/tests/test_identity_assurance_boundaries.py pins that ial/aal/fal/assessed_by/evidence are no longer request parameters and that the trust service derives from AssuranceEngine.",
+      "verification": "backend/tests/test_identity_assurance_boundaries.py pins that ial/aal/fal/assessed_by/evidence are no longer request parameters and that the trust service derives from AssuranceEngine. test_identity_platform_runtime.py pins the TypeError and the absence of any async engine.",
       "affected_components": "backend/app/identity/trust/routes.py, backend/app/identity/trust/services.py",
       "discovered_by": "AUTH-004",
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/verification-wiring.md",
       "next_batch": "Requires a decision on who may assert assurance and on what evidence.",
-      "resolution": "POST /niam/trust/assurance-profiles now names a subject and nothing else. ial is derived from the account's identity-purpose assurance via AssuranceEngine; aal and fal sit at the floor because neither is derivable from verification records; assessed_by is the authenticated actor; acting for another account requires an active administrative assignment. _calculate_overall no longer averages IAL/AAL/FAL - the overall is the weakest axis, so authentication strength can no longer lift an unproofed identity.",
+      "resolution": "POST /niam/trust/assurance-profiles now names a subject and nothing else. ial is derived from the account's identity-purpose assurance via AssuranceEngine; aal and fal sit at the floor because neither is derivable from verification records; assessed_by is the authenticated actor; acting for another account requires an active administrative assignment. _calculate_overall no longer averages IAL/AAL/FAL - the overall is the weakest axis, so authentication strength can no longer lift an unproofed identity. FINALIZATION CORRECTION: the route cannot execute at all (NR-044) — get_db yields a sync Session while the service awaits session.execute — so the behavioural proof AUTH-005 Phase 2 required cannot be produced for this path, and the finding is PARTIALLY VERIFIED rather than VERIFIED. It also means NR-038 was never exploitable: the route raised before a client-authored assurance level could be persisted.",
       "fixed_by": "AUTH-005"
     },
     {
@@ -1488,7 +1488,7 @@
       "domain": "Identity Platform",
       "category": "Authorization",
       "title": "Workspace eligibility ignored the organization's own standing",
-      "status": "FIXED — VERIFIED (AUTH-005)",
+      "status": "PARTIALLY VERIFIED (AUTH-005)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 43,
@@ -1498,7 +1498,7 @@
       "security_impact": "Continued workspace access after an organization was deactivated.",
       "clinical_impact": "Workspace access is the entry point to clinical context for organization members.",
       "recommended_fix": "Filter organization-derived workspaces to organizations that are active; this narrows access and is safe.",
-      "resolution": "list_eligible now requires NIAMOrganization.is_active and status == 'active'. Memberships remain deliberately unconsulted (AUTH-F5).",
+      "resolution": "list_eligible now requires NIAMOrganization.is_active and status == 'active'. Memberships remain deliberately unconsulted (AUTH-F5). FINALIZATION CORRECTION: list_eligible cannot execute at runtime (NR-044), so this is correct code in an unreachable function. The narrowing stands; its behavioural proof is blocked.",
       "verification": "tests/identity/ suite (174 passed). The change narrows access only.",
       "affected_components": "backend/app/identity/services/workspace_service.py",
       "discovered_by": "AUTH-005",
@@ -1506,6 +1506,29 @@
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/verification-wiring.md",
       "next_batch": ""
+    },
+    {
+      "id": "NR-044",
+      "severity": "P1",
+      "domain": "Identity Platform",
+      "category": "Runtime",
+      "title": "The NIAM async service layer cannot execute — there is no async engine",
+      "status": "OPEN — BLOCKED ON A RUNTIME DECISION",
+      "blocker": false,
+      "can_fix_now": false,
+      "priority": 44,
+      "description": "get_db yields a synchronous sqlalchemy.orm.Session. Thirty-six modules under app/identity/ annotate AsyncSession and call `await session.execute(...)`, and no create_async_engine exists anywhere in app/. Awaiting a sync result raises TypeError before any statement reaches the database, so the trust/assurance routes, workspace eligibility, membership services and the identity repositories are unreachable at runtime.",
+      "root_cause": "The identity platform was written against an async session contract the application never provided. The annotations are decorative; no async engine was ever created.",
+      "evidence": "Measured: inspect.isasyncgenfunction(get_db) is False; SessionLocal() yields Session; `await session.execute(text('SELECT 1'))` raises TypeError: object ChunkedIteratorResult can't be used in 'await' expression. grep finds zero create_async_engine in app/ and 36 modules awaiting a session execute. No async driver (asyncpg) is installed.",
+      "security_impact": "Neutral-to-positive today — it is why NR-038 was never exploitable — but it means several controls that appear to exist cannot run, and any future reader may mistake unreachable code for an enforced control.",
+      "clinical_impact": "None directly: the health-identity linkage path is synchronous and does execute. The unreachable layer is organizational/workspace, not clinical.",
+      "recommended_fix": "Decide the runtime: either provide an async engine and driver for the identity platform, or convert its services to the synchronous session the rest of the application uses. This is an architecture decision with a large blast radius and must not be improvised.",
+      "verification": "backend/tests/test_identity_platform_runtime.py — 6 tests pinning the defect and its scope.",
+      "affected_components": "backend/app/identity/ (36 modules), backend/app/database.py",
+      "discovered_by": "AUTH-005 finalization",
+      "owner": "Identity Platform",
+      "artifact": "docs/architecture/identity/verification-wiring.md",
+      "next_batch": "Blocks AUTH-F5 behavioural proof, NR-038 behavioural proof, and organization workspace access."
     }
   ]
 }

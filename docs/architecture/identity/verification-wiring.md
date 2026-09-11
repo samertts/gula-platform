@@ -212,19 +212,20 @@ deliberately absent from conftest's metadata list, which is TEST-001's rule
 working as designed: a green test must never mean "the ORM can create this
 table". Real foreign keys and the real unique constraint are exercised.
 
-**Negative proof.** Trusting the stored assurance column and removing the
-identity threshold — the two controls that close NR-039 — fails six tests:
+**Negative proof, per control.** An earlier draft of this section removed two
+changes together and attributed the resulting six failures to both. That was
+imprecise, and the finalization pass isolated them. One of the two — reading
+`result.assurance` instead of ignoring it — is *inert on its own*, because
+`VerificationPolicy.assurance_for` never consults that field. The control is the
+policy, not the field. Measured separately:
 
-```
-FAILED test_contact_verification_alone_cannot_link_health_identity
-FAILED test_a_capture_technique_does_not_reach_the_identity_threshold
-FAILED test_a_revoked_identity_verification_stops_permitting_the_link
-FAILED test_an_expired_identity_verification_stops_permitting_the_link
-FAILED test_the_stored_assurance_column_cannot_raise_itself
-FAILED test_one_account_cannot_borrow_another_accounts_evidence
-```
+| Control removed | Tests that fail |
+|---|---|
+| `VerificationPolicy.assurance_for` ignoring the self-reported level | **10**, incl. `test_a_provider_cannot_declare_its_own_assurance`, `test_receiving_a_code_proves_contact_and_nothing_further`, `test_the_whole_lifecycle_…` |
+| the identity threshold in `can_link_health_identity` | **9**, incl. `test_contact_verification_alone_cannot_link_health_identity`, `test_the_stored_assurance_column_cannot_raise_itself`, `test_a_refused_linkage_is_audited_with_its_reason` |
+| the identity-evidence gate in `activate()` | **2**, incl. `test_activation_is_refused_without_identity_evidence` |
 
-Restored after measurement.
+Each restored after measurement; the tree was verified clean between runs.
 
 The four AUTH-004 defect-pinning tests failed on this change — which is what
 they were written to do — and are rewritten to pin the resolutions rather than
@@ -297,3 +298,91 @@ The `Failed to CreateArtifact` line in that log is the known storage-quota
 condition on the evidence-upload step, which carries `continue-on-error` so
 archival cannot fail the gate it documents. The pytest step is blocking and
 passed, as did `alembic downgrade` and the re-upgrade to head after it.
+
+---
+
+## 11. Finalization — what Phase 2 uncovered (NR-044)
+
+AUTH-005's finalization required proving server-authoritative assurance *at the
+service and database level* rather than by reading a signature. Attempting that
+showed why the signature was all there was to read.
+
+`get_db` yields a synchronous `sqlalchemy.orm.Session`. Thirty-six modules under
+`app/identity/` annotate `AsyncSession` and `await session.execute(...)`, and
+**no `create_async_engine` exists anywhere in `app/`**. Measured:
+
+```
+get_db is async generator?  False
+get_db yields:              Session
+await session.execute(text("SELECT 1"))
+  -> TypeError: object ChunkedIteratorResult can't be used in 'await' expression
+```
+
+The NIAM async service layer — the trust/assurance routes, workspace
+eligibility, membership, the repositories — therefore **cannot execute at
+runtime**. Recorded as **NR-044 (P1)**.
+
+This reframes two findings rather than excusing them:
+
+* **NR-038 was never exploitable.** The route raised before a row could be
+  written, so a client-authored assurance level could not be persisted.
+  "Latent behind NIAM authentication" was too generous; it is latent behind a
+  type error. Removing the client's authorship remains correct and is still
+  pinned — but the *behavioural* proof this batch asked for cannot be produced
+  for that path, so **NR-038 is PARTIALLY VERIFIED**, not VERIFIED.
+* **NR-043 / AUTH-F5** narrow a function that cannot currently run. Correct
+  code, unexecutable today. Also **PARTIALLY VERIFIED**.
+
+What *does* run is the half with clinical consequences.
+`CitizenRelationshipService`, `identity_link_policy` and `verification_workflow`
+are synchronous end to end — route, workflow, policy, writer — and are proven
+against migrated PostgreSQL. **NR-039 and NR-040 stand as VERIFIED**, and they
+are the ones guarding patient data.
+
+`backend/tests/test_identity_platform_runtime.py` pins all of this, including
+the `TypeError` itself, probed with `SELECT 1` so the proof does not depend on
+which schema is bound.
+
+### Consequence for AUTH-F5's behavioural tests
+
+The six workspace-eligibility cases this batch asked for (member without
+assignment, inactive membership, missing credential, expired credential, valid
+member, unauthorized switch) **cannot be executed** while `list_eligible` and
+`switch` cannot run. The invariants that are statically provable are pinned —
+`list_eligible` does not reference `Membership`, and `switch` re-derives
+eligibility rather than trusting a `workspace_id` — and the behavioural cases
+are blocked on NR-044, not on the data model. Every factor they need is
+expressible with existing tables.
+
+## 12. Final control matrix
+
+| Control | Status | Evidence |
+|---|---|---|
+| Account/contact verification | **VERIFIED** | `/auth/verification` unchanged; contact L1 proven per purpose |
+| Identity evidence | **VERIFIED** | `VerificationWorkflow` writes records through the state machine; migrated-PostgreSQL tests |
+| Server-side assurance | **VERIFIED** (sync path) | policy overrides self-reported level; removing it fails 10 tests |
+| **NR-038** | **PARTIALLY VERIFIED** | client authorship removed and pinned; route unexecutable (NR-044) |
+| **NR-039** | **VERIFIED** | `can_link_health_identity`; 20 tests; 9-test negative proof; audited denial |
+| **NR-040** | **VERIFIED** | writer exists, drives the state machine, persists rows |
+| **AUTH-F5** | **PARTIALLY VERIFIED** | "not sufficient" pinned statically; behavioural cases blocked by NR-044 |
+| **AUTH-F10** | **ENCODED, NOT EXECUTED** | four dispositions as refusal codes; unique constraint proven in CI; no migration |
+| **NR-035** | **VERIFIED, INTACT** | `test_auth_identity_discriminator.py` green in the focused run |
+| Token purpose / revocation | **VERIFIED, INTACT** | `test_security_regression.py` green |
+| Relationship activation | **VERIFIED** | identity evidence + ministry authorization both required |
+| Workspace eligibility | **PARTIALLY VERIFIED** | narrowed correctly; unexecutable (NR-044) |
+| Audit | **VERIFIED** | canonical `log_action`; request/verify/revoke and refusals asserted from `audit_logs` |
+| PostgreSQL proof | **VERIFIED** | identity tables absent from `create_all` by design; real FKs and constraints exercised |
+| CI | **VERIFIED** | bound to the existing PostgreSQL migration gate; no new job, no `continue-on-error` |
+
+### Can it be done safely today?
+
+| Question | Answer |
+|---|---|
+| Register a citizen account safely? | **Yes** (technical) |
+| Identity-verify that account? | **Yes, mechanically** — the workflow persists real evidence. But no identity-L2 *method* is connected, and the legacy OTP path cannot write a record until AUTH-F10, so in practice **no** |
+| Link it to a real Citizen/Patient? | **No.** `national_citizens` and `national_patients` do not exist (NR-022); the relationship's `citizen_id`/`patient_id` have no foreign keys because their targets were never built |
+| Register an organization account safely? | **Yes** (technical) |
+| Can an authorized member reach its workspace? | **No** — `list_eligible` cannot execute (NR-044) |
+
+Technical GO is not governance GO and is not operational GO. No claim of legal
+compliance, certification or government authorization is made here.
