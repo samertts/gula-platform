@@ -5,11 +5,11 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 56,
+    "total": 57,
     "by_severity": {
       "P0": 10,
       "P1": 20,
-      "P2": 19,
+      "P2": 20,
       "P3": 7
     }
   },
@@ -1756,22 +1756,30 @@
       "domain": "Frontend / Platform",
       "category": "Shipped UI with no backend",
       "title": "Nine frontend routes call capability endpoints that are never registered",
-      "status": "OPEN — DECISION REQUIRED",
+      "status": "FIXED — VERIFIED (NR-054)",
       "blocker": false,
       "can_fix_now": false,
       "priority": 54,
-      "description": "frontend-v3 ships nine lazy-loaded routes under /capabilities/* with nine pages and nine navigation entries gated on dashboard:read. Each page issues api.get(\"/<capability>\") — /clinical-foundation, /document-management, /encounter-management, /healthcare-consent, /provider-management, /reporting-service, /search-service, /storage-service, /workflow-engine. None of those routers is included in factory.py, and the packages that define them cannot import.",
-      "root_cause": "Frontend and backend scaffolding were generated from the same capability list, and only the frontend half was wired up.",
-      "evidence": "frontend-v3/src/routes/index.tsx lines 57-65 and 188-196; frontend-v3/src/pages/capabilities/ (nine directories); frontend-v3/src/permissions/index.ts lines 161-169; scripts/zero_drift_engine.py lines 47-56. Backend: grep for each path in factory.py returns nothing. A secondary mismatch: the stub handlers return {items, total, skip, limit} while the pages treat the response body as an array.",
+      "description": "frontend-v3 shipped nine lazy-loaded routes under /capabilities/*, nine pages and nine navigation entries gated on dashboard:read. Each issued api.get('/<capability>') against a router under app/capabilities/ that factory.py never includes, so every one answered 404 while the navigation presented it as a working feature.",
+      "root_cause": "scripts/zero_drift_engine.py generates pages from docs/api/backend_inventory.json, and that inventory catalogues backend ROUTE FILES rather than REGISTERED ROUTES. Defining an APIRouter was therefore enough to put a feature in front of a user, whether or not the application ever mounted it. A secondary mismatch came from the same generator: the pages read `name` and `created_at`, fields no capability returns.",
+      "evidence": "Live probe: GET /encounter-management -> 404; GET /national-data/encounters -> 200 with a JSON array. The canonical endpoint filters on current_user.lab_id and is gated on require_permission('patients:read'), so the nav gate moved from dashboard:read to patients:read to match what the server enforces. Of 207 literal frontend API calls, 39 resolve to nothing: these 9 and 30 others in unrelated domains (NR-057).",
       "security_impact": "None — the endpoints do not exist, so nothing is exposed. Gating is dashboard:read, the broadest permission there is.",
       "clinical_impact": "Nine clinical-section navigation entries lead to pages that cannot load data. No patient-safety consequence; a visible quality defect in the clinical navigation.",
-      "recommended_fix": "Follows the NR-050 decision. If the capabilities are completed, register the routers and fix the response-shape mismatch. If they are retired, remove the nine routes, pages, navigation entries and drift-engine entries together. Leaving navigable pages pointing at nothing is the one option that should be ruled out.",
-      "verification": "Not yet fixed. Measured in docs/architecture/nr-050-capability-tree-discovery.md §1.",
-      "affected_components": "frontend-v3/src/routes/index.tsx, frontend-v3/src/pages/capabilities/, frontend-v3/src/permissions/index.ts, scripts/zero_drift_engine.py, backend/app/factory.py",
+      "recommended_fix": "Dispositioned per route rather than as a block. encounter-management was BOUND to its existing canonical owner, GET /national-data/encounters. The other eight were DISABLED_UNTIL_BACKEND_READY: removed from the router and from NAV_ITEMS, components preserved and documented. Registering the existing capability routers was rejected outright — every list_* returns a literal {'items': [], 'total': 0} and every create_* returns {'success': true, 'id': ''} without writing, so registering them would replace a visible 404 with an invisible lie.",
+      "verification": "backend/tests/test_frontend_backend_contract.py — 27 tests comparing every statically resolvable frontend call against the application's own OpenAPI schema. Negative proofs: restoring the orphan call failed 2 tests; re-routing a disabled capability failed its own test.",
+      "affected_components": [
+        "frontend-v3/src/routes/index.tsx",
+        "frontend-v3/src/permissions/index.ts",
+        "frontend-v3/src/pages/capabilities/encounter-management/CapabilitiesEncounterManagementPage.tsx",
+        "frontend-v3/src/pages/capabilities/README.md",
+        "backend/tests/test_frontend_backend_contract.py"
+      ],
       "discovered_by": "NR-050 discovery",
       "owner": "Frontend + Platform Architecture",
       "artifact": "docs/architecture/nr-050-capability-tree-discovery.md",
-      "next_batch": "Blocked on the NR-050 disposition, but the defect is live today either way."
+      "next_batch": "Blocked on the NR-050 disposition, but the defect is live today either way.",
+      "fixed_by": "NR-054",
+      "resolution": "1 route bound to a canonical API, 8 disabled and documented, 0 deleted, 0 stub endpoints registered, 0 fabricated datasets introduced. NR-050's ten packages were not touched: their disposition remains that finding's decision."
     },
     {
       "id": "NR-055",
@@ -1834,6 +1842,34 @@
       "next_batch": "unscheduled — awaiting decision",
       "fixed_by": "NR-056",
       "resolution": "44 import statements across 18 files, plus the unused PACKAGE constant in cli.py which named the same dead root. Negative proof: reintroducing the defect in one module failed three tests — that module's import, the CLI deferred-load test, and the architecture guard."
+    },
+    {
+      "id": "NR-057",
+      "severity": "P2",
+      "domain": "Frontend / Platform",
+      "category": "Frontend calls an unregistered endpoint",
+      "title": "Thirty further frontend calls resolve to no registered backend route",
+      "status": "OPEN",
+      "blocker": false,
+      "can_fix_now": false,
+      "priority": 57,
+      "description": "Beyond NR-054's nine capability routes, 30 more statically resolvable api.<method>('/literal') calls in frontend-v3 name endpoints the application never registers. They cluster: /niam/* (governance, trust, lifecycle, adaptive-auth, certificates, federation) 15, /citizen-platform/* 6, /certification/* 2, and 7 singletons across blood-bank, control-plane, health-data, lifecycle, national notifications and pilot-platform.",
+      "root_cause": "The same generator defect as NR-054 — pages built from a route-file inventory rather than from registered routes — applied to domains whose routers are likewise defined but not mounted, or whose paths drifted after generation.",
+      "evidence": "Measured against the app's own OpenAPI schema (1787 registered paths): of 207 literal calls, 39 do not resolve — 9 are NR-054's, 30 are these. A further 21 apparent misses are concatenated URLs whose literal prefix the scanner sees in isolation; they are excluded, not counted.",
+      "security_impact": "None directly. Unregistered paths return 404; no authorization is bypassed.",
+      "clinical_impact": "User-visible dishonesty rather than data risk: a clinician may be shown a navigable page that cannot load. Whether any of these sit on a clinical path has not been assessed.",
+      "recommended_fix": "Per-domain, as NR-054 was: bind to a canonical owner where one exists, otherwise disable the route until a real contract does. Not attempted here — each cluster belongs to a different domain owner and NR-054's scope was explicitly the nine.",
+      "verification": "Held by the DECLARED_UNREGISTERED_CALLS ledger in backend/tests/test_frontend_backend_contract.py. The guard fails on any NEW orphan, and a separate test fails if a ledger entry becomes registered but is left in the list, so the population can shrink but never silently grow.",
+      "affected_components": [
+        "frontend-v3/src/pages/",
+        "backend/app/factory.py"
+      ],
+      "discovered_by": "NR-054 (while building the frontend/backend contract guard)",
+      "owner": "platform-architecture",
+      "artifact": "backend/tests/test_frontend_backend_contract.py",
+      "next_batch": "unscheduled — awaiting decision",
+      "fixed_by": null,
+      "resolution": null
     }
   ]
 }

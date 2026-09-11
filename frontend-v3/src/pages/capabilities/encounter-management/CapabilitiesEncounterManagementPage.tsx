@@ -28,16 +28,31 @@ export default function CapabilitiesEncounterManagementPage() {
   const [activeTab, setActiveTab] = useState<TabId>("encounter-management");
   const col = createColumnHelper<Record<string, unknown>>();
 
+  // NR-054: this page used to call GET /encounter-management, a router under
+  // app/capabilities/ that factory.py never includes — the request answered 404.
+  // The canonical owner of an encounter is the national data platform:
+  // app/routes/national_data.py::list_canonical_encounters, which is registered,
+  // scoped to the caller's lab_id, and gated server-side on `patients:read`.
   const encounterManagement = useQuery({
-    queryKey: ["capabilitiesEncounterManagement", "encounter-management"],
-    queryFn: () => api.get("/encounter-management").then((r) => r.data),
+    queryKey: ["canonicalEncounters"],
+    queryFn: () => api.get("/national-data/encounters").then((r) => r.data),
   });
 
+  // Columns follow CanonicalEncounter.query_all, which is the actual response
+  // contract. The generated scaffold asked for `name` and `created_at`; the
+  // canonical record has neither, so both rendered blank and "Invalid Date".
   const encounterManagementCols: ColumnDef<Record<string, unknown>, unknown>[] = [
     col.accessor("id", { header: "المعرف" }),
-    col.accessor("name", { header: "الاسم" }),
+    col.accessor("encounter_type", { header: "النوع" }),
     col.accessor("status", { header: "الحالة", cell: ({ getValue }) => <Badge variant={badgeVariant(getValue() as string)}>{getValue() as string}</Badge> }),
-    col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
+    col.accessor("reason_description", { header: "السبب" }),
+    col.accessor("period_start", {
+      header: "تاريخ البدء",
+      cell: ({ getValue }) => {
+        const raw = getValue() as string | null;
+        return raw ? new Date(raw).toLocaleDateString("ar-IQ") : "—";
+      },
+    }),
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {

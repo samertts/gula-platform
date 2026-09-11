@@ -27,9 +27,9 @@ and `docs/adr/`.
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
 | P1        | 20     | 11     | 9    |
-| P2        | 19     | 4     | 15    |
+| P2        | 20     | 5     | 15    |
 | P3        | 7     | 1     | 6    |
-| **Total** | **56** | **22** | **34** |
+| **Total** | **57** | **23** | **34** |
 
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
@@ -146,9 +146,10 @@ since the first pass and now reflects all findings, not one session's._
 | NR-050 | P2  | Platform / Capabilities | Nine of ten packages under `app/capabilities/` cannot import, and nine have live frontend routes | **DISCOVERY COMPLETE — DECISION REQUIRED** (recommendation: SPLIT). Corrects the earlier entry: measured in the real environment over all 267 modules, `fhir_interoperability` imports 27/27 and is fully live; the other nine fail on **one character each**. They are not orphans — frontend-v3 ships nine routes, nine pages and nine nav entries for them, gated on `dashboard:read`, calling endpoints `factory.py` never registers |
 | NR-053 | P2  | Platform / Engineering | The capability generator still emits all three defects that made nine packages unimportable | **FIXED — VERIFIED**. Six edits; proved by generating into a temp directory and importing the result, not by grepping the generator. Four negative proofs. The ten existing packages were deliberately left alone — their disposition is still NR-050's |
 | NR-055 | P2  | Platform / Engineering | The routes template built Python function names from the hyphenated URL prefix | **FIXED — VERIFIED** (NR-053). `async def list_clinical-foundation(` — a SyntaxError in every generated routes.py with a multi-word name. Invisible until someone ran the generator: the shipped files were hand-corrected and the template never was |
-| NR-054 | P2  | Frontend / Platform | Nine frontend routes call capability endpoints that are never registered | OPEN — **DECISION REQUIRED**. Nine navigable clinical-section pages backed by nothing. Whatever NR-050 decides, leaving navigable pages pointing at nothing is the one option to rule out |
+| NR-054 | P2  | Frontend / Platform | Nine frontend routes call capability endpoints that are never registered | **FIXED — VERIFIED**. `encounter-management` bound to its canonical owner `GET /national-data/encounters` (registered, lab-scoped, `patients:read`); the other eight removed from the router and NAV_ITEMS, components preserved and documented. Registering the existing stubs was rejected: they return a literal `{items: [], total: 0}`, which would replace a visible 404 with an invisible lie |
 | NR-052 | P1  | Identity Platform | The assurance-profile administrator gate filtered on a column that does not exist | **VERIFIED** (NR-044.3) — `Assignment.account_id` is not a column, so the gate raised `AttributeError` rather than deciding. It failed closed, as a 500, and had never once been evaluated: NR-044 meant the route could not run. Now joins account → identity → person |
 | NR-051 | P2  | Platform / Capabilities | Six reusable concepts have 2–4 implementations and no canonical owner | OPEN — **DECISION REQUIRED**. Notification ×4, document ×3+1 dead, workflow ×3+1 dead, consent ×3+1 dead, audit ×3 writers, terminology ×2 same-named classes. *Reuse Before Build* cannot be followed while nothing says what to reuse |
+| NR-057 | P2  | Frontend / Platform | Thirty further frontend calls resolve to no registered backend route | OPEN. Same defect class as NR-054 in other domains — /niam/* ×15, /citizen-platform/* ×6, /certification/* ×2 and 7 singletons. Held by a ledger in the NR-054 contract guard that may shrink but never grow |
 | NR-056 | P3  | Platform / Engineering | Seventeen generator modules and the engineering CLI resolved only from the repository root | **FIXED — VERIFIED**. 44 imports across 18 files. `backend/` has no `__init__.py` and the distribution publishes `app*`, so `backend.app.` only ever resolved because conftest and CI put the repo root on `sys.path`. Eighteen of nineteen modules failed to import before; all nineteen import now, and the CLI reads all 52 registry descriptors. Guarded by AST package discovery, so a future generator is covered without editing the test |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
