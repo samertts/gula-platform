@@ -5,12 +5,12 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 55,
+    "total": 56,
     "by_severity": {
       "P0": 10,
       "P1": 20,
       "P2": 19,
-      "P3": 6
+      "P3": 7
     }
   },
   "findings": [
@@ -1797,6 +1797,43 @@
       "next_batch": "",
       "fixed_by": "NR-053",
       "resolution": "The routes template takes {func} for the five function names, fed by the underscored capability name, while {prefix} continues to carry the hyphenated URL. Route paths and the generated API are unchanged."
+    },
+    {
+      "id": "NR-056",
+      "severity": "P3",
+      "domain": "Platform / Engineering",
+      "category": "Import root ambiguity (D2 class)",
+      "title": "Ten sibling generators and the engineering CLI still resolve only from the repository root",
+      "status": "OPEN",
+      "blocker": false,
+      "can_fix_now": true,
+      "priority": 56,
+      "description": "NR-053 removed the `backend.app.` root from the capability generator and from everything it emits. The same one-line self-import survives verbatim in the ten sibling generators (cqrs, crud, dto, microservice, module, plugin, project, openapi, repository, rest) and in app/engineering/productivity/cli.py, which imports all eleven through that root. Each is the identical line: `from backend.app.engineering.generators.base import BaseGenerator, GenerateResult`.",
+      "root_cause": "`backend.app.` resolves only where the repository root happens to be on sys.path — true under pytest and in CI (both set PYTHONPATH to workspace and workspace/backend), false for an interpreter rooted at backend/, which is how the application itself runs. The generators were written against the test environment rather than the runtime one.",
+      "evidence": "`grep -h 'backend\\.app'` across the ten sibling generators returns exactly ten identical lines and nothing else — their templates are clean, so the defect is in how the tool loads, not in what it emits. `cd backend && python3 -c 'import app.engineering.productivity.cli'` raises ModuleNotFoundError: No module named 'backend'; the same import succeeds with the repository root added. Pre-existing: last touched in d33021e3, untouched by NR-053's commit 612ab2a3.",
+      "security_impact": "None. No authorization, tenancy or audit path runs through these modules.",
+      "clinical_impact": "None. Development tooling only; no clinical request touches it.",
+      "recommended_fix": "Replace the eleven `backend.app.` imports with `app.` — mechanically identical to the fix NR-053 applied at capability.py line 8. Deliberately not done under NR-053, whose scope was the capability generator and its output; eleven further modules is a separate, reviewable change.",
+      "verification": "A subprocess rooted at backend/ with PYTHONPATH=backend imports each of the eleven modules — the same shape as test_the_generator_itself_imports_without_the_repository_root in backend/tests/test_capability_generator.py, which already proves it for capability.py.",
+      "affected_components": [
+        "backend/app/engineering/cqrs/generator.py",
+        "backend/app/engineering/crud/generator.py",
+        "backend/app/engineering/dto/generator.py",
+        "backend/app/engineering/generators/microservice.py",
+        "backend/app/engineering/generators/module.py",
+        "backend/app/engineering/generators/plugin.py",
+        "backend/app/engineering/generators/project.py",
+        "backend/app/engineering/openapi/generator.py",
+        "backend/app/engineering/repository/generator.py",
+        "backend/app/engineering/rest/generator.py",
+        "backend/app/engineering/productivity/cli.py"
+      ],
+      "discovered_by": "NR-053 (while verifying the repaired generator's own import root)",
+      "owner": "platform-architecture",
+      "artifact": "backend/tests/test_capability_generator.py",
+      "next_batch": "unscheduled — awaiting decision",
+      "fixed_by": null,
+      "resolution": null
     }
   ]
 }
