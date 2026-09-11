@@ -26,10 +26,10 @@ and `docs/adr/`.
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
-| P1        | 18     | 11     | 7    |
+| P1        | 18     | 12     | 6    |
 | P2        | 13     | 1     | 12    |
 | P3        | 6     | 0     | 6    |
-| **Total** | **47** | **18** | **29** |
+| **Total** | **47** | **19** | **28** |
 
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
@@ -107,9 +107,9 @@ since the first pass and now reflects all findings, not one session's._
 | NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
 | NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
 | NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; narrowed, still unexecutable — `list_eligible` is NR-044.2) |
-| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED (NR-044.1 **PARTIALLY VERIFIED**: architecture, authentication, authorization-denial, token/session and transaction proofs all pass on migrated PostgreSQL; the authorization **allow** path is now blocked by **NR-047**, not NR-045. NR-044.2–.5 open) |
+| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED — **NR-044.1 is now VERIFIED**: the authorization ALLOW path returns 200 against migrated PostgreSQL, which was its last missing proof. NR-044.2–.5 remain open |
 | NR-045 | P1  | Clinical Gateway | `CanonicalAuditService` cannot write a row, so every clinical-gateway request answers 503 | **VERIFIED** — `IdentityAuditEntry.uuid` now carries the canonical default; the gateway answers 403 where it answered 503 and the denial is readable in `niam_audit_entries` with a valid hash chain. No migration, no constraint weakened |
-| NR-047 | P1  | Operational models | The `Organization` ORM does not match the `organizations` table | OPEN — **discovery complete**. The four phantom columns are `NIAMOrganization`'s vocabulary; they never existed on `organizations`, which was created a day *earlier* with `organization_id`/`organization_type`. One ORM owner, four inbound FKs (incl. `niam_assignments`), so ownership is unambiguous and **separable from NR-022**. Blast radius is wider than first recorded: the national bootstrap has never run, silently, behind a "non-fatal" `try/except` in the startup guard. Repair path defined (ORM correction + one additive migration); needs approval, not an architecture decision |
+| NR-047 | P1  | Operational models | The `Organization` ORM does not match the `organizations` table | **VERIFIED** — `org_id`/`org_type` mapped onto the existing `organization_id`/`organization_type`; `updated_at` removed from the ORM (read by nothing) rather than added; only `parent_org_id` added, by additive migration `20260913_0001`. Bootstrap now completes and is idempotent for organizations; the clinical ALLOW path returns **200** |
 | NR-046 | P2  | Identity Platform | The NIAM actor dependency does not consult `UserSession.expires_at` | OPEN — pre-existing, not a NR-044.1 regression; bounded by the access token's own enforced `exp` |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance

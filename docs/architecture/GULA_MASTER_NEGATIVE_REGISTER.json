@@ -1514,7 +1514,7 @@
       "domain": "Identity Platform",
       "category": "Runtime",
       "title": "The NIAM async service layer cannot execute — there is no async engine",
-      "status": "PARTIALLY RESOLVED (NR-044.1 PARTIALLY VERIFIED - allow path now blocked by NR-047; NR-044.2-.5 open)",
+      "status": "PARTIALLY RESOLVED (NR-044.1 VERIFIED; NR-044.2-.5 open)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 44,
@@ -1587,7 +1587,7 @@
       "domain": "National Core / Operational models",
       "category": "ORM/migration divergence",
       "title": "The Organization ORM does not match the organizations table, so the clinical allow path cannot resolve operational scope",
-      "status": "OPEN — DISCOVERY COMPLETE, repair path defined (ORM correction + one additive migration); no architecture decision required",
+      "status": "VERIFIED (NR-047 repair)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 47,
@@ -1597,12 +1597,14 @@
       "security_impact": "Fails closed on both paths. The misclassification is the concern: clinical_gateway/context.py:164 converts ANY exception into ClinicalGatewayBlocked('invalid_context'), rendered as 403, so an UndefinedColumn is indistinguishable from a genuine policy denial. authorization_decision.py:200 by contrast maps failures to deny(internal_failure), which is correctly labelled.",
       "clinical_impact": "No clinician can complete an authorized clinical read through the canonical gateway, and a fresh deployment has no seeded ministry, directorate, organization, facility or laboratory records.",
       "recommended_fix": "Option A + B as one small batch. A: map the ORM attributes onto the real column names (Column('organization_id', ...) keeps the Python attribute stable so bootstrap needs no edit) - no migration. B: one additive, nullable, idempotent migration for parent_org_id varchar(100) and updated_at timestamptz, the two columns that genuinely do not exist. No rename, no drop, no type change, no data movement; organizations is empty. Rejected: C (select columns instead of entities - hides the drift per call site and leaves bootstrap broken); D (merge with niam_organizations - the FK graph shows two distinct entities with a deliberate bridge); E (defer into NR-022 - separable, and would delay a live bootstrap defect).",
-      "verification": "Discovery only; nothing implemented. To close: ORM/physical agreement with no phantom columns; select(Facility, Organization, Tenant) executes; run_bootstrap completes and seeds; the clinical allow path returns 200; invalid context still denied; cross-tenant organization still denied; migration up/down round trip; a guard that fails if ORM and table diverge again. Existing pins: backend/tests/test_identity_link_and_assurance.py::test_the_operational_organization_orm_does_not_match_its_table_nr047 and ::test_a_fully_authorized_actor_reaches_the_operational_scope_and_is_blocked_by_nr047.",
+      "verification": "Against migrated PostgreSQL 16.13. SCHEMA: declared-minus-physical and physical-minus-declared are both empty. QUERIES: select(Organization); Organization+Tenant; Facility+Organization+Tenant; the exact ClinicalAuthorizationContextService query; the bootstrap lookup; the bootstrap org_type and parent_org_id reads - all six execute. MIGRATION: upgrade/downgrade/re-upgrade round trip, one head 20260913_0001, all four inbound foreign keys and the UNIQUE constraint preserved. BOOTSTRAP: run_bootstrap completes (ministry=1, directorates=19, permissions=92, roles=19); the ministry is at the root with parent_org_id NULL; every directorate's parent resolves to a real organization_id; no facility lacks an organization; a second pass adds zero organizations and zero facilities with no duplicate org_id. ALLOW: GET /api/v1/clinical/patients returns HTTP 200 with the workspace context echoed back, and the resolver reports the full operational scope (lab, facility, tenant). DENY: eight boundaries broken one at a time from that same otherwise-allowing context, each yielding its own reason and recovering when restored. AUDIT: exactly one clinical_gateway entry per read with uuid, entry_hash, decision=allow, and verify() VALID. NEGATIVE PROOF: reverting the ORM mapping fails 8 tests, reinstating updated_at fails 8, rolling back the migration fails 7; all restored.",
       "affected_components": "backend/app/models/organization.py, backend/app/core/bootstrap/ (6 modules), backend/app/identity/services/clinical_authorization_context_service.py, backend/app/services/clinical_scope_bridge_service.py, backend/app/clinical_gateway/context.py, backend/app/core/startup_guard.py",
       "discovered_by": "NR-045 repair (attempting the NR-044.1 allow-path proof)",
       "owner": "National Core",
       "artifact": "docs/architecture/nr-047-organization-reconciliation.md",
-      "next_batch": "Separable from NR-022 and from National Core: one ORM owner, one physical table, one creating migration, no competing authority. Needs approval to implement A+B, not an architecture decision."
+      "next_batch": "Unblocked the NR-044.1 authorization ALLOW proof. Separate observation, not folded in: lims_departments gains 16 rows on a second bootstrap pass and is stable from the third - a pre-existing seeder behaviour in a different seeder, recorded rather than scope-crept.",
+      "fixed_by": "NR-047",
+      "resolution": "Three of the four phantom columns were naming, one was real, and they were treated differently. org_id and org_type are now MAPPED onto the existing physical columns (Column('organization_id', ...) / Column('organization_type', ...)), so every caller in app/core/bootstrap/ is unchanged and no physical column was renamed. updated_at was REMOVED from the ORM rather than added to the table, because nothing reads, writes or serialises it - adding a column only to make a model and a table look alike would be drift in the other direction. parent_org_id was ADDED by migration 20260913_0001 because the bootstrap genuinely seeds a ministry-to-directorate hierarchy through it: VARCHAR(100) nullable indexed, matching OrganizationDef.parent_org_id: str|None which carries a public identifier - deliberately NOT NIAMOrganization's integer self-FK of the same name. No foreign key was declared, recorded as a deliberate omission. The migration is additive, nullable, idempotent and reversible; no rename, no drop, no type change, no data movement."
     }
   ]
 }

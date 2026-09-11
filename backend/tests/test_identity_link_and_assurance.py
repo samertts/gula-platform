@@ -51,6 +51,7 @@ from app.identity.services.verification_workflow import (
 )
 from app.models.user import User
 from fastapi import HTTPException
+from sqlalchemy import String as sqlalchemy_String
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -1492,7 +1493,7 @@ def _authorized_clinical_context(db, *, suffix="allow"):
     )
     from app.models.clinical_scope import ClinicalLabFacilityBinding
     from app.models.lab_user import LabUser
-    from app.models.organization import Facility
+    from app.models.organization import Facility, Organization
     from app.models.tenant import Tenant
     from sqlalchemy import text as _text
 
@@ -1508,18 +1509,15 @@ def _authorized_clinical_context(db, *, suffix="allow"):
     tenant = Tenant(id=9300000 + nonce, tenant_id=f"tid-{tag}", name_en="T", name_ar="ت", is_active=True)
     db.add(tenant)
     db.flush()
-    # NR-047: the Organization ORM declares org_id/org_type/parent_org_id while
-    # the migrated `organizations` table has organization_id/organization_type
-    # and no parent_org_id, so the ORM cannot be used here at all.
-    op_org_id = 9400000 + nonce
-    db.execute(
-        _text(
-            "INSERT INTO organizations (id, organization_id, name_en, name_ar, "
-            " organization_type, tenant_id, is_active, created_at) "
-            "VALUES (:id, :oid, 'O', 'م', 'hospital', :tenant, true, now())"
-        ),
-        {"id": op_org_id, "oid": f"oid-{tag}", "tenant": tenant.id},
+    # NR-047 repaired: the ORM now maps onto the real columns, so the fixture
+    # builds this row the way the application does rather than around it.
+    op_org = Organization(
+        id=9400000 + nonce, org_id=f"oid-{tag}", name_en="O", name_ar="م",
+        org_type="hospital", tenant_id=tenant.id, is_active=True,
     )
+    db.add(op_org)
+    db.flush()
+    op_org_id = op_org.id
     op_facility = Facility(
         id=9500000 + nonce, facility_id=f"ofid-{tag}", name_en="F", name_ar="ف",
         facility_type="hospital", organization_id=op_org_id, is_active=True,
@@ -1670,73 +1668,87 @@ def _authorized_clinical_context(db, *, suffix="allow"):
     )
 
 
-def test_a_fully_authorized_actor_reaches_the_operational_scope_and_is_blocked_by_nr047(db) -> None:
-    """The ALLOW path, as far as it currently goes — and the exact wall it hits.
+def test_a_fully_authorized_actor_is_allowed_and_the_read_executes(db) -> None:
+    """The ALLOW proof NR-044.1 could not produce, now produced (NR-047).
 
-    Every NIAM-side precondition is satisfied by real rows: active account,
-    live session, active workspace bound to the session, active organization and
-    facility, an active membership in that organization, a migrated `lab_user`
-    link, an active lab-to-facility binding, an active employment and clinical
-    assignment, and the seeded `patients.read` permission granted through a role
-    assignment in exactly this scope. The denial ladder above proves each of
-    those checks is really evaluated, so reaching past them is meaningful.
+    Every precondition is a real row: active account, live NIAM session, active
+    workspace bound to that session, active organization and facility, an active
+    membership in that organization, a migrated `lab_user` link, an active
+    lab-to-facility binding, an active employment and clinical assignment, and
+    the *seeded* `patients.read` permission granted through a role assignment in
+    exactly this scope. Nothing is mocked and no decision is supplied — the
+    denial ladder above proves each of those checks is really evaluated, so
+    getting past them means they were satisfied.
 
-    It then fails in the *operational* scope lookup, and not for an
-    authorization reason: `ClinicalAuthorizationContextService` selects the
-    `Organization` entity, whose ORM declares `org_id`, `org_type` and
-    `parent_org_id` while the migrated `organizations` table has
-    `organization_id`, `organization_type` and no `parent_org_id`. PostgreSQL
-    answers `UndefinedColumn`, the resolver's `except Exception` converts it to
-    `invalid_context`, and the request is refused.
+    Three states have been true for this request in sequence:
 
-    That is NR-047 — an ORM/migration divergence in the operational models,
-    unrelated to NR-044.1 and unrelated to NR-045, and outside this batch's
-    scope to repair. It is why the ALLOW half of NR-044.1 is still unproven.
-
-    The assertions below pin the cause precisely rather than the symptom, so
-    that repairing NR-047 fails this test and it is rewritten to assert the
-    200 it was written to want.
+      * before NR-044.1 — 500, the async actor raised before reaching PostgreSQL;
+      * after NR-044.1, before NR-045 — 503, the deny audit could not be written;
+      * after NR-045, before NR-047 — 403 `invalid_context`, because the
+        Organization ORM named columns the table does not have;
+      * now — **200**, with the workspace context echoed back.
     """
-    import asyncio
-
-    from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
-    from app.identity.services.clinical_authorization_context_service import (
-        ClinicalAuthorizationContextService,
-    )
-    from sqlalchemy.exc import ProgrammingError
+    import os as _os
 
     ctx = _authorized_clinical_context(db)
 
-    # The gate itself is fine: the actor resolves out of PostgreSQL.
+    _os.environ["GULA_CLINICAL_GATEWAY_MODE"] = "ON"
+    try:
+        response = _client(db).get(
+            "/api/v1/clinical/patients",
+            headers={"Authorization": f"Bearer {ctx.request.cookies['access_token']}"},
+        )
+    finally:
+        _os.environ.pop("GULA_CLINICAL_GATEWAY_MODE", None)
+
+    assert response.status_code != 401, "authentication failed for a valid actor"
+    assert response.status_code != 403, f"authorization denied a fully authorized actor: {response.text}"
+    assert response.status_code != 503, f"NR-045 regressed — the audit write failed: {response.text}"
+    assert response.status_code == 200, response.text
+
+    payload = response.json()
+    assert payload["workspace_context"]["workspace_id"] == ctx.workspace.id
+    assert payload["workspace_context"]["organization_id"] == ctx.niam_org.id
+    assert payload["workspace_context"]["facility_id"] == ctx.niam_facility.id
+    assert "items" in payload
+
+
+def test_the_allow_path_resolves_the_full_operational_scope(db) -> None:
+    """The resolver reaches operational scope — the step NR-047 used to break.
+
+    Asserting the scope, not just the status code: a 200 with the wrong tenant
+    or facility would be worse than a 403.
+    """
+    from app.clinical_gateway.context import ClinicalGatewayContextResolver
     from app.identity.api.workspaces import get_current_niam_actor
 
+    ctx = _authorized_clinical_context(db)
     actor = get_current_niam_actor(ctx.request, None, db)
-    assert actor.account.id == ctx.account.id
+    resolved = ClinicalGatewayContextResolver(db).resolve(actor)
 
-    # And the wall is a schema divergence, not an authorization decision.
-    service = ClinicalAuthorizationContextService(SyncSessionAsyncFacade(db))
-    with pytest.raises(ProgrammingError) as exc:
-        asyncio.run(
-            service.resolve_for_legacy_lab_user(
-                legacy_lab_user_id=ctx.legacy_lab_user_id,
-                legacy_lab_id=ctx.legacy_lab_id,
-                expected_niam_organization_id=ctx.niam_org.id,
-                expected_niam_facility_id=ctx.niam_facility.id,
-            ),
-        )
-    message = str(exc.value)
-    assert "organizations.org_id" in message, message
-    assert "does not exist" in message, message
+    assert resolved.scope.legacy_lab_id == ctx.legacy_lab_id
+    assert resolved.scope.operational_facility_id == ctx.op_facility.id
+    assert resolved.scope.niam_organization_id == ctx.niam_org.id
+    assert resolved.scope.niam_facility_id == ctx.niam_facility.id
+    assert resolved.scope.niam_workspace_id == ctx.workspace.id
+    assert resolved.scope.tenant_id is not None
+    assert resolved.legacy_user.lab_id == ctx.legacy_lab_id
 
 
-def test_the_operational_organization_orm_does_not_match_its_table_nr047(db) -> None:
-    """NR-047 stated plainly, independent of the gateway.
+def test_the_operational_organization_orm_matches_its_table_nr047(db) -> None:
+    """NR-047 repaired, pinned where the defect was found.
 
-    Four columns the ORM declares are absent from the migrated table — three
-    renamed (`org_id`/`org_type` are `organization_id`/`organization_type`,
-    `parent_org_id` is gone) and `updated_at`, which the table never grew. Any
-    ORM query that selects the `Organization` entity therefore fails, which is
-    what blocks the clinical allow path.
+    This test previously asserted the drift: the ORM declared `org_id`,
+    `org_type`, `parent_org_id` and `updated_at`, none of which the table had.
+    The assertion is inverted rather than deleted — declared and physical
+    columns must now agree exactly, in both directions.
+
+    Note what the repair did *not* do. `org_id` and `org_type` are mapped onto
+    the existing `organization_id` and `organization_type`; no column was
+    renamed to suit the model. `updated_at` was removed from the ORM instead of
+    added to the table, because nothing reads, writes or serialises it. Only
+    `parent_org_id` was added, because the bootstrap genuinely seeds a
+    ministry-to-directorate hierarchy through it.
     """
     from app.models.organization import Organization
     from sqlalchemy import text
@@ -1749,11 +1761,289 @@ def test_the_operational_organization_orm_does_not_match_its_table_nr047(db) -> 
         )
     }
     declared = {column.name for column in Organization.__table__.columns}
-    missing = sorted(declared - physical)
 
-    assert missing == ["org_id", "org_type", "parent_org_id", "updated_at"], (
-        f"NR-047 has changed shape: the ORM declares {missing} that the table lacks"
+    assert declared - physical == set(), (
+        f"the ORM declares columns the table lacks: {sorted(declared - physical)}"
     )
-    assert {"organization_id", "organization_type"} <= physical, (
-        "the table no longer carries the names the ORM should be using"
+    assert physical - declared == set(), (
+        f"the table has columns the ORM does not map: {sorted(physical - declared)}"
     )
+
+    # The Python attributes kept their names; only the mapping moved.
+    assert Organization.org_id.property.columns[0].name == "organization_id"
+    assert Organization.org_type.property.columns[0].name == "organization_type"
+    assert not hasattr(Organization, "updated_at"), (
+        "updated_at came back — it is read by nothing and belongs to NIAMOrganization"
+    )
+
+    # parent_org_id is a public-identifier string, not NIAM's integer self-FK.
+    parent = Organization.__table__.c.parent_org_id
+    assert isinstance(parent.type, sqlalchemy_String), parent.type
+    assert parent.type.length == 100
+    assert parent.nullable is True
+    assert not parent.foreign_keys, (
+        "a foreign key appeared on parent_org_id; NR-047 deliberately declared none"
+    )
+
+
+def test_the_exact_operational_scope_query_executes(db) -> None:
+    """The query that raised UndefinedColumn, run verbatim against PostgreSQL."""
+    from app.models.organization import Facility, Organization
+    from app.models.tenant import Tenant
+    from sqlalchemy import select
+
+    db.execute(
+        select(Facility, Organization, Tenant)
+        .join(Organization, Organization.id == Facility.organization_id)
+        .join(Tenant, Tenant.id == Organization.tenant_id)
+        .where(
+            Facility.is_active.is_(True),
+            Organization.is_active.is_(True),
+            Tenant.is_active.is_(True),
+        ),
+    ).first()
+
+
+def test_the_national_bootstrap_completes_and_is_idempotent_for_organizations(db) -> None:
+    """NR-047's other half: the bootstrap has never run until now.
+
+    `run_bootstrap` is called from the startup guard inside a `try/except`
+    logged "non-fatal", so its failure on `organizations.org_id` was invisible:
+    the platform reported ready while the ministry, directorates, organizations
+    and facilities were never seeded. `organizations` being empty was the
+    symptom, not evidence of disuse.
+
+    Idempotency is asserted only for the tables this finding owns.
+    `lims_departments` gains rows on a second pass and then stabilises — a
+    pre-existing seeder behaviour, recorded rather than folded in here.
+    """
+    from app.core.bootstrap.bootstrap import run_bootstrap
+    from app.models.organization import Facility, Organization
+    from sqlalchemy import func, select
+
+    first = run_bootstrap(db=db)
+    assert first["ministry"] == 1, first
+    assert first["directorates"] >= 1, first
+
+    organizations = db.scalar(select(func.count()).select_from(Organization))
+    facilities = db.scalar(select(func.count()).select_from(Facility))
+    assert organizations >= 2
+
+    ministry = db.query(Organization).filter(Organization.org_id == "org-iraq-moh").one()
+    assert ministry.parent_org_id is None, "the ministry must sit at the root"
+
+    children = db.query(Organization).filter(Organization.parent_org_id.isnot(None)).all()
+    assert children, "no directorate was given a parent"
+    known = {row.org_id for row in db.query(Organization)}
+    assert {child.parent_org_id for child in children} <= known, (
+        "a directorate points at an organization_id that does not exist"
+    )
+    assert db.query(Facility).filter(Facility.organization_id.is_(None)).count() == 0
+
+    # Second pass adds no organization or facility, and no duplicate key.
+    run_bootstrap(db=db)
+    assert db.scalar(select(func.count()).select_from(Organization)) == organizations
+    assert db.scalar(select(func.count()).select_from(Facility)) == facilities
+    duplicates = db.execute(
+        select(Organization.org_id, func.count())
+        .group_by(Organization.org_id)
+        .having(func.count() > 1),
+    ).all()
+    assert duplicates == [], duplicates
+
+
+def test_every_denial_boundary_still_holds_from_an_otherwise_valid_context(db) -> None:
+    """Phase 8 — the denial ladder, re-run from a context that would otherwise ALLOW.
+
+    This is the version that matters now. The earlier ladder built the context
+    up from nothing, so each refusal could in principle have come from something
+    still missing. Here the starting point is a context proven to return 200, and
+    exactly one fact is broken at a time. A universal 403 caused by a hidden
+    database failure cannot produce this: each break must yield *its own* reason
+    and the context must recover when the fact is restored.
+    """
+    from app.clinical_gateway.context import ClinicalGatewayContextResolver
+    from app.identity.api.workspaces import get_current_niam_actor
+    from app.identity.models.membership import Membership, MembershipStatus
+    from app.identity.models.workspace import WorkspaceSessionContext, WorkspaceStatus
+
+    ctx = _authorized_clinical_context(db, suffix="deny")
+    actor = get_current_niam_actor(ctx.request, None, db)
+
+    def resolves() -> bool:
+        ClinicalGatewayContextResolver(db).resolve(actor)
+        return True
+
+    assert resolves(), "the baseline context must allow before anything is broken"
+
+    context_row = db.query(WorkspaceSessionContext).filter_by(session_id=ctx.session.id).one()
+    membership = db.query(Membership).filter_by(account_id=ctx.account.id).one()
+    link = db.query(LegacyAccountLink).filter_by(canonical_account_id=ctx.account.id).one()
+
+    # 1. no workspace bound to the session
+    context_row.is_active = False
+    db.flush()
+    assert _blocked_reason(db, actor) == "missing_workspace"
+    context_row.is_active = True
+    db.flush()
+    assert resolves()
+
+    # 2. the workspace itself is not active
+    ctx.workspace.status = WorkspaceStatus.suspended.value
+    db.flush()
+    assert _blocked_reason(db, actor) == "workspace_inactive"
+    ctx.workspace.status = WorkspaceStatus.active.value
+    db.flush()
+    assert resolves()
+
+    # 3. the organization's own standing
+    ctx.niam_org.is_active = False
+    db.flush()
+    assert _blocked_reason(db, actor) == "invalid_context"
+    ctx.niam_org.is_active = True
+    db.flush()
+    assert resolves()
+
+    # 4. the facility's own standing, checked independently
+    ctx.niam_facility.status = "suspended"
+    ctx.niam_facility.is_active = False
+    db.flush()
+    assert _blocked_reason(db, actor) == "invalid_context"
+    ctx.niam_facility.status = "active"
+    ctx.niam_facility.is_active = True
+    db.flush()
+    assert resolves()
+
+    # 5. membership revoked
+    membership.status = MembershipStatus.revoked.value
+    membership.is_active = False
+    db.flush()
+    assert _blocked_reason(db, actor) == "membership_missing"
+    membership.status = MembershipStatus.active.value
+    membership.is_active = True
+    db.flush()
+    assert resolves()
+
+    # 6. membership moved to another organization — tenant isolation
+    other = _niam_organization(db, org_key=f"norg-other-{ctx.tag}")
+    membership.organization_id = other.id
+    db.flush()
+    assert _blocked_reason(db, actor) == "membership_missing", (
+        "a membership in another organization satisfied this organization's check"
+    )
+    membership.organization_id = ctx.niam_org.id
+    db.flush()
+    assert resolves()
+
+    # 7. the legacy identity no longer resolves
+    link.status = LegacyAccountLinkStatus.validated.value   # not `migrated`
+    db.flush()
+    assert _blocked_reason(db, actor) == "legacy_identity_unresolved"
+    link.status = LegacyAccountLinkStatus.migrated.value
+    db.flush()
+    assert resolves()
+
+    # 8. the operational tenant is deactivated — the far end of the bridge
+    from sqlalchemy import text as _t
+
+    db.execute(_t("UPDATE tenants SET is_active = false WHERE id = "
+                  "(SELECT tenant_id FROM organizations WHERE id = :o)"),
+               {"o": ctx.op_facility.organization_id})
+    db.flush()
+    assert _blocked_reason(db, actor) == "invalid_context"
+
+
+def test_an_allowed_read_is_audited_with_a_valid_chain(db) -> None:
+    """Phase 6/9 — the ALLOW side of the audit, which NR-045 also unblocked.
+
+    The gateway audits before it serves. A 200 therefore implies a canonical
+    audit row exists, and this reads it back rather than trusting the status.
+    """
+    import os as _os
+
+    from app.identity.services.canonical_audit import CanonicalAuditService
+    from sqlalchemy import text
+
+    ctx = _authorized_clinical_context(db, suffix="audit")
+
+    _os.environ["GULA_CLINICAL_GATEWAY_MODE"] = "ON"
+    try:
+        response = _client(db).get(
+            "/api/v1/clinical/patients",
+            headers={"Authorization": f"Bearer {ctx.request.cookies['access_token']}"},
+        )
+    finally:
+        _os.environ.pop("GULA_CLINICAL_GATEWAY_MODE", None)
+    assert response.status_code == 200, response.text
+
+    rows = db.execute(
+        text("SELECT uuid, entry_hash, previous_hash, decision, action, actor_id, "
+             "session_id, organization_id, source, data_classification, occurred_at "
+             "FROM niam_audit_entries WHERE actor_id = :a ORDER BY occurred_at"),
+        {"a": ctx.account.id},
+    ).all()
+    # Two writers audit one allowed read, and both are intentional:
+    # AuthorizationDecisionService records the decision it made, and
+    # ClinicalGatewayService records the gateway access. They are distinguished
+    # by `source`. This asserts exactly one of each rather than a bare count, so
+    # a genuine duplicate from either writer would still fail.
+    by_source = {}
+    for row in rows:
+        by_source.setdefault(row.source, []).append(row)
+    gateway = by_source.get("clinical_gateway", [])
+    assert len(gateway) == 1, f"clinical_gateway wrote {len(gateway)} entries for one read"
+    for source, group in by_source.items():
+        assert len(group) == 1, f"{source} wrote {len(group)} entries for one read"
+    entry = gateway[0]
+
+    assert entry.uuid and uuid.UUID(entry.uuid)
+    assert entry.entry_hash
+    assert entry.decision == "allow", entry.decision
+    assert entry.action == "patients.read"
+    assert entry.session_id == ctx.session.id
+    assert entry.source == "clinical_gateway"
+    assert entry.data_classification == "CLINICAL_SENSITIVE"
+    assert entry.occurred_at is not None
+
+    report = asyncio_run_verify(db, organization_id=entry.organization_id)
+    assert report["status"] == "VALID", report["violations"]
+    assert report["entries_checked"] >= 1
+    assert CanonicalAuditService  # imported for the reader's benefit
+
+
+def asyncio_run_verify(db, *, organization_id):
+    import asyncio
+
+    from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
+    from app.identity.services.canonical_audit import CanonicalAuditService
+
+    return asyncio.run(
+        CanonicalAuditService(SyncSessionAsyncFacade(db)).verify(organization_id=organization_id),
+    )
+
+
+def test_a_valid_context_never_reaches_the_broad_exception_path(db) -> None:
+    """Phase 9 — a schema fault no longer masquerades as a policy decision.
+
+    `clinical_gateway/context.py` converts any unexpected exception into
+    `invalid_context`, which is indistinguishable from a genuine denial. That
+    wrapper is deliberately left alone in this batch; what is asserted here is
+    that the repaired path no longer *needs* it — the resolver completes without
+    raising, so `invalid_context` is once again reserved for real context
+    failures (proved by the denial ladder, which still produces it for a
+    suspended organization and a suspended facility).
+    """
+    from app.clinical_gateway.context import ClinicalGatewayContextResolver
+    from app.identity.api.workspaces import get_current_niam_actor
+
+    ctx = _authorized_clinical_context(db, suffix="nowrap")
+    actor = get_current_niam_actor(ctx.request, None, db)
+
+    resolver = ClinicalGatewayContextResolver(db)
+    raised: list[BaseException] = []
+    original = resolver.resolve
+
+    resolved = original(actor)
+    assert resolved is not None
+    assert not raised
+    assert resolved.scope.niam_organization_id == ctx.niam_org.id

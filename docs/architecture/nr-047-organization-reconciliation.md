@@ -179,3 +179,94 @@ that fails if ORM and table diverge again.
 * **NR-044.1** — remains PARTIALLY VERIFIED. NR-047 is its ALLOW-path blocker.
 * **AUTH-F5 / NR-043** — unchanged; blocked on NR-044.2, not on this.
 * **NR-022** — unchanged. No evidence here alters it.
+
+---
+
+# Implementation and verification (recorded after the fact)
+
+Status: **NR-047 VERIFIED.** Delivered with migration `20260913_0001`.
+
+The discovery above recommended A+B. Implementation followed it, with one
+refinement the evidence forced: the four phantom columns did **not** deserve the
+same treatment.
+
+| Column | Treatment | Why |
+|---|---|---|
+| `org_id` | **mapped** to `organization_id` | naming only; the semantics already existed |
+| `org_type` | **mapped** to `organization_type` | naming only |
+| `updated_at` | **removed from the ORM** | read, written and serialised by nothing — adding it would be drift in the other direction |
+| `parent_org_id` | **added by migration** | the bootstrap genuinely seeds a ministry-to-directorate hierarchy through it |
+
+Mapping rather than renaming means every caller in `app/core/bootstrap/` is
+untouched: `Organization.org_id` still exists in Python, it simply resolves to
+the real column now.
+
+## `parent_org_id` — type taken from the contract, not from the name
+
+`OrganizationDef.parent_org_id` is `str | None` and holds a *public* identifier
+(`"org-iraq-moh"`), so the column is `VARCHAR(100)` against
+`organizations.organization_id`. It is deliberately **not** the integer self-FK
+`niam_organizations.parent_org_id` uses. The names coincide because of the same
+drift that caused NR-047; the semantics never did.
+
+No foreign key is declared. `organization_id` is UNIQUE so one would be
+well-formed, but it would impose a seed-ordering constraint the bootstrap does
+not need, and NR-047's remit was to make the model and the schema agree — not to
+add referential rules nobody asked for. A deliberate omission, not an oversight.
+
+## Proof
+
+Against migrated PostgreSQL 16.13, never SQLite and never `create_all()`.
+
+* **Schema** — declared-minus-physical and physical-minus-declared both empty.
+* **Queries** — all six execute: `select(Organization)`; `Organization+Tenant`;
+  `Facility+Organization+Tenant`; the exact
+  `ClinicalAuthorizationContextService` query; the bootstrap lookup; the
+  bootstrap `org_type`/`parent_org_id` reads.
+* **Migration** — upgrade, downgrade, re-upgrade; one head; all four inbound
+  foreign keys and the UNIQUE constraint preserved.
+* **Bootstrap** — completes (ministry 1, directorates 19, permissions 92, roles
+  19). The ministry sits at the root with `parent_org_id` NULL; every
+  directorate's parent resolves to a real `organization_id`; no facility lacks
+  an organization. A second pass adds **zero** organizations and **zero**
+  facilities, with no duplicate `org_id`.
+* **ALLOW** — `GET /api/v1/clinical/patients` returns **200**, and the resolver
+  reports the full operational scope (lab, facility, tenant, workspace).
+* **DENY** — eight boundaries broken one at a time *from that same
+  otherwise-allowing context*, each yielding its own reason code and recovering
+  when restored. That ordering matters: a universal 403 from a hidden database
+  failure cannot produce it.
+* **Audit** — exactly one `clinical_gateway` entry per read, with uuid,
+  entry_hash and `decision=allow`; `verify()` returns VALID.
+* **Negative proof** — reverting the ORM mapping fails 8 tests; reinstating
+  `updated_at` fails 8; rolling the migration back fails 7. All restored.
+
+## The four states of this request
+
+A useful record of what each batch actually bought:
+
+| | Response | Cause |
+|---|---|---|
+| before NR-044.1 | 500 | the async actor raised before reaching PostgreSQL |
+| after NR-044.1 | 503 | the deny audit could not be written (NR-045) |
+| after NR-045 | 403 `invalid_context` | the Organization ORM named columns the table lacks (NR-047) |
+| **after NR-047** | **200** | — |
+
+## Recorded, not fixed
+
+* `lims_departments` gains 16 rows on a second bootstrap pass and is stable from
+  the third. A pre-existing behaviour in a different seeder; organizations and
+  facilities are fully idempotent.
+* `clinical_gateway/context.py:164` still converts any exception into
+  `invalid_context`. Left alone deliberately — what changed is that the repaired
+  path no longer needs it, so `invalid_context` is again reserved for real
+  context failures, as the denial ladder demonstrates.
+* The startup guard still logs bootstrap failure as "non-fatal". Not weakened,
+  and not strengthened: with the bootstrap working, nothing is being swallowed
+  today, but the pattern would hide the next failure just as well.
+
+## NR-022 boundary
+
+No `national_*` table was created; `niam_organizations` was not touched; no
+National Core ownership changed; no legacy identity migration was performed.
+NR-022 remains a separate, open finding.
