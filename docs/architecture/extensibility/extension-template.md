@@ -120,6 +120,10 @@ exists and its chain verifies.
 
 ## 7. Before opening the PR
 
+Run these locally. On a feature-branch PR the extensibility guards are not
+executed by any workflow — see README.md — so local is the only place they run
+until the change reaches `main`.
+
 ```bash
 cd backend
 python3 -m pytest tests/test_extensibility_guards.py -q

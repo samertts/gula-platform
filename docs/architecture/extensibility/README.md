@@ -23,10 +23,25 @@ Read in this order:
 9. [global-intelligence-registry.md](global-intelligence-registry.md) — the
    structure PROGRAM-GLOBAL-001 will fill.
 
-Enforced by `backend/tests/test_extensibility_guards.py`, which runs in CI as
-part of the Backend Tests job. Contract types live in
-`backend/app/kernel/types.py`; validation in
-`backend/app/kernel/extensibility.py`.
+Enforced by `backend/tests/test_extensibility_guards.py`. Contract types live in
+`backend/app/kernel/types.py`; validation in `backend/app/kernel/extensibility.py`.
+
+**Where the guards do and do not run today.** `ci.yml`'s Backend Tests job runs
+`pytest tests/`, which includes this file — but that workflow triggers only on
+pushes to `main`/`staging`/`release/*` and on pull requests *targeting*
+`main`/`staging`. On a feature branch whose PR targets another feature branch,
+the only backend workflow that runs is `iam-hardening.yml`, and its jobs name
+their test paths explicitly: `tests/identity`, the clinical-gateway files, a
+migration set and a security set. None of them includes this file.
+
+So these guards are gated on the path to `main` and **not** on a feature-branch
+PR. Closing that gap means adding one path to `iam-hardening.yml`, and CI
+pipeline modifications require human approval (`CLAUDE.md`), so it has not been
+done. Run them locally before opening a PR:
+
+```bash
+cd backend && python3 -m pytest tests/test_extensibility_guards.py -q
+```
 
 ## What this programme did not do
 
