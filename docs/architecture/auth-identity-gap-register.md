@@ -45,7 +45,17 @@ Owner, Dependency, Recommended Action, Status.
 * **Canonical owner** Identity Platform
 * **Dependency** none — a design question, answerable now
 * **Action** decide before SWITCH; do not change `list_eligible` opportunistically.
-* **Status** VERIFIED
+* **Status** **PARTIALLY RESOLVED (AUTH-005)**. The "not sufficient" half is
+  enforced and tested: `list_eligible` does not consult `niam_memberships`, and
+  `switch` re-derives eligibility rather than trusting a `workspace_id`.
+  AUTH-005 also added the organization's own standing to the conjunction
+  (NR-043) — a representative of a deactivated organization previously kept its
+  workspaces. The open half is unchanged and is a platform decision: wiring
+  membership into eligibility would grant access to every member of every
+  organization, so it is not a change to make silently. The remaining factors
+  (an organization verification record, a required professional credential per
+  workspace type) are expressible with existing models, so the blocker is the
+  decision rather than the schema.
 
 ## AUTH-F6 · P2 · No token-purpose claim distinguishes the two stacks
 * **Area** token security
@@ -109,7 +119,18 @@ Owner, Dependency, Recommended Action, Status.
      operational handling of blocked rows is a governance choice.
 * **Action** obtain both before scheduling ADD. Blocks AUTH-003 Phases 2, 3
   and 7, and by dependency AUTH-F7's two-mechanism logout.
-* **Status** OPEN — BLOCKED
+* **Status** OPEN — BLOCKED. **AUTH-005 encoded the dispositions without
+  performing any migration**: `resolve_canonical_account` refuses with
+  `no_identity_evidence` (PENDING_PROOFING), `link_not_validated` (CONFLICT),
+  `ambiguous_identity` (AMBIGUOUS) or proceeds on exactly one validated link
+  (DETERMINISTIC_MATCH). Nothing matches on integer id, username, email, phone,
+  name, role, `lab_id`, organization or MPI proximity. Noted in passing: the
+  AMBIGUOUS branch is unreachable through the database, because the migrated
+  schema carries a unique constraint on `(source_kind, legacy_account_id)`.
+  AUTH-005 also found the concrete cost of this blocker — the legacy OTP path
+  cannot write a verification record at all, because
+  `VerificationRecord.account_id` is a non-null foreign key to `niam_accounts`
+  and legacy accounts have none.
 
 ## AUTH-F9 · P3 · Mapper configuration depends on import order
 * **Area** maintainability

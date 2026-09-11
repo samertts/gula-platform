@@ -190,62 +190,61 @@ def test_defect_one_boolean_serves_two_different_verification_purposes() -> None
         )
 
 
-def test_defect_a_health_data_linkage_gate_reads_the_ambiguous_boolean() -> None:
-    """AUTH-V3, downstream. Where the conflation actually bites.
+def test_the_health_data_linkage_gate_now_reads_identity_evidence() -> None:
+    """NR-039 — RESOLVED by AUTH-005.
 
-    ``CitizenRelationshipService.activate`` links a legacy account to a citizen
-    and a patient, with a scope — it grants sight of a person's health data. It
-    refuses unless the source account is "active and verified". That gate reads
-    the boolean an OTP sets, while its message means identity.
+    `CitizenRelationshipService.activate` links an account to a citizen and a
+    patient, with a scope. It used to refuse unless the source account was
+    "active and verified", reading the boolean an emailed six-digit code sets.
+    It now consults `can_link_health_identity`, which requires identity-purpose
+    assurance at L2 from a record only a trusted server-side verifier can write.
 
-    The activation is ministry-authorized, so this is a misinformed human
-    decision rather than a self-service escalation. That is why it is recorded
-    and tested rather than silently re-gated: what assurance a ministry actor
-    must have before linking health data is a policy decision, not a patch.
+    The ministry authorization that guards the endpoint is unchanged and still
+    required. It authorizes the *operation*; the verification record establishes
+    the *person*. Neither substitutes for the other.
     """
     source = (APP / "identity" / "services" / "citizen_relationship_service.py").read_text(
         encoding="utf-8"
     )
-    assert "not source.is_verified" in source, "the gate changed; re-derive AUTH-V3"
-    assert "AssuranceEngine" not in source, (
-        "the linkage now consults the assurance engine — AUTH-V3 is resolved, rewrite this test"
+    assert "can_link_health_identity" in source, "the identity gate was removed"
+    assert "not source.is_verified" not in source, (
+        "activation reads the ambiguous boolean again; NR-039 has regressed"
     )
+    assert "identity_assurance" in source, "the activation record no longer states what was proven"
 
 
-def test_defect_the_client_supplies_its_own_identity_assurance_level() -> None:
-    """AUTH-V1 — ``POST /niam/trust/assurance-profiles`` takes the answer.
+def test_the_assurance_endpoint_no_longer_accepts_an_answer() -> None:
+    """NR-038 — RESOLVED by AUTH-005.
 
-    ``ial``, ``aal``, ``fal``, ``assessed_by`` and ``evidence`` all arrive from
-    the caller and are written with ``status="active"``. No verification record
-    is consulted, and the caller names its own assessor. The route is behind
-    NIAM authentication, which the application cannot currently reach with a
-    legacy token — so this is latent in exactly the way NR-035 was, and goes
-    live with the bridge.
+    `POST /niam/trust/assurance-profiles` used to take `ial`, `aal`, `fal`,
+    `assessed_by` and `evidence` from the caller and write them with
+    `status="active"`. The route now names a subject and nothing else: the
+    profile is derived from `niam_verification_records` and the assessor is the
+    authenticated actor.
     """
     from app.identity.trust import routes as trust_routes
 
-    params = inspect.signature(trust_routes.create_assurance_profile).parameters
-    for client_supplied in ("ial", "aal", "fal", "assessed_by", "evidence"):
-        assert client_supplied in params, (
-            f"{client_supplied} is no longer a request parameter — AUTH-V1 may be resolved"
+    params = set(inspect.signature(trust_routes.create_assurance_profile).parameters)
+    for client_authored in ("ial", "aal", "fal", "assessed_by", "evidence"):
+        assert client_authored not in params, (
+            f"{client_authored} is a request parameter again; NR-038 has regressed"
         )
+    assert "account_id" in params, "the route no longer names the subject account"
 
-    source = (APP / "identity" / "trust" / "services.py").read_text(encoding="utf-8")
-    assert "VerificationRecord" not in source and "AssuranceEngine" not in source, (
-        "the trust service now derives assurance from verification evidence; "
-        "AUTH-V1 is resolved and this test must be rewritten to pin that"
+    service = (APP / "identity" / "trust" / "services.py").read_text(encoding="utf-8")
+    assert "AssuranceEngine" in service, (
+        "the trust service no longer derives assurance from verification evidence"
     )
 
 
-def test_defect_authentication_strength_raises_identity_assurance() -> None:
-    """AUTH-V2, second vocabulary. ``_calculate_overall`` averages three axes.
+def test_authentication_strength_no_longer_raises_identity_assurance() -> None:
+    """AUTH-V2's second half — RESOLVED by AUTH-005.
 
-    IAL (who you are), AAL (how you signed in) and FAL (how you federated) are
-    independent. Averaging them lets a hardware key and a strong federation
-    lift an identity that was never proofed beyond IAL1 to an overall IAL2 —
-    the same substitution the L0-L5 ladder allowed, in different notation.
+    `_calculate_overall` averaged IAL, AAL and FAL, so a hardware key and a
+    strong federation lifted an identity proofed only to IAL1 up to an overall
+    IAL2. Independent axes do not average: the overall is the weakest of them.
     """
-    from app.identity.trust.models import AAL1, AAL3, FAL1, FAL3, IAL1
+    from app.identity.trust.models import AAL1, AAL3, FAL1, FAL3, IAL1, IAL3
     from app.identity.trust.services import AssuranceService
 
     calculate = AssuranceService.__dict__["_calculate_overall"]
@@ -253,30 +252,43 @@ def test_defect_authentication_strength_raises_identity_assurance() -> None:
     class _Unbound:
         pass
 
-    weak = calculate(_Unbound(), IAL1, AAL1, FAL1)
-    strong_auth_only = calculate(_Unbound(), IAL1, AAL3, FAL3)
-    assert weak == IAL1
-    assert strong_auth_only != IAL1, (
-        "the averaging was removed — AUTH-V2's second half is resolved, rewrite this test"
+    assert calculate(_Unbound(), IAL1, AAL3, FAL3) == IAL1, (
+        "strong authentication raised an unproofed identity again"
+    )
+    assert calculate(_Unbound(), IAL3, AAL1, FAL1) == IAL1, (
+        "strong proofing hid weak authentication"
     )
 
 
-def test_defect_the_canonical_verification_domain_is_wired_to_nothing() -> None:
-    """AUTH-V4 — built, migrated, unit-tested, and called by no route.
+def test_the_verification_domain_now_has_a_writer() -> None:
+    """NR-040 — RESOLVED by AUTH-005.
 
-    ``niam_verification_records`` exists and is migration-backed; the record
-    service, the provider protocol and the assurance engine are all present.
-    No production module constructs a record or calls the service, so every
-    verification the platform actually performs happens outside the model
-    designed to hold it.
+    The domain was built, migrated, unit-tested and never written to. One place
+    *read* it — `_professional_eligible` gates professional workspace creation
+    on a verified professional record — so with no writer that query could only
+    ever return nothing and professional workspaces were unreachable.
+
+    `VerificationWorkflow` is the missing half. This pins that the writer exists
+    and drives the existing state machine rather than bypassing it.
     """
+    workflow_source = (
+        APP / "identity" / "services" / "verification_workflow.py"
+    ).read_text(encoding="utf-8")
+    assert "VerificationRecord(" in workflow_source, "the workflow no longer creates records"
+    assert "VerificationRecordService.transition" in workflow_source, (
+        "the workflow bypasses the state machine"
+    )
+    assert "VerificationRecordService.apply_provider_result" in workflow_source, (
+        "the workflow scores results itself instead of using the policy"
+    )
+
     callers = sorted(
         path.relative_to(APP).as_posix()
         for path in APP.rglob("*.py")
         if "__pycache__" not in path.parts
         and "VerificationRecordService" in path.read_text(encoding="utf-8", errors="ignore")
     )
-    assert callers == ["identity/services/verification_record_service.py"], (
-        f"the verification domain gained callers: {callers}. AUTH-V4 is moving — "
-        "check each caller records method, purpose and assurance, then rewrite this test."
-    )
+    assert callers == [
+        "identity/services/verification_record_service.py",
+        "identity/services/verification_workflow.py",
+    ], f"the set of modules driving the verification state machine changed: {callers}"

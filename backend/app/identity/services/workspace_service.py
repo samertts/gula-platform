@@ -14,6 +14,7 @@ from app.identity.models.administrative_structure import (
     OwnershipStatus,
     RepresentativeStatus,
 )
+from app.identity.models.niam_organization import NIAMOrganization
 from app.identity.models.verification_record import (
     VerificationRecord,
     VerificationRecordStatus,
@@ -127,6 +128,13 @@ class WorkspaceService:
         result = await self.session.execute(direct)
         workspaces = {workspace.id: workspace for workspace in result.scalars().all()}
 
+        # AUTH-F5. Eligibility is a conjunction, not a single fact: an active
+        # standing in an organization, an organization that is itself live, and
+        # a workspace that is available. Membership in `niam_memberships` is
+        # deliberately *not* consulted — it is necessary context, not a grant,
+        # and wiring it here would hand access to every member of every
+        # organization. Whether membership should confer eligibility is a
+        # platform policy decision, recorded as AUTH-F5 and still open.
         organization_ids = select(OrganizationRepresentative.organization_id).where(
             OrganizationRepresentative.account_id == account.id,
             OrganizationRepresentative.status == RepresentativeStatus.active.value,
@@ -135,9 +143,16 @@ class WorkspaceService:
             OrganizationOwnership.account_id == account.id,
             OrganizationOwnership.status == OwnershipStatus.active.value,
         )
+        # The organization's own standing was not checked before AUTH-005: a
+        # representative of a deactivated organization kept its workspaces.
+        live_organization_ids = select(NIAMOrganization.id).where(
+            NIAMOrganization.id.in_(organization_ids.union(ownership_ids)),
+            NIAMOrganization.is_active.is_(True),
+            NIAMOrganization.status == "active",
+        )
         organization_result = await self.session.execute(
             select(Workspace).where(
-                Workspace.organization_id.in_(organization_ids.union(ownership_ids)),
+                Workspace.organization_id.in_(live_organization_ids),
                 Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
             ),
         )

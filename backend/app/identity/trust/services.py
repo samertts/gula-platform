@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
+from app.identity.services.verification_service import AssuranceLevel
 
 from .models import (
     AAL1,
@@ -121,53 +122,94 @@ class AssuranceService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def assign_profile(
+    # NR-038. This method used to take `ial`, `aal`, `fal` and `assessed_by` from
+    # its caller and write them through, so a client named its own assurance and
+    # its own assessor. There is now nothing a caller can say that changes the
+    # answer: the profile is derived from the account's verification records,
+    # which only a trusted server-side verifier can create.
+    _IAL_FOR_IDENTITY_ASSURANCE = {
+        AssuranceLevel.L0: IAL1,
+        AssuranceLevel.L1: IAL1,   # a delivered code is not identity proofing
+        AssuranceLevel.L2: IAL2,   # an authoritative source was consulted
+        AssuranceLevel.L3: IAL3,   # in-person or government-attested
+    }
+
+    async def derive_profile(
         self,
+        *,
+        account_id: str,
         person_id: str,
         identity_id: str,
-        ial: str = IAL1,
-        aal: str = AAL1,
-        fal: str = FAL1,
-        assessed_by: str | None = None,
-        evidence: dict | None = None,
+        assessed_by: str,
     ) -> IdentityAssuranceProfile:
-        overall = self._calculate_overall(ial, aal, fal)
+        """Compute the profile from evidence; accept no assurance from the caller.
+
+        `assessed_by` is supplied by the route from the authenticated actor, never
+        from the request body.
+        """
+        from app.identity.services.verification_service import (
+            AssuranceEngine,
+            VerificationPurpose,
+        )
+
+        results = await self._verification_results(account_id)
+        profile = AssuranceEngine.profile_for(results)
+        identity_level = profile.level_for(VerificationPurpose.identity)
+        ial = self._IAL_FOR_IDENTITY_ASSURANCE[identity_level]
+
+        # AAL and FAL describe how the holder authenticated and how the identity
+        # federated. Neither is derivable from verification records, and guessing
+        # upward is exactly the substitution AUTH-004 removed, so both sit at the
+        # floor until the platform collects evidence for them.
         entity = IdentityAssuranceProfile(
             uuid=str(uuid.uuid4()),
             person_id=person_id,
             identity_id=identity_id,
             ial=ial,
-            aal=aal,
-            fal=fal,
-            overall_assurance=overall,
-            profile_version="1.0",
+            aal=AAL1,
+            fal=FAL1,
+            overall_assurance=self._calculate_overall(ial, AAL1, FAL1),
+            profile_version="2.0",
             assessed_by=assessed_by,
             assessed_at=datetime.now(UTC),
             status="active",
-            evidence=evidence,
+            evidence={
+                "derived_from": "niam_verification_records",
+                "identity_assurance": identity_level.value,
+                "contact_assurance": profile.level_for(VerificationPurpose.contact).value,
+                "professional_assurance": profile.level_for(VerificationPurpose.professional).value,
+                "organization_assurance": profile.level_for(VerificationPurpose.organization).value,
+            },
             is_active=True,
         )
         self.session.add(entity)
         await self.session.flush()
         return entity
 
+    async def _verification_results(self, account_id: str) -> list:
+        from sqlalchemy import select as _select
+
+        from app.identity.models.verification_record import VerificationRecord
+        from app.identity.services.identity_link_policy import result_from_record
+
+        rows = await self.session.execute(
+            _select(VerificationRecord).where(VerificationRecord.account_id == account_id),
+        )
+        return [result_from_record(record) for record in rows.scalars().all()]
+
     def _calculate_overall(self, ial: str, aal: str, fal: str) -> str:
-        levels = {IAL1: 1, IAL2: 2, IAL3: 3, IAL4: 4}
-        aal_map = {AAL1: 1, AAL2: 2, AAL3: 3}
-        fal_map = {FAL1: 1, FAL2: 2, FAL3: 3}
-        scores = [
-            levels.get(ial, 0),
-            aal_map.get(aal, 0),
-            fal_map.get(fal, 0),
-        ]
-        avg = sum(scores) / len(scores)
-        if avg >= 4:
-            return IAL4
-        if avg >= 3:
-            return IAL3
-        if avg >= 2:
-            return IAL2
-        return IAL1
+        """The weakest of the three axes, never their average.
+
+        AUTH-004 measured the previous behaviour: averaging let AAL3 and FAL3
+        lift an unproofed IAL1 identity to an overall IAL2, so authentication
+        strength substituted for identity proofing. Independent axes do not
+        average — an assurance claim is only as good as its weakest component.
+        """
+        ial_rank = {IAL1: 1, IAL2: 2, IAL3: 3, IAL4: 4}
+        aal_rank = {AAL1: 1, AAL2: 2, AAL3: 3}
+        fal_rank = {FAL1: 1, FAL2: 2, FAL3: 3}
+        weakest = min(ial_rank.get(ial, 0), aal_rank.get(aal, 0), fal_rank.get(fal, 0))
+        return {1: IAL1, 2: IAL2, 3: IAL3, 4: IAL4}.get(weakest, IAL1)
 
     async def get_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
         stmt = select(IdentityAssuranceProfile).where(

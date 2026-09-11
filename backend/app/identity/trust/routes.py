@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.models.audit import AuditAction
+from app.identity.services.audit_service import AuditService
 
 from .services import (
     AssuranceService,
@@ -18,6 +21,31 @@ from .services import (
 )
 
 router = APIRouter(prefix="/niam/trust", tags=["NIAM Trust"])
+
+
+async def _require_assurance_administrator(db: AsyncSession, actor: NiamActor) -> None:
+    """Only an active administrative assignment may act for another account.
+
+    Fail-closed: no assignment, an inactive one, or one in another organization
+    is a refusal. This guards *who may ask*; the answer itself is derived from
+    evidence either way, so a forged request cannot raise an assurance level.
+    """
+    from sqlalchemy import select as _select
+
+    from app.identity.models.assignment import Assignment, AssignmentStatus
+
+    result = await db.execute(
+        _select(Assignment.id).where(
+            Assignment.account_id == actor.account.id,
+            Assignment.status == AssignmentStatus.active.value,
+            Assignment.is_active.is_(True),
+        ).limit(1),
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Asserting an assurance profile for another account requires an active administrative assignment",
+        )
 
 
 # ── Trust Frameworks ──────────────────────────────────────────────────────────
@@ -114,28 +142,55 @@ async def activate_framework(
 
 @router.post("/assurance-profiles")
 async def create_assurance_profile(
+    account_id: str,
     person_id: str,
     identity_id: str,
-    ial: str = "IAL1",
-    aal: str = "AAL1",
-    fal: str = "FAL1",
-    assessed_by: str | None = None,
-    evidence: dict | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    """Recompute an account's assurance profile from its verification evidence.
+
+    NR-038. This route used to accept `ial`, `aal`, `fal`, `assessed_by` and
+    `evidence` from the caller and write them through with `status="active"`, so
+    a client named its own assurance level, its own assessor and its own
+    evidence, with no verification record consulted.
+
+    Nothing a caller sends can raise a level now: the profile is derived from
+    `niam_verification_records`, which only a trusted server-side verifier can
+    write, and the assessor is the authenticated actor. The request names a
+    subject; it does not supply an answer.
+
+    An account may recompute its own profile. Asserting for a different account
+    additionally requires an active administrative assignment — and even then it
+    asserts nothing, because the inputs are evidence rather than claims.
+    """
+    if account_id != actor.account.id:
+        await _require_assurance_administrator(db, actor)
+
     service = AssuranceService(db)
-    entity = await service.assign_profile(
+    entity = await service.derive_profile(
+        account_id=account_id,
         person_id=person_id,
         identity_id=identity_id,
-        ial=ial,
-        aal=aal,
-        fal=fal,
-        assessed_by=assessed_by,
-        evidence=evidence,
+        assessed_by=f"account:{actor.account.id}",
+    )
+    await AuditService(db).record(
+        AuditAction.assurance_profile_assigned,
+        actor_id=actor.account.id,
+        actor_type="account",
+        target_type="assurance_profile",
+        target_id=entity.id,
+        metadata={
+            "subject_account_id": account_id,
+            "derived": True,
+            "ial": entity.ial,
+            "overall_assurance": entity.overall_assurance,
+        },
     )
     return {
         "uuid": entity.uuid,
         "id": entity.id,
+        "ial": entity.ial,
         "overall_assurance": entity.overall_assurance,
         "status": entity.status,
     }
