@@ -99,6 +99,116 @@ the moment a route supplies `tenant_id`, because at that moment the question has
 been answered and the answer belongs in this document rather than in a keyword
 argument.
 
+## 3.2 [Unit 7] Laboratory scope is eliminated, and the surface is larger than fifteen tables
+
+§3.1 left four candidates and chose none. That was the right call from inside
+`task_engine` and `workflow_runtime`, which is where it was made. Looked at from
+the platform, one of the four is not a candidate at all.
+
+### The scope vocabulary
+
+Two enumerations decide what a role or a membership may be scoped **to**:
+
+| Enum | Owner | Members |
+| --- | --- | --- |
+| `RoleScopeType` | `app/identity/models/authorization.py` | organization, facility, department, unit, workspace |
+| `MembershipScopeType` | `app/identity/models/membership.py` | organization, facility, department, unit, workspace |
+
+There is no `lab` member and no `governorate` member in either.
+
+The consequence is not stylistic. A national artifact keyed by `lab_id` cannot be
+named by any role assignment, so nothing can be granted over it and nothing can
+be denied over it. Adopting `TenantMixin` on a national table would not give it
+weak tenancy; it would give it tenancy the authorization model cannot read.
+
+**The vocabulary is enforced, not decorative.**
+`MembershipService._validate_context` looks the scope up in a mapping of exactly
+those five members and raises `Unsupported membership scope` on a miss, so
+`scope_type` — a `String(30)` the caller supplies — cannot become free text.
+`AuthorizationServiceV2` takes an assignment's `scope_type` from the **role**,
+never from the request. Every table behind this (`niam_role_assignments`,
+`niam_memberships`, `niam_organizations`) is migration-backed.
+
+**Organization is the mandatory root.** `niam_role_assignments.organization_id`
+is `nullable=False`; `facility_id`, `department_id`, `unit_id` and `workspace_id`
+are nullable narrowings beneath it. All five are ULID `String(26)` into `niam_*`
+tables, where `TenantMixin.lab_id` is an `INTEGER` into `labs.id` — so the
+laboratory option is also a type-level mismatch with the columns that express
+scope.
+
+So §3.1's table loses a row:
+
+| Candidate | Status after Unit 7 |
+| --- | --- |
+| `TenantMixin.lab_id` | **eliminated** — unnameable by any role scope, and type-incompatible with the scope columns |
+| governorate | **eliminated as a scope** — there is no governorate entity to point at. `niam_organizations.governorate` is a nullable `String(50)` *attribute* of an organization (with a `find_by_governorate` lookup beside it), so a governorate is a property of the scope root, not a level of it |
+| organization root (`String(26)` → `niam_organizations`) | open |
+| genuinely national (deliberately unscoped) | open |
+
+### The question that remains
+
+> Is national orchestration scoped at the organization root, or is it genuinely
+> national and therefore deliberately unscoped?
+
+That is still reserved under §44. Both surviving answers are defensible, and the
+difference between them is jurisdictional rather than technical: whether a
+ministry workflow belongs to the organization that started it or to the state.
+Unit 7 narrows the decision; it does not take it.
+
+### Blanket tenancy would be the opposite error
+
+`app/national/ecosystem` is the counter-example, and it is the strongest one
+available because it is **built**: six tables, all migration-backed, none
+tenanted — `ecosystem_partners` and its credentials, certificates, rate limits,
+audit logs and agreements. It is a registry of external partners, and an external
+partner sits outside every tenant by definition. Giving those rows a tenant would
+be a modelling error dressed as hardening.
+
+That is why the guard forbids one specific adoption rather than requiring a
+column.
+
+### The surface, measured
+
+NR-065 opened on fifteen tables in two packages. Across `app/national` the same
+condition holds much more widely:
+
+| Package | Tables | Untenanted | Built |
+| --- | ---: | ---: | ---: |
+| background_platform | 4 | 4 | 0 |
+| document_platform | 6 | 6 | 0 |
+| domain | 47 | 22 | 0 |
+| ecosystem | 6 | 6 | **6** |
+| observability | 8 | 8 | 0 |
+| reference | 16 | 16 | 0 |
+| rules_engine | 2 | 2 | 0 |
+| scheduling_platform | 7 | 6 | 0 |
+| search_platform | 2 | 0 | **2** |
+| task_engine | 7 | 7 | 0 |
+| workflow_runtime | 8 | 7 | 0 |
+| **total** | **113** | **84** | **8** |
+
+Seven packages are untenanted in full (background_platform, document_platform,
+ecosystem, observability, reference, rules_engine, task_engine — 49 tables, six
+of them built). Only eight of 113 national tables are built at all, which is why
+this is a decision to take before building rather than a migration to write now.
+
+### The one exception, declared rather than waived
+
+Exactly two tables under `app/national` carry `lab_id`:
+`national_search_saved_searches` and `national_search_results`. Both are built
+and both filter on it correctly. What they scope is a user's own saved searches
+and their results — a laboratory-local convenience that happens to live under
+`app/national/`, not a national capability wearing lab tenancy. It is listed as
+an allowed exception, and the guard requires it to stay built: an exception
+granted to an unbuilt table protects nothing.
+
+Held mechanically by `backend/tests/test_national_scope_vocabulary.py` (7 tests,
+gated in `iam-hardening.yml`): the vocabulary may not gain a laboratory member,
+an unsupported scope must still be refused at the service boundary, organization
+must stay the mandatory root, and no further national table may adopt `lab_id`
+or `TenantMixin`. Each was negative-proven by reintroducing the defect and
+confirming the intended failure.
+
 ## 4. Audit
 
 Neither package contains a call reaching the hash-chained audit log. That gap is
@@ -148,11 +258,18 @@ national task surface. That estimate was wrong and is corrected here.
 ## 8. What is applied here
 
 The precondition, additively and in tests only:
-`backend/tests/test_orchestration_build_precondition.py`. No orchestration table
+`backend/tests/test_orchestration_build_precondition.py` and, from Unit 7,
+`backend/tests/test_national_scope_vocabulary.py`. No orchestration table
 may be built while it lacks a tenant column; no package may have tables built
 while it contains no canonical audit call; the untenanted ledger may shrink and
 may not grow, and an entry that gains tenancy must be removed rather than left
 behind.
+
+Unit 7 adds no table and no column. It eliminates one candidate, records the
+two that survive, and makes the elimination hold: the scope vocabulary may not
+gain a laboratory member, an unsupported scope must still be refused at the
+service boundary, organization must stay the mandatory root, and no further
+national table may adopt `lab_id` or `TenantMixin`.
 
 No runtime code changed. No table built. The 15 stay in the schema-fidelity
 unbuilt ledger with their endpoint count stated (NR-058), so the state remains

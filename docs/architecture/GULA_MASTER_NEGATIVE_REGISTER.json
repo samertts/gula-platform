@@ -1,15 +1,15 @@
 {
   "document": "GULA Master Negative Register",
-  "generated": "2026-09-11T17:41:46Z",
-  "head_commit": "144cda39",
+  "generated": "2026-09-12T00:00:00Z",
+  "head_commit": "02ca3f9d",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 67,
+    "total": 68,
     "by_severity": {
       "P0": 10,
       "P1": 29,
-      "P2": 21,
+      "P2": 22,
       "P3": 7
     }
   },
@@ -2139,11 +2139,11 @@
       "domain": "national (task_engine, workflow_runtime)",
       "severity": "P1",
       "priority": 2,
-      "status": "BLOCKED ON A DECISION — tenancy model undecided; preconditions guarded, nothing built",
-      "title": "The 15 orchestration tables are effectively untenanted, neither package reaches the audit chain, and the tenancy model is undecided",
-      "description": "NR-059 left activation blocked on product intent. Unit 3 ran the checks the approved decision actually gates on and found two more blockers that do not depend on that question. All 15 task and workflow tables extend `BaseEntity` -- the one national base carrying neither TenantMixin nor AuditMixin, while TenantEntity, AuditEntity and TenantAuditEntity all exist alongside it. Only national_workflow_executions has a tenant column. The task listing path filters on status, priority, category, assignee, queue_id and a title LIKE, and on nothing else, because there is nothing else to filter on. Neither package contains a call reaching the hash-chained audit log, and there is no idempotency key or row lock anywhere in a package containing a saga engine and a workflow state machine. SHARPENED: the earlier reading of '1 of 15 tenanted' was too generous. `tenant_id` appears in exactly six places across both packages -- the column, a domain-entity field defaulting to None, a service parameter defaulting to None, the pass-through to the model and two serialisation points -- and NO route supplies it. The routes derive created_by from current_user.id and stop. So the column is written NULL on every path that could write it, and the surface is untenanted with one column that looks like tenancy and is not.",
+      "status": "NARROWED — laboratory scope eliminated by proof; organization-root vs genuinely-national still reserved under §44; guarded platform-wide",
+      "title": "National orchestration tenancy is undecided; laboratory scope is now eliminated, and the untenanted surface is 84 of 113 national tables, not 15",
+      "description": "NR-059 left activation blocked on product intent. Unit 3 ran the checks the approved decision actually gates on and found two more blockers that do not depend on that question. All 15 task and workflow tables extend `BaseEntity` -- the one national base carrying neither TenantMixin nor AuditMixin, while TenantEntity, AuditEntity and TenantAuditEntity all exist alongside it. Only national_workflow_executions has a tenant column. The task listing path filters on status, priority, category, assignee, queue_id and a title LIKE, and on nothing else, because there is nothing else to filter on. Neither package contains a call reaching the hash-chained audit log, and there is no idempotency key or row lock anywhere in a package containing a saga engine and a workflow state machine. SHARPENED: the earlier reading of '1 of 15 tenanted' was too generous. `tenant_id` appears in exactly six places across both packages -- the column, a domain-entity field defaulting to None, a service parameter defaulting to None, the pass-through to the model and two serialisation points -- and NO route supplies it. The routes derive created_by from current_user.id and stop. So the column is written NULL on every path that could write it, and the surface is untenanted with one column that looks like tenancy and is not. UNIT 7 (platform-wide evidence): the earlier verdict listed four candidates and chose none, but it was reached from inside task_engine and workflow_runtime alone. RoleScopeType and MembershipScopeType -- the two vocabularies that decide what a role or membership may be scoped to -- are organization|facility|department|unit|workspace. Neither has a lab member or a governorate member, so a national artifact keyed by lab_id could not be named by any role assignment: nothing could be granted over it and nothing denied. The vocabulary is enforced rather than declared (MembershipService._validate_context raises 'Unsupported membership scope' on a miss; AuthorizationServiceV2 takes scope_type from the role, never from the caller) and every table behind it is built. niam_role_assignments.organization_id is nullable=False with facility/department/unit/workspace as nullable narrowings, all ULID String(26) into niam_* -- where TenantMixin.lab_id is an INTEGER into labs.id, so the laboratory option is also a type-level mismatch. TenantMixin is therefore eliminated, and governorate is eliminated as a *scope* because there is no governorate entity to point at: niam_organizations.governorate is a nullable String(50) attribute of an organization, not a level above or below one. Remaining question, still reserved: organization root, or genuinely national and deliberately unscoped. Surface re-measured across app/national: 113 tables, 84 untenanted, only 8 built; seven packages untenanted in full (background_platform, document_platform, ecosystem, observability, reference, rules_engine, task_engine = 49 tables, 6 built). Blanket tenancy would be the opposite error: app/national/ecosystem is six BUILT untenanted tables registering external partners, which sit outside every tenant by definition. Exactly two national tables carry lab_id (national_search_saved_searches, national_search_results) -- user-local saved searches, both built, declared as the one allowed exception rather than waived.",
       "root_cause": "The two packages were implemented against the bare BaseEntity rather than TenantAuditEntity, and were never given a schema, so neither the tenancy gap nor the audit gap was ever exercised.",
-      "evidence": "AST over app/national/task_engine and app/national/workflow_runtime: 15 tables, 1 with a tenant column (national_workflow_executions). national_tasks has 22 columns and no tenant scoping of any kind. Zero word-boundary matches for log_action / audit_service / AuditLog( / log_access_decision in either package. national_task_audit_logs has 6 columns (task_id, action, actor_id, previous_status, new_status, details) -- no chain hash, no previous-hash link, no off-database anchor. WorkflowExecutionRepository.save loads by id, mutates and commits without reading `version`.",
+      "evidence": "AST over app/national/task_engine and app/national/workflow_runtime: 15 tables, 1 with a tenant column (national_workflow_executions). national_tasks has 22 columns and no tenant scoping of any kind. Zero word-boundary matches for log_action / audit_service / AuditLog( / log_access_decision in either package. national_task_audit_logs has 6 columns (task_id, action, actor_id, previous_status, new_status, details) -- no chain hash, no previous-hash link, no off-database anchor. WorkflowExecutionRepository.save loads by id, mutates and commits without reading `version`. | UNIT 7: app/identity/models/authorization.py RoleScopeType (5 members); app/identity/models/membership.py MembershipScopeType (5 members, identical); app/identity/services/membership_service.py:157-181 _validate_context; app/identity/services/authorization_service_v2.py:177 scope_type=role.scope_type; AST census of app/national = 113 tables / 84 untenanted / 8 built; backend/tests/test_national_scope_vocabulary.py (7 tests, all negative-proven).",
       "affected_components": "app/national/task_engine/*, app/national/workflow_runtime/*, the 40 registered endpoints NR-059 classified, 2 frontend-v3 pages",
       "affected_users": "None today — no migration builds these tables",
       "clinical_impact": "Latent. Clinical coordination tasks would be visible and actionable across tenants.",
@@ -2161,7 +2161,7 @@
       "acceptance_criteria": "Every orchestration table carries tenancy and its mutations reach the audit chain before any migration creates it.",
       "regression_risk": "None from this change; tests and documentation only.",
       "owner": "Platform + Security",
-      "related_tests": "backend/tests/test_orchestration_build_precondition.py (5 tests)",
+      "related_tests": "backend/tests/test_orchestration_build_precondition.py (5 tests), backend/tests/test_national_scope_vocabulary.py",
       "related_files": "app/national/base.py, app/national/task_engine/infrastructure/models.py, app/national/workflow_runtime/infrastructure/models.py, app/national/task_engine/infrastructure/repository.py",
       "related_adrs": "docs/architecture/NR-065-orchestration-build-preconditions.md, docs/architecture/NR-059-endpoint-classification.md",
       "related_contracts": "",
@@ -2169,7 +2169,7 @@
       "complexity": "L",
       "can_fix_now": false,
       "blocker": true,
-      "evidence_strength": "STRONG (AST over both packages, cross-referenced with migration-derived built tables; read paths traced by hand)"
+      "evidence_strength": "EXECUTED TEST + STATIC ANALYSIS (AST census, enforced enum executed)"
     },
     {
       "id": "NR-066",
@@ -2246,6 +2246,44 @@
       "can_fix_now": false,
       "blocker": true,
       "evidence_strength": "STRONG (import-resolved AST across app/, cross-referenced with migration-derived built tables and factory-parsed router registration)"
+    },
+    {
+      "id": "NR-068",
+      "category": "Capability completeness / Cryptographic hygiene",
+      "domain": "National ecosystem (external partner integration)",
+      "severity": "P2",
+      "priority": 3,
+      "status": "MEASURED — latent, not live; no partner authentication path exists to be bypassed",
+      "title": "The external-partner credential subsystem is a registry with no enforcement path, and its non-API-key comparison branch is plaintext and non-constant-time",
+      "description": "app/national/ecosystem ships six BUILT tables (ecosystem_partners, _partner_credentials, _partner_certificates, _partner_rate_limits, _partner_audit_logs, _partner_agreements) and is registered in factory.py (ecosystem_router, ecosystem_gateway_router). Two gaps. (1) CredentialManager.validate_credential (partners/service.py:187) has ZERO callers anywhere in app/ -- partner credential validation is never performed, so registering a partner credential grants and denies nothing. (2) Inside it, credential_type == 'api_key' hashes the presented value and compares with hmac.compare_digest (correct), but every other credential_type falls through to `credential.credential_value != credential_value` -- a plaintext, non-constant-time comparison against a stored value. That branch is unreachable today because issue_api_key is the only issuer and always stores a sha3_512 HMAC under credential_type='api_key'; the first non-api-key issuer makes it live. The gateway alongside it is not an enforcement point either: GatewayPolicyEngine keeps its policies and routes in plain in-process dicts (per-worker, not persisted), the router is guarded by require_permission('system:admin'), and nothing outside app/national/ecosystem references the engine. It evaluates a dict an admin supplies; it does not sit on any request path. So no partner traffic is authenticated anywhere, which is why (1) has caused no incident and why (2) has never executed. This is recorded as latent, NOT as a live vulnerability.",
+      "root_cause": "The ecosystem package was built as a data model plus an admin-facing API without the runtime that would consume it: no ingress path resolves a partner, so the credential check has no caller and the policy engine has no traffic.",
+      "evidence": "grep for 'validate_credential' across backend/ returns exactly one hit, its own definition (app/national/ecosystem/partners/service.py:187). grep for GatewayPolicyEngine / PartnerService / CredentialManager outside app/national/ecosystem returns nothing. policies.py:366-369 GatewayPolicyEngine.__init__ stores dict[str, BasePolicy] and dict[str, dict]. gateway/routes.py:13-17 router dependencies=[Depends(require_permission('system:admin'))]. partners/service.py:219 _hash_api_key = hmac.new(SECRET_KEY, api_key, hashlib.sha3_512); the api_key branch uses hmac.compare_digest, the else branch uses `!=`.",
+      "affected_components": "app/national/ecosystem/partners/service.py, app/national/ecosystem/gateway/policies.py, app/national/ecosystem/gateway/routes.py, app/national/ecosystem/routes.py",
+      "affected_users": "None today (no partner ingress path exists); external integration partners once one does",
+      "clinical_impact": "None currently — no clinical data flows through the ecosystem gateway",
+      "security_impact": "LATENT. If a non-api_key credential type is ever issued, secrets would be stored in plaintext and compared non-constant-time, exposing them to timing analysis and to any read of ecosystem_partner_credentials. Separately, a future ingress path that assumes validate_credential is wired would authenticate nobody.",
+      "data_integrity_impact": "None — no writes are gated on the unreachable check",
+      "operational_impact": "Six built tables carry state that changes no behaviour; operators may read the registry as enforcement",
+      "scalability_impact": "None",
+      "legal_impact": "A partner agreement row implies a governed integration that is not in fact governed at runtime",
+      "dependencies": "NR-065 (the same package is the counter-example proving national tables are not all tenant-scoped)",
+      "intersections": "NR-067 (built tables whose code paths are unreachable is the mirror of unbuilt tables whose code paths are reachable)",
+      "contradictions": "None identified",
+      "recommended_fix": "Decide the package's disposition under an activation review before writing code: either build the partner ingress path (resolve partner -> validate credential -> evaluate policy -> audit) or withdraw the admin surface. If it is activated, delete the plaintext else branch rather than repairing it -- every credential type should be stored hashed and compared with hmac.compare_digest, and a type that cannot be hashed (mTLS certificate) needs its own verification rather than a string equality.",
+      "minimal_safe_fix": "Make the else branch fail closed: reject an unsupported credential_type instead of comparing plaintext. That removes the trapdoor without deciding the package's future. Deliberately NOT applied here: it is a change to authentication behaviour in a package whose activation review has not happened, and CLAUDE.md reserves auth changes for a human.",
+      "verification_method": "Static: no caller of validate_credential; no reference to the engine outside the package. On activation: an executed test that an unsupported credential_type is refused, and that no credential value is ever stored unhashed.",
+      "acceptance_criteria": "Either (a) a registered ingress path resolves a partner and calls validate_credential, with every credential type hashed and constant-time compared, or (b) the ecosystem admin surface is withdrawn and its tables recorded as inactive.",
+      "regression_risk": "LOW for the minimal fix (an unreachable branch); MEDIUM-HIGH for activation",
+      "owner": "Platform architecture",
+      "related_tests": "None yet — an activation review precedes a guard here",
+      "related_files": "app/national/ecosystem/partners/service.py:187-219, app/national/ecosystem/gateway/policies.py:366, app/national/ecosystem/gateway/routes.py:13",
+      "related_adrs": "NR-065-orchestration-build-preconditions.md §3.2",
+      "related_contracts": "None",
+      "wave": "Deferred — requires activation review",
+      "complexity": "LOW to fail closed; HIGH to activate",
+      "can_fix_now": false,
+      "blocker": false,
+      "evidence_strength": "STATIC ANALYSIS (call-graph absence + source inspection)"
     }
   ]
 }
