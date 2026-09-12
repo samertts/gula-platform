@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 62,
+    "total": 63,
     "by_severity": {
       "P0": 10,
-      "P1": 25,
+      "P1": 26,
       "P2": 20,
       "P3": 7
     }
@@ -2056,6 +2056,44 @@
       "can_fix_now": false,
       "blocker": false,
       "evidence_strength": "STRONG for the lower bound (AST over the whole route surface); the upper bound is explicitly a proxy"
+    },
+    {
+      "id": "NR-063",
+      "category": "Security / Input validation",
+      "domain": "care_continuum, clinical, ehr (cross-domain)",
+      "severity": "P1",
+      "priority": 2,
+      "status": "LATENT — precondition guarded; blocks any schema build under these create paths",
+      "title": "103 create paths splat an unvalidated request body into an ORM constructor; 75 set no tenant or actor",
+      "description": "Found while trying to resolve NR-022's nine REVIEW sites. They could not be decided from their call sites, and the reason mattered more than the question: the call sites are generic passthroughs. A route takes a bare `data: dict` with no request model and hands it to `Model(**data)`. Measured across app/: 103 such constructions. 28 set tenant and/or actor server-side; 75 set neither, so the request body would decide every column including lab_id, verified_by and is_deleted.",
+      "root_cause": "Create paths were written as untyped dict passthroughs, so neither validation nor server-side tenancy has anywhere to live.",
+      "evidence": "AST scan for `Model(**param)` where param is a function argument, cross-referenced against the migration-derived built-table set. 103 sites; unguarded concentrated in care_continuum_service (40), clinical_service (18), ehr_service (17). The defensible pattern is `ClinicalTask(lab_id=lab_id, created_by=user_id, assigned_by=user_id, **data)` -- tenant and actor come from the authenticated user, a colliding body key raises TypeError rather than overriding, and those paths audit. CRITICAL SAFETY FACT: zero of the 75 unguarded sites targets a built table, so every such write currently fails with UndefinedTable before a row exists. The pattern is latent, not live. Detector note: server-setting occurs in two forms -- an explicit keyword and a pre-splat `data['key'] = value` mutation. The first version of this scan counted only the former and reported create_compliance_check as unguarded when it does set the actor by mutation; corrected before shipping, which moved the split from 27/76 to 28/75.",
+      "affected_components": "app/services/care_continuum_service.py, app/services/clinical_service.py, app/services/ehr_service.py, app/routes/care_continuum.py (41 `data: dict` routes)",
+      "affected_users": "None today — the target tables do not exist",
+      "clinical_impact": "Latent. If these tables were built, a caller could assert clinical attestations (verified_by, assessed_by) it did not make.",
+      "security_impact": "Latent tenant assignment: the 75 unguarded models are TenantAuditEntity subclasses, so lab_id would come from the request body rather than the authenticated user, contradicting CLAUDE.md security invariant #1. Blocked today only by the absent schema.",
+      "data_integrity_impact": "Latent: id, is_deleted and audit columns would be caller-settable.",
+      "operational_impact": "Blocks NR-022 and NR-059 schema work until the create paths are fixed.",
+      "scalability_impact": "n/a",
+      "legal_impact": "Latent: forged attestation of clinical review.",
+      "dependencies": "Blocks NR-059 activation and any National Core table build.",
+      "intersections": "NR-022, NR-059, NR-021 (the same tenant-isolation class, which was live there).",
+      "contradictions": "CLAUDE.md invariant #1 requires tenant scoping from current_user; these paths take it from the body.",
+      "recommended_fix": "Per create path: a Pydantic request model instead of `data: dict`, and tenant/actor set server-side from the authenticated user rather than accepted from the caller -- the pattern nhdw and hospital already use. Fix the path, then build the table; either order is fine, only the omission is unsafe.",
+      "minimal_safe_fix": "APPLIED, additive only: backend/tests/test_passthrough_write_precondition.py makes this a precondition rather than a prohibition. A table may not be built while its create path is an unguarded passthrough, no new unguarded module may appear, no declared module may gain sites, and the guarded pattern must not disappear. No runtime code changed.",
+      "verification_method": "4 tests: the scan still finds >=90 passthrough constructions; no unguarded passthrough reaches a built table; the unguarded ledger does not grow; the guarded pattern still exists. Negative-proven by marking cc_risk_stratification built in the evidence file -- the precondition fails naming (table, module, function) and passes again on byte-identical restore.",
+      "acceptance_criteria": "Every create path validates its input and sets tenancy server-side before its table is built.",
+      "regression_risk": "None from this change; tests only.",
+      "owner": "Platform + Security",
+      "related_tests": "backend/tests/test_passthrough_write_precondition.py (4 tests)",
+      "related_files": "see affected components",
+      "related_adrs": "docs/architecture/NR-022-stable-core-map.md",
+      "related_contracts": "",
+      "wave": "WAVE 2",
+      "complexity": "L",
+      "can_fix_now": false,
+      "blocker": true,
+      "evidence_strength": "STRONG (AST over the whole service surface, cross-referenced with migration-derived built tables)"
     }
   ]
 }
