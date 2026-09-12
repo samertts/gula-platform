@@ -209,6 +209,194 @@ must stay the mandatory root, and no further national table may adopt `lab_id`
 or `TenantMixin`. Each was negative-proven by reintroducing the defect and
 confirming the intended failure.
 
+## 3.3 [Unit 8] DECIDED — national orchestration is organization-rooted
+
+§3.2 left two candidates and called the choice jurisdictional. It is not. They
+are the same candidate, and one line of the bootstrap proves it.
+
+### The evidence that closed it
+
+`app/identity/bootstrap/seed.py::seed_platform_organization` creates
+
+```python
+NIAMOrganization(
+    org_id="GULA-PLATFORM",
+    name_en="GULA National Digital Health Platform",
+    org_type="ministry",
+    ...
+)
+```
+
+**The ministry is a row in `niam_organizations`.** So the national level already
+*is* an organization, and `RoleScopeType.organization` at that row already
+expresses national scope. "Organization root" and "genuinely national" were
+never rivals; the second is an instance of the first.
+
+That removes the last reason to invent anything. A `national` scope member would
+be a second spelling of `organization` at one particular row, and a nullable
+"unscoped means national" convention would be a third. Two spellings of one
+scope is how a query that filters on one silently misses the other.
+
+### The decision
+
+> **National workflow and task orchestration is scoped at the canonical
+> organization root, using the authorization vocabulary unchanged. National work
+> is organization scope at the ministry organization. Child rows carry no scope
+> column and inherit through their parent. Cross-organization coordination is
+> expressed by participants, never by widening the scope column.**
+
+Concretely, when these tables are built:
+
+| Table | Scope | Why |
+| --- | --- | --- |
+| `national_workflow_definitions` | `organization_id` **NOT NULL** + optional narrowings | a definition is owned; the ministry owns national ones |
+| `national_workflow_executions` | inherits the definition's owner; records the **initiating** scope | who ran it is not who owns it (§E) |
+| `national_tasks` | `organization_id` **NOT NULL** + optional `facility_id` | the unit of work someone is accountable for |
+| `national_task_queues`, `national_task_sla_definitions` | `organization_id` **NOT NULL** | policy objects, owned like a definition |
+| `national_workflow_templates` | `organization_id` **NOT NULL** | as above |
+| `national_workflow_execution_steps`, `_approvals`, `_compensations`, `_timers` | **none** — inherit via `execution_id` | a scope column here duplicates the FK |
+| `national_task_assignments`, `_escalations`, `_comments`, `_audit_logs` | **none** — inherit via `task_id` | as above |
+| `national_saga_logs` | **none** — inherits via `saga_id` | note `saga_id` is `String(100)` and unconstrained; see §7 |
+
+Nine of the fifteen take no scope column at all. That is the substance of the
+decision as much as the root is: the earlier framing, "should these tables have
+`tenant_id`", contained a false premise, because most of them are children.
+
+### Why the alternatives were rejected
+
+| Alternative | Rejected because |
+| --- | --- |
+| `TenantMixin.lab_id` on all fifteen | §3.2 — unnameable by any role scope, and `INTEGER` against ULID scope columns |
+| a `national` scope member | the ministry is already an organization; a second spelling of one scope |
+| nullable scope, "null means national" | makes the most privileged scope the default for a forgotten column |
+| `tenant_id VARCHAR(100)` as it stands | no referent, no constraint, no route sets it (§3.1) |
+| a single `organization_id` on **every** table, children included | duplicates the parent FK, and admits rows whose scope disagrees with their parent's |
+| a single `organization_id` as the **only** scope on coordination rows | **disproved by the platform's own model** — see below |
+
+### The cross-organization negative proof
+
+`national_referrals` is the platform's existing cross-facility coordination
+entity, and it is instructive precisely because of what it does **not** have:
+
+```
+referring_facility_id  -> national_facilities   (nullable)
+receiving_facility_id  -> national_facilities   (nullable)
+receiving_department_id-> national_departments  (nullable)
+```
+
+There is **no `organization_id` on `national_referrals` at all.** A referral is
+scoped by the *pair* of facilities it connects, which may sit in different
+organizations. So a single organization column cannot express coordination, and
+any rule of the form "every national table must carry one organization_id" is
+refuted by a built, shipped table in the same package family.
+
+This is why the decision separates **ownership** from **participation** (§E of
+the brief). The scope column answers "whose object is this?". Coordination
+across organizations is expressed the way `national_referrals` already does it —
+as explicit participant references — and never by relaxing the owner column.
+
+### Scope must be server-derived, and there is already a pattern for it
+
+`ClinicalAuthorizationContextService` resolves, fail-closed, for one legacy lab
+user:
+
+```
+legacy_lab_user_id -> LegacyAccountLink(status=migrated)
+                   -> Account + IdentityRecord (both active)
+                   -> ClinicalScopeBridge active binding
+                   -> (facility_resource_id, organization_resource_id,
+                       tenant_id, scope_mapping_version)
+```
+
+with five distinct error types and no defaulting at any step. Its docstring is
+explicit that it "does not add a facility to a token and does not authorize a
+clinical operation by itself". That is the established shape: derive scope on the
+server from a reviewed binding, or refuse.
+
+Orchestration must use that, not a column the caller fills in. It also explains
+the honest limit on implementing this today, recorded in §3.4.
+
+## 3.4 [Unit 8] Why the decision is not yet implemented as columns
+
+The decision above is settled. Writing it into the models is blocked behind
+things that are worse than the thing it fixes, and all of them were found by the
+caller trace this unit ran.
+
+**Neither router performs any authorization.** `factory.py:695` and `:698`
+register both routers, and neither `app/national/task_engine/api/routes.py` nor
+`app/national/workflow_runtime/api/routes.py` contains a single
+`require_permission`. Every endpoint is guarded by `get_current_user` alone. On
+the day these tables are built, any authenticated principal — including a
+laboratory technician with no national role — could create, execute, cancel,
+reassign and delete national workflows and tasks, and list every one that exists.
+A correct `organization_id` on a table behind an unauthenticated-in-effect
+endpoint is a correctly-labelled open door.
+
+This is an omission in these packages, not a habit of the platform. Every other
+national route module declares `require_permission` — background_platform 2,
+document_platform 2, observability 2, rules_engine 2, scheduling_platform 2,
+search_platform 3, ecosystem 2 — which is both the evidence and the remediation
+reference.
+
+Writing that comparison as a guard immediately found a **third** unguarded
+module the caller trace had not reached: `app/national/intelligence/routes.py`,
+registered at `factory.py:786`, with endpoints including
+`/intelligence/clinical/care-gaps/{patient_id}` and
+`/intelligence/clinical/risk-score/{patient_id}`. It is recorded separately as
+**NR-072** and at a much lower severity, because the whole
+`app/national/intelligence` package performs **no database access at all** — no
+`SessionLocal`, no `get_db`, no `.query(` anywhere in it. `patient_id` is echoed
+rather than resolved, and `calculate_risk_score` builds its entire "patient" from
+the `age` and `gender` query parameters. No patient data is read, so it is an
+authorization gap on stateless compute rather than a disclosure. Stating it that
+way is the point: the URL shape invites the louder reading, and the code does not
+support it.
+
+**`update_task` assigns from the request body.**
+
+```python
+for key, value in updates.items():
+    if hasattr(task, key) and key not in ("id", "created_at", "version"):
+        setattr(task, key, value)
+```
+
+`created_by`, `assigned_to`, `assigned_by`, `status` and `correlation_id` are all
+writable. A scope column added to that entity would be writable too — the caller
+would choose its own scope, which is worse than having no column.
+
+**The actor comes from the client.** `POST /{task_id}/assign` passes
+`data.get("assigned_by")` and `POST /{task_id}/escalate` passes
+`data.get("escalated_to")`, while the same handlers hold an authenticated
+`current_user` and use it for `created_by`.
+
+**Canonical scope is not reachable from the authenticated principal.**
+`get_current_user` returns `LabUser | User`. `LabUser` has no organization at all
+— only `lab_id` and `province_id`. `User` has `organization_id`, but it points at
+`organizations.id` (**INTEGER**), not `niam_organizations.id` (**ULID
+`String(26)`**), which is what a role assignment names. The NIAM plane is reached
+through `LegacyAccountLink` and the reviewed bridges, and neither router is on
+that path. So the derivation the decision requires cannot run at these routes
+today.
+
+**There are no consumers.** Nothing outside the two packages creates a workflow
+or a task. `app/platform/workflow.py` looks like a consumer and is not: it calls
+`WorkflowRuntimeService()` with no arguments where the constructor takes eight
+required repositories, so every method would raise `TypeError` — and the module
+is imported by nothing, so its `PlatformRegistry.register("workflow", ...)` never
+runs. `app/identity/governance` has its own unrelated `PolicyApprovalWorkflow`.
+
+So the ordering is: authorization, then server-derived actor and scope, then
+build the tables with the columns this section specifies. Adding the columns
+first would be the least valuable of the three and would make the other two look
+addressed.
+
+Held mechanically by `test_orchestration_build_precondition.py`: no orchestration
+table may be built while its router checks no permission, while `update_task`
+assigns from the body, or while an actor identifier comes from the request body —
+alongside the existing tenancy and audit preconditions. And by
+`test_national_scope_vocabulary.py`: the ministry must remain an organization,
+and no `national` member may be added to either scope enum.
+
 ## 4. Audit
 
 Neither package contains a call reaching the hash-chained audit log. That gap is

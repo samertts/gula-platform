@@ -41,6 +41,7 @@ import pathlib
 
 BACKEND = pathlib.Path(__file__).resolve().parents[1]
 APP = BACKEND / "app"
+MIGRATIONS = BACKEND / "migrations" / "versions"
 EVIDENCE = BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json"
 
 
@@ -55,9 +56,92 @@ def app_modules() -> list[pathlib.Path]:
     return [p for p in APP.rglob("*.py") if "__pycache__" not in p.parts]
 
 
+def _created_in(path: pathlib.Path) -> set[str]:
+    """Tables one migration creates, whether or not the name is a literal.
+
+    Three forms occur in this chain and all three must resolve:
+
+    * ``op.create_table("literal", ...)``;
+    * ``op.create_table(_TABLE, ...)`` against a module-level string constant,
+      which eight migrations use so the name is stated once;
+    * ``op.create_table(name, ...)`` inside a local helper such as
+      ``_create_if_missing(name, columns, constraints)``, where the literal
+      lives at the **call site** rather than at the create.
+
+    The third form is why this function exists. `evidence-created-tables.json`
+    was built by matching literals only, so it recorded three tables as unbuilt
+    that `20260814_0002_organization_structure.py` does create --
+    `niam_admin_units`, `niam_organization_representatives` and
+    `niam_organization_ownerships`. Every ledger keyed on "is this table built?"
+    inherited that error in the direction that overstates the problem: rows
+    against those tables were counted as reads and writes against nothing.
+    """
+    tree = parse(path)
+    if tree is None:
+        return set()
+
+    constants = {
+        node.targets[0].id: node.value.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+    }
+
+    # Local helpers that forward one of their own parameters to create_table.
+    helpers: dict[str, int] = {}
+    for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)):
+        params = [a.arg for a in fn.args.args]
+        for call in ast.walk(fn):
+            if (
+                isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Attribute)
+                and call.func.attr == "create_table"
+                and call.args
+                and isinstance(call.args[0], ast.Name)
+                and call.args[0].id in params
+            ):
+                helpers[fn.name] = params.index(call.args[0].id)
+
+    created: set[str] = set()
+    for call in ast.walk(tree):
+        if not isinstance(call, ast.Call) or not call.args:
+            continue
+        if isinstance(call.func, ast.Attribute) and call.func.attr == "create_table":
+            first = call.args[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                created.add(first.value)
+            elif isinstance(first, ast.Name) and first.id in constants:
+                created.add(constants[first.id])
+        elif isinstance(call.func, ast.Name) and call.func.id in helpers:
+            index = helpers[call.func.id]
+            if len(call.args) > index and isinstance(call.args[index], ast.Constant):
+                value = call.args[index].value
+                if isinstance(value, str):
+                    created.add(value)
+    return created
+
+
 @functools.lru_cache(maxsize=1)
 def built_tables() -> frozenset[str]:
-    """Tables an `op.create_table` in the migration chain actually creates."""
+    """Tables the migration chain actually creates.
+
+    Derived from the migrations rather than read from a snapshot. The snapshot
+    at `EVIDENCE` is kept for consumers outside the test suite and is asserted
+    equal to this in `test_built_table_evidence.py`; when they disagree, the
+    migrations win and the snapshot is regenerated.
+    """
+    created: set[str] = set()
+    for path in sorted(MIGRATIONS.glob("*.py")):
+        created |= _created_in(path)
+    return frozenset(created)
+
+
+@functools.lru_cache(maxsize=1)
+def declared_built_tables() -> frozenset[str]:
+    """What the checked-in snapshot claims, for comparison against the chain."""
     return frozenset(json.loads(EVIDENCE.read_text(encoding="utf-8")))
 
 

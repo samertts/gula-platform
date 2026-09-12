@@ -41,13 +41,13 @@ is fine. Only the omission fails.
 from __future__ import annotations
 
 import ast
-import json
 import pathlib
 import re
 
+from tests.orm_resolution import built_tables
+
 BACKEND = pathlib.Path(__file__).resolve().parents[1]
 APP = BACKEND / "app"
-EVIDENCE = BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json"
 
 ORCHESTRATION_PACKAGES = (
     "app/national/task_engine",
@@ -124,7 +124,13 @@ def _orchestration_models() -> dict[str, tuple[set[str], str]]:
 
 
 def _built() -> set[str]:
-    return set(json.loads(EVIDENCE.read_text(encoding="utf-8")))
+    """NR-069. Resolved through the shared derivation, not the snapshot.
+
+    This used to read `evidence-created-tables.json` directly, which is how it
+    inherited the snapshot's three missing tables. One source of truth, derived
+    from the migration chain.
+    """
+    return set(built_tables())
 
 
 def _package_audits(package: str) -> bool:
@@ -272,4 +278,192 @@ def test_the_one_tenant_column_is_still_never_populated() -> None:
         "tenancy question has been answered. Record which answer (lab, facility, "
         "governorate or organization) and why in NR-065 before relying on it: "
         f"{populating}"
+    )
+
+
+# ── NR-065 Unit 8 ────────────────────────────────────────────────────────────
+#
+# Tenancy was never the only precondition, and after the Unit 8 caller trace it
+# is not the most urgent one. Both orchestration routers are registered
+# (`factory.py:695` and `:698`) and **neither contains a single
+# `require_permission`**: every endpoint is guarded by `get_current_user` alone.
+# So on the day these tables are built, any authenticated principal -- including
+# a laboratory technician whose account has no national role at all -- can
+# create, execute, cancel, reassign and delete national workflows and tasks, and
+# list every one that exists.
+#
+# A scope column does not help with that. Scoping decides *which* rows an
+# authorized caller may see; it cannot decide authorization where none is
+# performed. Building the tables with a correct `organization_id` and no
+# permission check would produce a correctly-labelled open door.
+#
+# Two more shapes found in the same trace, both of which outlive any scope column:
+#
+# * `TaskEngineService.update_task` assigns straight from the request body --
+#   `for key, value in updates.items(): if hasattr(task, key) ... setattr(...)`,
+#   excluding only `id`, `created_at` and `version`. `created_by`, `assigned_to`,
+#   `assigned_by`, `status` and `correlation_id` are all writable, so a caller
+#   can rewrite the audit-relevant actor fields and jump the state machine.
+# * `POST /{task_id}/assign` passes `data.get("assigned_by")` and
+#   `POST /{task_id}/escalate` passes `data.get("escalated_to")` from the body.
+#   The server holds `current_user` and uses it for `created_by` on the same
+#   handler set; the actor of an assignment is taken from the client instead.
+#
+# All three are latent for exactly one reason: the tables are unbuilt. That is
+# the precondition this section holds.
+
+_ROUTE_MODULES = (
+    "app/national/task_engine/api/routes.py",
+    "app/national/workflow_runtime/api/routes.py",
+)
+
+#: The service method whose body is assigned from the request body wholesale.
+_MASS_ASSIGNMENT = (
+    "app/national/task_engine/application/service.py",
+    "update_task",
+)
+
+#: Handlers that take an actor identifier from the request body while holding an
+#: authenticated `current_user` on the same call.
+_CLIENT_SUPPLIED_ACTORS = (
+    ("app/national/task_engine/api/routes.py", "assigned_by"),
+    ("app/national/task_engine/api/routes.py", "escalated_to"),
+)
+
+
+def _orchestration_tables_built() -> list[str]:
+    return sorted(t for t in DECLARED_UNTENANTED_ORCHESTRATION_TABLES if t in _built())
+
+
+def test_no_orchestration_table_is_built_while_its_router_checks_no_permission() -> None:
+    """NR-065 Unit 8. Scope is meaningless where authorization is absent.
+
+    Neither router declares `require_permission`, at the router or on any
+    handler. Until one does, building these tables publishes a national task and
+    workflow surface to every authenticated principal.
+    """
+    unguarded = []
+    for module in _ROUTE_MODULES:
+        source = (BACKEND / module).read_text(encoding="utf-8")
+        if "require_permission" not in source:
+            unguarded.append(module)
+
+    # The sibling packages establish the convention: this is an omission in two
+    # packages, not a gap in the platform's habits.
+    siblings = sorted(
+        str(path.relative_to(BACKEND))
+        for path in (APP / "national").rglob("routes.py")
+        if "__pycache__" not in path.parts
+        and str(path.relative_to(BACKEND)) not in _ROUTE_MODULES
+        and "require_permission" in path.read_text(encoding="utf-8")
+    )
+
+    built = _orchestration_tables_built()
+    assert not (built and unguarded), (
+        f"orchestration tables are built ({built}) while these routers perform "
+        f"no permission check at all ({unguarded}). Every endpoint depends only "
+        "on `get_current_user`, so any authenticated account -- national role or "
+        "not -- can create, execute, cancel and reassign national workflows and "
+        f"tasks. {len(siblings)} sibling national route modules do declare "
+        f"`require_permission` ({siblings}), so this is an omission in these "
+        "packages rather than a platform convention. Add the dependency before "
+        "the first migration, not after"
+    )
+
+
+#: NR-070 / NR-072. Registered national route modules that declare no
+#: `require_permission` anywhere. The ledger may shrink; it may never grow.
+#:
+#: The third entry was found by this guard rather than by the caller trace, and
+#: it is a different finding from the orchestration two. `app/national/intelligence`
+#: performs **no database access at all** -- no `SessionLocal`, no `get_db`, no
+#: `.query(` anywhere in the package -- so its `/clinical/care-gaps/{patient_id}`
+#: and `/clinical/risk-score/{patient_id}` endpoints read no patient data. The
+#: path parameter is echoed rather than resolved, and `calculate_risk_score`
+#: builds its entire "patient" from `age` and `gender` query parameters. It is an
+#: authorization gap on stateless compute, not a disclosure (NR-072).
+DECLARED_UNGUARDED_NATIONAL_ROUTERS = frozenset({
+    "app/national/task_engine/api/routes.py",
+    "app/national/workflow_runtime/api/routes.py",
+    "app/national/intelligence/routes.py",
+})
+
+
+def _unguarded_national_routers() -> list[str]:
+    return sorted(
+        str(path.relative_to(BACKEND))
+        for path in (APP / "national").rglob("routes.py")
+        if "__pycache__" not in path.parts
+        and "require_permission" not in path.read_text(encoding="utf-8")
+    )
+
+
+def test_no_new_national_router_drops_its_permission_check() -> None:
+    """Hold the convention the fix will be measured against.
+
+    NR-070 is stated as "these packages forgot", and that is only worth anything
+    while the rest have not. Every other national route module declares
+    `require_permission`; if one stops, the baseline this precondition appeals to
+    is gone and the finding needs restating rather than inheriting.
+    """
+    appeared = [
+        m for m in _unguarded_national_routers()
+        if m not in DECLARED_UNGUARDED_NATIONAL_ROUTERS
+    ]
+    assert appeared == [], (
+        "these national route modules declare no `require_permission` and are "
+        "not in the ledger. Every endpoint in them depends on `get_current_user` "
+        f"alone, so any authenticated account reaches the whole surface: {appeared}"
+    )
+
+
+def test_the_unguarded_router_ledger_does_not_rot() -> None:
+    """A module that gained its permission check must leave the ledger."""
+    unguarded = set(_unguarded_national_routers())
+    resolved = sorted(DECLARED_UNGUARDED_NATIONAL_ROUTERS - unguarded)
+    assert resolved == [], (
+        "these modules now declare `require_permission`; remove them from the "
+        f"ledger so the ratchet keeps its grip: {resolved}"
+    )
+
+
+def test_no_orchestration_table_is_built_while_update_is_a_body_assignment() -> None:
+    """`update_task` writes whatever the body names, including the actor fields."""
+    module, method = _MASS_ASSIGNMENT
+    tree = ast.parse((BACKEND / module).read_text(encoding="utf-8"))
+
+    splats = False
+    for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)):
+        if fn.name != method:
+            continue
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "setattr":
+                splats = True
+
+    built = _orchestration_tables_built()
+    assert not (built and splats), (
+        f"orchestration tables are built ({built}) while {module}::{method} "
+        "assigns attributes straight from the request body. It excludes only "
+        "id, created_at and version, so `created_by`, `assigned_by`, "
+        "`assigned_to` and `status` are all client-writable -- the actor fields "
+        "an audit trail would rely on, and the state machine the transition "
+        "methods enforce"
+    )
+
+
+def test_no_orchestration_table_is_built_while_the_actor_comes_from_the_body() -> None:
+    """The server knows who is calling; these handlers ask the caller instead."""
+    offending = []
+    for module, field in _CLIENT_SUPPLIED_ACTORS:
+        source = (BACKEND / module).read_text(encoding="utf-8")
+        if f'data.get("{field}")' in source or f'data["{field}"]' in source:
+            offending.append(f"{module}:{field}")
+
+    built = _orchestration_tables_built()
+    assert not (built and offending), (
+        f"orchestration tables are built ({built}) while these handlers take an "
+        f"actor identifier from the request body: {offending}. `current_user` is "
+        "already resolved on the same handler and is used for `created_by`; an "
+        "assignment or escalation attributed to whoever the caller names is not "
+        "an audit record"
     )

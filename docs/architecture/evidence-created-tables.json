@@ -665,6 +665,9 @@
  "niam_admin_subscriptions": [
   "20260723_0002_niam_completion_tables.py"
  ],
+ "niam_admin_units": [
+  "20260814_0002_organization_structure.py"
+ ],
  "niam_assignments": [
   "20260723_0001_niam_identity_platform_tables.py"
  ],
@@ -808,6 +811,12 @@
  ],
  "niam_notif_templates": [
   "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_organization_ownerships": [
+  "20260814_0002_organization_structure.py"
+ ],
+ "niam_organization_representatives": [
+  "20260814_0002_organization_structure.py"
  ],
  "niam_organizations": [
   "20260723_0001_niam_identity_platform_tables.py"

@@ -128,6 +128,79 @@ def _national_models() -> list[tuple[str, str, str, list[str], list[str]]]:
     return found
 
 
+#: NR-065 decision anchor. The bootstrap seeds the ministry as a row in the
+#: canonical organization registry, which is what makes "national" expressible
+#: without a sixth scope value. If this stops being true, the decision that
+#: national orchestration is organization-rooted has lost its premise.
+MINISTRY_SEED = "app/identity/bootstrap/seed.py"
+MINISTRY_ORG_TYPE = "ministry"
+
+
+def test_the_ministry_is_an_organization_not_a_separate_scope() -> None:
+    """The evidence that closed NR-065's last open question.
+
+    NR-065 had narrowed to two options that looked like rivals: scope national
+    orchestration at the organization root, or treat it as genuinely national
+    and therefore unscoped. They are the same option. `seed_platform_organization`
+    creates "GULA National Digital Health Platform" in `niam_organizations` with
+    `org_type="ministry"`, so the national level **is** an organization and
+    `RoleScopeType.organization` at that row already expresses national scope.
+
+    That is why the decision adds no `national` member to the scope vocabulary
+    and no nullable "unscoped means national" convention. Both would introduce a
+    second way to say something the model can already say, and a second way is
+    what makes an access decision ambiguous.
+
+    If the ministry stops being seeded as an organization, national work stops
+    being expressible as organization scope, and NR-065 must be re-decided
+    rather than inherited.
+    """
+    source = (BACKEND / MINISTRY_SEED).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    seeds_ministry_organization = False
+    for call in ast.walk(tree):
+        if not isinstance(call, ast.Call):
+            continue
+        func = call.func
+        name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", "")
+        if name != "NIAMOrganization":
+            continue
+        for keyword in call.keywords:
+            if (
+                keyword.arg == "org_type"
+                and isinstance(keyword.value, ast.Constant)
+                and keyword.value.value == MINISTRY_ORG_TYPE
+            ):
+                seeds_ministry_organization = True
+
+    assert seeds_ministry_organization, (
+        f"{MINISTRY_SEED} no longer seeds a NIAMOrganization with "
+        f"org_type={MINISTRY_ORG_TYPE!r}. NR-065 concluded that national "
+        "orchestration is organization-rooted precisely because the ministry is "
+        "an organization; without that row, `RoleScopeType.organization` can no "
+        "longer express national scope and the decision must be reopened "
+        "rather than quietly reinterpreted as 'unscoped means national'"
+    )
+
+
+def test_the_scope_vocabulary_gains_no_national_member() -> None:
+    """The other half of the same decision, stated as a prohibition.
+
+    Because the ministry is an organization, a `national` scope member would be
+    a second spelling of `organization` at one particular row. Two spellings of
+    one scope is how a query that filters on one silently misses the other.
+    """
+    for enum in (RoleScopeType, MembershipScopeType):
+        members = {member.value for member in enum}
+        assert "national" not in members, (
+            f"{enum.__name__} gained a `national` member. National scope is "
+            "already expressible as `organization` at the ministry organization "
+            "(see test_the_ministry_is_an_organization_not_a_separate_scope); a "
+            "second spelling makes every scope comparison ambiguous"
+        )
+
+
 def test_the_national_model_scan_still_sees_its_surface() -> None:
     """Guard the guard: a scan that found nothing would allow everything."""
     models = _national_models()
