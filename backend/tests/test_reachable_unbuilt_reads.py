@@ -14,17 +14,39 @@ That is the shape this file guards, and it is why the guard is static rather tha
 another fake-backed test.
 
 Measured across `app/`: **773** `query(Model)` sites name a table no migration
-creates. Of those, **418 are reachable** from a registered router across 20 route
+creates. Of those, **610 are reachable** from a registered router across 24 route
 modules -- either in the route module itself or one import hop away, which is
 exactly NR-064's shape (the route was clean; its service was not).
 
-Both figures are corrections. This file first said 483 and 267 across 11 modules,
-because its own resolver handled only absolute `app.*` imports and therefore could
-not see a model reached through `from ..models import X` or through a package
-re-export such as `from app.ehr.models import CarePlan`. Nine route modules were
-invisible entirely, `app/routes/care_continuum.py` (44) and `app/routes/hospital.py`
-(17) among them. Resolution now lives in `tests/orm_resolution.py`, once, and that
-module records why.
+Every figure here is a correction, and the ledger below has now **grown twice**
+for the same reason: not because the repository got worse, but because the
+instrument could not see it.
+
+* 483 / 267 across 11 modules, first pass. The resolver handled only absolute
+  `app.*` imports, so a model reached through `from ..models import X` or a
+  package re-export was invisible. Fixed in NR-067; resolution moved to
+  `tests/orm_resolution.py`.
+* 773 / 418 across 20 modules, second pass.
+* **773 / 610 across 24 modules, this pass (NR-079).** Two more blind spots, both
+  in the direction of undercounting, and both now removed:
+  - **registration was read by regex over `factory.py`.** The factory also has a
+    bulk block -- `from .routes import (admin, ehr, ehr_fhir, …)` then
+    `for r in core_routes + feature_routes + …: app.include_router(r.router)` --
+    that no regex matched. The regex found **79** route modules; the running
+    application serves **142**. Zero false positives, 63 false negatives.
+  - **`from app.services import ehr_service` was dropped.** A package import
+    naming a submodule resolves to `app/services/ehr_service.py`, not to
+    `app/services.py`, and the resolver only tried the latter.
+
+  Four route modules were therefore invisible entirely: `app/routes/ehr_fhir.py`
+  (77), `app/routes/ehr.py` (63), `app/governance/routes/governance_routes.py`
+  (47) and `app/governance/routes/analytics_routes.py` (5). 418 + 192 = 610, and
+  **not one already-declared count changed** -- the correction is purely
+  additive, which is what distinguishes a repaired instrument from a regression.
+
+Registration is now read from the **running application**, never from the file
+that configures it. `route.endpoint.__module__` is what FastAPI will serve, and
+it stays correct however `factory.py` is rewritten.
 
 **Names are resolved through each file's own imports, never by bare class name.**
 32 ORM class names here map to more than one table -- `Citizen` is both
@@ -40,18 +62,18 @@ from __future__ import annotations
 
 import ast
 import pathlib
-import re
+
+import pytest
 
 from tests.orm_resolution import (
-    APP,
     BACKEND,
     ambiguous_class_names,
     built_tables,
+    imported_modules,
     parse,
+    route_modules,
     tables_by_local_name,
 )
-
-FACTORY = APP / "factory.py"
 
 #: Registered route modules that reach a read of an unbuilt table, and how many
 #: such reads are reachable from each (the module itself plus one import hop).
@@ -59,6 +81,8 @@ FACTORY = APP / "factory.py"
 DECLARED_REACHABLE_UNBUILT_READS = {
     "app/citizen_platform/routes.py": 1,
     "app/command_intelligence/routes.py": 10,
+    "app/governance/routes/analytics_routes.py": 5,
+    "app/governance/routes/governance_routes.py": 47,
     "app/knowledge_graph/routes.py": 20,
     "app/national/background_platform/api/routes.py": 26,
     "app/national/document_platform/api/routes.py": 29,
@@ -73,6 +97,8 @@ DECLARED_REACHABLE_UNBUILT_READS = {
     "app/routes/care_continuum.py": 44,
     "app/routes/clinical.py": 57,
     "app/routes/clinical_quality.py": 55,
+    "app/routes/ehr.py": 63,
+    "app/routes/ehr_fhir.py": 77,
     "app/routes/hospital.py": 17,
     "app/routes/national_data.py": 15,
     "app/routes/national_streaming.py": 6,
@@ -86,31 +112,6 @@ NR_064_MODULES = (
     "app/routes/citizen_relationship_admin.py",
     "app/identity/services/citizen_relationship_service.py",
 )
-
-
-def _imported_modules(path: pathlib.Path) -> set[str]:
-    """App-local modules this file imports, absolute or relative."""
-    deps: set[str] = set()
-    tree = parse(path)
-    if tree is None:
-        return deps
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom):
-            continue
-        if node.level == 0:
-            if not (node.module and node.module.startswith("app.")):
-                continue
-            candidate = str(pathlib.Path(node.module.replace(".", "/") + ".py"))
-        else:
-            base = path.parent.relative_to(BACKEND)
-            for _ in range(node.level - 1):
-                base = base.parent
-            if node.module:
-                base = base / pathlib.Path(node.module.replace(".", "/"))
-            candidate = str(base) + ".py"
-        if (BACKEND / candidate).exists():
-            deps.add(candidate)
-    return deps
 
 
 def _unbuilt_reads(module: str) -> list[tuple[str, str, int]]:
@@ -135,34 +136,31 @@ def _unbuilt_reads(module: str) -> list[tuple[str, str, int]]:
     return found
 
 
-def _registered_route_modules() -> set[str]:
-    """Route modules whose router `factory.py` actually includes."""
-    source = FACTORY.read_text(encoding="utf-8")
-    registered: set[str] = set()
-    for match in re.finditer(r"from \.([\w.]+) import (\w+) as (\w+)", source):
-        module, _, alias = match.groups()
-        if f"{alias}.router" in source or f"include_router({alias}" in source:
-            candidate = "app/" + module.replace(".", "/") + ".py"
-            if (BACKEND / candidate).exists():
-                registered.add(candidate)
-    for match in re.finditer(r"from \.routes import (\w+) as (\w+)", source):
-        name, alias = match.groups()
-        if f"{alias}.router" in source:
-            candidate = f"app/routes/{name}.py"
-            if (BACKEND / candidate).exists():
-                registered.add(candidate)
-    return registered
+@pytest.fixture()
+def registered(client):
+    """Route modules the **running** application serves.
+
+    This used to parse `factory.py` with two regexes and missed the bulk
+    registration block entirely -- 79 modules found against 142 served, with no
+    false positives, so every reachability number derived from it was a strict
+    undercount (NR-079). Depending on `client` is what runs the lifespan; this
+    platform registers its routers there, so an unstarted app has seven routes.
+    """
+    from app.main import app
+
+    return route_modules(app)
 
 
-def _measure() -> dict[str, int]:
+def _measure(registered: frozenset[str]) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for route in _registered_route_modules():
+    for route in registered:
         total = len(_unbuilt_reads(route))
-        for dep in _imported_modules(BACKEND / route):
+        for dep in imported_modules(BACKEND / route):
             total += len(_unbuilt_reads(dep))
         if total:
             counts[route] = total
     return counts
+
 
 
 def test_model_names_are_resolved_through_imports_not_by_bare_name() -> None:
@@ -182,12 +180,17 @@ def test_model_names_are_resolved_through_imports_not_by_bare_name() -> None:
         )
 
 
-def test_the_scan_still_finds_registered_routers() -> None:
-    """A scan that finds no routers would declare the whole surface unreachable."""
-    registered = _registered_route_modules()
-    assert len(registered) >= 60, (
-        f"only {len(registered)} registered route modules found; the factory scan "
-        "has drifted and every reachability claim below would be understated"
+def test_the_scan_still_finds_registered_routers(registered) -> None:
+    """A scan that finds no routers would declare the whole surface unreachable.
+
+    The floor is set against the **served** count (142 at the time of writing),
+    not against the 79 the old regex found. A floor of 60 was satisfied by an
+    instrument missing 63 modules, which is how NR-079 stayed invisible: a
+    guard-the-guard is only worth its distance from the truth.
+    """
+    assert len(registered) >= 130, (
+        f"only {len(registered)} route modules found in the running application; "
+        "every reachability claim below would be understated"
     )
 
 
@@ -211,9 +214,9 @@ def test_the_citizen_relationship_workflow_reads_only_built_tables() -> None:
     )
 
 
-def test_no_new_route_module_reads_an_unbuilt_table() -> None:
+def test_no_new_route_module_reads_an_unbuilt_table(registered) -> None:
     """A new one is a new endpoint that 500s the first time it is called."""
-    appeared = sorted(set(_measure()) - set(DECLARED_REACHABLE_UNBUILT_READS))
+    appeared = sorted(set(_measure(registered)) - set(DECLARED_REACHABLE_UNBUILT_READS))
     assert appeared == [], (
         "these registered route modules now reach a read of a table no migration "
         "creates. Build the table under an activation review, or stop reading it: "
@@ -221,9 +224,9 @@ def test_no_new_route_module_reads_an_unbuilt_table() -> None:
     )
 
 
-def test_the_reachable_unbuilt_read_ledger_does_not_grow() -> None:
+def test_the_reachable_unbuilt_read_ledger_does_not_grow(registered) -> None:
     """The ratchet, reported per module so a failure names what to look at."""
-    current = _measure()
+    current = _measure(registered)
     widened = {
         module: (declared, current[module])
         for module, declared in DECLARED_REACHABLE_UNBUILT_READS.items()

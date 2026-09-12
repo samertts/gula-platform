@@ -38,6 +38,8 @@ import ast
 import functools
 import json
 import pathlib
+from collections.abc import Iterable, Iterator
+from typing import Any
 
 BACKEND = pathlib.Path(__file__).resolve().parents[1]
 APP = BACKEND / "app"
@@ -231,3 +233,107 @@ def tables_by_local_name(path: pathlib.Path) -> dict[str, str]:
         if module == rel:
             names[cls] = table
     return names
+
+
+# ── Reachability: which modules the running application can actually reach ────
+#
+# NR-079. Three guards asked "is this reachable from a registered router?" and
+# two of them answered with an instrument that could not see the application:
+#
+# * registration was read by regex over `factory.py`, matching
+#   `from .x import y as z` and `from .routes import name as alias`. The factory
+#   also registers a **bulk block** -- `from .routes import (admin, ehr,
+#   ehr_fhir, …)` then `for r in core_routes + feature_routes + …:
+#   app.include_router(r.router)` -- which no regex matched. Measured against
+#   the running application: the regex finds **79** route modules and the app
+#   serves **142**. Zero false positives, 63 false negatives; every reachability
+#   number built on it was a strict undercount.
+# * import resolution handled `from app.x.y import Z` and `from ..models import
+#   Z`, and dropped `from app.services import ehr_service` -- a package import
+#   naming a **submodule**, which resolves to `app/services/ehr_service.py` and
+#   not to `app/services.py`. That single form hid `app/services/ehr_service.py`
+#   entirely: 17 unguarded create paths that a first Phase G pass classified as
+#   DEAD are reached from `app/routes/ehr.py` line 29.
+#
+# Together: the reachable closure goes from 612 modules to 994, and NR-067's
+# reachable unbuilt reads from 418 across 20 route modules to **610 across 24**.
+# No declared module's count changed; four modules were simply invisible.
+#
+# So registration is now read from the **running application** rather than from
+# the file that configures it. `route.endpoint.__module__` is what FastAPI will
+# actually serve, and it stays correct however `factory.py` is rewritten.
+
+
+def every_route(routes: Iterable[Any]) -> Iterator[Any]:
+    """Every APIRoute the application will serve, including included routers.
+
+    FastAPI stores an included router as an opaque `_IncludedRouter` holding the
+    real one on `original_router`, so one pass over `app.routes` sees ~130
+    entries where the served surface is ~2100. Recursing is the difference
+    between measuring the application and measuring a wrapper.
+    """
+    for route in routes:
+        original = getattr(route, "original_router", None)
+        if original is not None:
+            yield from every_route(original.routes)
+        elif getattr(route, "dependant", None) is not None:
+            yield route
+
+
+def route_modules(app: Any) -> frozenset[str]:
+    """Modules that define a route the running application serves.
+
+    Takes the *started* application: this platform registers its routers from
+    the lifespan, so `create_app()` on its own has seven routed paths.
+    """
+    found: set[str] = set()
+    for route in every_route(app.routes):
+        module = getattr(getattr(route, "endpoint", None), "__module__", "")
+        if not module.startswith("app."):
+            continue
+        candidate = str(pathlib.Path(module.replace(".", "/") + ".py"))
+        if (BACKEND / candidate).exists():
+            found.add(candidate)
+    return frozenset(found)
+
+
+def imported_modules(path: pathlib.Path) -> frozenset[str]:
+    """App-local modules this file imports, in every form this repository uses.
+
+    Absolute (`from app.x.y import Z`), relative (`from ..models import Z`),
+    package-plus-submodule (`from app.services import ehr_service`, which means
+    `app/services/ehr_service.py`) and plain `import app.x.y`. The third form is
+    the one that was missing and it is not rare -- it adds 421 edges.
+    """
+    deps: set[str] = set()
+    tree = parse(path)
+    if tree is None:
+        return frozenset(deps)
+
+    def add(candidate: str) -> None:
+        if (BACKEND / candidate).exists():
+            deps.add(candidate)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.startswith("app."):
+                    add(str(pathlib.Path(alias.name.replace(".", "/") + ".py")))
+            continue
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.level == 0:
+            if not (node.module and node.module.startswith("app.")):
+                continue
+            base = pathlib.Path(node.module.replace(".", "/"))
+        else:
+            base = path.parent.relative_to(BACKEND)
+            for _ in range(node.level - 1):
+                base = base.parent
+            if node.module:
+                base = base / pathlib.Path(node.module.replace(".", "/"))
+        add(str(base) + ".py")
+        add(str(base / "__init__.py"))
+        for alias in node.names:
+            add(str(base / alias.name) + ".py")
+    return frozenset(deps)

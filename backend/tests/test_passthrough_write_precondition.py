@@ -39,6 +39,28 @@ them without first giving it a validated create path would convert 75 latent
 mass-assignment paths into live ones, including tenant assignment on
 TenantAuditEntity models.
 
+**Latent is not the same as dead, and the difference is now measured rather than
+assumed.** Classifying all 75 against the running application (PHASE G):
+
+    LIVE                     0
+    REACHABLE-BUT-INACTIVE  75
+    DEAD                     0
+
+All three modules are a **direct import of a registered route module** -- exactly
+NR-064's shape, where the route was clean and its service was not. So the single
+thing standing between these paths and a live mass-assignment surface is the
+absent table. Nothing else.
+
+That correction cost a wrong answer first. An initial pass classified
+`app/services/ehr_service.py` (17 of the 75) as DEAD because no module imported
+it -- which was false: `app/routes/ehr.py:29` does `from ..services import
+ehr_service`, a package import naming a submodule, and the import resolver only
+tried `app/services.py`. The same pass also read router registration by regex
+over `factory.py` and missed its bulk block, finding 79 registered modules where
+the application serves 142. Both are fixed in `tests/orm_resolution.py` and
+recorded as NR-079; "DEAD" is the answer an undercounting instrument gives, and
+it is the most comfortable one to be wrong about.
+
 So the invariant is a precondition, not a prohibition: fix the create path, then
 build the table. Either order is fine. Only the omission fails.
 """
@@ -48,11 +70,15 @@ from __future__ import annotations
 import ast
 import collections
 
+import pytest
+
 from tests.orm_resolution import (
     BACKEND,
     app_modules,
     built_tables,
+    imported_modules,
     parse,
+    route_modules,
     tables_by_local_name,
 )
 
@@ -191,4 +217,47 @@ def test_the_guarded_pattern_still_sets_tenant_and_actor() -> None:
     assert len(guarded) >= 20, (
         "the server-set tenant/actor passthrough pattern has largely "
         f"disappeared; only {len(guarded)} sites remain"
+    )
+
+
+@pytest.fixture()
+def reachable_from_a_router(client):
+    """Every module the running application can reach from a served route."""
+    from app.main import app
+
+    graph = {str(p.relative_to(BACKEND)): imported_modules(p) for p in app_modules()}
+    seen: set[str] = set()
+    stack = list(route_modules(app))
+    while stack:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        stack.extend(graph.get(current, ()))
+    return seen
+
+
+def test_every_unguarded_passthrough_is_reachable_from_a_registered_router(
+    reachable_from_a_router,
+) -> None:
+    """PHASE G. None of this is dead code, and that is the whole point.
+
+    A reader meeting 75 mass-assignment paths that have never failed will reach
+    for the comfortable explanation: nobody calls them. That explanation is
+    false. All 75 sit in modules a registered route module imports directly, so
+    the only thing between them and a live surface is the missing table -- which
+    NR-022 and NR-059 both propose to create.
+
+    If one ever does become unreachable, this fails, and the right response is to
+    re-classify it rather than to relax the precondition: unreachable code that
+    constructs ORM models is its own finding, not an improvement.
+    """
+    unreachable = sorted({
+        module for module, _, _, server_set in _passthrough_writes()
+        if not server_set and module not in reachable_from_a_router
+    })
+    assert unreachable == [], (
+        "these modules hold unguarded passthrough create paths and are no longer "
+        "reachable from any route the application serves. Re-classify them "
+        f"before trusting the precondition that covers them: {unreachable}"
     )

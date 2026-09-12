@@ -70,6 +70,8 @@ from app.national.task_engine.domain.enums import TaskPriority, TaskStatus
 from app.national.task_engine.exceptions import TaskFieldNotUpdatableError
 from app.security.dependencies import get_current_user
 
+from tests.orm_resolution import every_route
+
 #: The one permission `app/national` uses. Asserted rather than assumed by
 #: `test_the_canonical_permission_is_the_only_one_national_uses`.
 CANONICAL = "system:admin"
@@ -114,20 +116,11 @@ def _required_permissions(route: Any) -> set[str]:
     return found
 
 
-def _every_route(routes: Any) -> Any:
-    """Every APIRoute the application will actually serve.
-
-    FastAPI stores an included router as an opaque `_IncludedRouter` holding the
-    real one on `original_router`, so a single pass over `app.routes` sees 130
-    entries where the served surface is 2109. Recursing is the difference
-    between measuring the application and measuring a wrapper.
-    """
-    for route in routes:
-        original = getattr(route, "original_router", None)
-        if original is not None:
-            yield from _every_route(original.routes)
-        elif getattr(route, "dependant", None) is not None:
-            yield route
+# `every_route` -- the recursion through `_IncludedRouter.original_router` that
+# this file needed first -- now lives in `tests/orm_resolution.py` with the rest
+# of the resolution logic. It was copied here once and immediately became the
+# second place a reachability question was answered; NR-079 is what happens when
+# two answers drift.
 
 
 @pytest.fixture()
@@ -142,7 +135,7 @@ def application(client):
     """
     from app.main import app
 
-    total = len(list(_every_route(app.routes)))
+    total = len(list(every_route(app.routes)))
     assert total > 1000, (
         f"the application came up with only {total} routes; every assertion in "
         "this file would be vacuous"
@@ -155,7 +148,7 @@ def _module_of(route: Any) -> str:
 
 
 def _routes_in(application, modules: tuple[str, ...]) -> list[Any]:
-    return [r for r in _every_route(application.routes) if _module_of(r) in modules]
+    return [r for r in every_route(application.routes) if _module_of(r) in modules]
 
 
 def test_the_orchestration_surface_is_actually_registered(application) -> None:
@@ -190,7 +183,7 @@ def test_the_canonical_permission_is_the_only_one_national_uses(application) -> 
     inherited.
     """
     vocabulary: set[str] = set()
-    for route in _every_route(application.routes):
+    for route in every_route(application.routes):
         if _module_of(route).startswith("app.national."):
             vocabulary |= _required_permissions(route)
     assert vocabulary <= {CANONICAL}, (
