@@ -47,12 +47,14 @@ from __future__ import annotations
 
 import ast
 import collections
-import json
-import pathlib
 
-BACKEND = pathlib.Path(__file__).resolve().parents[1]
-APP = BACKEND / "app"
-EVIDENCE = BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json"
+from tests.orm_resolution import (
+    BACKEND,
+    app_modules,
+    built_tables,
+    parse,
+    tables_by_local_name,
+)
 
 #: Names that, when passed explicitly alongside the splat, mean the server -- not
 #: the caller -- decided tenancy and actor.
@@ -71,36 +73,23 @@ DECLARED_UNGUARDED_PASSTHROUGH = {
 }
 
 
-def _model_tables() -> dict[str, str]:
-    """ORM class name -> table name, by AST."""
-    mapping: dict[str, str] = {}
-    for path in APP.rglob("*.py"):
-        if "__pycache__" in path.parts:
-            continue
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-        except SyntaxError:
-            continue
-        for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
-            for stmt in cls.body:
-                if isinstance(stmt, ast.Assign) and isinstance(stmt.value, ast.Constant):
-                    for target in stmt.targets:
-                        if isinstance(target, ast.Name) and target.id == "__tablename__":
-                            mapping[cls.name] = stmt.value.value
-    return mapping
-
-
 def _passthrough_writes() -> list[tuple[str, str, str, bool]]:
-    """(module, function, model, server_set_tenant_and_actor) for each splat."""
-    models = _model_tables()
+    """(module, function, table, server_set_tenant_and_actor) for each splat.
+
+    The model name is resolved through the importing file's own imports (see
+    `orm_resolution`), not by bare class name. This file used to do the latter,
+    and although the totals happened to come out the same, `ComplianceCheck`
+    alone names three different tables -- so the old answer was right by
+    coincidence rather than by method. A name that resolves to no table is not
+    an ORM model and is excluded: `GatewayMessage` in `app/integration` is a
+    plain class, and bare-name matching cannot tell the difference.
+    """
     found: list[tuple[str, str, str, bool]] = []
-    for path in APP.rglob("*.py"):
-        if "__pycache__" in path.parts:
+    for path in app_modules():
+        tree = parse(path)
+        if tree is None:
             continue
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-        except SyntaxError:
-            continue
+        names = tables_by_local_name(path)
         module = str(path.relative_to(BACKEND))
         for fn in (
             n for n in ast.walk(tree)
@@ -130,11 +119,11 @@ def _passthrough_writes() -> list[tuple[str, str, str, bool]]:
                     and kw.value.id in params
                     for kw in node.keywords
                 )
-                model = getattr(node.func, "id", None)
-                if splatted and model in models:
+                table = names.get(getattr(node.func, "id", None))
+                if splatted and table is not None:
                     named = {kw.arg for kw in node.keywords if kw.arg}
                     found.append(
-                        (module, fn.name, model, bool((named | mutated) & _SERVER_SET))
+                        (module, fn.name, table, bool((named | mutated) & _SERVER_SET))
                     )
     return found
 
@@ -159,12 +148,11 @@ def test_no_unguarded_passthrough_reaches_a_built_table() -> None:
     It is to give that create path a request model and server-set tenancy first.
     Either order works; only the omission fails.
     """
-    built = set(json.loads(EVIDENCE.read_text(encoding="utf-8")))
-    models = _model_tables()
+    built = built_tables()
     live = sorted({
-        (models[model], module, fn)
-        for module, fn, model, guarded in _passthrough_writes()
-        if not guarded and models.get(model) in built
+        (table, module, fn)
+        for module, fn, table, guarded in _passthrough_writes()
+        if not guarded and table in built
     })
     assert live == [], (
         "these tables are built AND written by an unvalidated passthrough with "

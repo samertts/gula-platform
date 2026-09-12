@@ -23,7 +23,14 @@ instead. That is the correction this file records -- the finding first said the
 rows existed and "read as coverage". They cannot exist. Nothing writes them.
 
 Measured across `app/` with names resolved through each file's own imports:
-**147** ORM constructions target a table no migration builds.
+**268** ORM constructions target a table no migration builds.
+
+That is a correction. This file first said 147, because its own resolver handled
+only absolute `app.*` imports and could not follow `from ..models import X` or a
+package re-export such as `from app.ehr.models import CarePlan`. `app/governance`
+alone went from 2 to 62 on re-measurement. Resolution now lives in
+`tests/orm_resolution.py`, once, and that module records the four separate guard
+defects the shortcut caused.
 
 The ledger may shrink. It may never grow, and no new package may appear.
 
@@ -37,23 +44,34 @@ from __future__ import annotations
 
 import ast
 import collections
-import json
 import pathlib
 
-BACKEND = pathlib.Path(__file__).resolve().parents[1]
-APP = BACKEND / "app"
-EVIDENCE = BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json"
+from tests.orm_resolution import (
+    APP,
+    BACKEND,
+    app_modules,
+    built_tables,
+    parse,
+    tables_by_local_name,
+)
 
 #: Packages constructing ORM models whose tables no migration builds, and how
 #: many such constructions each holds.
 DECLARED_UNBUILT_WRITES = {
-    "app/services": 77,
-    "app/national": 43,
+    "app/command_intelligence": 2,
+    "app/document_intelligence": 6,
+    "app/financial": 4,
+    "app/governance": 62,
     "app/insurance": 20,
+    "app/knowledge_graph": 3,
+    "app/national": 43,
     "app/nhdw": 3,
-    "app/governance": 2,
-    "app/radiology": 1,
     "app/nursing": 1,
+    "app/radiology": 1,
+    "app/research_platform": 4,
+    "app/roadmap": 8,
+    "app/services": 106,
+    "app/simulation": 5,
 }
 
 #: NR-066. The shared governance repository base writes an audit row into an
@@ -69,60 +87,13 @@ GOVERNANCE_PERSISTENCE_MODULES = (
 )
 
 
-def _parse(path: pathlib.Path) -> ast.Module | None:
-    try:
-        return ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-    except (SyntaxError, FileNotFoundError):
-        return None
-
-
-def _qualified_models() -> dict[tuple[str, str], str]:
-    """(module path, class name) -> table name. Qualified, never bare."""
-    out: dict[tuple[str, str], str] = {}
-    for path in APP.rglob("*.py"):
-        if "__pycache__" in path.parts:
-            continue
-        tree = _parse(path)
-        if tree is None:
-            continue
-        for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
-            for stmt in cls.body:
-                if isinstance(stmt, ast.Assign) and isinstance(stmt.value, ast.Constant):
-                    for target in stmt.targets:
-                        if isinstance(target, ast.Name) and target.id == "__tablename__":
-                            out[(str(path.relative_to(BACKEND)), cls.name)] = stmt.value.value
-    return out
-
-
-def _names_in(path: pathlib.Path, qualified: dict[tuple[str, str], str]) -> dict[str, str]:
-    names: dict[str, str] = {}
-    tree = _parse(path)
-    if tree is None:
-        return names
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("app."):
-            module = str(pathlib.Path(node.module.replace(".", "/") + ".py"))
-            for alias in node.names:
-                table = qualified.get((module, alias.name))
-                if table:
-                    names[alias.asname or alias.name] = table
-    rel = str(path.relative_to(BACKEND))
-    for (module, cls), table in qualified.items():
-        if module == rel:
-            names[cls] = table
-    return names
-
-
 def _unbuilt_writes() -> list[tuple[str, str, str, int]]:
     """(module, class, table, line) for each construction of an unbuilt model."""
-    qualified = _qualified_models()
-    built = set(json.loads(EVIDENCE.read_text(encoding="utf-8")))
+    built = built_tables()
     found: list[tuple[str, str, str, int]] = []
-    for path in APP.rglob("*.py"):
-        if "__pycache__" in path.parts:
-            continue
-        names = _names_in(path, qualified)
-        tree = _parse(path)
+    for path in app_modules():
+        names = tables_by_local_name(path)
+        tree = parse(path)
         if tree is None:
             continue
         module = str(path.relative_to(BACKEND))
@@ -204,7 +175,7 @@ def test_the_governance_audit_write_is_still_unreachable() -> None:
             ("app/governance/services/", "app/governance/repositories/")
         ):
             continue
-        tree = _parse(path)
+        tree = parse(path)
         if tree is None:
             continue
         for node in ast.walk(tree):
