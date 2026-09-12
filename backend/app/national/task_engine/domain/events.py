@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from backend.app._compat import UTC
+from app._compat import UTC
 
 
 @dataclass

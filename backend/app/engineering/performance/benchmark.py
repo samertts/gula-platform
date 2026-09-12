@@ -86,6 +86,9 @@ class PerformanceBenchmark:
     def run_all(self) -> list[BenchmarkResult]:
         self.results = [
             self.measure_startup_time(),
-            self.measure_import_time("backend.app.kernel"),
+            # NR-058: a module path in a string is invisible to the AST guard that
+            # holds the rest of this rule. Importing `backend.app.kernel` here would
+            # have benchmarked a second copy of the kernel, not the one that runs.
+            self.measure_import_time("app.kernel"),
         ]
         return self.results

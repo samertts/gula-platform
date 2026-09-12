@@ -18,6 +18,11 @@ It was live, not hypothetical: `factory.py` imports
 `__init__`, which imports its `capability.py`, which named the `backend.app`
 root. Every application start loaded the shadow kernel.
 
+NR-058 then closed the rest of it: the five packages outside
+`app/capabilities/` that still named the `backend` root — 73 import
+statements across 25 files — so nothing under `app/` reaches the shadow tree
+any more.
+
 These tests hold the repaired state and stop it returning.
 """
 
@@ -26,25 +31,20 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 BACKEND = Path(__file__).resolve().parents[1]
 CAPABILITIES = BACKEND / "app" / "capabilities"
 
-# Modules outside `app/capabilities/` that still reach the shadow tree. They are
-# NOT NR-050's to repair: `national/task_engine` and `national/workflow_runtime`
-# use the `backend.app.` root throughout, for their own internal references as
-# well as for `database` and `config`, so correcting them is a package-wide
-# change with its own review. Recorded as NR-058.
+# Packages outside `app/capabilities/` that still reach the shadow tree.
+#
+# Empty, and measured: NR-058 closed the five that were listed here
+# (`national/task_engine`, `national/workflow_runtime`, `services/governance`,
+# `services/reference`, `integration/connectors`) by rewriting 73 import
+# statements across 25 files. Nothing under `app/` names the `backend` root any
+# more, which is why this ledger is empty and the scan below no longer exempts
+# `engineering` either — NR-056 closed that one.
 #
 # This ledger may shrink. It may never grow.
-DECLARED_SHADOW_ROOT_PACKAGES = frozenset({
-    "app/national/task_engine",
-    "app/national/workflow_runtime",
-    "app/services/governance",
-    "app/services/reference",
-    "app/integration/connectors",
-})
+DECLARED_SHADOW_ROOT_PACKAGES: frozenset[str] = frozenset()
 
 
 def _imports_backend_root(path: Path) -> bool:
@@ -93,13 +93,38 @@ def test_no_capability_module_loads_the_application_through_a_second_root() -> N
     )
 
 
-def test_a_real_application_start_does_not_load_a_second_kernel() -> None:
+# The `backend.app` modules a real application start is still allowed to load.
+#
+# `shared/` lives at the repository root, outside `backend/`, and several of its
+# modules import `backend.app._compat` for the `UTC` constant. That is a genuine
+# second copy of that module — but `_compat` holds constants and no state: no
+# engine, no session factory, no declarative base, no registry. Duplicating it
+# costs nothing that can diverge. `backend` and `backend.app` are the namespace
+# packages Python must create to reach it.
+#
+# Every other name is a defect, and the test below says why for each.
+DECLARED_STATELESS_SHADOW_MODULES = frozenset({
+    "backend",
+    "backend.app",
+    "backend.app._compat",
+})
+
+
+def test_a_real_application_start_loads_no_stateful_second_copy() -> None:
     """Behavioural, because the static check alone would not have caught the
     path that made this live: `factory.py` → capability package `__init__` →
     `capability.py`.
 
-    Asserted on the kernel specifically — that is the module whose duplication
-    silently redirects capability registration.
+    Originally this asserted on the kernel alone. NR-058 showed why that was too
+    narrow: `national/task_engine` and `national/workflow_runtime` were pulling
+    in a second `app.database` — its own Engine and SessionLocal against the same
+    URL, a connection pool outside the documented budget — and a second
+    `NationalBase`, on which fifteen tables registered where neither Alembic's
+    `target_metadata` nor `conftest`'s `create_all` could see them.
+
+    Those three are what must never be duplicated: the kernel redirects
+    registration, the database module splits the pool, and a declarative base
+    hides tables from every schema gate the repository has.
     """
     import sys
 
@@ -107,25 +132,50 @@ def test_a_real_application_start_does_not_load_a_second_kernel() -> None:
 
     create_app()
 
-    shadow_kernel = sorted(
-        m for m in sys.modules if m.startswith("backend.app.kernel")
+    loaded = {m for m in sys.modules if m.split(".")[0] == "backend"}
+    offenders = sorted(loaded - DECLARED_STATELESS_SHADOW_MODULES)
+    assert offenders == [], (
+        "starting the application loaded a second copy of these modules; each "
+        "carries state that then exists twice — a kernel registry nobody boots, "
+        "a connection pool outside the budget, or a declarative base invisible "
+        f"to Alembic and to conftest: {offenders}"
     )
-    assert shadow_kernel == [], (
-        "starting the application loaded a second copy of the kernel; a "
-        f"capability registering through it would reach nobody: {shadow_kernel}"
+
+
+def test_the_stateless_shadow_ledger_is_actually_stateless() -> None:
+    """The exemption above is only defensible while it stays true.
+
+    `_compat` is exempt because duplicating a constant cannot diverge. If it
+    ever gains an engine, a session factory, a registry or a declarative base,
+    the exemption has to be re-argued rather than inherited.
+    """
+    import ast
+
+    source = (BACKEND / "app" / "_compat.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    stateful = sorted(
+        node.id if isinstance(node, ast.Name) else node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Name, ast.Attribute))
+        and (node.id if isinstance(node, ast.Name) else node.attr)
+        in {"create_engine", "sessionmaker", "declarative_base", "registry", "MetaData"}
+    )
+    assert stateful == [], (
+        "app/_compat.py has acquired state, so the second copy `shared/` loads "
+        f"is no longer harmless: {stateful}"
     )
 
 
 def test_the_shadow_root_ledger_does_not_grow() -> None:
-    """The rest of the shadow tree is NR-058's, not NR-050's.
+    """The whole of `app/`, not just the capabilities.
 
-    This does not assert the ledger is empty — it is not, and pretending
-    otherwise would be manufacturing green. It asserts that no package outside
-    the declared set has joined it.
+    When this was written the ledger held five packages and the assertion was
+    only that nothing had joined them. NR-058 emptied it, so the assertion is
+    now absolute: no module under `app/` may name the `backend` root.
     """
     offenders: set[str] = set()
     for path in sorted((BACKEND / "app").rglob("*.py")):
-        if "__pycache__" in path.parts or "engineering" in path.parts:
+        if "__pycache__" in path.parts:
             continue
         if not _imports_backend_root(path):
             continue
@@ -139,16 +189,21 @@ def test_the_shadow_root_ledger_does_not_grow() -> None:
     )
 
 
-@pytest.mark.parametrize("package", sorted(DECLARED_SHADOW_ROOT_PACKAGES))
-def test_each_declared_shadow_package_still_has_the_defect(package: str) -> None:
+def test_each_declared_shadow_package_still_has_the_defect() -> None:
     """A ledger entry that has been repaired should be deleted, not left to rot
-    — otherwise the ledger slowly becomes a list of things that used to be
-    true."""
-    base = BACKEND / package
-    if not base.is_dir():
-        pytest.fail(f"{package} no longer exists; remove it from the ledger")
-    still = any(
-        _imports_backend_root(p)
-        for p in base.rglob("*.py") if "__pycache__" not in p.parts
-    )
-    assert still, f"{package} no longer uses the backend root; remove it from the ledger"
+    — otherwise the ledger slowly becomes a list of things that used to be true.
+
+    Vacuous while the ledger is empty, and deliberately kept that way: it is
+    what makes an entry added later expire on its own rather than becoming a
+    permanent exemption. Written as one iterating test rather than a
+    parametrized one so an empty ledger reports as a pass, not a skip — a skip
+    in a gate's output is a place for a real failure to hide.
+    """
+    for package in sorted(DECLARED_SHADOW_ROOT_PACKAGES):
+        base = BACKEND / package
+        assert base.is_dir(), f"{package} no longer exists; remove it from the ledger"
+        still = any(
+            _imports_backend_root(f)
+            for f in base.rglob("*.py") if "__pycache__" not in f.parts
+        )
+        assert still, f"{package} no longer uses the backend root; remove it from the ledger"

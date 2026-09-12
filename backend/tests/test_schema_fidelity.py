@@ -163,7 +163,7 @@ DECLARED_UNBUILT_TABLES = frozenset({
     "bed_assignments", "hospital_beds", "hospital_buildings", "hospital_campuses",
     "hospital_clinics", "hospital_cost_centers", "hospital_floors",
     "hospital_medical_equipment", "hospital_rooms", "hospital_units",
-    # ── National (79) — NR-022 — the National Core. Depended on by five
+    # ── National (94) — NR-022 — the National Core. Depended on by five
     # domains, built by none. The first two register only when a test module
     # imports them directly, which is why the ORM surface is a lower bound
     # rather than a fixed set — see the staleness note below.
@@ -197,6 +197,25 @@ DECLARED_UNBUILT_TABLES = frozenset({
     "national_scheduling_schedules", "national_scheduling_time_slots",
     "national_scheduling_waiting_list", "national_unknown_patients", "national_visitors",
     "national_visits", "national_wards",
+    # ── National / task engine + workflow runtime (15) — NR-058.
+    # These were NOT hidden from this gate by an oversight in the ledger. They
+    # were hidden from the ORM surface itself: both packages imported through
+    # the `backend.app.` root, so their models registered on a *second*
+    # NationalBase that `orm_tables` never reaches. The gate built to inventory
+    # unbuilt ORM tables was under-counting by fifteen, and could not have said
+    # so. Repairing the import root in the same commit is what made them
+    # visible; they belong to NR-022 like the seventy-nine above.
+    #
+    # They are not equivalent to the rest of this list in one respect worth
+    # stating: `factory.py` registers 42 endpoints over them (23 task, 19
+    # workflow). Declared-and-unbuilt is the accurate status of the tables, not
+    # a statement that nothing depends on them.
+    "national_saga_logs", "national_task_assignments", "national_task_audit_logs",
+    "national_task_comments", "national_task_escalations", "national_task_queues",
+    "national_task_sla_definitions", "national_tasks", "national_workflow_approvals",
+    "national_workflow_compensations", "national_workflow_definitions",
+    "national_workflow_execution_steps", "national_workflow_executions",
+    "national_workflow_templates", "national_workflow_timers",
     # ── Radiology (1) — One radiology model with no migration; the other eighteen are built.
     "radiology_ai_jobs",
 })

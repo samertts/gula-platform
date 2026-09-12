@@ -20,7 +20,8 @@ What NR-051 was counting was not competing owners. It was:
 
 1. **tables within one owner** (notification ×4 are all `niam_notif_*` in
    Identity; workflow ×7 are all `national_workflow_*` in the national
-   platform),
+   platform — one owner, though NR-058 later showed none of those tables is
+   migration-backed),
 2. **projections** (53 tables under `hd_`, `dw_`, `dp_` — warehouse, ODS and
    MDM copies that are supposed to be derived), and
 3. **different concepts sharing an English word** — the registered
@@ -61,7 +62,7 @@ cheapest available ownership signal. That is worth preserving deliberately.
 | --- | --- | --- | --- |
 | Patient / Person | `app/models/patient.py` → `patients` | **CONFIRMED** | 1 table, 1 owner |
 | Notification | Identity / NIAM → `niam_notif_*` | **CONFIRMED** | 4 tables, all one domain — not four owners |
-| Workflow | `national/workflow_runtime` → `national_workflow_*` | **CONFIRMED** | 7 tables, all one domain |
+| Workflow | `national/workflow_runtime` → `national_workflow_*` | **CONFIRMED as owner; see NR-059** | 8 tables incl. `national_saga_logs`, all one domain — but none is migration-backed |
 | Encounter | `national/domain/encounter` → `national_encounters` | **CONFIRMED** | others are projections (`hd_*`) or a primary-care subset (`cc_*`); NR-054 already bound the UI here |
 | FHIR resource | `capabilities/fhir_interoperability` → `fhir_resource_records` | **CONFIRMED** | sole implementation, migration `20260815_0019` |
 | Organization | Identity (`niam_organizations`) vs core (`organizations`) vs national | **PROBABLE — Identity** | 3 of 6 tables are Identity's; `hd_mdm_organization_index` is a projection |
@@ -163,7 +164,7 @@ This resolves two of NR-050's three BLOCKED dispositions:
 
 | NR-050 capability | was | now |
 | --- | --- | --- |
-| `workflow_engine` | BLOCKED on NR-051 | **CONSOLIDATE** onto `national/workflow_runtime` — owner CONFIRMED, sole persistent owner, 7 tables one domain |
+| `workflow_engine` | BLOCKED on NR-051 | **CONSOLIDATE** onto `national/workflow_runtime` — sole owner, one domain. Corrected by NR-058: "sole *persistent* owner" was wrong. None of its tables is built by a migration, so it is the sole owner of a domain that has no storage yet (NR-059). That does not change which package owns workflow; it does mean consolidation lands on an unbuilt domain and should be sequenced after the NR-059 decision |
 | `document_management` | BLOCKED on NR-051 | **CONSOLIDATE** onto `national/document_platform` — owner PROBABLE; `docint_*` is processing, not storage |
 | `healthcare_consent` | BLOCKED on NR-051 | **still BLOCKED** — consent is genuinely contested across 6 domains |
 
