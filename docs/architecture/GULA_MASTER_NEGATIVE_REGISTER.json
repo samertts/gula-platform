@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-11T17:41:46Z",
-  "head_commit": "5a093916f19e7092d72571b8b4569a306864b657",
+  "head_commit": "29cc1b1f6fd673de746b9ea8b434f89d4f4c4085",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 59,
+    "total": 60,
     "by_severity": {
       "P0": 10,
-      "P1": 22,
+      "P1": 23,
       "P2": 20,
       "P3": 7
     }
@@ -1660,7 +1660,7 @@
       "domain": "Platform / Capabilities",
       "category": "Dead code presented as architecture",
       "title": "Nine of the ten packages under app/capabilities/ cannot import, and nine have live frontend routes",
-      "status": "DISCOVERY COMPLETE — DECISION READY (capability import-root share repaired)",
+      "status": "DISCOVERY COMPLETE — DECISION READY (capability import-root share repaired) | healthcare_consent UNBLOCKED by NR-060",
       "blocker": false,
       "can_fix_now": false,
       "priority": 50,
@@ -1942,6 +1942,44 @@
       "can_fix_now": false,
       "blocker": false,
       "evidence_strength": "STRONG (migration chain searched by table name; endpoint count from a live OpenAPI schema)"
+    },
+    {
+      "id": "NR-060",
+      "category": "Source of truth / Authorization",
+      "domain": "Consent (cross-domain)",
+      "severity": "P1",
+      "priority": 4,
+      "status": "DECIDED — canonical owner established; dormant fail-open stand-in guarded, not executed",
+      "title": "Consent had eight implementations across six domains and no stated canonical owner",
+      "description": "Seven ORM classes map seven distinct *consent* tables (consents, niam_consents, niam_lifecycle_consents, trust_consent_records, dp_consent_directives, national_consents, rp_consent_records) and an eighth implementation, citizen_platform.privacy.ConsentEngine, is not an ORM model at all. No two share a table, so this was never NR-051's one-table-two-owners problem; it is eight concepts sharing a word.",
+      "root_cause": "Consent was modelled independently by each domain that needed it, with no constitution naming which store an authorization decision must consult.",
+      "evidence": "Cached 829-class ownership scan re-queried for 'consent': 7 ORM classes, 7 tables, 6 domains, zero duplicate table ownership. Migration search by table name: only 4 of 7 are built (consents 20260417_0001, niam_consents 20260814_0006, niam_lifecycle_consents 20260723_0002, trust_consent_records 20260716_0013); the other 3 are ORM-only and all three are already declared in test_schema_fidelity's unbuilt ledger. Live OpenAPI from create_app(): 16 of 1787 registered paths mention consent. Decisive evidence for ownership: exactly one implementation is wired into an authorization decision -- security/consent_dep.py::require_consent is a route dependency guarding services/mpi/api.py:316, and it queries `consents` via services/consent_service.py. It is also the only one that audits: log_access_decision writes an AuditLog row on all five decision branches (owner bypass, emergency denied, emergency allowed, no-consent deny, allow). Subject/tenancy columns measured per table: consents keys on gpid (citizen ULID) + grantee_id with no tenant column; trust_consent_records is the only one carrying lab_id.",
+      "affected_components": "app/models/consent.py, app/services/consent_service.py, app/security/consent_dep.py, app/identity/models/consent.py, app/identity/lifecycle/models.py, app/trust/models.py, app/citizen_platform/privacy.py, app/national/security/consent_enforcement.py",
+      "affected_users": "Any actor reading citizen data through a consent-gated path",
+      "clinical_impact": "Consent gates citizen data reads and carries doctor-only emergency break-glass. The canonical path is intact; no clinical path was found reading a non-canonical store.",
+      "security_impact": "Two dormant hazards, neither live. (1) ConsentEnforcementService returns granted=True for any input and its log_consent_check is `pass` -- fail-open with no audit. It is unreachable for two independent reasons: factory.py does not register national_router, and its only call site passes citizen_id= to a parameter named patient_id while omitting the required requestor_id, so it would raise TypeError. (2) ConsentEngine stores consent in a process-local dict, so a grant is lost on restart and invisible to other gunicorn workers; nothing authorizes on it, so it misinforms rather than mis-authorizes.",
+      "data_integrity_impact": "None found; the canonical store's invariants are the strongest of the eight.",
+      "operational_impact": "Eight consent surfaces mean a caller can grant consent somewhere that the enforcement path will never read.",
+      "scalability_impact": "n/a",
+      "legal_impact": "Consent is a legal artifact in this domain. A grant recorded in a non-enforced store is evidence of an intent the system does not honour.",
+      "dependencies": "NR-050 (this was its last blocked disposition), NR-051.",
+      "intersections": "NR-050, NR-051, NR-025.",
+      "contradictions": "",
+      "recommended_fix": "CANONICAL OWNER: app/models/consent.py::Consent over table `consents`, written through app/services/consent_service.py and enforced by app/security/consent_dep.py. Chosen on evidence -- it is the only store an authorization decision consults, the only one that audits every outcome, and the only one with break-glass semantics. Consolidating the other seven is NOT recommended as a single step: niam_consents (account-to-account grants), trust_consent_records (lab-scoped, the only tenant-scoped one) and niam_lifecycle_consents (person lifecycle) are different relations, not copies, and merging them would be an irreversible data decision.",
+      "minimal_safe_fix": "APPLIED, additive only: backend/tests/test_consent_canonical_ownership.py records the decision as an executable invariant. No consent code was changed. Specifically NOT done: correcting the ConsentEnforcementService call signature, because a correct call to a fail-open service is strictly worse than a broken call to one -- the guard ties the two facts together instead, so the service must fail closed before that router may be registered.",
+      "verification_method": "5 tests: the consent-table ledger is exact both ways; each declared migration still builds its table; the enforced path resolves to `consents` and audits all five branches; a fail-open consent service must not be reachable; and no enforcement module consults the in-memory ConsentEngine. Negative-proven by registering national_router in factory.py -- the reachability test fails with the intended message and passes again on restore.",
+      "acceptance_criteria": "One consent store is named canonical and no permissive stand-in is reachable.",
+      "regression_risk": "None from this change; it adds tests and alters no runtime code.",
+      "owner": "Identity + National Platform",
+      "related_tests": "backend/tests/test_consent_canonical_ownership.py (5 tests)",
+      "related_files": "see affected components",
+      "related_adrs": "docs/architecture/NR-051-canonical-ownership.md",
+      "related_contracts": "",
+      "wave": "WAVE 2",
+      "complexity": "M",
+      "can_fix_now": true,
+      "blocker": false,
+      "evidence_strength": "STRONG (live OpenAPI, migration chain by table name, enforcement call graph read end to end)"
     }
   ]
 }

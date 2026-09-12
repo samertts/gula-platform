@@ -26,10 +26,10 @@ and `docs/adr/`.
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
-| P1        | 22     | 13     | 9    |
+| P1        | 23     | 13     | 10    |
 | P2        | 20     | 5     | 15    |
 | P3        | 7     | 1     | 6    |
-| **Total** | **59** | **25** | **34** |
+| **Total** | **60** | **25** | **35** |
 
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
@@ -152,6 +152,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-057 | P2  | Frontend / Platform | Thirty further frontend calls resolve to no registered backend route | OPEN. Same defect class as NR-054 in other domains — /niam/* ×15, /citizen-platform/* ×6, /certification/* ×2 and 7 singletons. Held by a ledger in the NR-054 contract guard that may shrink but never grow |
 | NR-058 | P1  | Platform / Runtime | A real application start loads a second copy of the application through the `backend.app` root | FIXED — **VERIFIED inside `app/`**. 73 import statements across 25 files in five packages rewritten to the `app.` root, plus one module path passed as a *string* (`engineering/performance/benchmark.py` benchmarked `backend.app.kernel`, which an AST guard cannot see). A real `create_app()` now loads 2 shadow modules, down from 34, and both are namespace packages on the way to `backend.app._compat`, imported by `shared/` at the repository root — a constants module with no engine, session factory, base or registry, declared and tested as stateless. `Dockerfile:24-26` is still the root cause and is unchanged |
 | NR-059 | P1  | National Core | 42 registered endpoints are served by fifteen tables that no migration builds | OPEN — DECISION REQUIRED. `factory.py` registers the task_engine (23 paths) and workflow_runtime (19 paths) routers; their repositories read and write fifteen `national_task_*` / `national_workflow_*` / `national_saga_logs` tables and the migration chain creates none of them. NR-058 is why this was invisible: the models registered on a second `NationalBase`, so `test_schema_fidelity`'s ORM surface — the gate that exists to inventory exactly this — was under-counting by fifteen. Now declared in its ledger. Either build the tables or stop advertising the endpoints; withdrawing them is an API-surface change reserved for human approval |
+| NR-060 | P1  | Consent (cross-domain) | Consent had eight implementations across six domains and no stated canonical owner | **DECIDED**. 7 ORM classes over 7 distinct tables (no duplicate table ownership) plus a non-ORM `ConsentEngine`; only 4 of 7 are migration-backed. Canonical owner is `models.consent.Consent` over `consents`, because it is the only store an authorization decision consults (`security/consent_dep.py::require_consent` gating `services/mpi/api.py`) and the only one auditing all five decision branches. Two dormant hazards guarded, not executed: `ConsentEnforcementService` returns `granted=True` unconditionally with `log_consent_check` = `pass` (unreachable — `national_router` is not registered AND its only call site would TypeError), and `ConsentEngine` keeps consent in a process-local dict. Held by `test_consent_canonical_ownership.py`; no consent code changed |
 | NR-056 | P3  | Platform / Engineering | Seventeen generator modules and the engineering CLI resolved only from the repository root | **FIXED — VERIFIED**. 44 imports across 18 files. `backend/` has no `__init__.py` and the distribution publishes `app*`, so `backend.app.` only ever resolved because conftest and CI put the repo root on `sys.path`. Eighteen of nineteen modules failed to import before; all nineteen import now, and the CLI reads all 52 registry descriptors. Guarded by AST package discovery, so a future generator is covered without editing the test |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
