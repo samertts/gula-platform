@@ -129,3 +129,139 @@ it.
    or unexplained.
 4. Stop on the first unintended `drop_*`. Explain it before continuing.
 5. Only then write the revision, and only the operations that survived step 3.
+
+---
+
+# UPDATE — both options measured, and the conclusion inverted
+
+**Status: PARTIALLY VERIFIED.** Autogenerate now executes inside a CI gate. The
+topology change is **decided (Option A) and deliberately not applied.**
+
+Everything above was written before either option was run. Running them changed
+the answer, and this section supersedes the framing above rather than extending
+it: **the topology was never the bottleneck.**
+
+## Option B does not work, for a reason nobody had found
+
+Drop the ORM-level `ForeignKey` on the 310 cross-base declarations, keep the
+columns and the physical constraints.
+
+It costs less than it appeared to. A runtime census of all 18 SQLAlchemy
+registries finds 218 `relationship()` declarations, and **not one of them is on
+any of the 76 tables that hold a cross-base foreign key.** There is no ORM
+navigation to lose. Removing all 310 from the metadata leaves zero unresolved.
+
+And then it fails anyway:
+
+```
+ValueError: Duplicate table keys across multiple MetaData objects: "national_facilities"
+```
+
+Alembic refuses a multi-metadata target that claims one table twice. NR-006's
+repair deliberately declares `national_facilities` a second time, as a bare
+**foreign-key anchor**, so that seventeen `app/national` models can resolve
+`ForeignKey("national_facilities.id")` inside their own `MetaData`. That anchor
+is simultaneously what makes those foreign keys work and what makes autogenerate
+refuse. Option B cannot hold both goals; it is not a matter of doing it more
+carefully.
+
+## Option A works, and is one deleted declaration away
+
+| Measured | Result |
+|---|---|
+| duplicate table keys | **1** (`national_facilities`) |
+| are the two definitions identical? | **yes**, column for column |
+| unresolved foreign keys | **0** |
+| `sorted_tables` | **succeeds** |
+| `autogenerate` | **runs** |
+
+So the collision is resolved by deleting one declaration, not by choosing an
+owner — and Option A is the mechanically correct topology.
+
+## Why it is still not applied
+
+Because running is not the same as usable. The diff:
+
+```
+5060 operations
+  2372  CreateIndexOp        377  DropColumnOp
+   585  ModifyTableOps       314  AddColumnOp
+   538  DropConstraintOp     303  CreateTableOp
+   454  DropIndexOp           73  AlterColumnOp
+                              27  CreateForeignKeyOp
+                              10  DropTableOp
+  ── 1379 destructive ──
+```
+
+None of that is caused by the topology change. It is pre-existing drift that the
+topology change merely made visible, and two cross-checks confirm both
+instruments are telling the truth:
+
+* `CreateTableOp` = **303** = the independently measured count of mapped tables
+  with no physical table;
+* `DropTableOp` = **10** = the independently measured count of physical tables
+  with no ORM, and **exactly** the list already pinned as
+  `UNMAPPED_PHYSICAL_TABLES` — two derivations, one from subtraction and one
+  from Alembic, agreeing entry for entry.
+
+The serious half is the columns:
+
+```
+DROP COLUMN patients.national_id        -- varchar(20), four indexes,
+DROP COLUMN patients.sndhs_health_id       one partial unique index
+DROP COLUMN patients.identity_level
+DROP COLUMN patients.consent_flags
+DROP COLUMN lab_orders.visit_id
+```
+
+`patients.national_id` is the column CLAUDE.md Security Invariant #8 requires to
+hold **encrypted national identifiers**. `app/models/patient.py` maps
+`national_id_hash` beside it and none of these.
+
+Applying Option A today would convert a loud, honest failure — *autogenerate
+cannot run* — into a quiet and dangerous capability — *autogenerate runs, and
+proposes dropping your encrypted national IDs*. That is the same trade NR-076
+refuses when it declines to make an abstract repository instantiable without
+implementing it, and it is refused here for the same reason and in the same
+direction.
+
+Recorded as **NR-080**.
+
+## What is applied instead
+
+`backend/tests/test_autogenerate_is_safe.py` performs the merge **inside the
+gate**, so autogenerate executes for real against a disposable PostgreSQL
+migrated to head while `migrations/env.py`, every declarative base and every
+model stay exactly as they are. Runtime risk: none.
+
+Seven tests: the merge resolves every cross-base FK; there is exactly one
+duplicate table key; autogenerate actually runs; its output is deterministic
+across two runs; no unexplained `DROP TABLE`; the protected-column drop set is
+exactly as declared, in **both** directions; and the destructive budget may fall
+but never rise.
+
+Four negative proofs, every source restored byte-identical:
+
+| Perturbation | Fails |
+|---|---|
+| a `ForeignKey` to a table in no metadata | cross-base FK resolution |
+| a second anchor `Table` for `labs` | duplicate-table-key guard |
+| map `patients.national_id` in the ORM | protected-column ledger (**shrink it**) |
+| rename a mapped `__tablename__` | unexplained `DROP TABLE` + destructive budget |
+
+The third is worth noting: it proves the *fix* direction works. Mapping a
+protected column removes it from the DROP set and the guard tells you to update
+the ledger.
+
+## Order of operations, revised
+
+1. **Reconcile the drift** (NR-080), per entity, largest cluster first:
+   radiology (~170 columns / 12 tables), then nhdw (NR-074), then the SNDHS
+   Phase 1 columns on `patients` and `lab_orders`. Map protected columns; never
+   drop them. The destructive budget in the gate falls as this proceeds.
+2. **Then** delete the `national_facilities` anchor and adopt one `MetaData`.
+3. **Then** `alembic revision --autogenerate` becomes usable at the CLI, and
+   NR-075 and NR-064 can be re-evaluated against a topology that resolves.
+
+The previous version of this document put step 2 first. That was wrong, and the
+measurement is what showed it.

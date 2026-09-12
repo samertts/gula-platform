@@ -1,0 +1,372 @@
+"""NR-078 / NR-080 — run Alembic autogenerate for real, and refuse to act on it blindly.
+
+Every other guard in this suite reasons about what autogenerate *would* propose.
+None had ever asked it to propose anything, and that is how NR-078 stayed
+invisible: `alembic revision --autogenerate` terminates with
+`NoReferencedTableError` before emitting a single operation, and the command
+CLAUDE.md names as mandatory for any schema change has no working path.
+
+This file executes it, against a disposable PostgreSQL database migrated to
+head, and asserts on the result.
+
+**What the experiment found, and why the topology change is deliberately NOT
+applied here.**
+
+Two options were measured rather than argued:
+
+* **Option B** -- keep the separate metadata and drop the ORM-level
+  `ForeignKey` on the 310 cross-base declarations, keeping the columns and the
+  physical constraints. It removes nothing the ORM uses: **not one** of the 76
+  tables holding a cross-base FK carries a single `relationship()`, so there is
+  no navigation to lose. It clears all 310. It then fails anyway, on a second
+  and independent blocker: `ValueError: Duplicate table keys across multiple
+  MetaData objects: "national_facilities"`. Alembic refuses a multi-metadata
+  target that claims one table twice, and NR-006's repair deliberately declares
+  `national_facilities` a second time as a **foreign-key anchor** so that
+  seventeen `app/national` models can resolve it. The anchor is what makes the
+  FKs work and what makes autogenerate refuse; the two goals are in direct
+  tension and Option B cannot hold both.
+* **Option A** -- one shared MetaData. Measured: **one** duplicate table key
+  (that same anchor), and the two definitions are **column-identical**, so the
+  collision is resolved by deleting one declaration rather than by choosing an
+  owner. **Zero** unresolved foreign keys. `sorted_tables` succeeds.
+  Autogenerate runs.
+
+So Option A is the mechanically correct topology, and the repository is one
+deleted `Table` away from it.
+
+It is still not applied, because making autogenerate *run* is not the same as
+making it *usable*, and the first complete ORM-to-database comparison this
+platform has ever produced says so:
+
+    5060 operations, of which 1379 are destructive
+      538  DropConstraintOp        377  DropColumnOp
+      454  DropIndexOp              10  DropTableOp
+
+Every one of those is pre-existing drift that Option A merely made visible --
+none of it is caused by the topology. Two samples decide the matter:
+
+* the 10 proposed `DROP TABLE` are **exactly** the ten physical tables no ORM
+  maps, independently pinned in `test_alembic_metadata_registry.py` as
+  `UNMAPPED_PHYSICAL_TABLES` -- Financial Engine Phase A (schema-only by
+  design), `visits`, `sndhs_audit_logs`, `idempotency_keys` and
+  `radiology_ai_analysis_jobs`. Two instruments, derived independently, produce
+  the same list;
+* the proposed `DROP COLUMN` set includes **`patients.national_id`**,
+  `patients.sndhs_health_id`, `patients.identity_level`,
+  `patients.consent_flags` and `lab_orders.visit_id` -- the SNDHS Phase 1
+  columns. `patients.national_id` is the column CLAUDE.md Security Invariant #8
+  requires to hold encrypted national identifiers. The ORM maps
+  `national_id_hash` and none of the others.
+
+Applying Option A today would therefore replace a loud, honest failure
+("autogenerate cannot run") with a quiet and dangerous capability
+("autogenerate runs, and proposes dropping your encrypted national IDs"). That
+is the same trade NR-076 refuses, in the same direction, and it is refused here
+for the same reason.
+
+**What this file does instead.** It performs the merge itself, in the gate, so
+autogenerate executes without `migrations/env.py`, any declarative base or any
+model changing. Runtime risk: none. The destructive proposals are pinned with
+their explanations and ratcheted, so the drift is visible, bounded, and cannot
+grow unnoticed -- and the topology decision keeps its true cost attached to it.
+
+The ledgers may shrink. They may never grow.
+"""
+
+from __future__ import annotations
+
+import collections
+import os
+
+import pytest
+from sqlalchemy import MetaData, create_engine
+
+pytestmark = pytest.mark.integration
+
+#: Owned by this guard, like the other PostgreSQL guards: `conftest.py` pins
+#: DATABASE_URL to in-memory SQLite for the whole suite before anything here
+#: runs, so a value read from it would describe a different database.
+DATABASE_URL = os.environ.get("GULA_SCHEMA_DATABASE_URL") or os.environ.get(
+    "MIGRATION_DATABASE_URL",
+)
+
+#: The one duplicate table key across all registered metadata. NR-006 declares
+#: `national_facilities` a second time, as a bare `Table`, so that seventeen
+#: `app/national` models can resolve `ForeignKey("national_facilities.id")`
+#: inside their own MetaData. Both definitions are column-identical.
+DECLARED_DUPLICATE_TABLE_KEYS = frozenset({"national_facilities"})
+
+#: Physical tables no ORM maps, which autogenerate therefore proposes to DROP.
+#: Identical to `UNMAPPED_PHYSICAL_TABLES` in
+#: `test_alembic_metadata_registry.py`, derived by a completely different route:
+#: that guard subtracts mapped from physical, this one reads what Alembic emits.
+#: Two instruments agreeing is worth more than either alone.
+DECLARED_DROP_TABLE_PROPOSALS = {
+    # Financial Engine Phase A is schema-only by design (CLAUDE.md): the tables
+    # are bootstrapped, the routes and services are deferred to Phase B+.
+    "fin_ads_campaigns", "fin_ads_clicks", "fin_ads_conversions",
+    "fin_clinical_behavior", "fin_fraud_logs", "fin_market_benchmarks",
+    # Infrastructure, written by middleware rather than by a model.
+    "idempotency_keys",
+    # The only radiology table of eighteen with no model (CREATE_ORM).
+    "radiology_ai_analysis_jobs",
+    # A parallel UUID-keyed audit surface from SNDHS Phase 1 whose promised
+    # service was never written.
+    "sndhs_audit_logs",
+    # The clinical episode anchor; adopting Visit as canonical waits on the
+    # clinical owner.
+    "visits",
+}
+
+#: Columns that are physical, carry protected or flag-gated data, and are not
+#: mapped -- so autogenerate proposes dropping them. Named individually because
+#: `patients.national_id` is the column Security Invariant #8 governs, and a
+#: count would not say that. Mapping one of these is the fix; the guard then
+#: fails and the entry is removed.
+DECLARED_PROTECTED_DROP_COLUMNS = {
+    ("patients", "national_id"),
+    ("patients", "sndhs_health_id"),
+    ("patients", "identity_level"),
+    ("patients", "consent_flags"),
+    ("lab_orders", "visit_id"),
+}
+
+#: The destructive budget, per operation type. This is drift that predates the
+#: measurement, not a regression -- and it is the reason autogenerate output may
+#: not be committed as a migration without a per-operation review.
+DECLARED_DESTRUCTIVE_BUDGET = {
+    "DropConstraintOp": 538,
+    "DropIndexOp": 454,
+    "DropColumnOp": 377,
+    "DropTableOp": 10,
+}
+
+
+def _require_database() -> str:
+    if not DATABASE_URL:
+        pytest.skip("GULA_SCHEMA_DATABASE_URL / MIGRATION_DATABASE_URL not set")
+    return DATABASE_URL
+
+
+@pytest.fixture(scope="module")
+def registry():
+    """Exactly what `migrations/env.py` hands Alembic, by replaying that file."""
+    from tests.test_alembic_metadata_registry import _load_registry
+
+    saved = dict(os.environ)
+    try:
+        yield _load_registry()
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+
+
+@pytest.fixture(scope="module")
+def merged(registry):
+    """Option A, constructed here rather than in `env.py`.
+
+    Doing the merge inside the gate is what lets autogenerate execute while the
+    application's declarative topology is left exactly as it is. If the merge is
+    ever adopted for real, this fixture becomes a one-line import and the
+    assertions below keep their meaning.
+    """
+    target = MetaData()
+    duplicates: list[str] = []
+    seen: set[str] = set()
+    for _label, metadata in registry:
+        for name, table in metadata.tables.items():
+            if name in seen:
+                duplicates.append(name)
+                continue
+            seen.add(name)
+            table.to_metadata(target)
+    target.info["duplicates"] = duplicates
+    return target
+
+
+@pytest.fixture(scope="module")
+def autogenerated(merged):
+    """The real thing: Alembic autogenerate against a migrated PostgreSQL."""
+    from alembic.autogenerate import produce_migrations
+    from alembic.migration import MigrationContext
+
+    engine = create_engine(_require_database())
+    try:
+        with engine.connect() as connection:
+            context = MigrationContext.configure(
+                connection,
+                opts={"target_metadata": merged, "compare_type": False},
+            )
+            return produce_migrations(context, merged)
+    finally:
+        engine.dispose()
+
+
+def _walk(ops):
+    for op in getattr(ops, "ops", []):
+        yield op
+        yield from _walk(op)
+
+
+def _operations(script) -> dict[str, list[tuple]]:
+    found: dict[str, list[tuple]] = collections.defaultdict(list)
+    for op in _walk(script.upgrade_ops):
+        found[type(op).__name__].append((
+            getattr(op, "table_name", None),
+            getattr(op, "constraint_name", None)
+            or getattr(op, "column_name", None)
+            or getattr(op, "index_name", None),
+        ))
+    return found
+
+
+# ── the capability itself ────────────────────────────────────────────────────
+
+def test_every_cross_base_foreign_key_resolves_under_the_merge(merged) -> None:
+    """NR-078's root cause, measured against the fix rather than described.
+
+    310 foreign keys point at a table their own base does not own, and Alembic
+    resolves every foreign key in `sorted_tables` before emitting an operation.
+    Under one MetaData the count must be zero -- if it is not, the merge does
+    not solve NR-078 and the conclusion in this file's docstring is wrong.
+    """
+    unresolved = sorted(
+        (table.name, fk.parent.name, fk._table_key())
+        for table in merged.tables.values()
+        for fk in table.foreign_keys
+        if fk._table_key() not in merged.tables
+    )
+    assert unresolved == [], (
+        f"{len(unresolved)} foreign keys still do not resolve under a single "
+        f"MetaData, so autogenerate cannot sort the schema: {unresolved[:10]}"
+    )
+
+
+def test_the_merge_has_exactly_one_duplicate_table_key(merged) -> None:
+    """The blocker Option B cannot clear, held at its known size.
+
+    Alembic refuses a multi-metadata target claiming one table twice. Today that
+    is `national_facilities` alone, and both definitions are column-identical --
+    a foreign-key anchor, not a rival entity. A second duplicate would be a real
+    ownership conflict and would have to be decided before any topology change.
+    """
+    duplicates = set(merged.info.get("duplicates", []))
+    assert duplicates == DECLARED_DUPLICATE_TABLE_KEYS, (
+        "the set of table names claimed by more than one registered metadata "
+        f"changed to {sorted(duplicates)}. Each is a canonical-ownership "
+        "decision and none may be resolved by picking whichever import ran first"
+    )
+
+
+def test_autogenerate_actually_runs(autogenerated) -> None:
+    """The assertion no previous guard made.
+
+    `alembic revision --autogenerate` fails today with NoReferencedTableError.
+    Under the merge it completes. If this ever raises, the gate has stopped
+    measuring anything and every ledger below is vacuous.
+    """
+    operations = _operations(autogenerated)
+    assert operations, "autogenerate produced no operations at all; it did not run"
+    assert sum(len(v) for v in operations.values()) > 1000, (
+        "autogenerate produced implausibly few operations; the comparison is "
+        "probably running against an empty or unmigrated database"
+    )
+
+
+def test_autogenerate_is_deterministic(merged) -> None:
+    """A diff that changes between runs cannot be reviewed operation by operation."""
+    from alembic.autogenerate import produce_migrations
+    from alembic.migration import MigrationContext
+
+    shapes = []
+    for _ in range(2):
+        engine = create_engine(_require_database())
+        try:
+            with engine.connect() as connection:
+                context = MigrationContext.configure(
+                    connection, opts={"target_metadata": merged, "compare_type": False},
+                )
+                script = produce_migrations(context, merged)
+        finally:
+            engine.dispose()
+        shapes.append({k: sorted(map(str, v)) for k, v in _operations(script).items()})
+    assert shapes[0] == shapes[1], (
+        "two autogenerate runs against the same database produced different "
+        "operations; the diff cannot be reviewed or ratcheted"
+    )
+
+
+# ── the destructive boundary ─────────────────────────────────────────────────
+
+def test_no_unexplained_table_drop_is_proposed(autogenerated) -> None:
+    """Ten DROP TABLE proposals, and every one of them already has a reason.
+
+    Cross-checked against `UNMAPPED_PHYSICAL_TABLES`, which is derived by
+    subtracting mapped tables from physical ones -- a completely different
+    route to the same list. An eleventh would mean a physical table lost its
+    ORM owner, which is how a table gets dropped by accident.
+    """
+    proposed = {table for table, _ in _operations(autogenerated).get("DropTableOp", [])}
+    unexplained = sorted(proposed - DECLARED_DROP_TABLE_PROPOSALS)
+    assert unexplained == [], (
+        "autogenerate proposes DROP TABLE for tables with no recorded reason: "
+        f"{unexplained}. Map the table or record why it is intentionally "
+        "unmapped; do not generate this migration"
+    )
+    resolved = sorted(DECLARED_DROP_TABLE_PROPOSALS - proposed)
+    assert resolved == [], (
+        "these tables are no longer proposed for DROP, which means they gained "
+        f"an ORM owner; remove them from the ledger: {resolved}"
+    )
+
+
+def test_the_protected_column_drop_set_is_exactly_as_declared(autogenerated) -> None:
+    """`patients.national_id` is proposed for DROP, and must never be acted on.
+
+    Security Invariant #8 requires that column to hold encrypted national IDs.
+    It is physical, it is indexed four ways, and the ORM maps only
+    `national_id_hash` beside it. The same is true of `sndhs_health_id`,
+    `identity_level`, `consent_flags` and `lab_orders.visit_id` -- the SNDHS
+    Phase 1 surface, which CLAUDE.md gates behind `SNDHS_ENABLE_NATIONAL_ID`.
+
+    Two directions matter and both are asserted. A column leaving this set means
+    someone mapped it, which is the fix -- shrink the ledger. A column joining it
+    means protected data just became invisible to the ORM and a DROP candidate.
+    """
+    proposed = set(_operations(autogenerated).get("DropColumnOp", []))
+    relevant = {
+        (table, column) for table, column in proposed
+        if table in {t for t, _ in DECLARED_PROTECTED_DROP_COLUMNS}
+    }
+    assert relevant == DECLARED_PROTECTED_DROP_COLUMNS, (
+        "the set of protected, physical, unmapped columns changed.\n"
+        f"  newly proposed for DROP: {sorted(relevant - DECLARED_PROTECTED_DROP_COLUMNS)}\n"
+        f"  no longer proposed:      {sorted(DECLARED_PROTECTED_DROP_COLUMNS - relevant)}\n"
+        "A new entry means protected data became invisible to the ORM. A "
+        "removed entry means it was mapped -- update the ledger."
+    )
+
+
+def test_the_destructive_budget_does_not_grow(autogenerated) -> None:
+    """The ratchet on pre-existing drift.
+
+    These 1379 operations are not a regression and not a plan: they are what
+    the ORM and the database currently disagree about, measured for the first
+    time. The number may fall as reconciliation proceeds. It may not rise.
+    """
+    operations = _operations(autogenerated)
+    actual = {name: len(items) for name, items in operations.items() if "Drop" in name}
+    grew = {
+        name: (declared, actual.get(name, 0))
+        for name, declared in DECLARED_DESTRUCTIVE_BUDGET.items()
+        if actual.get(name, 0) > declared
+    }
+    assert grew == {}, (
+        f"autogenerate now proposes more destructive operations (declared -> now): {grew}. "
+        "Something was removed from the ORM while the database kept it"
+    )
+    appeared = sorted(set(actual) - set(DECLARED_DESTRUCTIVE_BUDGET))
+    assert appeared == [], (
+        f"a destructive operation type that has never been proposed appeared: {appeared}"
+    )
