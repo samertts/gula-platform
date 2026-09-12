@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-11T17:41:46Z",
-  "head_commit": "56855607b4521eb26ac9cb1aa424be2c35307269",
+  "head_commit": "d999970e",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 60,
+    "total": 61,
     "by_severity": {
       "P0": 10,
-      "P1": 23,
+      "P1": 24,
       "P2": 20,
       "P3": 7
     }
@@ -1980,6 +1980,44 @@
       "can_fix_now": true,
       "blocker": false,
       "evidence_strength": "STRONG (live OpenAPI, migration chain by table name, enforcement call graph read end to end)"
+    },
+    {
+      "id": "NR-061",
+      "category": "Source of truth / Identity",
+      "domain": "Practitioner (cross-domain)",
+      "severity": "P1",
+      "priority": 4,
+      "status": "DECIDED — canonical composition named; rival registries guarded, not built",
+      "title": "Practitioner is modelled seventeen times; the only built natural-person registry is the Identity Platform's",
+      "description": "17 ORM classes model practitioner/provider/staff/employee/healthcare-worker/person. Only 4 are built, and 3 of those 4 are homonyms: fin_providers (financial service provider), pay_providers (payment processor), niam_fed_providers (OIDC/SAML identity provider). Exactly one built table represents a natural person: niam_persons. Every clinical variant is unbuilt, including national_practitioners -- at 88 foreign-key references the single most-depended-on table in the repository.",
+      "root_cause": "Each domain modelled its own practitioner rather than composing the Identity Platform's, and NR-022's framing ('the most-depended-on tables do not exist') invites closing the gap by building them.",
+      "evidence": "Cached 829-class ownership scan filtered for person-like concepts (17 classes), cross-referenced against an AST parse of every op.create_table in the migration chain (evidence-created-tables.json, 419 tables). Column-level comparison: national_practitioners flattens into one row what the Identity Platform models relationally and has BUILT -- niam_persons (full_name, date_of_birth, gender, nationality, phone, email, national_id_hash), niam_licenses/ProfessionalLicense (license_number, issuing_authority, expiry_date, board_certification), niam_employments/Employment (person_id -> organization_id, position, dates), niam_assignments (posting) and niam_role_assignments (permissions). The Identity Platform is 84 of 87 tables built. One genuine gap: specialty/sub_specialty has no equivalent in niam_licenses, which carries license_type and board_name only.",
+      "affected_components": "app/national/domain/practitioner.py, app/national/domain/provider.py, app/national/domain/employee.py, app/governance/models/workforce.py, app/identity/models/{person,license,employment}.py",
+      "affected_users": "Every clinical path that names a practitioner",
+      "clinical_impact": "Practitioner identity underpins attribution of clinical acts and licence validity at the time of care.",
+      "security_impact": "Building a rival registry would copy name, date of birth, phone, email and national ID hash outside the proofing, assurance and verification governance that surrounds niam_persons, and would contradict CLAUDE.md's rule that the Identity Platform is the single trusted identity provider.",
+      "data_integrity_impact": "Two person registries cannot be reconciled without a matching strategy; none exists.",
+      "operational_impact": "88 foreign keys name a table that does not exist.",
+      "scalability_impact": "n/a",
+      "legal_impact": "Duplicated personal data enlarges the custodianship surface.",
+      "dependencies": "NR-022 (Stable Core map), NR-047.",
+      "intersections": "NR-022, NR-051, NR-025.",
+      "contradictions": "",
+      "recommended_fix": "CANONICAL: a practitioner is not an entity. It is a Person (niam_persons) who holds a ProfessionalLicense (niam_licenses) and an Employment (niam_employments) / Assignment (niam_assignments), with permissions through niam_role_assignments. Do NOT build national_practitioners. Re-pointing its 88 references is an architectural change that depends on the NR-022 subject/identifier decision and is not attempted here. The one real additive gap -- clinical specialty -- belongs on niam_licenses, not in a new table.",
+      "minimal_safe_fix": "APPLIED, additive only: backend/tests/test_practitioner_canonical_identity.py asserts the canonical composition is still built and that no rival person registry has acquired a migration. Retiring the rivals stays allowed; building one fails the gate. No code changed.",
+      "verification_method": "4 tests: the created-table evidence is present and plausible (>=400 tables); the canonical composition is migration-backed; no rival person registry is built; the rival ledger still names real ORM tables. Negative-proven by marking national_practitioners as built in the evidence file -- the guard fails with its intended message and passes again on restore.",
+      "acceptance_criteria": "One registry of natural persons, and it is the Identity Platform's.",
+      "regression_risk": "None; tests only.",
+      "owner": "Identity Platform",
+      "related_tests": "backend/tests/test_practitioner_canonical_identity.py (4 tests)",
+      "related_files": "see affected components",
+      "related_adrs": "docs/architecture/NR-022-stable-core-map.md",
+      "related_contracts": "",
+      "wave": "WAVE 2",
+      "complexity": "M",
+      "can_fix_now": true,
+      "blocker": false,
+      "evidence_strength": "STRONG (column-level comparison against a migration-derived built-table set)"
     }
   ]
 }
