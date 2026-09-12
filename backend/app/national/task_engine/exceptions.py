@@ -37,3 +37,22 @@ class TaskAssignmentError(TaskEngineError):
         self.task_id = task_id
         self.reason = reason
         super().__init__(f"Task assignment error: {task_id}: {reason}")
+
+
+class TaskFieldNotUpdatableError(TaskEngineError):
+    """NR-070. A PUT body named a field the caller does not own.
+
+    Raised rather than dropped. `update_task` used to walk the request body with
+    `setattr` on anything the dataclass happened to have, which made
+    `created_by`, `assigned_to`, `assigned_by` and `status` client-writable --
+    the actor fields an audit trail is read from, and a way around the state
+    machine the transition methods enforce. Silently ignoring those keys would
+    hide the attempt; the attempt is the part worth seeing.
+    """
+
+    def __init__(self, fields: list[str]) -> None:
+        self.fields = fields
+        super().__init__(
+            "These fields are not updatable through this path and were rejected: "
+            + ", ".join(fields),
+        )

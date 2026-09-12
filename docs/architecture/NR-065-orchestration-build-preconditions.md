@@ -462,3 +462,101 @@ national table may adopt `lab_id` or `TenantMixin`.
 No runtime code changed. No table built. The 15 stay in the schema-fidelity
 unbuilt ledger with their endpoint count stated (NR-058), so the state remains
 visible either way.
+
+## 9. [Phase B] NR-070 is closed, and the blocker moved rather than cleared
+
+§3.4 held the scope columns back on one argument: *"a correct `organization_id`
+behind an unauthorized endpoint is a correctly-labelled open door."* That
+argument is spent. NR-070 is fixed.
+
+### How it was closed — reuse, and the evidence that reuse was correct
+
+The instruction was to prefer an already-canonical permission over inventing
+one, and the repository answered the question rather than leaving it to taste:
+
+| Question | Evidence | Answer |
+|---|---|---|
+| What permissions does `app/national` use? | `grep -r "require_permission(" app/national` → 14 call sites | `"system:admin"`, and nothing else |
+| Where is it attached? | thirteen route modules | at the router, via `dependencies=[...]` |
+| Are health endpoints excepted? | all seven platform siblings declare `/health` | no — they sit under the router dependency |
+| Who holds it? | `EXTENDED_ROLE_PERMISSIONS` | `master_admin`, and no other role |
+
+So there was no design space to fill. Inventing `national:orchestration:manage`
+would have created a second vocabulary for one package and left `system:admin`
+meaning something different on either side of it.
+
+The last row is stated rather than implied, because it is the part someone will
+want to revisit: this is the **tightest** reading the repository supports, not a
+comfortable middle. If national orchestration should be reachable by
+`ministry_admin`, that is a deliberate widening of a role's permission set — a
+human decision under CLAUDE.md's authorization boundary — and not something to
+pre-empt by picking a looser permission here. A test asserts the holder set so
+that widening it is a visible edit rather than a quiet consequence.
+
+### The other two shapes
+
+`update_task` walked the request body with `setattr`, so `created_by`,
+`assigned_to`, `assigned_by` and `status` were client-writable. It now checks
+against an allowlist and **raises** on anything outside it: an attempt to
+overwrite the actor is the part worth seeing, and a silent drop hides it. The
+allowlist is itself guarded, because adding `created_by` to it is the easy way
+to make the check pass while restoring the defect.
+
+`assigned_by` came from the request body while `current_user` sat on the same
+handler. It now comes from the server. So does `escalated_by`, and so does
+`national_task_audit_logs.actor_id` — an entity field and a physical column that
+**nothing had ever written**, on every one of the twelve mutations. A log that
+records what happened and not who did it is not an audit trail.
+
+One entry in the original finding was **wrong and is corrected rather than
+implemented**: `escalated_to` was listed as a client-supplied actor. It is the
+escalation *target*, which the caller legitimately chooses. Changing the code to
+satisfy the wrong half of a finding would have been the worse repair.
+
+### What the proof had to survive
+
+Two things nearly made the guards vacuous, both found by running them:
+
+* the application registers its routers **from the lifespan**, and FastAPI
+  stores each included router as an opaque `_IncludedRouter`. `create_app()`
+  alone has 7 routed paths; `app.routes` after startup has 130; the surface it
+  actually serves is **2109**, reachable only by recursing through
+  `original_router`. A structural guard written the obvious way finds zero
+  routes and passes green — the same failure class as every other defect in this
+  document;
+* `/intelligence` is claimed by **two** routers, `app/national/intelligence` and
+  `app/command_intelligence`, registered forty lines apart in `factory.py` and
+  guarded with different permissions. Selecting routes by URL prefix mixes them.
+  Everything now selects by the endpoint's defining module. Recorded as NR-077.
+
+Five negative proofs, each restored byte-identical: remove the router
+dependency; restore the `setattr` loop; revert `assigned_by` to the body; drop
+`actor_id` from one audit call; widen the allowlist. Each fails the tests that
+exist to catch it, with the intended message.
+
+### The blocker moved — NR-076
+
+The tables still may not be built, for a reason that did not exist in this
+document before, and which the NR-070 **positive** test found — the one asserting
+that a caller holding the permission gets *through*:
+
+`master_admin` passes authorization on `GET /national/tasks/` and then fails,
+earlier than the unbuilt tables. `SQLAlchemyTaskAssignmentRepository` implements
+`find_by_user` and `find_active` while its ABC declares `find_by_assignee`, so
+the class is still abstract and `_get_service()` — called first by all 29 task
+endpoints — raises `TypeError`. Tracing that produced the real shape: **eleven of
+the fourteen concrete repositories in these two packages contain no function call
+at all in any write method.** `save` returns its argument; finders return `[]`.
+Among the eleven are *both* audit-log repositories, both the assignment and
+escalation stores, and workflow steps, approvals, compensations and timers.
+
+So the `TypeError` is the only thing standing between this platform and a
+workflow engine that answers `{"success": true}` while discarding every row it
+is handed. It is deliberately left in place: making the class instantiable
+without implementing it would replace a loud failure with silent data loss.
+
+Which restates the precondition rather than retiring it. Writing
+`organization_id` into tables whose repositories discard every row would produce
+correctly-scoped data loss instead of incorrectly-scoped data loss. **The order
+is: implement the repositories, then build the tables, then write the scope
+columns.** Not the reverse, and not in parallel.

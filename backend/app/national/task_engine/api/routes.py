@@ -15,6 +15,7 @@ from app.national.task_engine.domain.enums import (
     TaskCategory,
     TaskPriority,
 )
+from app.national.task_engine.exceptions import TaskFieldNotUpdatableError
 from app.national.task_engine.infrastructure.repository import (
     SQLAlchemyNationalTaskRepository,
     SQLAlchemyTaskAssignmentRepository,
@@ -24,9 +25,28 @@ from app.national.task_engine.infrastructure.repository import (
     SQLAlchemyTaskQueueRepository,
     SQLAlchemyTaskSLARepository,
 )
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
-router = APIRouter(prefix="/national/tasks", tags=["National Task Engine"])
+
+def _actor(current_user: Any) -> str | None:
+    """The authenticated caller, and the only source of an actor on this router.
+
+    NR-070: `assigned_by` came from the request body while `current_user` sat on
+    the same handler, so an audit reader could be told anything. Every actor
+    field on this router is now resolved here.
+    """
+    actor = getattr(current_user, "id", None)
+    return str(actor) if actor is not None else None
+
+#: NR-070. The permission is not new. Every one of the thirteen national
+#: routers that guards itself guards itself with exactly this string, at the
+#: router rather than the handler, and no other permission string appears
+#: anywhere in `app/national`. Reuse, not invention.
+router = APIRouter(
+    prefix="/national/tasks",
+    tags=["National Task Engine"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service() -> TaskEngineService:
@@ -56,9 +76,9 @@ def create_task(data: dict, current_user: Any = Depends(get_current_user)):
         tags=data.get("tags", []),
         metadata=data.get("metadata", {}),
         correlation_id=data.get("correlation_id"),
-        created_by=current_user.id if hasattr(current_user, "id") else None,
+        created_by=_actor(current_user),
     )
-    result = svc.create_task(task)
+    result = svc.create_task(task, _actor(current_user))
     return {"success": True, "id": result.id}
 
 
@@ -75,10 +95,10 @@ def bulk_create(data: list[dict], current_user: Any = Depends(get_current_user))
             category=TaskCategory(item.get("category", "general")),
             queue_id=item.get("queue_id"),
             tags=item.get("tags", []),
-            created_by=current_user.id if hasattr(current_user, "id") else None,
+            created_by=_actor(current_user),
         )
         tasks.append(task)
-    results = svc.bulk_create(tasks)
+    results = svc.bulk_create(tasks, _actor(current_user))
     return {"success": True, "count": len(results), "ids": [r.id for r in results]}
 
 
@@ -132,7 +152,10 @@ def update_task(
     task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    task = svc.update_task(task_id, data)
+    try:
+        task = svc.update_task(task_id, data, _actor(current_user))
+    except TaskFieldNotUpdatableError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"success": True, "id": task.id}
 
 
@@ -152,7 +175,7 @@ def assign_task(
 ):
     svc = _get_service()
     result = svc.assign_task(
-        task_id, data["assignee_id"], data.get("assigned_by"),
+        task_id, data["assignee_id"], _actor(current_user),
     )
     return {"success": True, "status": result.status.value}
 
@@ -160,9 +183,7 @@ def assign_task(
 @router.post("/{task_id}/start")
 def start_task(task_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    result = svc.start_task(
-        task_id, current_user.id if hasattr(current_user, "id") else None,
-    )
+    result = svc.start_task(task_id, _actor(current_user), _actor(current_user))
     return {"success": True, "status": result.status.value}
 
 
@@ -171,7 +192,9 @@ def complete_task(
     task_id: str, data: dict | None = None, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    result = svc.complete_task(task_id, data.get("result") if data else None)
+    result = svc.complete_task(
+        task_id, data.get("result") if data else None, _actor(current_user),
+    )
     return {"success": True, "status": result.status.value}
 
 
@@ -180,7 +203,9 @@ def fail_task(
     task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    result = svc.fail_task(task_id, data.get("error", "unknown error"))
+    result = svc.fail_task(
+        task_id, data.get("error", "unknown error"), _actor(current_user),
+    )
     return {"success": True, "status": result.status.value}
 
 
@@ -189,7 +214,9 @@ def cancel_task(
     task_id: str, data: dict | None = None, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    result = svc.cancel_task(task_id, (data or {}).get("reason"))
+    result = svc.cancel_task(
+        task_id, (data or {}).get("reason"), _actor(current_user),
+    )
     return {"success": True, "status": result.status.value}
 
 
@@ -199,7 +226,7 @@ def escalate_task(
 ):
     svc = _get_service()
     result = svc.escalate_task(
-        task_id, data.get("reason", ""), data.get("escalated_to"),
+        task_id, data.get("reason", ""), data.get("escalated_to"), _actor(current_user),
     )
     return {"success": True, "status": result.status.value}
 
@@ -209,21 +236,23 @@ def delegate_task(
     task_id: str, data: dict, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    result = svc.delegate_task(task_id, data["to_user"], data.get("reason"))
+    result = svc.delegate_task(
+        task_id, data["to_user"], data.get("reason"), _actor(current_user),
+    )
     return {"success": True, "status": result.status.value}
 
 
 @router.post("/{task_id}/hold")
 def hold_task(task_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    result = svc.hold_task(task_id)
+    result = svc.hold_task(task_id, _actor(current_user))
     return {"success": True, "status": result.status.value}
 
 
 @router.post("/{task_id}/resume")
 def resume_task(task_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    result = svc.resume_task(task_id)
+    result = svc.resume_task(task_id, _actor(current_user))
     return {"success": True, "status": result.status.value}
 
 
@@ -234,7 +263,7 @@ def add_comment(
     svc = _get_service()
     comment = svc.add_comment(
         task_id,
-        current_user.id if hasattr(current_user, "id") else "unknown",
+        _actor(current_user) or "unknown",
         data.get("author_name", ""),
         data["content"],
     )
@@ -317,7 +346,7 @@ def update_sla(
 @router.get("/pending")
 def get_pending_tasks(current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    user_id = current_user.id if hasattr(current_user, "id") else "unknown"
+    user_id = _actor(current_user) or "unknown"
     tasks = svc.get_pending_tasks(user_id)
     return {"tasks": tasks}
 

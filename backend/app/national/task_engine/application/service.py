@@ -23,6 +23,8 @@ from app.national.task_engine.domain.entities import (
 )
 from app.national.task_engine.domain.enums import (
     AssignmentStrategy,
+    TaskCategory,
+    TaskPriority,
     TaskStatus,
 )
 from app.national.task_engine.domain.repository import (
@@ -35,11 +37,49 @@ from app.national.task_engine.domain.repository import (
     TaskSLARepository,
 )
 from app.national.task_engine.exceptions import (
+    TaskFieldNotUpdatableError,
     TaskNotFoundError,
     TaskQueueNotFoundError,
 )
 
 logger = logging.getLogger("gula.task_engine.service")
+
+#: NR-070. Fields a PUT may change, allowlisted rather than filtered.
+#:
+#: What is absent is the point. `status` belongs to the transition methods --
+#: start, complete, fail, cancel, escalate, delegate, hold, resume -- which is
+#: where the state machine lives; `assigned_to` and `assigned_by` belong to
+#: `assign_task` and `delegate_task`; `created_by` belongs to whoever actually
+#: created the row; `started_at`, `completed_at`, `escalation_level`, `version`
+#: and the workflow links are computed. The previous loop set any of them from
+#: the request body.
+_TASK_UPDATABLE_FIELDS = frozenset({
+    "title", "description", "priority", "category", "task_type",
+    "queue_id", "sla_due_at", "tags", "metadata",
+})
+
+#: The same two coercions `create_task` performs at the route. Without them an
+#: update would store the raw string where the entity holds an enum, and
+#: `task.priority.value` would raise on the next read.
+_TASK_FIELD_TYPES = {"priority": TaskPriority, "category": TaskCategory}
+
+#: A queue's `allowed_roles` and `allowed_categories` decide which principals a
+#: task can be auto-assigned to, so the queue update carries the same rule.
+_QUEUE_UPDATABLE_FIELDS = frozenset({
+    "name", "description", "assignment_strategy", "max_concurrent",
+    "max_waiting_time_s", "allowed_roles", "allowed_categories",
+})
+
+_SLA_UPDATABLE_FIELDS = frozenset({
+    "task_category", "task_type", "priority", "warning_threshold_s",
+    "breach_threshold_s", "notification_enabled", "escalation_enabled",
+})
+
+
+def _reject_unknown(updates: dict, allowed: frozenset[str]) -> None:
+    rejected = sorted(set(updates) - allowed)
+    if rejected:
+        raise TaskFieldNotUpdatableError(rejected)
 
 
 class TaskEngineService:
@@ -65,18 +105,22 @@ class TaskEngineService:
         self._assignment_engine = assignment_engine or RoundRobinAssigner()
         self._kpi_engine = kpi_engine or SimpleKPIEngine()
 
-    def create_task(self, task: NationalTask) -> NationalTask:
+    def create_task(
+        self, task: NationalTask, actor_id: str | None = None,
+    ) -> NationalTask:
         task.version = 1
         task = self._task_repo.save(task)
         if task.queue_id:
             self._auto_assign(task)
-        self._audit("CREATED", task, None, task.status.value)
+        self._audit("CREATED", task, None, task.status.value, actor_id)
         return task
 
-    def bulk_create(self, tasks: list[NationalTask]) -> list[NationalTask]:
+    def bulk_create(
+        self, tasks: list[NationalTask], actor_id: str | None = None,
+    ) -> list[NationalTask]:
         results = []
         for task in tasks:
-            result = self.create_task(task)
+            result = self.create_task(task, actor_id)
             results.append(result)
         return results
 
@@ -88,19 +132,29 @@ class TaskEngineService:
     ) -> list[NationalTask]:
         return self._task_repo.list(skip=skip, limit=limit, filters=filters)
 
-    def update_task(self, task_id: str, updates: dict[str, Any]) -> NationalTask:
+    def update_task(
+        self,
+        task_id: str,
+        updates: dict[str, Any],
+        actor_id: str | None = None,
+    ) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
-        old_status = task.status.value
+        _reject_unknown(updates, _TASK_UPDATABLE_FIELDS)
         for key, value in updates.items():
-            if hasattr(task, key) and key not in ("id", "created_at", "version"):
-                setattr(task, key, value)
+            field_type = _TASK_FIELD_TYPES.get(key)
+            setattr(task, key, field_type(value) if field_type and value is not None else value)
         task.version += 1
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        if old_status != result.status.value:
-            self._audit("STATUS_CHANGED", task, old_status, result.status.value)
+        # An update used to be audited only when it changed the status, which it
+        # can no longer do at all. Auditing the update itself is what keeps the
+        # path represented in the history rather than dropping the entry.
+        self._audit(
+            "UPDATED", result, result.status.value, result.status.value, actor_id,
+            details={"fields": sorted(updates)},
+        )
         return result
 
     def delete_task(self, task_id: str) -> bool:
@@ -114,6 +168,11 @@ class TaskEngineService:
     def assign_task(
         self, task_id: str, assignee_id: str, assigned_by: str | None = None,
     ) -> NationalTask:
+        """`assigned_by` is the authenticated caller, resolved at the route.
+
+        It used to be `data.get("assigned_by")` -- a claim the client made about
+        itself, written into the field an audit reader would trust.
+        """
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -130,10 +189,15 @@ class TaskEngineService:
             assigned_by=assigned_by,
         )
         self._assignment_repo.save(assignment)
-        self._audit("ASSIGNED", task, old_status, task.status.value)
+        self._audit("ASSIGNED", task, old_status, task.status.value, assigned_by)
         return result
 
-    def start_task(self, task_id: str, assignee_id: str | None = None) -> NationalTask:
+    def start_task(
+        self,
+        task_id: str,
+        assignee_id: str | None = None,
+        actor_id: str | None = None,
+    ) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -144,10 +208,15 @@ class TaskEngineService:
             task.assigned_to = assignee_id
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        self._audit("STARTED", task, old_status, task.status.value)
+        self._audit("STARTED", task, old_status, task.status.value, actor_id or assignee_id)
         return result
 
-    def complete_task(self, task_id: str, result_data: dict | None = None) -> NationalTask:
+    def complete_task(
+        self,
+        task_id: str,
+        result_data: dict | None = None,
+        actor_id: str | None = None,
+    ) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -158,10 +227,12 @@ class TaskEngineService:
             task.metadata.update(result_data)
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        self._audit("COMPLETED", task, old_status, task.status.value)
+        self._audit("COMPLETED", task, old_status, task.status.value, actor_id)
         return result
 
-    def fail_task(self, task_id: str, error: str) -> NationalTask:
+    def fail_task(
+        self, task_id: str, error: str, actor_id: str | None = None,
+    ) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -170,10 +241,12 @@ class TaskEngineService:
         task.metadata["error"] = error
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        self._audit("FAILED", task, old_status, task.status.value)
+        self._audit("FAILED", task, old_status, task.status.value, actor_id)
         return result
 
-    def cancel_task(self, task_id: str, reason: str | None = None) -> NationalTask:
+    def cancel_task(
+        self, task_id: str, reason: str | None = None, actor_id: str | None = None,
+    ) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -183,12 +256,19 @@ class TaskEngineService:
             task.metadata["cancel_reason"] = reason
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        self._audit("CANCELLED", task, old_status, task.status.value)
+        self._audit("CANCELLED", task, old_status, task.status.value, actor_id)
         return result
 
     def escalate_task(
-        self, task_id: str, reason: str, escalated_to: str | None = None,
+        self,
+        task_id: str,
+        reason: str,
+        escalated_to: str | None = None,
+        escalated_by: str | None = None,
     ) -> NationalTask:
+        """`escalated_to` is a target and stays client-chosen; `escalated_by` is
+        not, and was simply never written -- the entity and the column have
+        carried the field all along."""
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -200,27 +280,36 @@ class TaskEngineService:
             id=str(uuid.uuid4()),
             task_id=task_id,
             escalated_to=escalated_to,
+            escalated_by=escalated_by,
             reason=reason,
         )
         self._escalation_repo.save(escalation)
-        self._audit("ESCALATED", task, old_status, task.status.value)
+        self._audit("ESCALATED", task, old_status, task.status.value, escalated_by)
         return result
 
     def delegate_task(
-        self, task_id: str, to_user: str, reason: str | None = None,
+        self,
+        task_id: str,
+        to_user: str,
+        reason: str | None = None,
+        delegated_by: str | None = None,
     ) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
         old_status = task.status.value
         task.assigned_to = to_user
+        task.assigned_by = delegated_by
         task.status = TaskStatus.DELEGATED
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        self._audit("DELEGATED", task, old_status, task.status.value)
+        self._audit(
+            "DELEGATED", task, old_status, task.status.value, delegated_by,
+            details={"reason": reason} if reason else None,
+        )
         return result
 
-    def hold_task(self, task_id: str) -> NationalTask:
+    def hold_task(self, task_id: str, actor_id: str | None = None) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -228,10 +317,10 @@ class TaskEngineService:
         task.status = TaskStatus.ON_HOLD
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        self._audit("ON_HOLD", task, old_status, task.status.value)
+        self._audit("ON_HOLD", task, old_status, task.status.value, actor_id)
         return result
 
-    def resume_task(self, task_id: str) -> NationalTask:
+    def resume_task(self, task_id: str, actor_id: str | None = None) -> NationalTask:
         task = self._task_repo.get(task_id)
         if not task:
             raise TaskNotFoundError(task_id)
@@ -239,7 +328,7 @@ class TaskEngineService:
         task.status = TaskStatus.IN_PROGRESS
         task.updated_at = datetime.now(UTC)
         result = self._task_repo.save(task)
-        self._audit("RESUMED", task, old_status, task.status.value)
+        self._audit("RESUMED", task, old_status, task.status.value, actor_id)
         return result
 
     def add_comment(
@@ -270,9 +359,9 @@ class TaskEngineService:
         queue = self._queue_repo.get(queue_id)
         if not queue:
             raise TaskQueueNotFoundError(queue_id)
+        _reject_unknown(updates, _QUEUE_UPDATABLE_FIELDS)
         for key, value in updates.items():
-            if hasattr(queue, key) and key not in ("id", "created_at"):
-                setattr(queue, key, value)
+            setattr(queue, key, value)
         queue.updated_at = datetime.now(UTC)
         return self._queue_repo.save(queue)
 
@@ -286,9 +375,9 @@ class TaskEngineService:
         sla = self._sla_repo.get(sla_id)
         if not sla:
             raise TaskNotFoundError(sla_id)
+        _reject_unknown(updates, _SLA_UPDATABLE_FIELDS)
         for key, value in updates.items():
-            if hasattr(sla, key) and key not in ("id", "created_at"):
-                setattr(sla, key, value)
+            setattr(sla, key, value)
         sla.updated_at = datetime.now(UTC)
         return self._sla_repo.save(sla)
 
@@ -322,14 +411,28 @@ class TaskEngineService:
                 self._task_repo.save(task)
 
     def _audit(
-        self, action: str, task: NationalTask, previous: str | None, new: str | None,
+        self,
+        action: str,
+        task: NationalTask,
+        previous: str | None,
+        new: str | None,
+        actor_id: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
+        """NR-070. `actor_id` is a column on `national_task_audit_logs` and a
+        field on the entity, and every row written here left it NULL: the log
+        recorded what happened and never who did it. The actor is the
+        authenticated caller, resolved at the route and threaded down."""
+        payload: dict[str, Any] = {"title": task.title, "priority": task.priority.value}
+        if details:
+            payload.update(details)
         log = TaskAuditLog(
             id=str(uuid.uuid4()),
             task_id=task.id,
             action=action,
+            actor_id=actor_id,
             previous_status=previous,
             new_status=new,
-            details={"title": task.title, "priority": task.priority.value},
+            details=payload,
         )
         self._audit_repo.save(log)

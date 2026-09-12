@@ -309,8 +309,22 @@ def test_the_one_tenant_column_is_still_never_populated() -> None:
 #   The server holds `current_user` and uses it for `created_by` on the same
 #   handler set; the actor of an assignment is taken from the client instead.
 #
-# All three are latent for exactly one reason: the tables are unbuilt. That is
-# the precondition this section holds.
+# All three were latent for exactly one reason: the tables are unbuilt. That was
+# the precondition this section held.
+#
+# NR-070 IS NOW FIXED, so these three are no longer preconditions gated on
+# "while the tables are unbuilt" -- they are unconditional. A precondition that
+# stays conditional after the condition is met stops holding anything: it would
+# pass again the moment someone reverted the fix and left the tables unbuilt,
+# which is the state the finding came from. The assertions below therefore ask
+# for the absence of the defect, full stop.
+#
+# One entry below is a CORRECTION of my own earlier classification rather than a
+# fix: `escalated_to` was listed as a client-supplied actor, and it is not one.
+# It is the escalation *target*, which the caller legitimately chooses. The
+# actor on that path is `escalated_by` -- a field the entity and the column have
+# carried all along and which nothing ever wrote. Changing the code to satisfy
+# the wrong half of a ledger would have been the worse repair.
 
 _ROUTE_MODULES = (
     "app/national/task_engine/api/routes.py",
@@ -323,11 +337,12 @@ _MASS_ASSIGNMENT = (
     "update_task",
 )
 
-#: Handlers that take an actor identifier from the request body while holding an
-#: authenticated `current_user` on the same call.
+#: Handlers that must never take an actor identifier from the request body while
+#: holding an authenticated `current_user` on the same call. `escalated_to` was
+#: here and has been removed on evidence: it names the escalation target, not
+#: the actor, and the caller choosing it is the feature.
 _CLIENT_SUPPLIED_ACTORS = (
     ("app/national/task_engine/api/routes.py", "assigned_by"),
-    ("app/national/task_engine/api/routes.py", "escalated_to"),
 )
 
 
@@ -335,12 +350,19 @@ def _orchestration_tables_built() -> list[str]:
     return sorted(t for t in DECLARED_UNTENANTED_ORCHESTRATION_TABLES if t in _built())
 
 
-def test_no_orchestration_table_is_built_while_its_router_checks_no_permission() -> None:
-    """NR-065 Unit 8. Scope is meaningless where authorization is absent.
+def test_every_orchestration_router_declares_a_permission_check() -> None:
+    """NR-065 Unit 8 / NR-070, now held rather than predicted.
 
-    Neither router declares `require_permission`, at the router or on any
-    handler. Until one does, building these tables publishes a national task and
-    workflow surface to every authenticated principal.
+    Scope is meaningless where authorization is absent, so this used to say
+    "not while the tables are unbuilt". Both routers now carry
+    `require_permission("system:admin")` at the router -- the same string, in the
+    same place, as the thirteen national routers that already guarded
+    themselves -- so the assertion is unconditional.
+
+    The structural half of this claim (that the dependency is actually attached
+    to every route of the running application, not merely named in the file) is
+    proved against `create_app()` in `test_national_orchestration_authorization.py`.
+    This one holds the source-level convention the sibling comparison rests on.
     """
     unguarded = []
     for module in _ROUTE_MODULES:
@@ -358,21 +380,25 @@ def test_no_orchestration_table_is_built_while_its_router_checks_no_permission()
         and "require_permission" in path.read_text(encoding="utf-8")
     )
 
-    built = _orchestration_tables_built()
-    assert not (built and unguarded), (
-        f"orchestration tables are built ({built}) while these routers perform "
-        f"no permission check at all ({unguarded}). Every endpoint depends only "
-        "on `get_current_user`, so any authenticated account -- national role or "
-        "not -- can create, execute, cancel and reassign national workflows and "
-        f"tasks. {len(siblings)} sibling national route modules do declare "
-        f"`require_permission` ({siblings}), so this is an omission in these "
-        "packages rather than a platform convention. Add the dependency before "
-        "the first migration, not after"
+    assert unguarded == [], (
+        f"these orchestration routers perform no permission check at all "
+        f"({unguarded}). Every endpoint would depend only on `get_current_user`, "
+        "so any authenticated account -- national role or not -- could create, "
+        "execute, cancel and reassign national workflows and tasks. "
+        f"{len(siblings)} sibling national route modules declare "
+        f"`require_permission` ({siblings}); this is not a platform habit to "
+        "follow, it is an omission that was fixed and must stay fixed"
     )
 
 
 #: NR-070 / NR-072. Registered national route modules that declare no
 #: `require_permission` anywhere. The ledger may shrink; it may never grow.
+#:
+#: IT IS NOW EMPTY. All three entries were closed by reusing the permission the
+#: other thirteen already carry rather than by inventing one, so this has
+#: hardened from "these three are known exceptions" into "every national route
+#: module declares a permission check". The commentary below is kept because it
+#: records what the exceptions were and why the third was a separate finding.
 #:
 #: The third entry was found by this guard rather than by the caller trace, and
 #: it is a different finding from the orchestration two. `app/national/intelligence`
@@ -382,11 +408,7 @@ def test_no_orchestration_table_is_built_while_its_router_checks_no_permission()
 #: path parameter is echoed rather than resolved, and `calculate_risk_score`
 #: builds its entire "patient" from `age` and `gender` query parameters. It is an
 #: authorization gap on stateless compute, not a disclosure (NR-072).
-DECLARED_UNGUARDED_NATIONAL_ROUTERS = frozenset({
-    "app/national/task_engine/api/routes.py",
-    "app/national/workflow_runtime/api/routes.py",
-    "app/national/intelligence/routes.py",
-})
+DECLARED_UNGUARDED_NATIONAL_ROUTERS: frozenset[str] = frozenset()
 
 
 def _unguarded_national_routers() -> list[str]:
@@ -427,43 +449,71 @@ def test_the_unguarded_router_ledger_does_not_rot() -> None:
     )
 
 
-def test_no_orchestration_table_is_built_while_update_is_a_body_assignment() -> None:
-    """`update_task` writes whatever the body names, including the actor fields."""
+#: Fields that must never become caller-writable through the update path,
+#: whatever the mechanism. Adding one of these to `_TASK_UPDATABLE_FIELDS` is
+#: the easy way to make the allowlist "pass" while restoring the defect, so the
+#: allowlist itself is checked rather than only its presence.
+_NEVER_CALLER_WRITABLE = frozenset({
+    "id", "created_at", "created_by", "version", "status",
+    "assigned_to", "assigned_by", "started_at", "completed_at",
+    "escalation_level", "correlation_id",
+})
+
+
+def test_the_task_update_path_consults_an_allowlist() -> None:
+    """`update_task` used to write whatever the body named, actor fields included.
+
+    This asserted the absence of `setattr` at first, which was wrong: the fix
+    still sets attributes, it just decides which ones first. Asserting the
+    absence of the mechanism rather than the absence of the *decision* would
+    have failed on the correct code and passed on a filtered loop that let
+    `created_by` through. So the assertion is that the allowlist is consulted --
+    and, below, that the allowlist is not quietly widened.
+    """
     module, method = _MASS_ASSIGNMENT
     tree = ast.parse((BACKEND / module).read_text(encoding="utf-8"))
 
-    splats = False
+    consulted = False
     for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)):
         if fn.name != method:
             continue
-        for node in ast.walk(fn):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "setattr":
-                splats = True
+        names = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)}
+        consulted = {"_reject_unknown", "_TASK_UPDATABLE_FIELDS"} <= names
 
-    built = _orchestration_tables_built()
-    assert not (built and splats), (
-        f"orchestration tables are built ({built}) while {module}::{method} "
-        "assigns attributes straight from the request body. It excludes only "
-        "id, created_at and version, so `created_by`, `assigned_by`, "
-        "`assigned_to` and `status` are all client-writable -- the actor fields "
-        "an audit trail would rely on, and the state machine the transition "
+    assert consulted, (
+        f"{module}::{method} no longer checks the request body against "
+        "`_TASK_UPDATABLE_FIELDS`. The loop this replaced excluded only id, "
+        "created_at and version, so `created_by`, `assigned_by`, `assigned_to` "
+        "and `status` were all client-writable -- the actor fields an audit "
+        "trail relies on, and a way past the state machine the transition "
         "methods enforce"
     )
 
 
-def test_no_orchestration_table_is_built_while_the_actor_comes_from_the_body() -> None:
-    """The server knows who is calling; these handlers ask the caller instead."""
+def test_the_allowlist_never_grows_to_include_an_actor_or_state_field() -> None:
+    """The allowlist is the fix; widening it is the same defect with a list."""
+    from app.national.task_engine.application.service import _TASK_UPDATABLE_FIELDS
+
+    leaked = sorted(_NEVER_CALLER_WRITABLE & _TASK_UPDATABLE_FIELDS)
+    assert leaked == [], (
+        "these fields are caller-writable through PUT /national/tasks/{id} "
+        f"again: {leaked}. Status belongs to the transition methods, the "
+        "assignment fields to assign_task and delegate_task, and created_by to "
+        "whoever created the row"
+    )
+
+
+def test_no_actor_identifier_is_taken_from_the_request_body() -> None:
+    """The server knows who is calling; these handlers used to ask the caller."""
     offending = []
     for module, field in _CLIENT_SUPPLIED_ACTORS:
         source = (BACKEND / module).read_text(encoding="utf-8")
         if f'data.get("{field}")' in source or f'data["{field}"]' in source:
             offending.append(f"{module}:{field}")
 
-    built = _orchestration_tables_built()
-    assert not (built and offending), (
-        f"orchestration tables are built ({built}) while these handlers take an "
-        f"actor identifier from the request body: {offending}. `current_user` is "
-        "already resolved on the same handler and is used for `created_by`; an "
-        "assignment or escalation attributed to whoever the caller names is not "
-        "an audit record"
+    assert offending == [], (
+        f"these handlers take an actor identifier from the request body: "
+        f"{offending}. `current_user` is already resolved on the same handler "
+        "and is used for `created_by`; an assignment attributed to whoever the "
+        "caller names is not an audit record"
     )

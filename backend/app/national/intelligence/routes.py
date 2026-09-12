@@ -63,9 +63,17 @@ from app.national.intelligence.public_health.surveillance import (
     PopulationRiskEngine,
     VaccinationCoverageEngine,
 )
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
-router = APIRouter(prefix="/intelligence", tags=["National Intelligence Platform"])
+#: NR-072. Clinical-decision compute behind the same canonical permission its
+#: sibling national routers carry. The package reads no patient data -- this
+#: closes unauthorised *use* of the recommendation, alert and risk engines,
+#: not a disclosure path.
+router = APIRouter(
+    prefix="/intelligence",
+    tags=["National Intelligence Platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 task_engine = TaskAutomationEngine()
 rule_engine = RuleAutomationEngine()

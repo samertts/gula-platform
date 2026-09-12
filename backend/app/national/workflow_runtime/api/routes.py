@@ -23,9 +23,17 @@ from app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowTemplateRepository,
     SQLAlchemyWorkflowTimerRepository,
 )
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
-router = APIRouter(prefix="/national/workflows", tags=["National Workflows"])
+#: NR-070. Same canonical permission, same placement, as the thirteen
+#: national routers that already guard themselves -- including their own
+#: `/health` endpoints, which sit under the router dependency in all seven
+#: platform siblings. This one is not an exception.
+router = APIRouter(
+    prefix="/national/workflows",
+    tags=["National Workflows"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service() -> WorkflowRuntimeService:
