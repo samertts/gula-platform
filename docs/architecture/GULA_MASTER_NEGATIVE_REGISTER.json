@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 64,
+    "total": 65,
     "by_severity": {
       "P0": 10,
-      "P1": 27,
+      "P1": 28,
       "P2": 20,
       "P3": 7
     }
@@ -2132,6 +2132,44 @@
       "can_fix_now": false,
       "blocker": true,
       "evidence_strength": "STRONG (call graph read end to end; registration and build status both from committed evidence)"
+    },
+    {
+      "id": "NR-065",
+      "category": "Security / Tenant isolation + Audit",
+      "domain": "national (task_engine, workflow_runtime)",
+      "severity": "P1",
+      "priority": 2,
+      "status": "LATENT — build precondition guarded; NR-059 activation blocked on repair, not only on product intent",
+      "title": "14 of the 15 national orchestration tables have no tenant column and neither package reaches the audit chain",
+      "description": "NR-059 left activation blocked on product intent. Unit 3 ran the checks the approved decision actually gates on and found two more blockers that do not depend on that question. All 15 task and workflow tables extend `BaseEntity` -- the one national base carrying neither TenantMixin nor AuditMixin, while TenantEntity, AuditEntity and TenantAuditEntity all exist alongside it. Only national_workflow_executions has a tenant column. The task listing path filters on status, priority, category, assignee, queue_id and a title LIKE, and on nothing else, because there is nothing else to filter on. Neither package contains a call reaching the hash-chained audit log, and there is no idempotency key or row lock anywhere in a package containing a saga engine and a workflow state machine.",
+      "root_cause": "The two packages were implemented against the bare BaseEntity rather than TenantAuditEntity, and were never given a schema, so neither the tenancy gap nor the audit gap was ever exercised.",
+      "evidence": "AST over app/national/task_engine and app/national/workflow_runtime: 15 tables, 1 with a tenant column (national_workflow_executions). national_tasks has 22 columns and no tenant scoping of any kind. Zero word-boundary matches for log_action / audit_service / AuditLog( / log_access_decision in either package. national_task_audit_logs has 6 columns (task_id, action, actor_id, previous_status, new_status, details) -- no chain hash, no previous-hash link, no off-database anchor. WorkflowExecutionRepository.save loads by id, mutates and commits without reading `version`.",
+      "affected_components": "app/national/task_engine/*, app/national/workflow_runtime/*, the 40 registered endpoints NR-059 classified, 2 frontend-v3 pages",
+      "affected_users": "None today — no migration builds these tables",
+      "clinical_impact": "Latent. Clinical coordination tasks would be visible and actionable across tenants.",
+      "security_impact": "Latent but national in scale: built as declared, GET /national/tasks returns every tenant's tasks to any caller authorized for the route, contradicting CLAUDE.md invariant #1. No mutation would reach the hash-chained audit log, contradicting invariant #2.",
+      "data_integrity_impact": "No idempotency key and no row lock on workflow advance: two concurrent step completions can both advance the same execution.",
+      "operational_impact": "Blocks NR-059 activation independently of the product-intent question.",
+      "scalability_impact": "n/a",
+      "legal_impact": "Latent: cross-tenant disclosure of coordination data with no tamper-evident trail.",
+      "dependencies": "Blocks NR-059 activation. Sits alongside NR-063 as a build precondition.",
+      "intersections": "NR-059 (corrects its §5 cost estimate), NR-062 (this gap is invisible at that finding's app/national granularity, which its own docstring flags as a lower bound), NR-021 (same tenant-isolation class, which was live there), NR-063.",
+      "contradictions": "NR-059 §5 called shipping 'the cheapest of the NR-022-family decisions' because ownership and implementation are in place. They are; tenancy, audit and concurrency control are not. That estimate is corrected by this finding.",
+      "recommended_fix": "If the feature ships: re-base the 15 on TenantAuditEntity and add the tenant column; add the tenant filter to every repository read; route mutations through audit_service.log_action; add an idempotency key to task creation and workflow triggering plus a compare-and-set or row lock on execution advance; then one additive migration verified on PostgreSQL. If it does not ship: retire both packages and both frontend pages.",
+      "minimal_safe_fix": "APPLIED, additive only: backend/tests/test_orchestration_build_precondition.py. No orchestration table may be built while it lacks a tenant column; no package may have tables built while it contains no canonical audit call; the untenanted ledger may shrink, not grow, and a resolved entry must be removed. No runtime code changed.",
+      "verification_method": "5 tests. Negative-proven by marking national_tasks built in the evidence file: the tenancy precondition fails naming ['national_tasks'] and the audit precondition fails naming ['app/national/task_engine']; and by adding an untenanted table, which fails the ledger-growth test naming it. All perturbed files restored byte-identical. The first negative-proof run exposed a defect in the guard itself -- substring matching counted the package's own `TaskAuditLog(` as the canonical `AuditLog(`, making the audit test vacuous; fixed with word-boundary matching before the guard shipped.",
+      "acceptance_criteria": "Every orchestration table carries tenancy and its mutations reach the audit chain before any migration creates it.",
+      "regression_risk": "None from this change; tests and documentation only.",
+      "owner": "Platform + Security",
+      "related_tests": "backend/tests/test_orchestration_build_precondition.py (5 tests)",
+      "related_files": "app/national/base.py, app/national/task_engine/infrastructure/models.py, app/national/workflow_runtime/infrastructure/models.py, app/national/task_engine/infrastructure/repository.py",
+      "related_adrs": "docs/architecture/NR-065-orchestration-build-preconditions.md, docs/architecture/NR-059-endpoint-classification.md",
+      "related_contracts": "",
+      "wave": "WAVE 2",
+      "complexity": "L",
+      "can_fix_now": false,
+      "blocker": true,
+      "evidence_strength": "STRONG (AST over both packages, cross-referenced with migration-derived built tables; read paths traced by hand)"
     }
   ]
 }
