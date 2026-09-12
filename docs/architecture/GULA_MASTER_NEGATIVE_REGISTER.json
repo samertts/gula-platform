@@ -5,10 +5,10 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 84,
+  "total": 85,
   "P0": 12,
   "P1": 37,
-  "P2": 25,
+  "P2": 26,
   "P3": 10
  },
  "findings": [
@@ -2954,6 +2954,61 @@
    "can_fix_now": true,
    "blocker": "",
    "evidence_strength": "EXECUTED — failing SELECT before, full write round trip after, both against PostgreSQL 16 at migration head"
+  },
+  {
+   "id": "NR-085",
+   "category": "Schema drift / Latent runtime failure / Measurement blind spot",
+   "domain": "blood bank, OAuth2/service accounts, trust platform",
+   "severity": "P2",
+   "priority": 3,
+   "status": "MEASURED AND GUARDED — 19 columns across 15 tables pinned and ratcheted; latent, not live",
+   "title": "19 columns in readable tables disagree with their PostgreSQL type — invisible on write, fatal on comparison, and one class makes a row unreadable",
+   "description": "NR-083 asks whether a mapper can read its table, which only checks that the column NAMES line up. It says nothing about `Column(Integer)` sitting over a `character varying`. Measuring that found 19 columns across 15 otherwise-readable tables, in three groups. (1) Six blood-bank tables inherit AuditMixin.created_by as Integer over a varchar column -- the seventh, blood_bank_transfusions, was built with an integer column and agrees, so the migrations disagree with each other and the mapper can only match one. (2) Four Integer mappers over boolean columns, including oauth2_tokens.is_revoked. (3) Nine trust_* native-enum mappers over plain varchar columns.",
+   "root_cause": "Columns were added by migrations written against a different type than the mapper declares, and nothing compares the two. Reading masks it because SQLAlchemy selects by name; writing masks it because parameter binding coerces.",
+   "evidence": "Executed against PostgreSQL 16 at head. Writes are fine: INSERT into blood_bank_reservations with created_by as both str '7' and int 7 succeeded, and the route passes str(current_user.id), so the live path works. Comparison is not: `WHERE created_by = 42` -> UndefinedFunction: operator does not exist: character varying = integer; `WHERE is_revoked = 1` -> operator does not exist: boolean = integer (while `= True` compiles to IS true and works). The enum group compares fine but fails on READ of an off-list value: consentstatus.result_processor(...)('NOT_AN_ENUM_MEMBER') -> LookupError, and the varchar column has no constraint preventing such a value being written by raw SQL, a data load or a migration. MEASUREMENT CORRECTION: the first pass reported 35 tables. That was the instrument, not the schema -- str(col.type) gives SQLAlchemy's generic spelling, so every Double read as 'DOUBLE vs double precision' and every UUID-backed TypeDecorator as 'CHAR vs uuid', 54 false positives. Compiling under the PostgreSQL dialect gives 19, each then confirmed by executing something against the real column. The 35 is recorded nowhere as a finding.",
+   "affected_components": [
+    "app/national/base.py AuditMixin",
+    "app/blood_bank/infrastructure/models.py",
+    "app/models/oauth2_token.py",
+    "app/trust/*"
+   ],
+   "affected_users": "None today. The exposure is to the next person who writes a filter.",
+   "clinical_impact": "None measured. The blood-bank write path works because the route passes a string.",
+   "security_impact": "oauth2_tokens.is_revoked is the column that decides whether a token has been revoked. A revocation check written as `is_revoked == 1` rather than `== True` would raise rather than returning a wrong answer, so it fails closed -- but it is one keystroke from being an outage in the auth path, and nothing in CI would have caught it before this guard.",
+   "data_integrity_impact": "The enum-over-varchar group is the real one: PostgreSQL will accept any string into those nine columns and the mapper will then refuse to read the row. Consent status and sovereignty level are among them.",
+   "operational_impact": "None today.",
+   "scalability_impact": "None.",
+   "legal_impact": "trust_consent_records.status and trust_sovereignty_rules.sovereignty_level are consent and data-residency records.",
+   "dependencies": [
+    "NR-083"
+   ],
+   "intersections": [
+    "NR-021 (blood bank)",
+    "NR-080"
+   ],
+   "contradictions": "Six of seven sibling audit tables disagree with the mixin they share; the seventh agrees. Nothing documents which is intended.",
+   "recommended_fix": "Per group. Blood bank: decide whether the audit actor is an integer lab_users.id or an opaque string, then align the six columns to the seventh or the mixin to the six -- a decision about identity, not about types. Booleans: change the mappers to Boolean; the physical columns are already right. Enums: either add a CHECK constraint matching the enum members, or map them as String and validate in the service.",
+   "minimal_safe_fix": "None applied. Every option here changes either a mapper's declared type or a physical column, and nothing is currently failing, so the ratcheted ledger is the right increment: it makes the traps visible and stops new ones.",
+   "verification_method": "backend/tests/test_mapped_tables_are_readable.py, migration CI job. Types are compared as compiled for the PostgreSQL dialect, not as SQLAlchemy renders them generically. Three tests: nothing outside the ledger conflicts, no ledger entry has been fixed without being removed, and the recorded type pairs stay exact.",
+   "acceptance_criteria": "DECLARED_TYPE_CONFLICTS is empty, with each group resolved by an explicit decision rather than by widening the compatibility list.",
+   "regression_risk": "None from this change — measurement only.",
+   "owner": "Blood bank + identity + trust platform owners",
+   "related_tests": [
+    "backend/tests/test_mapped_tables_are_readable.py"
+   ],
+   "related_files": [
+    "backend/app/national/base.py",
+    "backend/app/blood_bank/infrastructure/models.py"
+   ],
+   "related_adrs": [
+    "docs/architecture/NR-083-mappers-that-cannot-read.md"
+   ],
+   "related_contracts": [],
+   "wave": "next",
+   "complexity": "M",
+   "can_fix_now": false,
+   "blocker": "Needs the audit-actor identity decision (integer vs opaque string) before the blood-bank group can be aligned either way.",
+   "evidence_strength": "EXECUTED — comparisons, inserts and enum result-processing run against PostgreSQL 16 at migration head"
   }
  ]
 }

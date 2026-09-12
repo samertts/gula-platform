@@ -301,3 +301,167 @@ def test_the_readable_population_never_shrinks(probe):
         f"floor of {MINIMUM_READABLE}: mapper fields or a registered metadata "
         "object have been removed rather than reconciled"
     )
+
+
+# ---------------------------------------------------------------------------
+# Second invariant: a readable table can still disagree about types.
+#
+# Reading succeeds whenever the *names* line up, so the ledger above says
+# nothing about whether `Column(Integer)` sits over a `character varying`. That
+# disagreement is invisible on INSERT -- parameter binding coerces, and the
+# blood-bank write path passes `str(current_user.id)`, so it works today -- and
+# fatal on comparison:
+#
+#     WHERE blood_bank_reservations.created_by = 42
+#     UndefinedFunction: operator does not exist: character varying = integer
+#
+# So these are traps rather than outages, and they are recorded as traps. The
+# first measurement of this said 35 tables, which was the instrument rather than
+# the schema: rendering a column with `str(col.type)` gives SQLAlchemy's generic
+# spelling, so every `Double` read as "DOUBLE vs double precision" and every
+# UUID-backed TypeDecorator as "CHAR vs uuid" -- 54 false positives. Compiling
+# under the PostgreSQL dialect, which is what actually reaches the database,
+# gives 19 columns across 15 tables, and each was then confirmed by executing
+# something against the real column rather than being assumed from the type
+# names alone.
+#
+# The nine `trust_*` columns are a native enum over a plain varchar. Equality
+# compares fine -- that was executed -- so the first reading was that they are
+# harmless. They are not, and the difference is on the read side: the varchar
+# column has no constraint restricting its values, while the mapper validates on
+# result processing. Executed:
+#
+#     consentstatus.result_processor(...)("NOT_AN_ENUM_MEMBER")
+#     LookupError: 'NOT_AN_ENUM_MEMBER' is not among the defined enum values
+#
+# So any row written by anything other than this mapper -- raw SQL, a data load,
+# a migration -- with an off-list value is unreadable through the ORM, and the
+# database will not stop it being written. They are recorded.
+# ---------------------------------------------------------------------------
+
+#: (table, column) -> (mapper type compiled for PostgreSQL, physical type).
+#: All confirmed by executing a comparison against the real column.
+DECLARED_TYPE_CONFLICTS: dict[tuple[str, str], tuple[str, str]] = {
+    # `AuditMixin.created_by` is Integer. Six of the seven blood-bank tables
+    # that inherit it were built with a varchar column; `blood_bank_transfusions`
+    # was built with an integer one and agrees. The migrations disagreed with
+    # each other, and the mapper can only match one of them.
+    ("blood_bank_discards", "created_by"): ("integer", "character varying"),
+    ("blood_bank_patient_samples", "created_by"): ("integer", "character varying"),
+    ("blood_bank_reactions", "created_by"): ("integer", "character varying"),
+    ("blood_bank_reservations", "created_by"): ("integer", "character varying"),
+    ("blood_bank_returns", "created_by"): ("integer", "character varying"),
+    ("blood_bank_traceability_events", "created_by"): ("integer", "character varying"),
+    # Integer mappers over boolean columns. `x == True` compiles to `IS true`
+    # and works; `x == 1` raises. `oauth2_tokens.is_revoked` is the one that
+    # decides whether a token has been revoked.
+    ("oauth2_clients", "is_active"): ("integer", "boolean"),
+    ("oauth2_clients", "is_confidential"): ("integer", "boolean"),
+    ("oauth2_tokens", "is_revoked"): ("integer", "boolean"),
+    ("service_accounts", "is_active"): ("integer", "boolean"),
+    # Native enum mappers over plain varchar columns. Equality works; the
+    # exposure is on read, and the database enforces nothing.
+    ("trust_compliance_checks", "result"): ("compliancestatus", "character varying"),
+    ("trust_compliance_evidence", "status"): ("compliancestatus", "character varying"),
+    ("trust_consent_records", "purpose"): ("consentpurpose", "character varying"),
+    ("trust_consent_records", "status"): ("consentstatus", "character varying"),
+    ("trust_retention_policies", "data_category"): ("datacategory", "character varying"),
+    ("trust_retention_policies", "retention_period"): ("retentionpolicy", "character varying"),
+    ("trust_service_logs", "service_type"): ("trustservicetype", "character varying"),
+    ("trust_sovereignty_rules", "data_category"): ("datacategory", "character varying"),
+    ("trust_sovereignty_rules", "sovereignty_level"): ("sovereigntylevel", "character varying"),
+}
+
+#: Types PostgreSQL resolves between without an explicit cast, so a difference
+#: here is not a defect. Deliberately short: widening this list is how a real
+#: conflict would be made to disappear.
+_COMPATIBLE = frozenset({
+    ("character varying", "text"), ("text", "character varying"),
+    ("integer", "bigint"), ("bigint", "integer"),
+    ("json", "jsonb"), ("jsonb", "json"),
+    ("numeric", "double precision"), ("double precision", "numeric"),
+    ("timestamp with time zone", "timestamp without time zone"),
+    ("timestamp without time zone", "timestamp with time zone"),
+})
+
+_SPELLING = {
+    "varchar": "character varying", "timestamp": "timestamp with time zone",
+    "float": "double precision", "double": "double precision",
+    "serial": "integer", "bigserial": "bigint", "bool": "boolean",
+    "time": "time without time zone",
+}
+
+
+def _postgres_type(column) -> str:
+    """What the mapper's type actually compiles to for PostgreSQL.
+
+    `str(column.type)` gives the generic spelling and is the wrong instrument:
+    it reports a difference for every `Double` and every UUID-backed
+    TypeDecorator. An enum compiles to its own named type, which is left as-is
+    so enum-over-varchar is visible rather than normalised away.
+    """
+    import re
+
+    from sqlalchemy.dialects import postgresql
+
+    try:
+        rendered = column.type.compile(dialect=postgresql.dialect()).lower()
+    except Exception:  # a type that cannot compile is reported in its raw spelling
+        rendered = str(column.type).lower()
+    stripped = re.sub(r"\(.*?\)", "", rendered).strip()
+    return _SPELLING.get(stripped, stripped)
+
+
+@pytest.fixture(scope="module")
+def type_conflicts(registry, probe):
+    """Every readable table's columns, compared by PostgreSQL-compiled type."""
+    engine = sa.create_engine(_require_database())
+    with engine.connect() as connection:
+        physical: dict[str, dict[str, str]] = {}
+        for table, column, data_type in connection.execute(sa.text(
+            "SELECT table_name, column_name, data_type FROM information_schema.columns "
+            "WHERE table_schema = 'public'",
+        )):
+            physical.setdefault(table, {})[column] = data_type
+    engine.dispose()
+
+    found: dict[tuple[str, str], tuple[str, str]] = {}
+    seen: set[str] = set()
+    for _label, metadata in registry:
+        for name, table in metadata.tables.items():
+            if name in seen or name not in probe["readable"]:
+                continue
+            seen.add(name)
+            for column in table.columns:
+                actual = physical[name].get(column.name)
+                mapped = _postgres_type(column)
+                if actual and mapped != actual and (mapped, actual) not in _COMPATIBLE:
+                    found[(name, column.name)] = (mapped, actual)
+    return found
+
+
+def test_no_undeclared_type_conflict_between_a_mapper_and_its_column(type_conflicts):
+    unexpected = {k: v for k, v in sorted(type_conflicts.items())
+                  if k not in DECLARED_TYPE_CONFLICTS}
+    assert not unexpected, (
+        "these mapped columns disagree with their PostgreSQL type. Reading still "
+        "works, so nothing else in this suite would notice, but a comparison "
+        f"against them can raise UndefinedFunction: {unexpected}"
+    )
+
+
+def test_the_type_conflict_ledger_does_not_rot(type_conflicts):
+    resolved = sorted(set(DECLARED_TYPE_CONFLICTS) - set(type_conflicts))
+    assert not resolved, (
+        f"these columns now agree and must be deleted from "
+        f"DECLARED_TYPE_CONFLICTS: {resolved}"
+    )
+
+
+def test_the_recorded_type_conflicts_are_exact(type_conflicts):
+    drifted = {
+        key: {"declared": DECLARED_TYPE_CONFLICTS[key], "measured": measured}
+        for key, measured in sorted(type_conflicts.items())
+        if key in DECLARED_TYPE_CONFLICTS and measured != DECLARED_TYPE_CONFLICTS[key]
+    }
+    assert not drifted, f"the recorded types no longer match what is there: {drifted}"
