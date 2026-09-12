@@ -1,0 +1,1843 @@
+[
+ {
+  "file": "app/national_data/models/mdm/ProviderRegistry.py",
+  "owner_table": "dp_provider_registry",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_immunization_schedules",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_immunization_schedules",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_immunization_schedules",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_immunization_schedules",
+  "column": "administered_by",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_vaccination_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_vaccination_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_vaccination_records",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_vaccination_records",
+  "column": "administered_by",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_contraindications",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_contraindications",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_contraindications",
+  "column": "recorded_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_contraindications",
+  "column": "resolved_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_cold_chain_monitors",
+  "column": "recorded_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_reminder_schedules",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/immunization.py",
+  "owner_table": "cc_reminder_schedules",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_chronic_disease_registry",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_chronic_disease_registry",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_chronic_disease_registry",
+  "column": "diagnosed_by",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_chronic_disease_registry",
+  "column": "care_manager_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_disease_management_plans",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_disease_management_plans",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_disease_management_plans",
+  "column": "created_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_clinical_pathway_enrollments",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_clinical_pathway_enrollments",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_clinical_pathway_enrollments",
+  "column": "enrolled_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_clinical_pathway_enrollments",
+  "column": "completed_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_risk_stratification",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_risk_stratification",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_risk_stratification",
+  "column": "assessed_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_self_monitoring_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_self_monitoring_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/chronic_disease.py",
+  "owner_table": "cc_self_monitoring_records",
+  "column": "reviewed_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_pregnancy_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_pregnancy_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_pregnancy_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_antenatal_care_visits",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_antenatal_care_visits",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_antenatal_care_visits",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_antenatal_care_visits",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_delivery_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_delivery_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_delivery_records",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_delivery_records",
+  "column": "attending_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_delivery_records",
+  "column": "midwife_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_postnatal_care_visits",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_postnatal_care_visits",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_postnatal_care_visits",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_postnatal_care_visits",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_growth_monitoring",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_growth_monitoring",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_growth_monitoring",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_growth_monitoring",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_breastfeeding_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_breastfeeding_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_breastfeeding_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_child_development_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_child_development_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_child_development_records",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/maternal.py",
+  "owner_table": "cc_child_development_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_primary_care_encounters",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_primary_care_encounters",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_primary_care_encounters",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_primary_care_encounters",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_family_medicine_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_family_medicine_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_family_medicine_records",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_family_medicine_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_community_clinic_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_community_clinic_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_community_clinic_records",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_community_clinic_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_preventive_care_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_preventive_care_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_preventive_care_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_health_assessments",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_health_assessments",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_health_assessments",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/primary_care.py",
+  "owner_table": "cc_health_assessments",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_patient_tasks",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_patient_tasks",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_patient_tasks",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_patient_tasks",
+  "column": "assigned_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_patient_tasks",
+  "column": "completed_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_patient_tasks",
+  "column": "verified_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_educational_material_assignments",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_educational_material_assignments",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_educational_material_assignments",
+  "column": "assigned_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_self_follow_up_tasks",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_self_follow_up_tasks",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_self_follow_up_tasks",
+  "column": "created_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/patient_tasks.py",
+  "owner_table": "cc_self_follow_up_tasks",
+  "column": "verified_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_health_programs",
+  "column": "coordinator_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_screening_campaigns",
+  "column": "coordinator_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_school_health_visits",
+  "column": "team_lead_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_occupational_health_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_occupational_health_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_occupational_health_records",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_occupational_health_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_community_visits",
+  "column": "visit_lead_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_health_promotion_activities",
+  "column": "facilitator_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_program_enrollments",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_program_enrollments",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_program_enrollments",
+  "column": "enrolled_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/care_continuum/models/public_health.py",
+  "owner_table": "cc_program_enrollments",
+  "column": "completed_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_care_journeys",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_care_journeys",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_care_journeys",
+  "column": "care_coordinator_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_follow_up_plans",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_follow_up_plans",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_follow_up_plans",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_follow_up_plans",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_care_coordination",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_care_coordination",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_care_coordination",
+  "column": "coordinator_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_transitions_of_care",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_transitions_of_care",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_transitions_of_care",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_transitions_of_care",
+  "column": "from_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_transitions_of_care",
+  "column": "to_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_clinical_handovers",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_clinical_handovers",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_clinical_handovers",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_clinical_handovers",
+  "column": "from_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_clinical_handovers",
+  "column": "to_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_clinical_handovers",
+  "column": "verified_by",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_home_care_plans",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_home_care_plans",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_home_care_plans",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_home_care_plans",
+  "column": "visiting_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_community_care_records",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_community_care_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/care_journey.py",
+  "owner_table": "cc_community_care_records",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_requests",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_requests",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_requests",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_requests",
+  "column": "referring_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_requests",
+  "column": "receiving_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_responses",
+  "column": "responding_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_cross_org_referrals",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_cross_org_referrals",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_attachments",
+  "column": "uploaded_by_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/care_continuum/models/referral.py",
+  "owner_table": "cc_referral_timelines",
+  "column": "actor_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/coverage.py",
+  "owner_table": "national_coverages",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/coverage.py",
+  "owner_table": "national_coverages",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/discharge.py",
+  "owner_table": "national_discharges",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/discharge.py",
+  "owner_table": "national_discharges",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/national/domain/discharge.py",
+  "owner_table": "national_discharges",
+  "column": "discharging_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/guardian.py",
+  "owner_table": "national_guardians",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/merge_record.py",
+  "owner_table": "national_merge_records",
+  "column": "primary_citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/merge_record.py",
+  "owner_table": "national_merge_records",
+  "column": "secondary_citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/merge_record.py",
+  "owner_table": "national_merge_audit",
+  "column": "primary_citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/merge_record.py",
+  "owner_table": "national_merge_audit",
+  "column": "secondary_citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/emergency_contact.py",
+  "owner_table": "national_emergency_contacts",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/emergency_contact.py",
+  "owner_table": "national_emergency_contacts",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/family.py",
+  "owner_table": "national_families",
+  "column": "head_of_family_citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/family.py",
+  "owner_table": "national_family_members",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/patient.py",
+  "owner_table": "national_patients",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/visit.py",
+  "owner_table": "national_visits",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/visit.py",
+  "owner_table": "national_visits",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/visit.py",
+  "owner_table": "national_visits",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/national/domain/visit.py",
+  "owner_table": "national_visits",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/newborn.py",
+  "owner_table": "national_newborns",
+  "column": "mother_id",
+  "target": "national_citizens",
+  "semantic_class": "PERSON (kinship between persons)"
+ },
+ {
+  "file": "app/national/domain/newborn.py",
+  "owner_table": "national_newborns",
+  "column": "father_id",
+  "target": "national_citizens",
+  "semantic_class": "PERSON (kinship between persons)"
+ },
+ {
+  "file": "app/national/domain/newborn.py",
+  "owner_table": "national_newborns",
+  "column": "converted_to_citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/newborn.py",
+  "owner_table": "national_newborns",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/encounter.py",
+  "owner_table": "national_encounters",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/encounter.py",
+  "owner_table": "national_encounters",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/encounter.py",
+  "owner_table": "national_encounters",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/identity_resolution.py",
+  "owner_table": "national_identity_resolutions",
+  "column": "target_citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/admission.py",
+  "owner_table": "national_admissions",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/admission.py",
+  "owner_table": "national_admissions",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/national/domain/admission.py",
+  "owner_table": "national_admissions",
+  "column": "admitting_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/advance_directive.py",
+  "owner_table": "national_advance_directives",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/advance_directive.py",
+  "owner_table": "national_advance_directives",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/death_record.py",
+  "owner_table": "national_death_records",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/death_record.py",
+  "owner_table": "national_death_records",
+  "column": "attending_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/episode_of_care.py",
+  "owner_table": "national_episodes_of_care",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/episode_of_care.py",
+  "owner_table": "national_episodes_of_care",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/episode_of_care.py",
+  "owner_table": "national_episodes_of_care",
+  "column": "care_manager_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/national/domain/health_card.py",
+  "owner_table": "national_health_cards",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/observation.py",
+  "owner_table": "national_observations",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/observation.py",
+  "owner_table": "national_observations",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/observation.py",
+  "owner_table": "national_observations",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/national/domain/observation.py",
+  "owner_table": "national_observations",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/appointment.py",
+  "owner_table": "national_appointments",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/appointment.py",
+  "owner_table": "national_appointments",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/appointment.py",
+  "owner_table": "national_appointments",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/referral.py",
+  "owner_table": "national_referrals",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/referral.py",
+  "owner_table": "national_referrals",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/referral.py",
+  "owner_table": "national_referrals",
+  "column": "referring_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/referral.py",
+  "owner_table": "national_referrals",
+  "column": "receiving_practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/national/domain/referral.py",
+  "owner_table": "national_referrals",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/national/domain/biometrics.py",
+  "owner_table": "national_biometrics",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/national/domain/consent.py",
+  "owner_table": "national_consents",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/national/domain/consent.py",
+  "owner_table": "national_consents",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/social_history.py",
+  "owner_table": "ehr_social_history",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/social_history.py",
+  "owner_table": "ehr_social_history",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/social_history.py",
+  "owner_table": "ehr_social_history",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/social_history.py",
+  "owner_table": "ehr_social_history",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "author_id",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "signed_by",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "cosigned_by",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/clinical_note.py",
+  "owner_table": "ehr_clinical_notes",
+  "column": "witnessed_by",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_problem_list_items",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_problem_list_items",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_problem_list_items",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_conditions",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_conditions",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_conditions",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_conditions",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_diagnoses",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_diagnoses",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_diagnoses",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/clinical_summary.py",
+  "owner_table": "ehr_diagnoses",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/risk_factor.py",
+  "owner_table": "ehr_risk_factors",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/risk_factor.py",
+  "owner_table": "ehr_risk_factors",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/risk_factor.py",
+  "owner_table": "ehr_risk_factors",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/risk_factor.py",
+  "owner_table": "ehr_risk_factors",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/allergy.py",
+  "owner_table": "ehr_allergies",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/allergy.py",
+  "owner_table": "ehr_allergies",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/allergy.py",
+  "owner_table": "ehr_allergies",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/allergy.py",
+  "owner_table": "ehr_allergies",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/immunization.py",
+  "owner_table": "ehr_immunizations",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/immunization.py",
+  "owner_table": "ehr_immunizations",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/immunization.py",
+  "owner_table": "ehr_immunizations",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/immunization.py",
+  "owner_table": "ehr_immunizations",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/immunization.py",
+  "owner_table": "ehr_immunizations",
+  "column": "administrator_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/ehr/models/family_history.py",
+  "owner_table": "ehr_family_history",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/family_history.py",
+  "owner_table": "ehr_family_history",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/family_history.py",
+  "owner_table": "ehr_family_history",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/care_plan.py",
+  "owner_table": "ehr_care_plans",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/care_plan.py",
+  "owner_table": "ehr_care_plans",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/care_plan.py",
+  "owner_table": "ehr_care_plans",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/care_plan.py",
+  "owner_table": "ehr_care_plans",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/care_plan.py",
+  "owner_table": "ehr_care_plan_activities",
+  "column": "performer_id",
+  "target": "national_practitioners",
+  "semantic_class": "REVIEW (licensure may be required per call site)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_statements",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_statements",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_statements",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_statements",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_requests",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_requests",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_requests",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_requests",
+  "column": "prescriber_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_administrations",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_administrations",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_administrations",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/medication.py",
+  "owner_table": "ehr_medication_administrations",
+  "column": "administrator_id",
+  "target": "national_practitioners",
+  "semantic_class": "ASSIGNMENT (posting/coordination role)"
+ },
+ {
+  "file": "app/ehr/models/attachment.py",
+  "owner_table": "ehr_clinical_attachments",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/attachment.py",
+  "owner_table": "ehr_clinical_attachments",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/attachment.py",
+  "owner_table": "ehr_clinical_attachments",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/ehr/models/attachment.py",
+  "owner_table": "ehr_clinical_attachments",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/attachment.py",
+  "owner_table": "ehr_clinical_attachments",
+  "column": "uploaded_by",
+  "target": "national_practitioners",
+  "semantic_class": "PERSON (actor identity)"
+ },
+ {
+  "file": "app/ehr/models/timeline.py",
+  "owner_table": "ehr_patient_timeline",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ },
+ {
+  "file": "app/ehr/models/timeline.py",
+  "owner_table": "ehr_patient_timeline",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/ehr/models/timeline.py",
+  "owner_table": "ehr_patient_timeline",
+  "column": "practitioner_id",
+  "target": "national_practitioners",
+  "semantic_class": "PRACTITIONER (licensed role)"
+ },
+ {
+  "file": "app/ehr/models/timeline.py",
+  "owner_table": "ehr_patient_timeline",
+  "column": "encounter_id",
+  "target": "national_encounters",
+  "semantic_class": "ENCOUNTER (clinical episode; not a subject)"
+ },
+ {
+  "file": "app/identity/models/citizen_relationship.py",
+  "owner_table": "niam_citizen_relationships",
+  "column": "citizen_id",
+  "target": "national_citizens",
+  "semantic_class": "CITIZEN (portal/registry context)"
+ },
+ {
+  "file": "app/identity/models/citizen_relationship.py",
+  "owner_table": "niam_citizen_relationships",
+  "column": "patient_id",
+  "target": "national_patients",
+  "semantic_class": "PATIENT (clinical subject)"
+ }
+]
