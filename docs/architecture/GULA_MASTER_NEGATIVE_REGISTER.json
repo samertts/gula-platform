@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-11T17:41:46Z",
-  "head_commit": "d999970e",
+  "head_commit": "03e9c182",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 61,
+    "total": 62,
     "by_severity": {
       "P0": 10,
-      "P1": 24,
+      "P1": 25,
       "P2": 20,
       "P3": 7
     }
@@ -2018,6 +2018,44 @@
       "can_fix_now": true,
       "blocker": false,
       "evidence_strength": "STRONG (column-level comparison against a migration-derived built-table set)"
+    },
+    {
+      "id": "NR-062",
+      "category": "Audit / Compliance",
+      "domain": "Platform-wide",
+      "severity": "P1",
+      "priority": 3,
+      "status": "MEASURED — invariant derived, ratchet applied, closure is a design decision",
+      "title": "CLAUDE.md requires every mutation to be audited; at least 271 mutating endpoints are in packages with no audit call at all",
+      "description": "The audit architecture itself is sound and needs no redesign: services/audit_service.py chains each entry as SHA-256(previous_chain_hash + record), anchors it off-database under an HMAC (AUDIT_ANCHOR_KEY) and can re-verify the chain (verify_audit_chain). That is tamper-evident. Coverage is the gap. Of 1222 mutating endpoints (POST/PUT/PATCH/DELETE) across 42 packages, 271 (22%) are in 25 packages containing no audit call anywhere.",
+      "root_cause": "The rule is stated in CLAUDE.md but enforced nowhere mechanically: auditing is a call each author must remember to make, at the layer furthest from the mutation.",
+      "evidence": "AST scan of app/ counting POST/PUT/PATCH/DELETE route decorators per package, against a broad token search for audit participation. 271 unaudited mutating endpoints across 25 packages is the LOWER bound -- 'the package audits somewhere' does not prove a given endpoint audits. A module-level pass gives the upper bound: 435 of 527 route-module endpoints (83%) are in modules that never name an audit call. Both are proxies and are reported as such. Highest-count unaudited packages: payments 34, capabilities 29, document_intelligence 25, ai_fabric 23, blood_bank 21, research_platform 16, devices 15, critical_care 14. 21 audit-like tables exist in the ORM, 12 built, but only audit_logs carries the chain.",
+      "affected_components": "app/ (25 packages); canonical chain in app/services/audit_service.py",
+      "affected_users": "Anyone relying on the audit trail to reconstruct who changed what",
+      "clinical_impact": "blood_bank (21 unaudited mutating endpoints) and critical_care (14) are traceability domains: blood product lifecycle and infusion changes are exactly what an audit trail exists to reconstruct.",
+      "security_impact": "An audit trail with a 22% floor of unaudited mutations cannot answer 'who changed this', and the hash chain's tamper-evidence applies only to what was written to it.",
+      "data_integrity_impact": "Mutations outside the chain are unreconstructable after the fact.",
+      "operational_impact": "Incident reconstruction and compliance evidence are incomplete by an unknown margin.",
+      "scalability_impact": "Session-level enforcement would add one insert per audited mutation; the chain is already serialized on last-hash read.",
+      "legal_impact": "ISO 27001 A.8.15 is cited in the audit service docstring; partial coverage weakens that claim.",
+      "dependencies": "NR-045 (canonical audit write repair, VERIFIED), NR-060 (consent audits all five decision branches).",
+      "intersections": "NR-045, NR-060, NR-021.",
+      "contradictions": "CLAUDE.md security invariant #2 states all mutations MUST write to the audit log; measurement shows at least 22% do not.",
+      "recommended_fix": "ENFORCE AT THE SESSION, NOT THE ROUTE. The mutation classes that must produce audit evidence are: clinical result/order state changes; authorization decisions including break-glass; identity lifecycle and role assignment; consent grant/revoke; blood product and controlled-substance lifecycle; financial and billing mutations; tenant/scope changes; and bulk export or disclosure of patient data. Enforcing per route has failed for 271 endpoints because it depends on an author remembering. A SQLAlchemy before_flush hook over a declared set of audit-worthy tables cannot be forgotten, sees the actual INSERT/UPDATE/DELETE, and can reuse infrastructure that already exists: database.py maintains per-request contextvars (request_id, endpoint, user_id, lab_id) for error correlation, which is exactly the actor context an audit row needs. NOT implemented here -- it changes write behaviour on every session and needs its own review.",
+      "minimal_safe_fix": "APPLIED, additive only: backend/tests/test_audit_chain_invariant.py ratchets the measured gap. Each declared package may shed unaudited mutations; none may gain them, no new unaudited package may appear, and a resolved entry must be removed rather than left as a stale allowance. The chain's own integrity (chain hash, previous-hash link, HMAC anchor, verifier) is asserted too, because the invariant is only worth enforcing while the chain is real. No runtime code changed.",
+      "verification_method": "5 tests: the scan still finds >=1000 mutating endpoints; the canonical chain retains its hash, link, anchor and verifier; no new unaudited package appears; no declared package gains unaudited mutations; resolved entries are removed. Negative-proven by adding one unaudited POST to app/trust -- the ratchet fails with {'app/trust': (6, 7)} and passes again on byte-identical restore.",
+      "acceptance_criteria": "Every mutation class listed above produces a hash-chained audit entry, enforced where it cannot be forgotten.",
+      "regression_risk": "None from this change; tests only. The recommended session hook carries real risk and is deliberately not applied.",
+      "owner": "Platform + Security",
+      "related_tests": "backend/tests/test_audit_chain_invariant.py (5 tests)",
+      "related_files": "app/services/audit_service.py, app/database.py",
+      "related_adrs": "",
+      "related_contracts": "",
+      "wave": "WAVE 2",
+      "complexity": "L",
+      "can_fix_now": false,
+      "blocker": false,
+      "evidence_strength": "STRONG for the lower bound (AST over the whole route surface); the upper bound is explicitly a proxy"
     }
   ]
 }
