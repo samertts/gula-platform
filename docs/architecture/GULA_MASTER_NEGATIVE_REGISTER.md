@@ -115,7 +115,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-019 | P1  | AI Platform | Importing `app.ai` wrote to the database at import time | FIXED — VERIFIED |
 | NR-020 | P0  | Blood Bank | Transfusion state machine had no `verified` state | FIXED — VERIFIED |
 | NR-021 | P0  | Blood Bank | Inventory and component endpoints ignored `lab_id` | FIXED — VERIFIED |
-| NR-022 | P0  | National Core | Four of the five most-depended-on tables do not exist | OPEN — ARCHITECTURE DECISION REQUIRED |
+| NR-022 | P0  | National Core | Four of the five most-depended-on tables do not exist | **DECISION-READY** — Core map derived. Corrected by measurement: three of the top five are unbuilt, not four; the sharper fact is that the four most-depended-on *National Core* concepts are all unbuilt (`national_practitioners` 88 FK refs, `national_citizens` 77, `national_patients` 63, `national_encounters` 35), so **263 foreign keys name tables no migration creates**, while a parallel built core (labs, national_facilities, lab_users, niam_*, patients) is what actually runs. 419 tables created vs 828 ORM-mapped. Recommended Stable Core is five already-built concepts. One irreversible data decision required: is the canonical subject `patients` or a national citizen record? See `NR-022-stable-core-map.md` |
 | NR-023 | P0  | Platform Migrations | Autogenerate cannot run: foreign keys cross `MetaData` boundaries | OPEN — BLOCKED BY NR-030 (NR-006 cleared) |
 | NR-024 | P3  | Platform Migrations | `CitizenPlatformBase` is registered but maps zero tables | OPEN — LOW SEVERITY |
 | NR-025 | P2  | Platform-wide | One name, two identifier schemes: `_ulid()` is a real ULID twice, a truncated UUID4 twelve times (thirteen before BATCH-3) | OPEN — DESIGN DEFECT |
