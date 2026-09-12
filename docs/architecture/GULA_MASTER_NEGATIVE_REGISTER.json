@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 80,
+    "total": 81,
     "P0": 10,
     "P1": 36,
-    "P2": 24,
+    "P2": 25,
     "P3": 10
   },
   "findings": [
@@ -2738,6 +2738,44 @@
       "can_fix_now": false,
       "blocker": true,
       "evidence_strength": "executed against a real migrated PostgreSQL, deterministic, cross-checked by two independent derivations"
+    },
+    {
+      "id": "NR-081",
+      "category": "Measurement blind spot / Shadow implementation / Write authority",
+      "domain": "app/reference, platform-wide schema access",
+      "severity": "P2",
+      "priority": 3,
+      "status": "MEASURED — the blind-spot class is guarded; the shadow subsystem is recorded, not repaired",
+      "title": "Schema access through `sqlalchemy.table()` and raw SQL is invisible to every metadata-based guard, and one unreachable subsystem writes three canonical clinical tables that way",
+      "description": "Found while tracing NR-080's discovery that patients.national_id is physical, indexed four ways and mapped by no ORM model. Something does read it: app/reference/infrastructure/repositories.py, through `_PATIENTS = table('patients', column(...), ...)` -- the lightweight SQLAlchemy Core construct, which carries NO MetaData at all -- plus raw `INSERT INTO patients`, returning national_id in its response shape. Every schema instrument in this suite works from ORM metadata: built_tables() derives from migrations, the registry guard compares registered MetaData against PostgreSQL, the autogenerate gate diffs mappers against the database, and the NR-063/NR-067 scans resolve ORM class names. NONE of them can see a `table()` construct or a table name inside a string literal. This is a whole class of schema access that was structurally invisible. MEASURED: 1 module reaches a built table through a Core table() construct, and 7 execute raw INSERT/UPDATE/DELETE against one. Six of the seven are legitimate and stay -- the three AI modules write their own tables, idempotency_keys has no ORM by design, outbox_events needs raw SQL for its locking, and startup_guard seeds lab_users before the app is up. Legitimacy is not the invariant; visibility is. THE OUTLIER: app/reference is a complete parallel implementation of patient reference data -- own domain model, own repository, own tests -- which writes patients, lab_orders and lab_results by raw SQL. Measured against the running application it serves ZERO routes and ZERO modules outside it import it, so it is unreachable today. It is recorded rather than deleted: removing a subsystem is an ownership decision. If it were ever registered there would be a second write authority for the clinical subject, with different invariants and no HMAC path for the national ID, and no existing guard would have noticed.",
+      "root_cause": "Schema guards were built on the assumption that the ORM is the only route to the database. Core constructs and raw SQL are both supported first-class by SQLAlchemy and neither appears in any MetaData.",
+      "evidence": "AST scan over app/: 1 module with a Core table() naming a built table (app/reference/infrastructure/repositories.py -> patients); 7 modules executing raw DML on built tables. Runtime: `route_modules(app)` over the started application yields ZERO app.reference.* modules among 142 route modules and 2109 served routes; the corrected import graph yields ZERO importers of app/reference/ from outside it. MEASUREMENT CORRECTION: a first pass matched INSERT/UPDATE/DELETE against every string literal and reported 8 modules. One, app/core/bootstrap/permissions.py, contains no SQL at all -- the regex matched the permission label \"Update Patients\". Counting only strings handed to text()/execute() gives 7. The 8 is not recorded, because it is not true. Negative proof, restored byte-identical: adding a table('audit_logs') construct and a raw INSERT INTO samples to app/core/auto_repair.py fails all three guards.",
+      "affected_components": "app/reference/, backend/tests/test_schema_access_is_visible.py",
+      "affected_users": "None today — app/reference is unreachable",
+      "clinical_impact": "None today; a second write authority for patients if it were ever registered",
+      "security_impact": "app/reference writes and returns patients.national_id without the HMAC path app/routes/register.py applies. Not reachable, so not live.",
+      "data_integrity_impact": "A parallel create path for patients/lab_orders/lab_results with its own invariants",
+      "operational_impact": "None",
+      "scalability_impact": "",
+      "legal_impact": "",
+      "dependencies": "Discovered via NR-080; shares the blind-spot theme with NR-079 and NR-069",
+      "intersections": "NR-080, NR-079, NR-006",
+      "contradictions": "",
+      "recommended_fix": "Decide whether app/reference is a future capability or dead scaffolding. If it is to be activated, its writes must go through the canonical ORM models and the national-ID HMAC path; if not, retire it. Either is an ownership decision.",
+      "minimal_safe_fix": "Applied: both access routes are ledgered and ratcheted, and canonical clinical tables have a dedicated guard, so a new invisible writer must be declared rather than discovered.",
+      "verification_method": "AST scan plus runtime route and import census",
+      "acceptance_criteria": "No undeclared Core table() or raw DML against a built table",
+      "regression_risk": "None — measurement and guards only",
+      "owner": "unassigned",
+      "related_tests": "backend/tests/test_schema_access_is_visible.py",
+      "related_files": "app/reference/infrastructure/repositories.py",
+      "related_adrs": "",
+      "related_contracts": "",
+      "wave": "NR-080 discovery",
+      "complexity": "low",
+      "can_fix_now": false,
+      "blocker": false,
+      "evidence_strength": "AST + runtime, with one negative proof and one self-corrected false positive"
     }
   ]
 }
