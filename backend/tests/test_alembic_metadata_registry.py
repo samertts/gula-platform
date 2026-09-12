@@ -307,3 +307,134 @@ def test_a_shared_metadata_would_not_drop_an_unlisted_table(registry, mapped) ->
         f"reviewed list. Unexpected: {sorted(would_drop - UNMAPPED_PHYSICAL_TABLES)}; "
         f"no longer at risk: {sorted(UNMAPPED_PHYSICAL_TABLES - would_drop)}"
     )
+
+
+# ── NR-078 — the guard above asks the weaker half of the question ────────────
+#
+# `PHANTOM_FK_TARGETS` asks whether a foreign key names a table that exists
+# **somewhere** across the registry. SQLAlchemy asks something stricter: it
+# resolves a ForeignKey inside the MetaData that owns the *referring* table. A
+# declaration pointing at a table owned by a different declarative base names a
+# table that exists, passes that guard, and still cannot resolve.
+#
+# Measured across the registry env.py actually hands Alembic: **310** foreign
+# keys are in that state, across five bases. NR-075 -- the five on
+# `niam_citizen_relationships` that stop `POST /admin/citizen-relationships`
+# from inserting a row -- is 1.6% of the class.
+#
+# The consequence is larger than any one endpoint, and it is a defect in the
+# measuring instrument rather than in the thing measured. Alembic's
+# `sorted_tables` resolves every foreign key before it emits a single
+# operation, so:
+#
+#     $ alembic revision --autogenerate -m "anything"
+#     sqlalchemy.exc.NoReferencedTableError: Foreign key associated with column
+#     'ehr_allergies.citizen_id' could not find table 'national_citizens'
+#
+# **`alembic revision --autogenerate` cannot run against this repository at
+# all.** It is the command CLAUDE.md's migration policy names as the way to make
+# any schema change, and it has no working path. Nothing detected that, because
+# every guard in this file reasons about what autogenerate *would* propose and
+# none of them has ever asked autogenerate to propose it.
+#
+# The ledger is per-base and may shrink. It may never grow, and no base may
+# appear. Closing it is a declarative-base topology decision (share MetaData, or
+# drop the ORM-level ForeignKey and keep the physical constraint) with a real
+# risk of autogenerate then proposing to DROP constraints PostgreSQL is
+# enforcing today, so it is measured here and decided by a human.
+UNRESOLVABLE_CROSS_BASE_FKS = {
+    "CareContinuumBase": 214,
+    "EHRBase": 70,
+    "DataPlatformBase": 13,
+    "TrustBase": 8,
+    "IdentityBase": 5,
+}
+
+
+def _cross_base_foreign_keys(registry) -> list[tuple[str, str, str, str]]:
+    """(base, table, column, target) for each FK its own MetaData cannot see."""
+    found: list[tuple[str, str, str, str]] = []
+    for label, metadata in registry:
+        own = set(metadata.tables)
+        for table in metadata.tables.values():
+            for fk in table.foreign_keys:
+                target = fk._table_key()
+                if target not in own:
+                    found.append((label, table.name, fk.parent.name, target))
+    return found
+
+
+def test_the_cross_base_foreign_key_scan_still_finds_the_surface(registry) -> None:
+    """Guard the guard: finding none would ratchet nothing."""
+    found = _cross_base_foreign_keys(registry)
+    assert len(found) >= 250, (
+        f"only {len(found)} cross-base foreign keys found; the scan has drifted "
+        "and every count below would be understated"
+    )
+
+
+def test_no_base_gains_a_foreign_key_its_own_metadata_cannot_resolve(registry) -> None:
+    """The ratchet. A new one is an INSERT that will fail on flush."""
+    import collections
+
+    counts = collections.Counter(row[0] for row in _cross_base_foreign_keys(registry))
+    appeared = sorted(set(counts) - set(UNRESOLVABLE_CROSS_BASE_FKS))
+    assert appeared == [], (
+        "these declarative bases now declare a foreign key to a table owned by "
+        "another base. SQLAlchemy resolves foreign keys inside the referring "
+        f"table's own MetaData, so those rows cannot be INSERTed: {appeared}"
+    )
+    widened = {
+        base: (declared, counts.get(base, 0))
+        for base, declared in UNRESOLVABLE_CROSS_BASE_FKS.items()
+        if counts.get(base, 0) > declared
+    }
+    assert widened == {}, (
+        f"cross-base foreign keys were added (declared -> now): {widened}"
+    )
+
+
+def test_the_cross_base_foreign_key_ledger_does_not_rot(registry) -> None:
+    """A base that resolved its foreign keys must leave the ledger."""
+    import collections
+
+    counts = collections.Counter(row[0] for row in _cross_base_foreign_keys(registry))
+    resolved = sorted(
+        base for base, declared in UNRESOLVABLE_CROSS_BASE_FKS.items()
+        if counts.get(base, 0) < declared
+    )
+    assert resolved == [], (
+        "these bases now declare fewer unresolvable foreign keys than the "
+        "ledger claims; lower the numbers so the ratchet keeps its grip: "
+        f"{ {b: (UNRESOLVABLE_CROSS_BASE_FKS[b], counts.get(b, 0)) for b in resolved} }"
+    )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "NR-078: `alembic revision --autogenerate` cannot run. Alembic sorts "
+        "every registered MetaData before emitting an operation, and 310 "
+        "cross-base foreign keys cannot resolve. Fixing it is a declarative-base "
+        "topology decision, so this is held as a strict xfail: it fails loudly "
+        "the moment autogenerate starts working, which is the signal to close "
+        "NR-078 and NR-075 rather than to delete this test."
+    ),
+)
+def test_alembic_can_sort_every_registered_metadata(registry) -> None:
+    """The capability every other guard in this file assumes and none exercises.
+
+    `alembic.autogenerate` reaches `MetaData.sorted_tables` on each registered
+    metadata before it compares anything. This is that step, isolated: if it
+    raises, no autogenerate diff exists to reason about, and a guard that asks
+    "what would autogenerate propose?" is asking about something that never
+    runs.
+    """
+    for label, metadata in registry:
+        try:
+            assert metadata.sorted_tables is not None
+        except Exception as exc:  # the failure is the measurement
+            raise AssertionError(
+                f"{label}.metadata cannot be sorted, so autogenerate cannot "
+                f"produce a diff: {exc}"
+            ) from exc
