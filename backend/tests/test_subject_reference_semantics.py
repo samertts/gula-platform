@@ -258,3 +258,46 @@ def test_the_declared_distribution_still_describes_the_code() -> None:
         "the semantic distribution changed (declared -> now). Update "
         f"DECLARED_DISTRIBUTION in the same commit as the change: {drifted}"
     )
+
+
+#: The only two references to an unbuilt subject table that live in a table the
+#: migration chain actually builds. `niam_citizen_relationships` declares both
+#: foreign keys; the migration creates each one only `if _has_table(target)`, so
+#: on a real database the columns exist and the constraint does not. They are
+#: the entire live surface of the 263. This ledger may shrink; it may not grow.
+DECLARED_LIVE_SUBJECT_REFERENCES = frozenset({
+    ("niam_citizen_relationships", "citizen_id", "national_citizens"),
+    ("niam_citizen_relationships", "patient_id", "national_patients"),
+})
+
+
+def test_the_subject_transition_stays_latent() -> None:
+    """NR-061's dependency proof, generalised -- and the precondition it implies.
+
+    261 of the 263 references live in tables no migration builds, including
+    **every one** of the 57 practitioner references. So nothing is currently
+    depending on these subject tables at runtime, and no re-pointing is owed.
+
+    That is what makes building one of them dangerous rather than overdue:
+    a built owner table turns its subject reference into a live dependency, and
+    from then on the reference has to resolve to whatever the class says owns it
+    -- the composition for PRACTITIONER, the canonical Person for PERSON_ACTOR.
+    Build the owner after the target is decided, not before.
+    """
+    import json
+
+    built = set(json.loads(
+        (BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json")
+        .read_text(encoding="utf-8")
+    ))
+    live = sorted({
+        (owner, column, table)
+        for owner, column, table, _ in _subject_references()
+        if owner in built
+    })
+    undeclared = [ref for ref in live if ref not in DECLARED_LIVE_SUBJECT_REFERENCES]
+    assert undeclared == [], (
+        "a built table now references an unbuilt subject table, which makes the "
+        "reference a live dependency. Decide its target against its semantic "
+        f"class before the owner is built: {undeclared}"
+    )

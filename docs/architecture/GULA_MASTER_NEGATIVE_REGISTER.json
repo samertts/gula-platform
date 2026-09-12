@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 63,
+    "total": 64,
     "by_severity": {
       "P0": 10,
-      "P1": 26,
+      "P1": 27,
       "P2": 20,
       "P3": 7
     }
@@ -2094,6 +2094,44 @@
       "can_fix_now": false,
       "blocker": true,
       "evidence_strength": "STRONG (AST over the whole service surface, cross-referenced with migration-derived built tables)"
+    },
+    {
+      "id": "NR-064",
+      "category": "Contract / Schema reachability",
+      "domain": "identity (citizen relationship workflow)",
+      "severity": "P1",
+      "priority": 2,
+      "status": "LIVE — reachable registered endpoint whose only write path queries two tables no migration builds",
+      "title": "The citizen-relationship create endpoint queries national_citizens and national_patients, neither of which exists, and reports the failure as a generic 500",
+      "description": "POST /admin/citizen-relationships is registered at factory.py:599 and reachable by any actor holding platform:manage_users with ministry authorization. Its workflow validates the subject by querying `Citizen` (national_citizens) and, when a patient is named, `Patient` (national_patients). Neither table is created by any migration, so on a migrated database the query raises UndefinedTable before a row is ever written. The route catches `Exception` and returns 500 'Citizen relationship workflow failed', so the operator is told the workflow failed but not that the schema is absent.",
+      "root_cause": "niam_citizen_relationships was built ahead of the National Core subject tables it references. The migration guards the foreign keys on `_has_table(target)` -- correctly, or a fresh database could not migrate -- but the service still validates against the ORM class unconditionally.",
+      "evidence": "app/routes/citizen_relationship_admin.py:69 (POST) -> app/identity/services/citizen_relationship_service.py:144 `self.db.query(Citizen).filter(Citizen.id == citizen_id)` and :152 for Patient. app/national/domain/citizen.py / patient.py map to national_citizens / national_patients; both are absent from the migration-derived evidence-created-tables.json. Registration proved at factory.py:561/599. The FK-creation guard is at migrations/versions/20260811_0002_citizen_relationship_foundation.py:68-83.",
+      "affected_components": "app/routes/citizen_relationship_admin.py, app/identity/services/citizen_relationship_service.py, niam_citizen_relationships",
+      "affected_users": "Ministry administrators using the citizen-relationship workflow; indirectly every citizen whose delegate access depends on it",
+      "clinical_impact": "Guardian, caregiver and delegate access to a citizen's record cannot be granted through the canonical workflow.",
+      "security_impact": "No bypass introduced -- the path fails closed. The risk is the opposite: an access-granting workflow that cannot run invites an out-of-band substitute.",
+      "data_integrity_impact": "None today: nothing is written. The two declared columns carry no database-level referential integrity because the migration could not create the constraints.",
+      "operational_impact": "The failure surfaces as an undifferentiated 500, so the cause is not visible to the operator who hits it.",
+      "scalability_impact": "n/a",
+      "legal_impact": "Delegated-access consent cannot be recorded through the intended audited path.",
+      "dependencies": "Blocked by the absence of national_citizens / national_patients (NR-022).",
+      "intersections": "NR-022 (this is the entire live surface of the 263 subject references), NR-059 (same class: a registered route over an unbuilt table), NR-054.",
+      "contradictions": "The workflow is otherwise exemplary -- explicit keywords, idempotency key, optimistic version, hash-chained audit -- which is why the missing schema is easy to miss.",
+      "recommended_fix": "Decide the canonical subject for citizen_id and patient_id per NR-022 (CITIZEN and PATIENT classes respectively), build or re-point to that owner, then create the two foreign keys in the same migration. Separately, let the route distinguish 'schema absent' from 'workflow failed' so the 500 names its cause.",
+      "minimal_safe_fix": "APPLIED, additive only: test_subject_reference_semantics.py::test_the_subject_transition_stays_latent declares these two as the only live subject references and fails if a third appears. No runtime code changed -- the repair is a schema decision, not a patch.",
+      "verification_method": "Declared in DECLARED_LIVE_SUBJECT_REFERENCES and asserted against the migration-derived built-table evidence. Negative-proven by marking dp_provider_registry built: the test fails naming (dp_provider_registry, practitioner_id, national_practitioners) and passes again on byte-identical restore.",
+      "acceptance_criteria": "POST /admin/citizen-relationships either succeeds against a real subject table or is withdrawn; no registered write path queries an unbuilt table.",
+      "regression_risk": "None from this change; tests and documentation only.",
+      "owner": "Identity Platform",
+      "related_tests": "backend/tests/test_subject_reference_semantics.py::test_the_subject_transition_stays_latent",
+      "related_files": "app/routes/citizen_relationship_admin.py, app/identity/services/citizen_relationship_service.py, backend/migrations/versions/20260811_0002_citizen_relationship_foundation.py",
+      "related_adrs": "docs/architecture/NR-061-practitioner-composition.md, docs/architecture/NR-022-stable-core-map.md",
+      "related_contracts": "",
+      "wave": "WAVE 2",
+      "complexity": "M",
+      "can_fix_now": false,
+      "blocker": true,
+      "evidence_strength": "STRONG (call graph read end to end; registration and build status both from committed evidence)"
     }
   ]
 }

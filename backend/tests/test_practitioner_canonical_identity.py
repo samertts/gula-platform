@@ -150,3 +150,120 @@ def test_the_rival_ledger_does_not_rot() -> None:
     assert stale == [], (
         f"these ledger entries no longer name an ORM table; remove them: {stale}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Unit 2 — the composition proved column by column.
+#
+# "Compose from Person" is only an answer if the composition actually holds what
+# the rival table holds. So every column of `national_practitioners` is mapped
+# to a real column of a real built composition table, or declared a gap. Mapped
+# by hand rather than by name similarity: `date_of_birth` lives as `birth_date`,
+# `qualification` as `degree_name`, `role` as an assignment's `role_id`. A
+# name-matching heuristic would have called those four gaps and this one
+# coverage, and both errors change the decision.
+# ---------------------------------------------------------------------------
+
+#: national_practitioners column -> (composition table, column that holds it).
+PRACTITIONER_COLUMN_HOMES = {
+    "role": ("niam_assignments", "role_id"),
+    "full_name": ("niam_persons", "family_name"),
+    "full_name_ar": ("niam_persons", "full_name_ar"),
+    "date_of_birth": ("niam_persons", "birth_date"),
+    "gender": ("niam_persons", "gender"),
+    "nationality": ("niam_persons", "nationality"),
+    "national_id_hash": ("niam_persons", "national_id_hash"),
+    "phone": ("niam_persons", "phone"),
+    "email": ("niam_persons", "email"),
+    "is_active": ("niam_persons", "is_active"),
+    "license_number": ("niam_licenses", "license_number"),
+    "qualification": ("niam_licenses", "degree_name"),
+    "is_verified": ("niam_licenses", "verified"),
+    "organization_id": ("niam_employments", "organization_id"),
+    "facility_id": ("niam_assignments", "facility_id"),
+}
+
+#: Columns the composition genuinely does not hold. Each is additive to an
+#: existing table -- none of them needs a new registry of natural persons, which
+#: is the whole point. This ledger may shrink. It may never grow.
+DECLARED_COMPOSITION_GAPS = {
+    "specialty": "clinical scope of practice; belongs on niam_licenses",
+    "sub_specialty": "as above",
+    "health_profession_number": "profession-registry identifier; belongs on niam_licenses",
+    "available_for_telehealth": "a practice attribute, needed only once a "
+                               "practitioner-facing feature is reachable",
+    "signature_url": "the clinical signature; belongs with the licence it signs under",
+    "photo_url": "person-scoped, not practitioner-scoped",
+}
+
+
+def _table_columns() -> dict[str, set[str]]:
+    """table name -> declared Column attribute names, by AST."""
+    import ast
+
+    columns: dict[str, set[str]] = {}
+    for path in (BACKEND / "app").rglob("*.py"):
+        if "__pycache__" in path.parts:
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+        except SyntaxError:
+            continue
+        for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+            table = None
+            for stmt in cls.body:
+                if isinstance(stmt, ast.Assign) and isinstance(stmt.value, ast.Constant):
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name) and target.id == "__tablename__":
+                            table = stmt.value.value
+            if table is None:
+                continue
+            for stmt in cls.body:
+                if (
+                    isinstance(stmt, ast.Assign)
+                    and isinstance(stmt.value, ast.Call)
+                    and getattr(stmt.value.func, "id", None) == "Column"
+                ):
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name):
+                            columns.setdefault(table, set()).add(target.id)
+    return columns
+
+
+def test_every_practitioner_column_is_mapped_or_declared_a_gap() -> None:
+    """No column may quietly have nowhere to go.
+
+    An unmapped column is the argument for building `national_practitioners`
+    arriving by the back door: "the composition does not hold X, so we need the
+    table." Either it maps, or it is named as a gap with the table it is
+    additive to.
+    """
+    columns = _table_columns()
+    practitioner = columns.get("national_practitioners", set())
+    assert practitioner, "national_practitioners no longer declares any columns"
+    unmapped = sorted(
+        practitioner - set(PRACTITIONER_COLUMN_HOMES) - set(DECLARED_COMPOSITION_GAPS)
+    )
+    assert unmapped == [], (
+        "these national_practitioners columns have no home in the canonical "
+        "composition and are not declared gaps. Map each to a composition "
+        f"column or declare it, rather than building the table: {unmapped}"
+    )
+
+
+def test_every_mapped_home_still_exists_in_the_composition() -> None:
+    """The mapping is evidence only while its targets are real.
+
+    A renamed or dropped NIAM column would silently turn coverage into a gap,
+    and the decision would keep citing a table that no longer holds the data.
+    """
+    columns = _table_columns()
+    broken = sorted(
+        (source, table, column)
+        for source, (table, column) in PRACTITIONER_COLUMN_HOMES.items()
+        if column not in columns.get(table, set())
+    )
+    assert broken == [], (
+        "these mappings name a composition column that no longer exists "
+        f"(practitioner column, table, missing column): {broken}"
+    )
