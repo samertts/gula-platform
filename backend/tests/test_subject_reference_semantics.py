@@ -39,6 +39,11 @@ import ast
 import collections
 import pathlib
 
+# NR-069. `built_tables()` derives from the migration chain. Reading
+# `evidence-created-tables.json` directly is how three tables created through a
+# migration helper were treated as unbuilt; one source of truth, derived.
+from tests.orm_resolution import built_tables
+
 BACKEND = pathlib.Path(__file__).resolve().parents[1]
 APP = BACKEND / "app"
 
@@ -290,12 +295,7 @@ def test_the_subject_transition_stays_latent() -> None:
     -- the composition for PRACTITIONER, the canonical Person for PERSON_ACTOR.
     Build the owner after the target is decided, not before.
     """
-    import json
-
-    built = set(json.loads(
-        (BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json")
-        .read_text(encoding="utf-8")
-    ))
+    built = set(built_tables())
     live = sorted({
         (owner, column, table)
         for owner, column, table, _ in _subject_references()

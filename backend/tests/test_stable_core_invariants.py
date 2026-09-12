@@ -29,12 +29,15 @@ Core, and `test_subject_reference_semantics.py` holds their classification.
 from __future__ import annotations
 
 import ast
-import json
 import pathlib
+
+# NR-069. `built_tables()` derives from the migration chain. Reading
+# `evidence-created-tables.json` directly is how three tables created through a
+# migration helper were treated as unbuilt; one source of truth, derived.
+from tests.orm_resolution import built_tables
 
 BACKEND = pathlib.Path(__file__).resolve().parents[1]
 APP = BACKEND / "app"
-EVIDENCE = BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json"
 
 #: The Stable Core: table -> the module that owns it. Both halves are asserted,
 #: because a Core concept quietly re-homed is as much a drift as one dropped.
@@ -86,7 +89,7 @@ def _core_owners() -> dict[str, list[tuple[str, list[str]]]]:
 
 def test_every_stable_core_table_is_built() -> None:
     """The Core is the built one, which is the entire point of choosing it."""
-    built = set(json.loads(EVIDENCE.read_text(encoding="utf-8")))
+    built = set(built_tables())
     missing = sorted(t for t in STABLE_CORE if t not in built)
     assert missing == [], (
         "these Stable Core tables are no longer created by any migration, so the "

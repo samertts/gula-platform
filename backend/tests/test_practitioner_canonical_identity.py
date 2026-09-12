@@ -32,8 +32,12 @@ trusted identity provider, and no subsystem implements its own.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
+
+# NR-069. `built_tables()` derives from the migration chain. Reading
+# `evidence-created-tables.json` directly is how three tables created through a
+# migration helper were treated as unbuilt; one source of truth, derived.
+from tests.orm_resolution import built_tables
 
 BACKEND = Path(__file__).resolve().parents[1]
 MIGRATIONS = BACKEND / "migrations" / "versions"
@@ -65,8 +69,7 @@ def _created_tables() -> dict[str, list[str]]:
     name, which also matches foreign-key references inside migrations and
     reports unbuilt tables as built.
     """
-    evidence = BACKEND.parent / "docs" / "architecture" / "evidence-created-tables.json"
-    return json.loads(evidence.read_text(encoding="utf-8"))
+    return set(built_tables())
 
 
 def test_the_created_table_evidence_is_present_and_plausible() -> None:
