@@ -59,6 +59,46 @@ Built as declared, `GET /national/tasks` returns every tenant's tasks to any
 caller authorized for the route. That is CLAUDE.md security invariant #1, at
 national scale.
 
+## 3.1 [Unit 6] The tenant column is vestigial, and the tenancy model is undecided
+
+The earlier reading — "1 of 15 is tenanted" — was too generous.
+`national_workflow_executions.tenant_id` exists, but `tenant_id` appears in
+exactly six places across both packages: the column, a domain-entity field
+defaulting to `None`, a service parameter defaulting to `None`, the value passed
+through to the model, and two serialisation points. **No route supplies it.**
+The routes derive `created_by` from `current_user.id` and stop there, so the
+column is written NULL on every path that could write it.
+
+So the surface is not partly tenanted. It is untenanted, with one column that
+looks like tenancy and is not.
+
+That turns tenancy from an omission into a **decision that has not been taken**,
+and the two available answers disagree about what a national workflow is scoped
+to:
+
+| Candidate | Shape | What it would mean |
+| --- | --- | --- |
+| `TenantMixin.lab_id` | `INTEGER` → `labs.id` | a national workflow belongs to one laboratory |
+| the existing `tenant_id` | `VARCHAR(100)`, nullable | some string tenant identifier — facility, governorate or organization |
+
+Nothing in the repository prefers one. `labs` is the built tenant of the LIMS;
+`niam_organizations` and `national_facilities` are both built and both plausible
+for a *national* orchestration layer; and the only signal the package itself
+carries is an optional string that nobody sets.
+
+**This document does not choose.** Applying `TenantMixin` would assert that
+national workflows are lab-scoped, on a national orchestration layer, against
+the one contrary signal present — a consequential and hard-to-reverse data-model
+decision with no evidence behind it. Recorded as the open question it is:
+
+> What is the tenant of a national workflow execution or task — a laboratory, a
+> facility, a governorate, or an organization?
+
+Held mechanically: `test_the_one_tenant_column_is_still_never_populated` fails
+the moment a route supplies `tenant_id`, because at that moment the question has
+been answered and the answer belongs in this document rather than in a keyword
+argument.
+
 ## 4. Audit
 
 Neither package contains a call reaching the hash-chained audit log. That gap is
@@ -95,8 +135,9 @@ national task surface. That estimate was wrong and is corrected here.
 - **Not shipping** → retire both packages and both frontend pages. Nothing below
   applies and the National Core problem shrinks by fifteen tables.
 - **Shipping** → in this order, before any migration:
-  1. Re-base the fifteen on `TenantAuditEntity` (or `TenantEntity` where a row is
-     genuinely not a mutation of record) and add the tenant column.
+  1. **Answer §3.1 first.** Re-basing on `TenantAuditEntity` picks `lab_id`
+     (INTEGER, `labs.id`) by default, and that is the decision, not a detail.
+     Then add the tenant column that answer implies.
   2. Add the tenant filter to every repository read path.
   3. Route mutations through `services/audit_service.log_action` so they reach
      the chain.

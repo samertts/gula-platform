@@ -221,3 +221,55 @@ def test_the_untenanted_ledger_does_not_rot() -> None:
         "these tables now carry a tenant column, or no longer exist; remove "
         f"them from the ledger so it keeps describing the repository: {resolved}"
     )
+
+
+#: The one tenant column in the orchestration surface, and the fact that makes
+#: it not a counter-example: nothing populates it.
+_VESTIGIAL_TENANT = ("national_workflow_executions", "tenant_id")
+
+#: Packages whose routes would have to supply tenancy for it to be real.
+_ORCHESTRATION_ROUTE_MODULES = (
+    "app/national/task_engine/api/routes.py",
+    "app/national/workflow_runtime/api/routes.py",
+)
+
+
+def test_the_one_tenant_column_is_still_never_populated() -> None:
+    """NR-065, sharpened: the surface is not 1-of-15 tenanted. It is 0-of-15.
+
+    `national_workflow_executions.tenant_id` exists, and `tenant_id` appears in
+    exactly six places across both packages -- a domain-entity default, a service
+    parameter defaulting to None, the value passed through to the model, and the
+    column itself. **No route supplies it.** The routes derive `created_by` from
+    `current_user.id` and stop there, so the column is written as NULL on every
+    path that could write it.
+
+    That matters for the activation review rather than for today's behaviour.
+    The tenancy question for national orchestration is undecided in code, and
+    the two available answers disagree: `TenantMixin.lab_id` is an INTEGER
+    pointing at `labs.id`, while the only signal the package itself carries is
+    an optional `String(100)`. Choosing between them decides whether a national
+    workflow is scoped to a lab, a facility, a governorate or an organization --
+    a national data-model decision with no evidence behind it in this repository.
+
+    So if a route starts supplying `tenant_id`, that decision has been taken.
+    This fails at that moment, and the ledger and the NR-065 record must say
+    which answer was chosen and why. It is not here to prevent the work; it is
+    here to stop the answer being adopted by accident.
+    """
+    populating = []
+    for module in _ORCHESTRATION_ROUTE_MODULES:
+        path = BACKEND / module
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+        except (SyntaxError, FileNotFoundError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.keyword) and node.arg == "tenant_id":
+                populating.append(f"{module}:{getattr(node.value, 'lineno', '?')}")
+    assert populating == [], (
+        "an orchestration route now supplies tenant_id, which means the national "
+        "tenancy question has been answered. Record which answer (lab, facility, "
+        "governorate or organization) and why in NR-065 before relying on it: "
+        f"{populating}"
+    )
