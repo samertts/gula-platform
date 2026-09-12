@@ -96,7 +96,7 @@ UNCLASSIFIED = "UNCLASSIFIED"
 #: The measured distribution. Counts may change as the transition proceeds;
 #: what may not change is a reference existing with no class at all.
 DECLARED_DISTRIBUTION = {
-    CITIZEN: 75,
+    CITIZEN: 74,
     PATIENT: 63,
     PRACTITIONER: 57,
     ENCOUNTER: 35,
@@ -260,13 +260,19 @@ def test_the_declared_distribution_still_describes_the_code() -> None:
     )
 
 
-#: The only two references to an unbuilt subject table that live in a table the
-#: migration chain actually builds. `niam_citizen_relationships` declares both
-#: foreign keys; the migration creates each one only `if _has_table(target)`, so
-#: on a real database the columns exist and the constraint does not. They are
-#: the entire live surface of the 263. This ledger may shrink; it may not grow.
+#: References to an unbuilt subject table that live in a table the migration
+#: chain actually builds -- the entire live surface of the 263.
+#:
+#: It was two. `citizen_id` left in NR-064: it now names `niam_persons`, the
+#: canonical person, and has a real foreign key (`20260914_0001`) where the
+#: declared one could never be created. `patient_id` remains because there is
+#: nothing to point it at -- it is VARCHAR(26) and the built clinical patient
+#: table keys on INTEGER -- so the API refuses the input instead, and the column
+#: waits on NR-022's clinical-subject decision.
+#:
+#: This ledger may shrink; it may not grow, and a resolved entry must be removed
+#: rather than left behind.
 DECLARED_LIVE_SUBJECT_REFERENCES = frozenset({
-    ("niam_citizen_relationships", "citizen_id", "national_citizens"),
     ("niam_citizen_relationships", "patient_id", "national_patients"),
 })
 
@@ -300,4 +306,9 @@ def test_the_subject_transition_stays_latent() -> None:
         "a built table now references an unbuilt subject table, which makes the "
         "reference a live dependency. Decide its target against its semantic "
         f"class before the owner is built: {undeclared}"
+    )
+    stale = sorted(DECLARED_LIVE_SUBJECT_REFERENCES - set(live))
+    assert stale == [], (
+        "these declared live references no longer exist -- they were resolved or "
+        f"removed. Delete them from the ledger in the same commit: {stale}"
     )

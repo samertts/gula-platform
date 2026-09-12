@@ -7,6 +7,7 @@ from app.identity.models.citizen_relationship import CitizenRelationshipStatus
 from app.identity.services import citizen_relationship_service as workflow_module
 from app.identity.services.citizen_relationship_service import (
     CitizenRelationshipConflict,
+    CitizenRelationshipUnsupported,
     CitizenRelationshipWorkflow,
 )
 
@@ -36,10 +37,8 @@ class _FakeQuery:
     def first(self):
         if self.model is workflow_module.User:
             return self.db.source
-        if self.model is workflow_module.Citizen:
+        if self.model is workflow_module.Person:
             return self.db.citizen
-        if self.model is workflow_module.Patient:
-            return None
         if self.model is workflow_module.CitizenRelationship:
             for relationship in self.db.relationships:
                 if all(self._matches(relationship, condition) for condition in self.filters):
@@ -87,7 +86,21 @@ def _source(*, verified: bool = True):
 
 
 def _citizen():
-    return SimpleNamespace(id="CITIZEN000000000001", is_deceased=False, merged_into_id=None)
+    """NR-064. The subject is a canonical `niam_persons` row, not a
+    `national_citizens` one -- that table has never existed.
+
+    Note what this fake could not have told us: it answers `query()` with a
+    SimpleNamespace, so it was equally happy resolving a model whose table no
+    migration builds. These tests passed throughout the period when every real
+    create raised UndefinedTable. `tests/test_reachable_unbuilt_reads.py` is the
+    guard that can see what a fake session cannot.
+
+    `merged_into_id` is gone with the table it belonged to: the canonical person
+    has no merge pointer, so linkability here is deceased/active only. That the
+    canonical model cannot express a merged person is recorded in NR-064 rather
+    than papered over with an attribute this object does not have.
+    """
+    return SimpleNamespace(id="CITIZEN000000000001", is_deceased=False, is_active=True)
 
 
 def _identity_proven(*_args, **_kwargs):
@@ -220,3 +233,48 @@ def test_revocation_is_scoped_and_idempotent(monkeypatch):
     assert revoked.status == CitizenRelationshipStatus.revoked.value
     assert repeated.id == revoked.id
     assert repeated.allows("profile") is False
+
+
+def test_create_pending_refuses_a_clinical_patient_link(monkeypatch):
+    """NR-064. `patient_id` resolved against `national_patients`, unbuilt.
+
+    Refusing the input is the honest state while NR-022 has not decided the
+    clinical subject: the column is VARCHAR(26) and the built clinical patient
+    table keys on INTEGER, so there is nothing to point it at. It fails as 422
+    Unsupported rather than as a 500 from a missing table, and the column is
+    left in place so the decision stays open.
+    """
+    db = _FakeDb(_source(), _citizen())
+    workflow = _workflow(monkeypatch, db)
+
+    with pytest.raises(CitizenRelationshipUnsupported, match="patient_id"):
+        workflow.create_pending(
+            source_kind="legacy_user",
+            legacy_user_id=db.source.id,
+            citizen_id=db.citizen.id,
+            patient_id="PATIENT000000000001",
+            relationship_type="self",
+            purpose="citizen_workspace",
+            scope=_SCOPE,
+            idempotency_key="c2-patient-link-0001",
+        )
+
+    assert db.relationships == []
+    assert db.commits == 0
+
+
+def test_create_pending_refuses_a_deceased_or_inactive_person(monkeypatch):
+    """Linkability moved to the canonical person's own flags, not a lost table."""
+    db = _FakeDb(_source(), _citizen())
+    db.citizen.is_deceased = True
+    workflow = _workflow(monkeypatch, db)
+
+    with pytest.raises(CitizenRelationshipConflict, match="not linkable"):
+        _create(workflow, db, key="c2-deceased-person-0001")
+
+    db.citizen.is_deceased = False
+    db.citizen.is_active = False
+    with pytest.raises(CitizenRelationshipConflict, match="not linkable"):
+        _create(workflow, db, key="c2-inactive-person-0001")
+
+    assert db.relationships == []
