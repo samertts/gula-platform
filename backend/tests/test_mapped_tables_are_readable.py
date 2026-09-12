@@ -8,7 +8,7 @@ invisible:
     SELECT radiology_orders.id, ... FROM radiology_orders LIMIT 1
     ProgrammingError: column radiology_orders.encounter_id does not exist
 
-Thirty-six mapped tables that **do** exist physically name at least one column
+Thirty-five mapped tables that **do** exist physically name at least one column
 their table does not have. For those tables nothing works -- not a write, not a
 read, not a count. SQLAlchemy builds the column list from the mapper, so the
 first statement fails before a row is examined. There is no degraded mode and no
@@ -16,8 +16,8 @@ partial success: the failure is total and it is per-table.
 
 The measurement that found it is the one this file performs: for every table in
 ``migrations/env.py``'s ``target_metadata`` that PostgreSQL actually has, select
-that mapper's own columns and see what happens. 412 mapped tables exist; 376
-answer; 36 do not.
+that mapper's own columns and see what happens. 412 mapped tables exist; 377
+answer; 35 do not.
 
 **Two blocks dominate, and they are different defects.**
 
@@ -32,9 +32,16 @@ database operation can succeed. Reconciling it means rewriting the mappers from
 the physical schema, as was done for pharmacy -- a domain-sized change with its
 own review, not a line in this file.
 
-*NHDW (14 tables).* NR-074's drift, same shape, smaller: mappers declaring
-``encounter_id``, ``department_id``, ``extension`` and ``metadata`` against
-tables built without them.
+*NHDW (14 tables).* NR-074, and measuring it showed it is the same two-generation
+split rather than the simpler drift it had been recorded as. The physical tables
+are denormalised -- ``nhdw_admissions`` carries ``admitting_doctor``, ``ward``,
+``bed_number``, ``department``, ``insurance_provider`` as free text -- while the
+mappers are normalised, carrying ``admitting_doctor_id``, ``room_id``,
+``bed_id``, ``department_id``, ``insurance_id``, plus ``encounter_id``,
+``extension`` and ``metadata``. Every ``id`` is ``String(26)`` in the mapper and
+``integer`` in the table. ``app/nhdw/routes.py`` serves 61 paths over it. Unlike
+radiology the mappers do carry ``TenantMixin``, so no protected column is
+unmapped -- the repair is safer, but it is still a domain reconciliation.
 
 **Direction of repair.** The physical schema is canonical here and the mappers
 are what moves, because the physical tables are the ones carrying foreign keys
@@ -155,10 +162,6 @@ DECLARED_UNREADABLE: dict[str, tuple[str, ...]] = {
         "start_date",),
     "fin_transactions": ("description", "reference_id", "reference_type", "settled_at",
         "status", "subscription_id", "transaction_type",),
-    # --- IdentityBase (1) ---
-    "niam_machine_identities": ("ai_agent_id", "analyzer_type", "attested_at",
-        "device_attestation", "firmware_version", "health_status", "iot_device_type",
-        "last_health_check", "risk_score", "robot_type",),
     # --- NationalBase (1) ---
     "ecosystem_partner_agreements": ("version",),
 }
@@ -167,7 +170,10 @@ DECLARED_UNREADABLE: dict[str, tuple[str, ...]] = {
 #: other half of the ratchet: DECLARED_UNREADABLE shrinking because a mapper
 #: lost a field, or because a table stopped being mapped, would look like
 #: progress without this. Set just under the true count so ordinary additions do
-#: not trip it -- not at a round number chosen in advance.
+#: not trip it -- not at a round number chosen in advance. Measured population is
+#: 377. It is a backstop rather than the primary assertion: reverting a repair is
+#: caught first by `test_every_mapped_table_that_exists_can_be_read_by_its_own_mapper`,
+#: because the repaired table is no longer in the ledger that would excuse it.
 MINIMUM_READABLE = 370
 
 #: Likewise for the probe itself. NR-079 taught this suite that a guard whose

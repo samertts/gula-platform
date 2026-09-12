@@ -5,9 +5,9 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 83,
+  "total": 84,
   "P0": 12,
-  "P1": 36,
+  "P1": 37,
   "P2": 25,
   "P3": 10
  },
@@ -2844,11 +2844,11 @@
    "domain": "platform-wide ORM/physical schema",
    "severity": "P0",
    "priority": 1,
-   "status": "GUARDED AND PARTLY REPAIRED — 44 measured, 8 fixed, 36 pinned and ratcheted",
-   "title": "36 mapped tables that exist in PostgreSQL cannot be read by the mapper that claims them, and no guard had ever asked a mapper to run its own query",
-   "description": "Every schema guard in this suite compared descriptions of the schema — metadata against metadata, migration against model, list against list. None executed a mapper's own SELECT. Doing so for all 715 registered tables found that 303 have no physical table (independently equal to the autogenerate gate's CreateTableOp count of 303) and that of the 412 that do exist, 44 name at least one column their table does not have. For those 44 nothing works: SQLAlchemy builds the column list from the mapper, so SELECT, INSERT, UPDATE and COUNT all fail with UndefinedColumn before a row is examined. Blocks: radiology 17 (NR-082), NHDW 14 (NR-074), governance 6, ecosystem 3, financial 3, identity 1. Eight of the 44 were pure timestamp/optimistic-lock mixin gaps and are repaired here by an additive migration; 36 remain.",
+   "status": "GUARDED AND PARTLY REPAIRED — 44 measured, 9 repaired, 35 pinned and ratcheted",
+   "title": "35 mapped tables that exist in PostgreSQL cannot be read by the mapper that claims them, and no guard had ever asked a mapper to run its own query",
+   "description": "Every schema guard in this suite compared descriptions of the schema — metadata against metadata, migration against model, list against list. None executed a mapper's own SELECT. Doing so for all 715 registered tables found that 303 have no physical table (independently equal to the autogenerate gate's CreateTableOp count of 303) and that of the 412 that do exist, 44 name at least one column their table does not have. For those 44 nothing works: SQLAlchemy builds the column list from the mapper, so SELECT, INSERT, UPDATE and COUNT all fail with UndefinedColumn before a row is examined. Blocks: radiology 17 (NR-082), NHDW 14 (NR-074), governance 6, ecosystem 3, financial 3, identity 1. Nine of the 44 are repaired here by two additive migrations -- eight pure timestamp/optimistic-lock mixin gaps and niam_machine_identities (NR-084); 35 remain.",
    "root_cause": "Nothing in CI ever executed a query built from a mapper against a real migrated database. Existing guards proved that migrations apply, that metadata is registered and that tables exist — none of which is disturbed by a mapper naming a column that is not there. The condition is invisible to `alembic upgrade head`, to table-existence checks and to the SQLite-backed unit suite, and visible only to PostgreSQL at statement time.",
-   "evidence": "715 mapped tables probed against nr078_probe (PostgreSQL 16 at head): 368 OK, 303 NO_TABLE, 44 ProgrammingError. After migration 20260915_0001: 376 OK, 36 ProgrammingError. The 303 NO_TABLE equals the autogenerate gate's independently derived CreateTableOp count — two instruments, different routes, same number. Sample failures: gov_break_glass_accesses(updated_at, version), gov_merge_proposals(updated_at, version), nhdw_admissions(16 columns), niam_machine_identities(10 columns).",
+   "evidence": "715 mapped tables probed against nr078_probe (PostgreSQL 16 at head): 368 OK, 303 NO_TABLE, 44 ProgrammingError. After migrations 20260915_0001 and 20260915_0002: 377 OK, 35 ProgrammingError. The 303 NO_TABLE equals the autogenerate gate's independently derived CreateTableOp count — two instruments, different routes, same number. Sample failures: gov_break_glass_accesses(updated_at, version), gov_merge_proposals(updated_at, version), nhdw_admissions(16 columns), niam_machine_identities(10 columns).",
    "affected_components": [
     "backend/migrations/env.py target_metadata (18 metadata objects)",
     "RadiologyBase",
@@ -2878,7 +2878,7 @@
    "contradictions": "The migration CI job was green throughout, because applying migrations and asking a mapper to use them are different questions and only the first was ever asked.",
    "recommended_fix": "Reconcile each mapper against the physical schema, mapper-side. The physical tables are canonical: they carry the foreign keys into the platform core and the tenant column. Where a mapper field is genuinely new information, add it with an additive migration (ADD -> BACKFILL -> VALIDATE -> SHADOW READ -> SWITCH -> RETIRE). Never drop a physical column to make the mapper agree.",
    "minimal_safe_fix": "Applied: migration 20260915_0001 adds the 11 timestamp and optimistic-lock columns eight mappers already declare, closing 8 of the 44 with no rename, retype, backfill or drop. ecosystem_partner_agreements is deliberately left failing: its mapper declares version as String(20), a document version shadowing the inherited integer lock, while the table carries agreement_version. Which is intended is a question about the entity, not the schema.",
-   "verification_method": "backend/tests/test_mapped_tables_are_readable.py, in the migration CI job against PostgreSQL at head. Six tests: the probe reached a real database (floor 400 of a measured 412); nothing outside the ledger is unreadable; no ledger entry has been repaired without being removed; the per-table missing-column tuples are exact; the ledger never grows; and the readable population never shrinks (floor 370 of a measured 376) so the ledger cannot be emptied by deleting mapper fields.",
+   "verification_method": "backend/tests/test_mapped_tables_are_readable.py, in the migration CI job against PostgreSQL at head. Six tests: the probe reached a real database (floor 400 of a measured 412); nothing outside the ledger is unreadable; no ledger entry has been repaired without being removed; the per-table missing-column tuples are exact; the ledger never grows; and the readable population never shrinks (floor 370 of a measured 377) so the ledger cannot be emptied by deleting mapper fields.",
    "acceptance_criteria": "DECLARED_UNREADABLE is empty and MINIMUM_READABLE has risen to the full mapped-and-physical population, with no physical column dropped.",
    "regression_risk": "Low for the applied migration (additive, guarded, round-trip verified). High for the remaining 36, which are domain rewrites.",
    "owner": "Platform architecture; per-domain owners for the 36",
@@ -2888,7 +2888,8 @@
    "related_files": [
     "backend/migrations/versions/20260915_0001_governance_ecosystem_mixin_columns.py",
     "backend/tests/test_autogenerate_is_safe.py",
-    "backend/tests/test_alembic_metadata_registry.py"
+    "backend/tests/test_alembic_metadata_registry.py",
+    "backend/migrations/versions/20260915_0002_machine_identity_attestation_columns.py"
    ],
    "related_adrs": [
     "docs/architecture/NR-083-mappers-that-cannot-read.md"
@@ -2899,6 +2900,60 @@
    "can_fix_now": true,
    "blocker": "",
    "evidence_strength": "EXECUTED — 715 mapper SELECTs against PostgreSQL 16 at migration head, before and after the migration"
+  },
+  {
+   "id": "NR-084",
+   "category": "Schema drift / Security control / Persistence correctness",
+   "domain": "app/identity — machine identity",
+   "severity": "P1",
+   "priority": 2,
+   "status": "FIXED AND VERIFIED — additive migration applied, full round trip executed against PostgreSQL",
+   "title": "The identity platform could not record that a machine identity was compromised: `mark_compromised` writes two columns the table did not have",
+   "description": "`niam_machine_identities` is mapped by app/identity/models/machine_identity.py, which declares ten columns the table did not have, so every statement against it -- including SELECT -- failed with UndefinedColumn. Three endpoints are registered over it (POST /devices/register, /devices/{uuid}/trust, /devices/{uuid}/revoke), and app/identity/services/device_service.py writes seven of the ten: attest_device sets device_attestation, attested_at and health_status; report_health sets health_status and last_health_check; mark_compromised sets health_status='compromised' and risk_score=100. None of those columns existed.",
+   "root_cause": "The mapper gained IoT/robot/AI-agent/analyzer attestation and health fields; no migration ever built them. Found by NR-083's probe, which is the first thing in CI to execute a mapper's own query against PostgreSQL.",
+   "evidence": "Before: SELECT ... FROM niam_machine_identities LIMIT 1 -> UndefinedColumn: column niam_machine_identities.iot_device_type does not exist, against PostgreSQL 16 at head. Route probe: 3 served paths resolve to app.identity.api.devices. After 20260915_0002, executed in one transaction and rolled back: SELECT OK, INSERT OK, attest_device OK, mark_compromised OK -> ('compromised', 100, 'sysmex', True); post-rollback row counts 0.",
+   "affected_components": [
+    "app/identity/models/machine_identity.py",
+    "app/identity/services/device_service.py",
+    "app/identity/api/devices.py",
+    "niam_machine_identities"
+   ],
+   "affected_users": "Operators of lab analysers, IoT devices, robots and AI agents holding a machine identity; anyone relying on device trust state.",
+   "clinical_impact": "Lab analysers carry machine identities; a device whose attestation cannot be recorded cannot be distinguished from one that has never attested.",
+   "security_impact": "The compromise path did not persist. An operator calling the revoke/compromise flow would get an error rather than a recorded compromise, and no row would say the device was untrusted. risk_score, health_status and device_attestation are the fields that carry that judgement.",
+   "data_integrity_impact": "No corruption -- the table rejected every statement rather than accepting a wrong one.",
+   "operational_impact": "Three registered endpoints returned 500 on any database call.",
+   "scalability_impact": "None.",
+   "legal_impact": "Device attestation records support chain-of-custody for instrument-produced results.",
+   "dependencies": [
+    "NR-083"
+   ],
+   "intersections": [
+    "NR-080"
+   ],
+   "contradictions": "The identity certification describes machine identity and device attestation as implemented; the persistence for it did not exist.",
+   "recommended_fix": "Applied: migration 20260915_0002 adds the ten columns.",
+   "minimal_safe_fix": "This was the unambiguous ADD case and it was checked rather than assumed: the table has zero columns the mapper does not declare, so no column could be a rename of another and nothing is displaced. All ten are additive, nullable and carry no foreign key; health_status is added nullable with server_default 'unknown' matching the mapper's Python default.",
+   "verification_method": "Executed against PostgreSQL 16 at head: SELECT, INSERT, the attest_device field writes and the mark_compromised field writes, all in one transaction, read back by raw SQL, then rolled back with row counts confirmed at 0. Migration round trip (downgrade -1, upgrade head) executed. Regression guard: the table is removed from DECLARED_UNREADABLE in test_mapped_tables_are_readable.py, so a revert fails the gate.",
+   "acceptance_criteria": "Met.",
+   "regression_risk": "Low — additive, guarded, round-trip verified, no existing column touched.",
+   "owner": "Identity platform",
+   "related_tests": [
+    "backend/tests/test_mapped_tables_are_readable.py"
+   ],
+   "related_files": [
+    "backend/migrations/versions/20260915_0002_machine_identity_attestation_columns.py",
+    "backend/app/identity/services/device_service.py"
+   ],
+   "related_adrs": [
+    "docs/architecture/NR-083-mappers-that-cannot-read.md"
+   ],
+   "related_contracts": [],
+   "wave": "now",
+   "complexity": "S",
+   "can_fix_now": true,
+   "blocker": "",
+   "evidence_strength": "EXECUTED — failing SELECT before, full write round trip after, both against PostgreSQL 16 at migration head"
   }
  ]
 }

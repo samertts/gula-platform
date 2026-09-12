@@ -1,6 +1,6 @@
 # NR-083 — mappers that cannot read, and the measurement that finally asked
 
-**Status:** GUARDED AND PARTLY REPAIRED — 44 measured, 8 repaired, 36 pinned and ratcheted
+**Status:** GUARDED AND PARTLY REPAIRED — 44 measured, 9 repaired, 35 pinned and ratcheted
 **Evidence:** EXECUTED — 715 mapper `SELECT`s against PostgreSQL 16 at migration head
 **Related:** NR-074 (NHDW), NR-078 (autogenerate), NR-080 (drift), NR-082 (radiology)
 
@@ -56,11 +56,11 @@ examined. There is no partial success and no fallback.
 | governance | 6 | repaired here |
 | ecosystem | 3 | 2 repaired here |
 | financial | 3 | Phase A, schema-only by design |
-| identity | 1 | `niam_machine_identities`, 10 columns |
+| identity | 1 | `niam_machine_identities` — **repaired here**, NR-084 |
 
 ## What was repaired, and what deliberately was not
 
-Eight of the 44 were not drift in any interesting sense: the mapper inherits a
+Nine of the 44 are repaired here. Eight were not drift in any interesting sense: the mapper inherits a
 timestamp or optimistic-lock mixin and the migration that created the table
 simply never built those columns. Migration `20260915_0001` adds the eleven
 missing columns — guarded on `_has_table`/`_has_column`, nullable with a
@@ -102,7 +102,7 @@ the platform got worse.
 `test_mapped_tables_are_readable.py` therefore ratchets both ends. The
 unreadable ledger may never grow, entries must be removed once repaired, the
 per-table missing-column tuples must stay exact — and `MINIMUM_READABLE` pins
-the readable population at 370 against a measured 376, so emptying the ledger by
+the readable population at 370 against a measured 377, so emptying the ledger by
 deleting mapper fields fails the same run. A floor on the instrument itself
 (`MINIMUM_PROBED`, 400 against a measured 412) closes the NR-079 failure mode,
 where a guard whose instrument silently measures nothing reports success
@@ -115,7 +115,7 @@ empty database. Each produced the intended failure with the intended message.
 
 ## What is still open
 
-The 36 remaining entries are domain reconciliations, not line edits. Radiology
+The 35 remaining entries are domain reconciliations, not line edits. Radiology
 (NR-082) is the largest and the worst: 50 registered HTTP paths over 18 mappers
 of which none can touch the database. It needs the pharmacy treatment — mappers
 rewritten from the physical schema, `lab_id` restored and enforced in the
@@ -125,3 +125,26 @@ domain owner's decision on the 170 Generation-B fields before any of that.
 The ledger is the point. Until this measurement existed, none of it was visible
 from CI, and a green migration gate said nothing about whether a single mapper
 could read its own table.
+
+## The ninth repair — `niam_machine_identities` (NR-084)
+
+One of the 44 turned out to be the textbook ADD case, and it was worth checking
+rather than assuming: the table has *zero* columns its mapper does not declare,
+so none of the ten missing columns could be a rename of an existing one and
+nothing is displaced. Migration `20260915_0002` adds them.
+
+It is not cosmetic. Three endpoints are registered over that table, and
+`app/identity/services/device_service.py` writes seven of the ten. Among them:
+
+```python
+def mark_compromised(self, device_id): ...
+    machine.health_status = "compromised"
+    machine.risk_score = 100
+```
+
+Both columns were missing, so the identity platform's device-compromise path
+could not record that a machine identity was compromised. The repair was
+verified by executing the whole path against PostgreSQL in one transaction —
+`SELECT`, `INSERT`, the `attest_device` writes, the `mark_compromised` writes,
+read back by raw SQL as `('compromised', 100, 'sysmex', True)` — and then rolled
+back, with row counts confirmed at zero afterwards.
