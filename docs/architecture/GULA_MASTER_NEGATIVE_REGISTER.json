@@ -5,9 +5,9 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 85,
+  "total": 86,
   "P0": 12,
-  "P1": 38,
+  "P1": 39,
   "P2": 25,
   "P3": 10
  },
@@ -2965,7 +2965,7 @@
    "title": "19 columns in readable tables disagree with their PostgreSQL type — and for nine of them the column's own server_default was unreadable by the model that owns it",
    "description": "NR-083 asks whether a mapper can read its table, which only checks that column NAMES line up. It says nothing about Column(Integer) over a character varying. Measuring that found 19 columns across 15 otherwise-readable tables, in three groups. (1) Six blood-bank tables inherit AuditMixin.created_by as Integer over a varchar column — the seventh, blood_bank_transfusions, was built with an integer column and agrees, so the migrations disagree with each other. (2) Four Integer mappers over boolean columns, including oauth2_tokens.is_revoked. (3) Nine trust_* native-enum mappers over plain varchar — REPAIRED here.",
    "root_cause": "For groups 1 and 2, columns were added by migrations written against a different type than the mapper declares, and nothing compared the two. For group 3 the cause is sharper and systemic: SQLAlchemy persists an enum member's NAME unless values_callable says otherwise, and none of the seven trust enum classes passed it — while every migration wrote its server_default as the member's VALUE. All seven classes are UPPER_SNAKE name / lower_snake value, so the two halves of one intent disagreed on all nine columns. The database has no native enum types at all, so the mappers also compiled to a PostgreSQL type that does not exist.",
-   "evidence": "Executed against PostgreSQL 16 at head. Groups 1-2: INSERT into blood_bank_reservations with created_by as both str '7' and int 7 succeeded and the route passes str(current_user.id), so writes work; `WHERE created_by = 42` -> UndefinedFunction: operator does not exist: character varying = integer; `WHERE is_revoked = 1` -> boolean = integer (while `= True` compiles to IS true). Group 3, the part first reported as latent and proven otherwise: an INSERT omitting trust_consent_records.status takes the DATABASE's own default 'pending', and reading that row through the mapper raised LookupError; a plain SELECT * over the table then raised for EVERY row; and `WHERE status == 'PENDING'` matched 1 of 2 semantically-pending rows — an undercount rather than an error. 13 routes under /api/v1/trust/* are registered and served over these tables. After the repair, the same probe reads the default row, reads a legacy name-spelled row, and `status == ConsentStatus.PENDING` matches 2 of 2.",
+   "evidence": "Executed against PostgreSQL 16 at head. Groups 1-2: INSERT into blood_bank_reservations with created_by as both str '7' and int 7 succeeded and the route passes str(current_user.id), so writes work; `WHERE created_by = 42` -> UndefinedFunction: operator does not exist: character varying = integer; `WHERE is_revoked = 1` -> boolean = integer (while `= True` compiles to IS true). Group 3, the part first reported as latent and proven otherwise: an INSERT omitting trust_consent_records.status takes the DATABASE's own default 'pending', and reading that row through the mapper raised LookupError; a plain SELECT * over the table then raised for EVERY row; and `WHERE status == 'PENDING'` matched 1 of 2 semantically-pending rows — an undercount rather than an error. 13 routes under /api/v1/trust/* are registered and served over these tables. After the repair, the same probe reads the default row, reads a legacy name-spelled row, and `status == ConsentStatus.PENDING` matches 2 of 2. CORRECTION (NR-086): the statement that the trust routes are 'registered and served over these tables' implied those writes worked. They do not. Every proof above used Core select() and raw SQL, which never trigger SQLAlchemy's table sorting; a real Session + model instance + flush raises NoReferencedTableError on four of the six trust tables, because their foreign keys target another MetaData. The enum repair is still correct and still necessary — it fixes reads and the server_default, proven by reading a real row back as <ConsentStatus.GRANTED: 'granted'> — but the trust write path remains broken for a different reason, recorded as NR-086.",
    "affected_components": [
     "app/national/base.py AuditMixin",
     "app/blood_bank/infrastructure/models.py",
@@ -3012,6 +3012,67 @@
    "can_fix_now": false,
    "blocker": "Groups 1-2 need the audit-actor identity decision (integer lab_users.id vs opaque string) before the blood-bank columns can be aligned either way.",
    "evidence_strength": "EXECUTED — inserts, reads, filtered counts and enum result-processing run against PostgreSQL 16 at migration head, before and after the repair"
+  },
+  {
+   "id": "NR-086",
+   "category": "Persistence correctness / Metadata topology / Measurement blind spot",
+   "domain": "platform-wide ORM write path; live instance in app/trust",
+   "severity": "P1",
+   "priority": 2,
+   "status": "MEASURED AND GUARDED — 76 tables pinned and ratcheted; the topology repair that empties it is NR-078",
+   "title": "76 mapped tables cannot be written through the ORM at all: their foreign keys target another MetaData, so every INSERT and UPDATE raises before emitting SQL",
+   "description": "SQLAlchemy resolves every ForeignKey target while sorting a mapper's tables during flush. A target in a different MetaData cannot be found, so the write raises NoReferencedTableError before any SQL is emitted. Reads are unaffected, which is exactly why this hides: SELECT never sorts tables, so the table looks healthy to the readability guard (NR-083), to every migration check, and to any route that only lists. Asking which mappers resolve every target inside their own MetaData gives 76 tables carrying 310 unresolvable foreign keys: CareContinuumBase 45, EHRBase 16, DataPlatformBase 9, TrustBase 4, IdentityBase 2.",
+   "root_cause": "The same declarative-base topology NR-078 documents. NR-078 measured 310 cross-base foreign keys across 76 tables and recorded them as a TOPOLOGY problem — the thing that stops alembic autogenerate running. They are also 76 tables no ORM write can reach, and that consequence had not been stated. NR-075 recorded one instance (niam_citizen_relationships) as a runtime write failure without connecting it to the population.",
+   "evidence": "Executed: Session + real model instance + flush against PostgreSQL 16 at head. session.add(ConsentRecord(...)); session.flush() -> NoReferencedTableError: Foreign key associated with column 'trust_consent_records.guardian_id' could not find table 'lab_users'. The ORM UPDATE path fails identically: loading an existing row succeeds and returns <ConsentStatus.GRANTED: 'granted'>, then mutating and flushing raises. Operation matrix over the trust base: trust_consent_records, trust_service_logs, trust_compliance_checks and trust_compliance_evidence all give ORM SELECT OK / ORM INSERT NoReferencedTableError; trust_sovereignty_rules, which carries no cross-base FK, gives OK / OK. Platform-wide count 76 tables / 310 FKs is independently equal to NR-078's separately measured cross-base FK population — two derivations, one by Alembic topology and one by asking each mapper to resolve its own targets, agreeing exactly.",
+   "affected_components": [
+    "CareContinuumBase (45 tables)",
+    "EHRBase (16)",
+    "DataPlatformBase (9)",
+    "TrustBase (4)",
+    "IdentityBase (2)",
+    "app/trust/routes.py"
+   ],
+   "affected_users": "Any actor calling a write endpoint backed by one of the 76 tables.",
+   "clinical_impact": "The live instance is the trust platform: app/trust/routes.py serves 13 registered paths of which SIX are writes — POST /api/v1/trust/consent, /consent/{id}/withdraw, /sign, /timestamp, /compliance/check, /compliance/evidence. All six land on the four trust tables carrying a cross-base FK, and all six fail. Consent capture and consent withdrawal are among them. The wider 76 include the care-continuum and EHR bases.",
+   "security_impact": "Consent withdrawal cannot be recorded. A platform that cannot persist a withdrawal has no mechanism to honour it, and the failure is a 500 rather than a refusal, so nothing downstream learns the withdrawal was not stored.",
+   "data_integrity_impact": "No corruption: the write raises before SQL is emitted, so nothing partial is persisted. The integrity risk is the absence of records that callers believe they created.",
+   "operational_impact": "Six registered trust endpoints return 500 on every call; the same holds for any write endpoint backed by the other 72 tables.",
+   "scalability_impact": "None.",
+   "legal_impact": "Consent records and their withdrawal are a legal control under any health-data regime.",
+   "dependencies": [
+    "NR-078 (the topology that causes it)",
+    "NR-075 (one previously recorded instance)"
+   ],
+   "intersections": [
+    "NR-083",
+    "NR-085",
+    "NR-006"
+   ],
+   "contradictions": "My own NR-085 commit message stated that thirteen trust routes are 'registered and served over these tables, including consent creation and withdrawal', which implied they worked. They do not, and never have. Every NR-085 proof used Core select() and raw SQL, which never trigger table sorting. Corrected here rather than left standing.",
+   "recommended_fix": "This is NR-078's repair, not a separate one. Option A (one shared MetaData) resolves all 310 at once, and NR-078 has already measured that NOT ONE of these 76 tables carries a relationship(), so no ORM navigation is lost either way. The alternative — replacing each cross-base ForeignKey with the plain column it should be — is equally available and equally safe for the same reason. Neither may be applied before the NR-080 drift is reconciled, because Option A also makes autogenerate propose dropping patients.national_id.",
+   "minimal_safe_fix": "None that is safe today, and that is the finding rather than a gap in it. The increment applied is measurement: backend/tests/test_mapped_tables_are_writable.py pins the 76 with their exact FK counts and ratchets both ends, so no new table can join them unnoticed and the ledger cannot be emptied by deleting mappers.",
+   "verification_method": "backend/tests/test_mapped_tables_are_writable.py in the unit CI job. The invariant is static and needs no database — the question is whether a mapper's declared targets exist in its own metadata, answerable from the registry alone. Five tests: the probe walked the registry (floor 700 of a measured 716); no undeclared table is unwritable; no ledger entry has been repaired without being removed; the per-table FK counts stay exact; and the writable population never shrinks (floor 630 of a measured 640). Three negative proofs, sources restored byte-identical — including adding a cross-base ForeignKey to trust_sovereignty_rules, which is currently writable, and watching it be caught.",
+   "acceptance_criteria": "DECLARED_UNWRITABLE is empty and MINIMUM_WRITABLE has risen to the full mapped population.",
+   "regression_risk": "None from this change — measurement only.",
+   "owner": "Platform architecture (NR-078 topology decision)",
+   "related_tests": [
+    "backend/tests/test_mapped_tables_are_writable.py"
+   ],
+   "related_files": [
+    "backend/app/trust/models.py",
+    "backend/app/trust/routes.py",
+    "backend/migrations/env.py"
+   ],
+   "related_adrs": [
+    "docs/architecture/NR-078-autogenerate-cannot-run.md",
+    "docs/architecture/NR-083-mappers-that-cannot-read.md"
+   ],
+   "related_contracts": [],
+   "wave": "next",
+   "complexity": "L",
+   "can_fix_now": false,
+   "blocker": "NR-078's topology change, which is itself blocked on the NR-080 drift reconciliation.",
+   "evidence_strength": "EXECUTED — real Session, real model instance, real flush against PostgreSQL 16 at migration head; plus a static registry walk cross-checked against NR-078's independent count"
   }
  ]
 }
