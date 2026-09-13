@@ -283,8 +283,15 @@ def every_route(routes: Iterable[Any]) -> Iterator[Any]:
 def route_modules(app: Any) -> frozenset[str]:
     """Modules that define a route the running application serves.
 
-    Takes the *started* application: this platform registers its routers from
-    the lifespan, so `create_app()` on its own has seven routed paths.
+    Both `create_app()` and a started application answer the same here --
+    measured at 2102 served routes across 141 modules either way. An earlier
+    version of this docstring said the app must be *started* because routers
+    register from the lifespan, and that `create_app()` alone has seven routed
+    paths; neither holds with the FastAPI version in use, which keeps an
+    included router as an opaque `_IncludedRouter` on `app.routes` rather than
+    flattening it at include time. `every_route` recursing is what matters, not
+    startup -- and a probe that skipped it reported zero routes for every
+    package before this was corrected.
     """
     found: set[str] = set()
     for route in every_route(app.routes):
