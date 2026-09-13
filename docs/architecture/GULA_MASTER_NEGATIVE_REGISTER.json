@@ -5,9 +5,9 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 88,
+  "total": 89,
   "P0": 12,
-  "P1": 40,
+  "P1": 41,
   "P2": 26,
   "P3": 10
  },
@@ -3213,6 +3213,70 @@
    "can_fix_now": false,
    "blocker": "Product disposition for app/national/search_platform and app/insurance. The guard is applied now and is not blocked.",
    "evidence_strength": "EXECUTED — every barrier and every removal of a barrier was run against PostgreSQL."
+  },
+  {
+   "id": "NR-089",
+   "category": "Declarative mixin never mixed in / Live service failure / Latent hard delete",
+   "domain": "app/trust (live), app/governance (latent)",
+   "severity": "P1",
+   "priority": 2,
+   "status": "TRUST HALF FIXED AND VERIFIED; governance half LATENT and guarded at zero callers",
+   "title": "A soft-delete mixin declared and never mixed in, in two domains — five served trust routes raised AttributeError, and governance's soft delete silently falls through to a hard DELETE for 38 of 61 models",
+   "description": "app/trust/base.py defines TrustSoftDeleteMixin with is_deleted, deleted_at, soft_delete(), restore() and an is_active property — and TrustBaseEntity(TrustTimestampMixin, TrustBase) does not list it. Six service methods filter on it regardless, so they raised AttributeError while BUILDING the query, before SQLAlchemy emitted anything and before any schema guard could look. app/governance/base.py has the identical mistake with GovernanceSoftDeleteMixin, and there the failure mode is worse in kind though currently unreachable: GovernanceRepository.delete falls through is_deleted -> is_active -> a hard self._db.delete(entity), with soft defaulting to True.",
+   "root_cause": "A mixin is only a mixin if something inherits it. Nothing in the ORM, the schema guards or the type checker objects to a Column-carrying class that no mapped class lists as a base, and the attribute error surfaces only when a query touches it. Both domains wrote the mixin, matched it to the physical schema, and never attached it.",
+   "evidence": [
+    "EXECUTED: TrustBaseEntity.__bases__ == ['TrustTimestampMixin', 'Base']; TrustSoftDeleteMixin in ConsentRecord.__mro__ is False; ConsentRecord.is_deleted and .deleted_at both raise AttributeError.",
+    "EXECUTED against PostgreSQL 16 at head 20260915_0003 with a real Session, BEFORE the fix: ConsentService.get_patient_consents(1) -> AttributeError: type object 'ConsentRecord' has no attribute 'is_deleted'; SovereigntyService.get_all_rules() -> the same for 'SovereigntyRule'.",
+    "Six call sites: app/trust/services.py lines 88, 105, 116, 136, 157, 223, over ConsentRecord, SovereigntyRule and TrustServiceLog.",
+    "Five served routes call them: app/trust/routes.py verify_consent (113), get_patient_consents (124), withdraw_consent (147), get_all_rules (172), verify_document_integrity (256).",
+    "PHYSICAL: all six trust_* tables carry is_deleted and deleted_at as `timestamp with time zone`, nullable, no default (migration 20260716_0013) — exactly what the mixin declares. The mixin was written to match the schema and simply never attached, so the repair needed no migration.",
+    "EXECUTED after the fix: the same two service calls return [] against real PostgreSQL.",
+    "SECOND INSTRUMENT: NR-080's column-drop classification independently proposed dropping exactly those twelve trust columns. Mixing the mixin in took the total DropColumnOp from 377 to 365 — the first reduction in that budget rather than a re-measurement of it.",
+    "GOVERNANCE, measured: 38 of the 61 GovernanceBase mapped classes carry neither is_deleted nor is_active, so delete(entity) with its default soft=True reaches self._db.delete(entity). Among them gov_national_audit_events, gov_ai_audit_events, gov_health_number_audit, gov_merge_proposals, gov_merged_identities, gov_professional_licenses, gov_emergency_admin.",
+    "GOVERNANCE REACHABILITY: zero callers. Nothing in app/ calls a governance repository delete; the governance router IS registered (factory.py:683) and exposes no delete; the one nearby hit, app/document_intelligence, deletes a different model by raw query. Latent, not live."
+   ],
+   "affected_components": [
+    "app/trust/base.py",
+    "app/trust/services.py",
+    "app/trust/routes.py",
+    "app/governance/base.py",
+    "app/governance/repositories/base.py"
+   ],
+   "affected_users": "Any caller of the five trust routes, until the fix. None for the governance half.",
+   "clinical_impact": "Consent verification and consent withdrawal returned 500 rather than an answer.",
+   "security_impact": "Latent audit-trail destruction in governance: a request to soft-delete an audit row performs a hard DELETE. CLAUDE.md forbids reducing audit-log coverage, and three audit tables are in the affected set.",
+   "data_integrity_impact": "None realised — the governance path has no caller. The hazard is activation.",
+   "operational_impact": "Five trust routes raised before the fix; they now execute SQL.",
+   "scalability_impact": "None.",
+   "legal_impact": "Consent withdrawal failing is a data-protection matter; that path is NR-086's to finish.",
+   "dependencies": [
+    "NR-086"
+   ],
+   "intersections": [
+    "NR-086 — this EXTENDS rather than corrects it. NR-086 recorded trust_sovereignty_rules as ORM SELECT OK / ORM INSERT OK and said reads are unaffected; both statements are accurate about ORM TABLE operations. This is an earlier barrier in the service layer, so the one healthy trust table was still unreachable through SovereigntyService. The trust write paths remain blocked by NR-086 and this fix does not change that.",
+    "NR-080 — the twelve trust columns were 12 of its 377 proposed drops; the fix removed them."
+   ],
+   "contradictions": [],
+   "recommended_fix": "Trust: DONE — TrustBaseEntity now lists TrustSoftDeleteMixin. No migration; the columns already exist with matching types. Governance: give the 38 models a soft-delete flag, or make delete() refuse rather than fall through, BEFORE any delete endpoint is wired. The guard holds the caller count at zero until then.",
+   "minimal_safe_fix": "The one-line mixin attachment, which is what was applied.",
+   "verification_method": "Attribute access and real service calls executed against PostgreSQL 16 at migration head, before and after; physical column types read from information_schema; governance model flags read from GovernanceBase.registry.mappers; reachability by repository-wide caller search.",
+   "acceptance_criteria": "Every attribute a trust service filters on exists, and no governance delete has a caller.",
+   "regression_risk": "Low — two nullable columns that already exist physically become mapped; no write path changes.",
+   "owner": "Trust platform (done) / Governance platform (open)",
+   "related_tests": [
+    "backend/tests/test_soft_delete_mixins_are_mixed_in.py"
+   ],
+   "related_files": [
+    "backend/app/trust/base.py",
+    "backend/app/governance/repositories/base.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": [],
+   "wave": "repair",
+   "complexity": "trivial to fix, easy to miss",
+   "can_fix_now": false,
+   "blocker": "Governance half needs a product decision: add flags to 38 models, or make delete() fail closed.",
+   "evidence_strength": "EXECUTED — the defect and the repair were both run against real PostgreSQL."
   }
  ]
 }

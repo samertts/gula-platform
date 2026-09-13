@@ -43,7 +43,7 @@ class TrustSoftDeleteMixin:
         return self.is_deleted is None
 
 
-class TrustBaseEntity(TrustTimestampMixin, TrustBase):
+class TrustBaseEntity(TrustTimestampMixin, TrustSoftDeleteMixin, TrustBase):
     __abstract__ = True
 
     def to_dict(self) -> dict[str, Any]:

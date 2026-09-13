@@ -138,7 +138,7 @@ DECLARED_PROTECTED_DROP_COLUMNS = {
 DECLARED_DESTRUCTIVE_BUDGET = {
     "DropConstraintOp": 538,
     "DropIndexOp": 454,
-    "DropColumnOp": 377,
+    "DropColumnOp": 365,
     "DropTableOp": 10,
 }
 
@@ -148,16 +148,20 @@ DECLARED_DESTRUCTIVE_BUDGET = {
 #: leaves 377 unchanged and hides a new defect behind a reconciliation. Measured
 #: per domain so that cannot happen.
 #:
-#: **342 of the 377 are radiology and NHDW**, both blocked on a domain owner
-#: (NR-082, NR-074). What is left is small and mostly decidable: twelve trust
-#: columns that are one uniform `deleted_at`/`is_deleted` pair across six tables,
-#: ten `fin_*` columns that are Financial Engine Phase A behaving exactly as
-#: CLAUDE.md says it should (schema-only, routes deferred), the five SNDHS
-#: columns already pinned above, and eight singletons.
+#: **342 of the 365 are radiology and NHDW**, both blocked on a domain owner
+#: (NR-082, NR-074). What is left is small: ten `fin_*` columns that are
+#: Financial Engine Phase A behaving exactly as CLAUDE.md says it should
+#: (schema-only, routes deferred), the five SNDHS columns already pinned above,
+#: and eight singletons.
+#:
+#: Trust was here too, with twelve columns -- one uniform `deleted_at`/`is_deleted`
+#: pair across six tables. It is gone because NR-089 fixed it: the pair was
+#: declared by `TrustSoftDeleteMixin` and the mixin was never mixed in. Mixing it
+#: in took the budget from 377 to 365, the first reduction rather than
+#: re-measurement.
 DECLARED_COLUMN_DROPS_BY_DOMAIN = {
     "radiology": 231,
     "nhdw": 111,
-    "trust": 12,
     "fin": 10,
     "core/other": 9,
     "blood_bank": 2,

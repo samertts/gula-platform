@@ -1,13 +1,12 @@
 {
  "finding": "NR-080",
- "measured_at_head": "37baafd4",
+ "measured_at_head": "after NR-089 (TrustSoftDeleteMixin mixed in)",
  "migration_head": "20260915_0003",
  "method": "alembic autogenerate against PostgreSQL 16 at migration head, under the same single-MetaData merge test_autogenerate_is_safe.py performs inside the gate; DropColumnOp operations bucketed by table-name prefix",
- "total_drop_column_ops": 377,
+ "total_drop_column_ops": 365,
  "by_domain": {
   "radiology": 231,
   "nhdw": 111,
-  "trust": 12,
   "fin": 10,
   "core/other": 9,
   "blood_bank": 2,
@@ -20,26 +19,13 @@
    "nhdw"
   ],
   "columns": 342,
-  "share": "91% of all proposed column drops",
+  "share": "94% of all proposed column drops",
   "findings": [
    "NR-082",
    "NR-074"
   ]
  },
  "decidable_groups": {
-  "trust_soft_delete": {
-   "columns": 12,
-   "tables": 6,
-   "detail": "every trust_* table is physically carrying deleted_at and is_deleted; no trust mapper declares either. One uniform decision, not six.",
-   "tables_list": [
-    "trust_compliance_checks",
-    "trust_compliance_evidence",
-    "trust_consent_records",
-    "trust_retention_policies",
-    "trust_service_logs",
-    "trust_sovereignty_rules"
-   ]
-  },
   "financial_engine_phase_a": {
    "columns": 10,
    "tables": 3,
@@ -64,6 +50,20 @@
     "service_accounts.updated_at"
    ],
    "detail": "ecosystem_partner_agreements.agreement_version is NR-083's document-version-vs-optimistic-lock question, reaching the same column by a second instrument. oauth2_clients.created_by and service_accounts.api_key_prefix sit on credential tables and deserve individual dispositions."
+  },
+  "trust_soft_delete_RESOLVED": {
+   "columns": 0,
+   "tables": 6,
+   "detail": "every trust_* table is physically carrying deleted_at and is_deleted; no trust mapper declares either. One uniform decision, not six.",
+   "tables_list": [
+    "trust_compliance_checks",
+    "trust_compliance_evidence",
+    "trust_consent_records",
+    "trust_retention_policies",
+    "trust_service_logs",
+    "trust_sovereignty_rules"
+   ],
+   "disposition": "FIXED by NR-089 \u2014 mixin mixed in, all twelve columns now mapped, no migration required"
   }
  },
  "protected_column_drops": {
@@ -77,5 +77,10 @@
   ]
  },
  "instrument_cross_check": "all five entries of the independently maintained DECLARED_PROTECTED_DROP_COLUMNS ledger appear in this proposal and none is missing",
- "guard": "backend/tests/test_autogenerate_is_safe.py::test_no_domain_grows_its_share_of_the_column_drops"
+ "guard": "backend/tests/test_autogenerate_is_safe.py::test_no_domain_grows_its_share_of_the_column_drops",
+ "previous_total": {
+  "value": 377,
+  "reduced_by": 12,
+  "reason": "NR-089 \u2014 the trust soft-delete pair was declared by a mixin that was never mixed in; mixing it in mapped all twelve columns"
+ }
 }
