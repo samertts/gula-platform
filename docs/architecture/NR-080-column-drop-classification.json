@@ -49,7 +49,28 @@
     "service_accounts.api_key_prefix",
     "service_accounts.updated_at"
    ],
-   "detail": "ecosystem_partner_agreements.agreement_version is NR-083's document-version-vs-optimistic-lock question, reaching the same column by a second instrument. oauth2_clients.created_by and service_accounts.api_key_prefix sit on credential tables and deserve individual dispositions."
+   "detail": "ecosystem_partner_agreements.agreement_version is NR-083's document-version-vs-optimistic-lock question, reaching the same column by a second instrument. oauth2_clients.created_by and service_accounts.api_key_prefix sit on credential tables and deserve individual dispositions.",
+   "dispositions": {
+    "method": "physical type and nullability from information_schema; a rename candidate is a mapper column absent from the physical table",
+    "pure_ADD_to_mapper": {
+     "count": 7,
+     "items": {
+      "ai_embeddings.embedding": "ARRAY, nullable",
+      "blood_bank_crossmatches.policy_version": "VARCHAR(80), nullable",
+      "blood_bank_crossmatches.sample_id": "VARCHAR(100), nullable",
+      "niam_audit_entries.is_active": "BOOLEAN, NOT NULL",
+      "oauth2_clients.created_by": "INTEGER, nullable",
+      "service_accounts.api_key_prefix": "VARCHAR(20), nullable",
+      "service_accounts.updated_at": "TIMESTAMP, nullable"
+     },
+     "disposition": "map them \u2014 no mapper column could be a rename of any of these, so there is no ambiguity to resolve and no migration required"
+    },
+    "genuine_rename_pair": {
+     "count": 1,
+     "item": "ecosystem_partner_agreements.agreement_version (VARCHAR(20), NOT NULL) against the mapper's `version`",
+     "disposition": "BLOCKED \u2014 NR-083's document-version-versus-optimistic-lock question, reached here by a third instrument. Mapping `version` onto `agreement_version` quietly confirms the entity has no optimistic lock; adding an integer `version` contradicts the mapper."
+    }
+   }
   },
   "trust_soft_delete_RESOLVED": {
    "columns": 0,
