@@ -111,7 +111,7 @@ jobs:
         run: |
           set -o pipefail
           cd backend
-          python -m pytest tests/identity/test_workspace_migration_phase5.py tests/identity/test_membership_migration_phase6.py tests/identity/test_security_audit_migration_phase9.py tests/identity/test_clinical_gateway_migration_phase10b.py tests/test_schema_fidelity.py tests/test_alembic_metadata_registry.py tests/test_identity_link_and_assurance.py tests/test_built_tables_match_database.py tests/test_citizen_relationship_postgres.py tests/test_autogenerate_is_safe.py tests/test_mapped_tables_are_readable.py -q --junitxml=../artifacts/pytest-migration.xml 2>&1 | tee ../artifacts/pytest-migration.log
+          python -m pytest tests/identity/test_workspace_migration_phase5.py tests/identity/test_membership_migration_phase6.py tests/identity/test_security_audit_migration_phase9.py tests/identity/test_clinical_gateway_migration_phase10b.py tests/test_schema_fidelity.py tests/test_alembic_metadata_registry.py tests/test_identity_link_and_assurance.py tests/test_built_tables_match_database.py tests/test_citizen_relationship_postgres.py tests/test_autogenerate_is_safe.py tests/test_mapped_tables_are_readable.py tests/test_enum_defaults_are_readable.py -q --junitxml=../artifacts/pytest-migration.xml 2>&1 | tee ../artifacts/pytest-migration.log
       - name: Verify reversible workspace migration
         run: |
           set -o pipefail

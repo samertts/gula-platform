@@ -321,22 +321,17 @@ def test_the_readable_population_never_shrinks(probe):
 # spelling, so every `Double` read as "DOUBLE vs double precision" and every
 # UUID-backed TypeDecorator as "CHAR vs uuid" -- 54 false positives. Compiling
 # under the PostgreSQL dialect, which is what actually reaches the database,
-# gives 19 columns across 15 tables, and each was then confirmed by executing
-# something against the real column rather than being assumed from the type
-# names alone.
+# gave 19 columns across 15 tables, and each was then confirmed by executing
+# something against the real column rather than assumed from the type names.
 #
-# The nine `trust_*` columns are a native enum over a plain varchar. Equality
-# compares fine -- that was executed -- so the first reading was that they are
-# harmless. They are not, and the difference is on the read side: the varchar
-# column has no constraint restricting its values, while the mapper validates on
-# result processing. Executed:
-#
-#     consentstatus.result_processor(...)("NOT_AN_ENUM_MEMBER")
-#     LookupError: 'NOT_AN_ENUM_MEMBER' is not among the defined enum values
-#
-# So any row written by anything other than this mapper -- raw SQL, a data load,
-# a migration -- with an off-list value is unreadable through the ORM, and the
-# database will not stop it being written. They are recorded.
+# Nine of those 19 were the `trust_*` native enums over plain varchar, and they
+# are now REPAIRED rather than recorded -- see `app/trust/models.py::_enum` and
+# migration `20260915_0003`. They looked harmless because equality compared fine.
+# They were not: SQLAlchemy persists an enum member's *name* unless
+# `values_callable` says otherwise, while every migration wrote its
+# `server_default` as the member's *value*, so the database's own default was
+# unreadable by the model that owns the column, and one such row made a plain
+# `SELECT *` raise for the whole table. Ten columns across nine tables remain.
 # ---------------------------------------------------------------------------
 
 #: (table, column) -> (mapper type compiled for PostgreSQL, physical type).
@@ -359,17 +354,6 @@ DECLARED_TYPE_CONFLICTS: dict[tuple[str, str], tuple[str, str]] = {
     ("oauth2_clients", "is_confidential"): ("integer", "boolean"),
     ("oauth2_tokens", "is_revoked"): ("integer", "boolean"),
     ("service_accounts", "is_active"): ("integer", "boolean"),
-    # Native enum mappers over plain varchar columns. Equality works; the
-    # exposure is on read, and the database enforces nothing.
-    ("trust_compliance_checks", "result"): ("compliancestatus", "character varying"),
-    ("trust_compliance_evidence", "status"): ("compliancestatus", "character varying"),
-    ("trust_consent_records", "purpose"): ("consentpurpose", "character varying"),
-    ("trust_consent_records", "status"): ("consentstatus", "character varying"),
-    ("trust_retention_policies", "data_category"): ("datacategory", "character varying"),
-    ("trust_retention_policies", "retention_period"): ("retentionpolicy", "character varying"),
-    ("trust_service_logs", "service_type"): ("trustservicetype", "character varying"),
-    ("trust_sovereignty_rules", "data_category"): ("datacategory", "character varying"),
-    ("trust_sovereignty_rules", "sovereignty_level"): ("sovereigntylevel", "character varying"),
 }
 
 #: Types PostgreSQL resolves between without an explicit cast, so a difference
