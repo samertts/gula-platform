@@ -6,8 +6,8 @@ metadata, and NR-081 established that none of them can see a table name inside
 a string literal. So this asks the question directly, of the SQL itself.
 
 Of the 335 `.execute(...)` call sites in `app/`, eight read `patients`. Two
-constrain `lab_id` and are correct. **Six do not**, across two packages, and
-both packages are registered in `factory.py`:
+constrain `lab_id` and are correct. **Six do not**, across two packages — one
+of which the application serves:
 
 * `app/national/search_platform/` — four sites; `lab_id` does not appear
   anywhere in the module. Three pass a **bare Python string**, which in
@@ -33,12 +33,21 @@ both packages are registered in `factory.py`:
   deliberately does not expose (NR-087).
 
 * `app/insurance/services/coverage_engine.py` — two sites, both bare strings.
+  This package serves **no** routes and nothing outside it imports it, so it is
+  NR-087's class rather than this one; `factory.py` registers
+  `app/routes/insurance.py`, a different module that merely shares the name.
   `SELECT date_of_birth FROM patients WHERE id = :pid` names a column that does
   not exist (the table has `birth_date`), but
   `SELECT gender FROM patients WHERE id = :pid` **is valid SQL**. It is inert
   for one reason only: the bare string. The fix for `ObjectNotExecutableError`
   is to wrap it in `text()` — a one-token change, made on sight — and that
   change alone turns it into a cross-lab read keyed on a caller-supplied id.
+
+Reachability was measured by walking the *started* application recursively.
+FastAPI stores an included router as an opaque `_IncludedRouter`, so a single
+pass over `app.routes` sees 123 entries against a served surface of **2102** --
+`tests/orm_resolution.py::every_route` exists for exactly that reason, and a
+first pass here that skipped it reported zero routes for every package.
 
 **So the ledger is not "these are broken".** It is *these are unsafe, and the
 thing keeping them inert is not tenant isolation*. Both barriers — a bare
