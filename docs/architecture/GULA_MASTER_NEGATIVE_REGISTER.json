@@ -5,9 +5,9 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 87,
+  "total": 88,
   "P0": 12,
-  "P1": 39,
+  "P1": 40,
   "P2": 26,
   "P3": 10
  },
@@ -3145,6 +3145,73 @@
    "can_fix_now": false,
    "blocker": "Product decision — retire the package or record the dormancy. Engineering evidence is complete.",
    "evidence_strength": "EXECUTED — every claim above was produced by running something, not by reading."
+  },
+  {
+   "id": "NR-088",
+   "category": "Tenant isolation / Raw-SQL blind spot / Latent cross-tenant read",
+   "domain": "app/national/search_platform, app/insurance — raw SQL over patients",
+   "severity": "P1",
+   "priority": 2,
+   "status": "MEASURED AND GUARDED — 6 untenanted sites pinned, 1 of them already executable; the invariant is ratcheted on executability, not on count",
+   "title": "Six raw-SQL reads of patients carry no lab_id constraint, in two registered packages — and what keeps them inert is a bare string and a wrong column name, not tenant isolation",
+   "description": "Security Invariant #1 requires every patient-data query to filter by lab_id. Every guard that checks it works from ORM metadata, and NR-081 established that none of them can see a table name inside a string literal. Asking the SQL directly: of 335 .execute() call sites in app/, eight read patients. Two constrain lab_id and are correct. Six do not, across app/national/search_platform (four) and app/insurance/services/coverage_engine.py (two). Both packages are registered in factory.py. None currently succeeds — but not one of them is stopped by anything to do with tenancy, and every barrier is the kind a developer removes while fixing something else.",
+   "root_cause": "The same Generation-A/Generation-B schema split as NR-080, NR-082 and NR-087, plus SQLAlchemy 2.0's rejection of bare strings. Because no statement has ever executed, nobody noticed that the tenant filter was missing as well as the column names. The search module is internally inconsistent — three call sites pass a bare string and a fourth is correctly wrapped in text() — which is itself evidence it was never run.",
+   "evidence": [
+    "POPULATION: 335 `.execute(...)` call sites in backend/app; 8 carry SQL reading `patients`; 2 constrain lab_id (app/ai/agent_runtime.py:68, app/routes/stats.py:272) and are correct; 6 do not.",
+    "app/national/search_platform/application/interfaces.py contains ZERO occurrences of `lab_id`.",
+    "EXECUTED, the three bare-string sites: passing a raw Python str to execute() raises `ObjectNotExecutableError: Not an executable object` under SQLAlchemy 2.0 before any SQL is sent.",
+    "EXECUTED, get_facets (the fourth site, properly wrapped in text() and therefore executable): `SELECT COUNT(*) FROM patients WHERE to_tsvector('simple', name || ' ' || COALESCE(phone,'') || ' ' || COALESCE(national_id,'')) @@ to_tsquery('simple', :q)` -> `ProgrammingError: column \"name\" does not exist`. Substituting the column the table actually has: `full_name` -> EXECUTES, COUNT = 0. So ONE COLUMN RENAME separates GET /facets from a working cross-lab count whose predicate matches on national_id.",
+    "EXECUTED, the insurance sites: `SELECT date_of_birth FROM patients WHERE id = :pid` -> `UndefinedColumn` (the table has birth_date), but `SELECT gender FROM patients WHERE id = :pid` with text() -> EXECUTES. That one is VALID SQL keyed on a caller-supplied id with no lab_id filter, inert solely because of the bare string. The fix for ObjectNotExecutableError is to wrap it in text() — a one-token change — and that change alone makes it a live cross-lab read.",
+    "EXECUTED, the citizen branch of the search union: `SELECT id FROM national_citizens` -> `UndefinedTable: relation \"national_citizens\" does not exist` — the same table NR-064 established no migration creates.",
+    "REACHABILITY: app/national/search_platform/api/routes.py is registered at factory.py:712 and declares 14 routes; PostgresFullTextSearch is imported by it (routes.py:10) and instantiated per request over the app session (routes.py:51). app/insurance is registered at factory.py:605. Both search routes are guarded by require_permission(\"system:admin\") at the router (routes.py:26) and in _get_service (routes.py:44); the insurance router's guard was not assessed here.",
+    "The national_id predicate is a full-text index over a national identifier. patients.national_id has no trigger and no column default (NR-087), and the canonical mapper deliberately does not expose it — app/models/patient.py maps national_id_hash only."
+   ],
+   "affected_components": [
+    "app/national/search_platform/application/interfaces.py",
+    "app/national/search_platform/api/routes.py",
+    "app/insurance/services/coverage_engine.py"
+   ],
+   "affected_users": "None today — no statement succeeds. Every patient in every lab, if any barrier is removed without a tenant filter being added.",
+   "clinical_impact": "None today. GET /facets, /search and /suggest return 500.",
+   "security_impact": "Latent cross-tenant disclosure (Security Invariant #1) on two registered routers, plus a full-text match over a national identifier. The insurance age/gender checks are keyed on a caller-supplied patient_id with no tenant constraint, which is IDOR-shaped once executable.",
+   "data_integrity_impact": "None — all six sites are reads.",
+   "operational_impact": "14 search routes that 500; two insurance coverage rules that raise instead of evaluating.",
+   "scalability_impact": "None.",
+   "legal_impact": "A searchable plaintext national identifier would be a data-protection exposure on Iraqi civil-registry identifiers.",
+   "dependencies": [],
+   "intersections": [
+    "NR-081 — this is exactly the blind spot NR-081 measured: no ORM-metadata guard can see a table name inside a string literal, so tenant isolation went unchecked here.",
+    "NR-087 — same class and same Generation split; there the module is unmounted, here both packages are registered.",
+    "NR-082 — same hazard shape: repairing for functionality without restoring lab_id turns a dead endpoint into a cross-tenant one.",
+    "NR-064 — the national_citizens branch targets the table NR-064 established no migration creates.",
+    "NR-076 — extends its finding: migrations/env.py's exclusion note is now shown to be wrong about BOTH of its entries, not just task_engine."
+   ],
+   "contradictions": [
+    "migrations/env.py:188 records `app.insurance (DEFER: 13 tables, none physical, no reachable operation)`, but app.insurance is registered at factory.py:605. This is the second half of the same comment block NR-076 found wrong about app.national.task_engine — both of its 'no reachable operation' claims are false.",
+    "app/routes/compliance.py:103 and :780 publish `national_id_storage: \"Hashed with HMAC-SHA256 - not reversible\"` and `PASS`, while app/national/search_platform builds a full-text index over a plaintext patients.national_id column."
+   ],
+   "recommended_fix": "Decide the disposition of app/national/search_platform first — it is the NR-087 question again, for a package that IS registered. If it is to work, the mappers/SQL must be rewritten from the physical schema WITH lab_id restored and enforced, the national_id term removed from the full-text expression (search a hash, never the identifier), and the national_citizens branch resolved against a table that exists. If it is to be retired, the 14 routes go in the same change. For app/insurance, add the tenant filter to both coverage checks and correct date_of_birth to birth_date — small and in scope, but it belongs with the insurance DEFER decision rather than ahead of it.",
+   "minimal_safe_fix": "Change nothing and leave the barriers in place; they hold today. The hazard is the partial fix: wrapping a bare string in text() to clear ObjectNotExecutableError, or renaming name to full_name to clear UndefinedColumn, without adding lab_id. The guard makes exactly that fail.",
+   "verification_method": "AST scan over every .execute() call site in backend/app resolving literal, variable-bound and text()-wrapped SQL; each classified site then executed against PostgreSQL 16 at head 20260915_0003, both as written and after the one-line repair a developer would make.",
+   "acceptance_criteria": "Either every raw-SQL read of patients constrains lab_id, or the packages are retired with their routes. The ledger must reach zero by tenant filters being added, not by entries being declared.",
+   "regression_risk": "None — the guard is static and no runtime code changed.",
+   "owner": "Platform security + national search / insurance product owners",
+   "related_tests": [
+    "backend/tests/test_patient_sql_is_tenant_scoped.py"
+   ],
+   "related_files": [
+    "backend/app/national/search_platform/application/interfaces.py",
+    "backend/app/insurance/services/coverage_engine.py",
+    "backend/app/factory.py",
+    "backend/migrations/env.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": [],
+   "wave": "measurement",
+   "complexity": "low to guard; the repair is a product disposition",
+   "can_fix_now": false,
+   "blocker": "Product disposition for app/national/search_platform and app/insurance. The guard is applied now and is not blocked.",
+   "evidence_strength": "EXECUTED — every barrier and every removal of a barrier was run against PostgreSQL."
   }
  ]
 }
