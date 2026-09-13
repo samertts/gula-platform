@@ -5,10 +5,10 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 86,
+  "total": 87,
   "P0": 12,
   "P1": 39,
-  "P2": 25,
+  "P2": 26,
   "P3": 10
  },
  "findings": [
@@ -3073,6 +3073,78 @@
    "can_fix_now": false,
    "blocker": "NR-078's topology change, which is itself blocked on the NR-080 drift reconciliation.",
    "evidence_strength": "EXECUTED — real Session, real model instance, real flush against PostgreSQL 16 at migration head; plus a static registry walk cross-checked against NR-078's independent count"
+  },
+  {
+   "id": "NR-087",
+   "category": "Parallel write authority / Dead code disposition / Latent security defect",
+   "domain": "app/reference (patients, lab_orders, lab_results)",
+   "severity": "P2",
+   "priority": 3,
+   "status": "DISPOSITION ESTABLISHED — RETIRE is safe and ACTIVATE-AS-IS is unsafe; both proved by execution. Retirement itself is the user's call.",
+   "title": "app/reference is a second, raw-SQL write authority over the three core clinical tables; it is unmounted and schema-incompatible, and activating it as written would store plaintext national IDs",
+   "description": "app/reference/infrastructure/repositories.py issues raw INSERT and SELECT statements against patients, lab_orders and lab_results — the three most sensitive tables on the platform — through app.database.get_db, i.e. the production database, not a fixture or a separate store. It is a complete parallel persistence stack (domain models, services, repositories, three routers) that duplicates the canonical one. NR-081 asked whether it should be activated or retired. Both halves are now answered by execution rather than by route count, which §21 explicitly forbids relying on. It cannot work: every one of its statements names columns the physical schema does not have. And it must not be made to work as written: it writes a raw national ID into patients.national_id with no hashing and no encryption, which the canonical path does not do.",
+   "root_cause": "The module was written against a different schema generation from the one the migrations actually built — the same Generation-A/Generation-B split as NR-080 and NR-082, but expressed in raw SQL instead of ORM mappers. Because it was never mounted, nothing ever executed a statement, so the divergence was never observed. Its national-ID handling predates the HMAC scheme in app/routes/register.py and was never brought forward.",
+   "evidence": [
+    "REACHABILITY: no include_router for app.reference anywhere in backend/app. Outside its own package it is referenced only by 4 test files and reports/PHASE_10_BACKEND_ENDPOINT_INVENTORY.md (which marks its 7 endpoints IMPLEMENTED_SOURCE but UNVERIFIED). The two apparent production hits (app/national/services/__init__.py, app/national/api/routes/__init__.py) are a different 'reference' — national reference data — and are false positives. No importlib/__import__ plugin machinery in backend/app could load it dynamically: the only such calls are __import__('datetime') and __import__('uuid'). 8 route decorators are declared across the three routers and 0 are served.",
+    "TARGET DATABASE: app/reference/infrastructure/dependencies.py:6 — 'from app.database import get_db', used at lines 23, 31 and 44. This is the production session, so the 'it points at some other database' explanation is ruled out.",
+    "EXECUTED against PostgreSQL 16 at head 20260915_0003, each in its own rolled-back transaction: repositories.py:56 INSERT INTO patients -> ERROR: column \"name\" of relation \"patients\" does not exist; repositories.py:211 INSERT INTO lab_orders -> ERROR: column \"test_type\" of relation \"lab_orders\" does not exist; repositories.py:314 INSERT INTO lab_results -> ERROR: column \"analyte\" of relation \"lab_results\" does not exist.",
+    "FULL MAGNITUDE (information_schema, not first-error): patients 4 of 9 named columns absent (name, date_of_birth, address, updated_at — physical is full_name and birth_date, and there is no address or updated_at column at all); lab_orders 5 of 9 absent (test_type, priority, notes, updated_at, performed_by); lab_results 9 of 13 absent (analyte, min_value, max_value, min_critical, max_critical, is_critical, flagged, notes, performed_by). So only 4 of 9, 4 of 9 and 4 of 13 columns respectively exist. This is a different schema generation, not a typo.",
+    "READS FAIL IDENTICALLY: the SELECTs at lines 95, 169, 242, 271, 353, 369 and 402 name the same absent columns (name, test_type, analyte), so the module is dead in both directions. This matters because NR-086 established that raw SQL BYPASSES the NoReferencedTableError barrier that stops ORM writes — so schema incompatibility, not that barrier, is what makes this module inert.",
+    "NOT-NULL columns with no default that the statements never supply, so even a column-rename fix would still fail: patients.full_name, lab_results.test_name, lab_results.token.",
+    "LATENT SECURITY DEFECT: repositories.py:83 binds 'national_id': patient.national_id straight into patients.national_id. patients has no triggers and national_id has no column default, so there is no database-level protection; encryption is application-level (shared.security.encryption.encrypt_national_id, used by app/citizen_platform/identity.py). The canonical path instead HMAC-SHA256s the value with NID_HMAC_KEY into national_id_hash (app/routes/register.py:337-358), and app/models/patient.py does not map national_id at all. A naive activation that fixed only the column names would therefore write plaintext national IDs, violating CLAUDE.md Security Invariant 8.",
+    "CANONICAL OWNERSHIP (unambiguous, single owner each): patients, lab_orders and lab_results are all in Base.metadata and no other registered metadata object, verified against the live target_metadata registry.",
+    "MIGRATION OWNERSHIP: all three tables are created by migrations/versions/20250322_0000_create_base_schema.py, the immutable bootstrap snapshot (lab_orders is further altered by 20250323_0004_core_enforcement.py). app/reference owns no migration and has never owned one.",
+    "PRIOR DECISION ALREADY IN THE REPOSITORY: backend/tests/test_side_door_hardening.py:81-87 asserts that app/reference/routes/patients.py, orders.py and results.py each contain require_permission(\"system:admin\"). The routers were hardened in place against accidental activation rather than retired, so a decision was taken here before and stopped short of removal."
+   ],
+   "affected_components": [
+    "app/reference/infrastructure/repositories.py",
+    "app/reference/infrastructure/dependencies.py",
+    "app/reference/routes/patients.py",
+    "app/reference/routes/orders.py",
+    "app/reference/routes/results.py",
+    "app/reference/services/patient_service.py",
+    "app/reference/domain/"
+   ],
+   "affected_users": "None today — nothing is served. Every patient in a lab, if the module were activated as written.",
+   "clinical_impact": "None today. If activated, a second write path to lab_orders and lab_results that does not share the canonical order state machine (app/domain/order_state.py) or the LabResult optimistic lock, so clinical state could be advanced without the transitions the canonical path enforces.",
+   "security_impact": "Latent and specific: plaintext national IDs in patients.national_id, bypassing the NID_HMAC_KEY scheme. Also no audit-log write on any of its three save() paths, so mutations through it would be invisible to the hash chain.",
+   "data_integrity_impact": "None today. If activated: a parallel writer with no optimistic-lock check and no audit row, over the three tables that carry all patient data.",
+   "operational_impact": "None today. 8 declared routes that cannot be reached and would 500 if they could.",
+   "scalability_impact": "None.",
+   "legal_impact": "Plaintext national-ID storage would be a data-protection exposure on Iraqi civil-registry identifiers, and unaudited clinical mutations would break the audit-trail guarantee.",
+   "dependencies": [],
+   "intersections": [
+    "NR-086 — raw SQL bypasses the NoReferencedTableError barrier, so this module is NOT protected by the thing that protects the ORM write paths; its inertness rests on schema mismatch alone.",
+    "NR-080 / NR-082 — same Generation-A vs Generation-B schema split, expressed in raw SQL here rather than in ORM mappers.",
+    "NR-076 — the same disposition shape: a persistence layer that cannot reach its tables. There the tables do not exist; here they exist and disagree."
+   ],
+   "contradictions": [
+    "reports/PHASE_10_BACKEND_ENDPOINT_INVENTORY.md lists 7 /reference/* endpoints as IMPLEMENTED_SOURCE. None is served and none could answer if it were. The report's own UNVERIFIED marking on every other column is what keeps this from being a false claim.",
+    "test_side_door_hardening.py treats these three routers as sensitive live surface needing a system:admin guard, while no application code mounts them."
+   ],
+   "recommended_fix": "RETIRE app/reference in a single change that removes the package and its three routers together, and drops the three entries from test_side_door_hardening.py's parametrisation in the same commit. Retiring routers separately from their package is how a retired subsystem becomes reachable again (the NR-076 lesson). It is a product decision, not an engineering one, so it is not applied here.",
+   "minimal_safe_fix": "Change nothing and leave all three barriers in place: not mounted, schema-incompatible, system:admin-guarded. This is the current state and it is safe. What is NOT safe, and is the reason this finding exists, is the one-commit 'fix the column names' change that an engineer reading these files would naturally reach for — that alone would produce an unaudited parallel writer storing plaintext national IDs.",
+   "verification_method": "Executed the three INSERT shapes verbatim against a PostgreSQL 16 database at migration head, each in a rolled-back transaction; cross-checked every named column against information_schema; queried pg_trigger and column_default for database-level national-ID protection; resolved canonical metadata ownership from the live target_metadata registry; swept the repository for any mount or dynamic-import activation path.",
+   "acceptance_criteria": "Either the package and its routers are removed together with the test parametrisation updated, or the decision to keep it dormant is recorded with the plaintext-national-ID hazard named, so the next reader does not activate it by fixing the column names.",
+   "regression_risk": "None for retirement — nothing imports it outside its own package and four test files.",
+   "owner": "Platform / clinical data owner (product decision)",
+   "related_tests": [
+    "backend/tests/test_side_door_hardening.py"
+   ],
+   "related_files": [
+    "backend/app/reference/infrastructure/repositories.py",
+    "backend/app/reference/infrastructure/dependencies.py",
+    "backend/app/routes/register.py",
+    "backend/app/models/patient.py",
+    "backend/migrations/versions/20250322_0000_create_base_schema.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": [],
+   "wave": "disposition",
+   "complexity": "low (retirement); the hazard is in the tempting partial fix, not in the removal",
+   "can_fix_now": false,
+   "blocker": "Product decision — retire the package or record the dormancy. Engineering evidence is complete.",
+   "evidence_strength": "EXECUTED — every claim above was produced by running something, not by reading."
   }
  ]
 }
