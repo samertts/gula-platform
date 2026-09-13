@@ -103,5 +103,29 @@
   "value": 377,
   "reduced_by": 12,
   "reason": "NR-089 \u2014 the trust soft-delete pair was declared by a mixin that was never mixed in; mixing it in mapped all twelve columns"
+ },
+ "global_operation_recount": {
+  "measured_at": "head b70d1a04, PostgreSQL 16 at migration head 20260915_0003",
+  "total_operations": 5039,
+  "total_destructive": 1367,
+  "by_type": {
+   "CreateIndexOp": 2372,
+   "ModifyTableOps": 585,
+   "DropConstraintOp": 538,
+   "DropIndexOp": 454,
+   "DropColumnOp": 365,
+   "AddColumnOp": 293,
+   "CreateTableOp": 303,
+   "AlterColumnOp": 85,
+   "CreateForeignKeyOp": 27,
+   "DropTableOp": 10,
+   "CreateUniqueConstraintOp": 7
+  },
+  "corrections_to_the_previously_published_figure": [
+   "The earlier published block headlined 5060 operations but its printed breakdown sums to 5053. The missing 7 are CreateUniqueConstraintOp, which the breakdown omitted. The headline was right; the itemisation was incomplete.",
+   "Only ONE delta is attributable to a single change and was measured immediately before and after it: DropColumnOp 377 -> 365, from NR-089 mixing TrustSoftDeleteMixin in. The movement in AddColumnOp (314 -> 293) and AlterColumnOp (73 -> 85) spans several commits \u2014 the NR-083 migrations 20260915_0001/_0002 and the NR-085 enum repair 20260915_0003 all landed between the two measurements \u2014 so it is NOT attributed to NR-089 and no per-commit cause is claimed for it.",
+   "Destructive total 1379 -> 1367 is exactly the 12 trust columns, and reconciles."
+  ],
+  "ratchet_health": "all four declared destructive counts measured EXACT against DECLARED_DESTRUCTIVE_BUDGET \u2014 538/454/365/10 \u2014 so the ledger carries no slack. A ratchet that only forbids growth would let a silent shrink leave the declared value overstated; this was checked rather than assumed."
  }
 }
