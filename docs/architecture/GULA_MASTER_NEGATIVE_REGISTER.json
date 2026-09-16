@@ -3409,6 +3409,70 @@
    ],
    "related_adrs": [],
    "related_contracts": []
+  },
+  {
+   "id": "NR-092",
+   "title": "Two of three clinical agent tools read lab results with no tenant constraint, on a served endpoint whose arguments come from an external model — and all three are broken against the physical schema, which is the only thing that was containing it",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/ai/agent_runtime.py, app/routes/ai_platform.py",
+   "category": "Latent cross-tenant clinical disclosure / AI-supplied arguments / ORM-schema mismatch",
+   "wave": "repair",
+   "owner": "Platform security / Clinical AI",
+   "status": "TENANT CONSTRAINT FIXED AND GUARDED; the schema mismatch is deliberately NOT repaired — making a clinical AI surface functional is a product decision",
+   "can_fix_now": false,
+   "blocker": "Whether POST /api/ai/v2/agents/execute's clinical tools should work at all is a clinical product decision. Repairing the column names activates an AI path over patient data and is not taken here.",
+   "complexity": "small fix, subtle containment",
+   "regression_risk": "None observable — all three tools raised before the change and raise after it. The constraint only takes effect if the column names are ever corrected.",
+   "evidence_strength": "EXECUTED — all three tools' SQL run verbatim against PostgreSQL 16 with two labs, before and after, plus the counterfactual repair.",
+   "verification_method": "Two labs, two patients, one order and one result each, inserted on PostgreSQL 16 at head 20260915_0003 inside a transaction and rolled back; each tool's SQL extracted from the module by AST rather than retyped. Probe rows before and after: 0.",
+   "affected_users": "None today — every tool raises. Any lab, if the column names are corrected without the tenant constraint.",
+   "description": "POST /api/ai/v2/agents/execute is registered in app/factory.py and served. A caller submits a free-text task; AgentRuntime._plan_tools sends it to an external model (app.gateways.google_ai.generate_chat), json.loads the plan it returns, and execute_plan dispatches the tool and parameters that plan names — so the patient_id of a clinical read originates in a model's reading of user text.\n\nThe runtime is right about the boundary: execute_tool calls tool.fn(**kwargs, lab_id=context.lab_id, user_id=context.user_id), so the authenticated tenant is injected and the model cannot supply its own (a lab_id in its params raises TypeError for a repeated keyword). The tenant is the runtime's to decide, not the model's, which is the correct placement.\n\nTwo of the three clinical tools took that lab_id into **kwargs and never used it. _get_recent_results and _analyze_lab_pattern selected from lab_results JOIN lab_orders on lo.patient_id alone. _lookup_patient in the same file filtered (lab_id = :lab OR :lab IS NULL) — scoped, but fail-open if the tenant were absent.\n\nNone of it was reachable, and the reason is not a control. All three name columns the database does not have: patients has full_name not name, and lab_results has created_at not result_date. Executed, all three raise; each catches the exception and returns {'error': ...}, so callers get an error string and no data. The clinical agent-tool surface is non-functional, and that is what was containing it.\n\nWhich makes correcting the column names a trap, and that was executed too: with the names fixed and the same WHERE clause, a lab-901 session asking for patient 7002 (lab 902) received ['SECRET-LAB-B']. Adding lo.lab_id returns [] for that request and still returns ['SECRET-LAB-A'] for the session's own patient.",
+   "root_cause": "lab_results carries no lab_id of its own — it is tenanted transitively through lab_orders — so a developer writing a query against it has nothing local to filter on and has to know to constrain the join. _lookup_patient, over a table that does have lab_id, got it right; the two over lab_results did not.",
+   "security_impact": "Latent. Correcting two column names, with no other change, turns a served endpoint into a cross-tenant read of clinical lab results whose patient_id is chosen by an external model's interpretation of caller text. The tenant constraint is now in place, so that repair is safe whenever someone makes it.",
+   "clinical_impact": "The clinical agent tools return an error string for every call. No clinical AI assistance is actually being delivered by this surface.",
+   "data_integrity_impact": "None — all three paths are reads.",
+   "operational_impact": "None observable; behaviour before and after the change is identical.",
+   "scalability_impact": "None.",
+   "minimal_safe_fix": "Applied: constrain lo.lab_id on both lab_results queries and bind lab_id unconditionally in _lookup_patient, leaving the column names untouched.",
+   "recommended_fix": "Decide whether this AI surface should function. If yes, correct the column names — the tenant boundary is already enforced and guarded.",
+   "acceptance_criteria": [
+    "No registered agent tool reads a tenant-owned table without a lab_id constraint.",
+    "No agent tool treats an absent tenant as a wildcard.",
+    "execute_tool keeps injecting context.lab_id, so the tenant never comes from the planning model.",
+    "If the schema mismatches are repaired, the ledger is updated in the same change."
+   ],
+   "evidence": [
+    "EXECUTED on PostgreSQL 16 at head 20260915_0003, tool SQL extracted by AST: lookup_patient RAISES 'column \"name\" does not exist'; get_recent_results and analyze_lab_pattern both RAISE 'column lr.result_date does not exist'. Each is caught and returned as {'error': ...}.",
+    "EXECUTED counterfactual: with result_date corrected to created_at and no tenant filter, a lab-901 session asking for patient 7002 (lab 902) received ['SECRET-LAB-B']. With AND lo.lab_id = :lab_id it received [], and ['SECRET-LAB-A'] for its own patient 7001.",
+    "READ from the database: lab_results has no lab_id column at all — order_id, test_type_id, test_name, value, value_text, unit, normal_range_low, normal_range_high, flag, token, token_hash, expires_at, created_at, clinical_engine_version, version. patients has full_name, not name.",
+    "STATIC: app/ai/agent_runtime.py:175 reads tool.fn(**kwargs, lab_id=context.lab_id, user_id=context.user_id) — the runtime injects the authenticated tenant into every tool call and the model cannot override it.",
+    "STATIC: 5 tools are registered; 3 touch tenant tables; before this change 1 of those 3 constrained lab_id. After, 3 of 3, with no fail-open wildcard.",
+    "AST: _plan_tools sends the caller's task to app.gateways.google_ai.generate_chat and json.loads the returned plan, whose params become the tool arguments.",
+    "Negative proof, four guards, source restored byte-identical (md5 verified): removing the constraint, restoring the wildcard, stopping the runtime injection and correcting the column names each fire their own assertion.",
+    "Gate: unit 442 -> 446 passed, 4 deselected, by exactly the four tests added."
+   ],
+   "affected_components": [
+    "app/ai/agent_runtime.py",
+    "app/routes/ai_platform.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-087 and NR-091 — the third instance this session of the same shape: a path held safe only by being broken, whose natural repair makes it unsafe. The containment in all three cases was accidental.",
+    "NR-088 / NR-090 — the same missing-lab_id class in raw SQL, in different modules. The platform-wide sweep that found this one measured 19 raw-SQL sites reading a lab_id-bearing table without lab_id, of which most are correct by design (the audit chain hash, a startup backfill, a janitor sweep) or already pinned.",
+    "NR-074 — an ORM naming columns the database lacks. Here the same mismatch is in raw SQL rather than a mapper, so no schema guard in this suite was watching it."
+   ],
+   "contradictions": [
+    "app/routes/ai_platform.py serves these tools behind _require_doctor and passes lab_id=current_user.lab_id into run_session, so the route believes the call is tenant-scoped; two of the three tools then discarded it."
+   ],
+   "related_tests": [
+    "backend/tests/test_agent_tools_are_tenant_scoped.py"
+   ],
+   "related_files": [
+    "backend/app/ai/agent_runtime.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
   }
  ]
 }

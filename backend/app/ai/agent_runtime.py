@@ -66,7 +66,7 @@ async def _lookup_patient(query: str, lab_id: int | None = None, **kwargs) -> di
     db = next(get_db())
     try:
         row = db.execute(
-            text("SELECT id, name, phone, gender, birth_date FROM patients WHERE (name ILIKE :q OR phone = :q_exact OR cast(id as text) = :q_exact) AND (lab_id = :lab OR :lab IS NULL) LIMIT 1"),
+            text("SELECT id, name, phone, gender, birth_date FROM patients WHERE (name ILIKE :q OR phone = :q_exact OR cast(id as text) = :q_exact) AND lab_id = :lab LIMIT 1"),
             {"q": f"%{query}%", "q_exact": query, "lab": lab_id},
         ).fetchone()
         if not row:
@@ -79,12 +79,19 @@ async def _lookup_patient(query: str, lab_id: int | None = None, **kwargs) -> di
 
 
 @register_tool("get_recent_results", "Get recent lab results for a patient", requires_approval=False)
-async def _get_recent_results(patient_id: int, limit: int = 10, **kwargs) -> dict[str, Any]:
+async def _get_recent_results(
+    patient_id: int, limit: int = 10, lab_id: int | None = None, **kwargs,
+) -> dict[str, Any]:
+    # lab_results carries no lab_id of its own; it is tenanted transitively
+    # through the order it belongs to, so the constraint goes on lo.
+    # A None lab_id matches nothing on purpose: the runtime always supplies one
+    # (execute_tool passes context.lab_id), so an absent tenant means something
+    # is wrong upstream and no clinical row should be returned.
     db = next(get_db())
     try:
         rows = db.execute(
-            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high, lr.result_date FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid ORDER BY lr.result_date DESC LIMIT :lim"),
-            {"pid": patient_id, "lim": limit},
+            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high, lr.result_date FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid AND lo.lab_id = :lab_id ORDER BY lr.result_date DESC LIMIT :lim"),
+            {"pid": patient_id, "lim": limit, "lab_id": lab_id},
         ).fetchall()
         results = [{"test_name": r.test_name, "value": r.value, "unit": r.unit, "normal_range_low": r.normal_range_low, "normal_range_high": r.normal_range_high, "result_date": str(r.result_date) if r.result_date else None} for r in rows]
         return {"patient_id": patient_id, "results": results, "count": len(results)}
@@ -95,12 +102,16 @@ async def _get_recent_results(patient_id: int, limit: int = 10, **kwargs) -> dic
 
 
 @register_tool("analyze_lab_pattern", "Run multi-test pattern analysis on lab results", requires_approval=False)
-async def _analyze_lab_pattern(patient_id: int, **kwargs) -> dict[str, Any]:
+async def _analyze_lab_pattern(
+    patient_id: int, lab_id: int | None = None, **kwargs,
+) -> dict[str, Any]:
+    # Tenanted through lo, and fail-closed on a missing lab_id -- see
+    # _get_recent_results above for why.
     db = next(get_db())
     try:
         rows = db.execute(
-            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid AND lr.result_date IS NOT NULL ORDER BY lr.result_date DESC LIMIT 50"),
-            {"pid": patient_id},
+            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid AND lo.lab_id = :lab_id AND lr.result_date IS NOT NULL ORDER BY lr.result_date DESC LIMIT 50"),
+            {"pid": patient_id, "lab_id": lab_id},
         ).fetchall()
         result_list = [{"test_name": r.test_name, "value": r.value, "unit": r.unit, "normal_range_low": r.normal_range_low, "normal_range_high": r.normal_range_high} for r in rows]
         from app.ai.sandbox import AISandbox
