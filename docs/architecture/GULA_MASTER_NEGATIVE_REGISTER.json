@@ -3536,6 +3536,69 @@
    ],
    "related_adrs": [],
    "related_contracts": []
+  },
+  {
+   "id": "NR-094",
+   "title": "claims.idempotency_key was unique across the whole platform, so one lab's choice of key made that key permanently unusable for every other lab",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/models/claim.py, app/services/claims_service.py, app/insurance/api/claims.py",
+   "category": "Tenant isolation (availability) / Idempotency scope / ORM-schema constraint drift",
+   "wave": "repair",
+   "owner": "Platform security / Insurance",
+   "status": "FIXED AND VERIFIED — migration applied, round-trip executed, platform-wide invariant now guarded",
+   "can_fix_now": false,
+   "blocker": "None. The migration is non-destructive and provably always-applicable; its downgrade is the narrowing direction and refuses rather than deleting another tenant's claims.",
+   "complexity": "one index; found only by census",
+   "regression_risk": "Very low. Widening a unique key rejects no row that was previously accepted. Both application read paths were already lab-scoped and are unchanged.",
+   "evidence_strength": "EXECUTED — the collision, the fix, and the full migration round-trip were all run against real PostgreSQL.",
+   "verification_method": "Two labs and one shared key on PostgreSQL 16, before and after; alembic upgrade -> downgrade -1 -> upgrade round-trip; autogenerate drift re-measured to confirm the ORM and schema moved together.",
+   "affected_users": "Any lab whose client chose an idempotency key another lab had already used. The failure is a refused INSERT, not a disclosure.",
+   "description": "A census of every column matching %idempotency% across the physical schema found twelve. Nine scope uniqueness by a tenant discriminator (lab_id, tenant_id, institution_id, subscription_id). claims did not: the model declared idempotency_key with unique=True, producing a global claims_idempotency_key_key, even though the table carries lab_id.\n\nBoth application read paths were already correct — services/claims_service.py::create_claim and insurance/api/claims.py::create_claim each filter lab_id alongside the key — so nothing was disclosed. What broke was the other tenant's ability to write. Executed on PostgreSQL 16 at head 20260915_0003:\n\n    lab 901 creates a claim with key 'INV-2026-001'  -> OK\n    lab 902's lab-scoped idempotency lookup finds     -> 0, so it proceeds\n    lab 902's INSERT                                  -> REFUSED,\n        duplicate key value violates unique constraint \"claims_idempotency_key_key\"\n\nIdempotency keys are chosen by the client. Clients choose invoice numbers, counters and dates, which collide across tenants by construction, so this is not a rare edge.\n\nFixed by migration 20260916_0001, replacing the global constraint with uq_claims_lab_idempotency (lab_id, idempotency_key) — the convention the nine other tables already use.",
+   "root_cause": "unique=True on a column is the easiest thing to write and is correct only for a globally unique value. An idempotency key is namespaced by whoever chose it. Nothing enumerated the idempotency columns, so the one table that got it wrong looked exactly like the nine that got it right.",
+   "security_impact": "Tenant isolation in the availability dimension: lab A's action determined whether lab B could write. No cross-tenant read was possible — the lookups were scoped. CLAUDE.md invariant #1 and §8 of the operating brief both require that one lab cannot affect another's data operations.",
+   "clinical_impact": "Indirect: an insurance claim that could not be created blocks reimbursement for delivered care. No clinical record is altered.",
+   "data_integrity_impact": "None — no row was written incorrectly; the defect refused writes rather than corrupting them.",
+   "operational_impact": "Claims creation failures that would have appeared as unexplained 500s, more likely as tenants grow and key spaces overlap.",
+   "scalability_impact": "Positive: collision probability grew with tenant count, so this was a defect that got worse at national scale.",
+   "minimal_safe_fix": "Applied: drop claims_idempotency_key_key, create uq_claims_lab_idempotency (lab_id, idempotency_key), and mirror it in the ORM.",
+   "recommended_fix": "Applied.",
+   "acceptance_criteria": [
+    "Every idempotency-bearing column's unique index includes a tenant discriminator, or the table is declared an exception with a reason.",
+    "claims specifically has uq_claims_lab_idempotency and no globally unique index over the key.",
+    "Two labs can use the same key; one lab cannot reuse its own.",
+    "Declared exceptions are rot-checked so a stale exemption cannot hide a regression."
+   ],
+   "evidence": [
+    "CENSUS against the live schema: 12 columns match %idempotency%. Scoped: billing_invoices, clinical_command_receipts, device_outbox_messages, integration_inbox_events, pay_financial_control_requests, pay_payment_intents, pay_subscription_usage_events, pharmacy_sales (8 by tenant discriminator). Unscoped by design: niam_account_creation_requests, niam_citizen_relationships (national scope, no tenant column). No unique index by design: edge_tasks. Wrong: claims.",
+    "EXECUTED before the fix on PostgreSQL 16: lab 902's INSERT refused by claims_idempotency_key_key after lab 901 used 'INV-2026-001'.",
+    "EXECUTED after the fix: lab 901 OK, lab 902 with the SAME key OK, lab 901 reusing its own key still REFUSED by uq_claims_lab_idempotency; 3 claims with NULL keys coexist (NULLs stay distinct).",
+    "MIGRATION round-trip executed: upgrade 20260915_0003 -> 20260916_0001 leaves only the scoped index; downgrade -1 restores claims_idempotency_key_key; re-upgrade returns to 20260916_0001 (head).",
+    "SAFETY PROOF: widening a unique key can never fail on existing data — two rows sharing (lab_id, idempotency_key) would share idempotency_key and would already have been refused. The downgrade is the narrowing direction and refuses with a counted explanation rather than deleting another tenant's claims.",
+    "AUTOGENERATE DRIFT re-measured after the change: 5039 operations / 1367 destructive, every operation kind identical to before. The ORM and the schema moved together, so the change introduced no drift. test_schema_fidelity and test_built_tables_match_database agree.",
+    "Negative proof, sources restored byte-identical (md5) and the schema restored: an actual alembic downgrade fires both the general invariant and the claims-specific assertion; a stale exemption fires the rot check; a census pattern that matches nothing fires the guard-the-guard.",
+    "Gate: migration 113 -> 117 passed, 5 xfailed, by exactly the four tests added."
+   ],
+   "affected_components": [
+    "app/models/claim.py",
+    "backend/migrations/versions/20260916_0001_claims_idempotency_is_tenant_scoped.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-091 — the same defect shape. There it was latent in a dormant module (PK on key alone); here it was live in the physical schema of a table with real writers. NR-091's analysis is what prompted the census that found this.",
+    "NR-080 — the drift ledger was re-measured after this schema change and is unchanged, because the mapper and the migration moved in lockstep."
+   ],
+   "contradictions": [
+    "app/models/claim.py's own module docstring says 'All queries MUST filter by lab_id (security invariant)' — the queries did; the constraint did not."
+   ],
+   "related_tests": [
+    "backend/tests/test_idempotency_keys_are_tenant_scoped.py"
+   ],
+   "related_files": [
+    "backend/app/models/claim.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
   }
  ]
 }

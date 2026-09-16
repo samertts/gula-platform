@@ -27,6 +27,15 @@ class Claim(Base):
         Index("ix_claims_lab_id", "lab_id"),
         Index("ix_claims_patient_id", "patient_id"),
         Index("ix_claims_status", "status"),
+        # NR-094. The key is unique WITHIN a lab, not across the platform.
+        # Declared globally unique, one lab's choice of key -- an invoice
+        # number, a counter -- made that key permanently unusable for every
+        # other lab, whose own INSERT was refused by
+        # claims_idempotency_key_key. Both read paths were already lab-scoped;
+        # only the constraint was not. This matches the convention the nine
+        # comparable tables already use (uq_billing_invoice_lab_idempotency,
+        # uq_pharmacy_sale_lab_idempotency, ...).
+        Index("uq_claims_lab_idempotency", "lab_id", "idempotency_key", unique=True),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -39,7 +48,7 @@ class Claim(Base):
     status = Column(String(30), nullable=False, default="draft")
     total_amount = Column(Numeric(12, 2), nullable=True)
     currency = Column(String(10), nullable=False, default="IQD")
-    idempotency_key = Column(String(255), nullable=True, unique=True)
+    idempotency_key = Column(String(255), nullable=True)
     external_ref = Column(String(255), nullable=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
 
