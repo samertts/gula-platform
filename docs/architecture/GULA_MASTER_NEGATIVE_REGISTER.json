@@ -3343,6 +3343,72 @@
    ],
    "related_adrs": [],
    "related_contracts": []
+  },
+  {
+   "id": "NR-091",
+   "title": "HTTP idempotency is implemented four times; the dormant DB-backed one leaks a cached response across tenants, and POST /samples has no replay protection at all",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/core/idempotency.py (dormant), app/services/order_service.py (live), app/routes/samples.py (uncovered)",
+   "category": "Duplicate source of truth / Latent cross-tenant disclosure / Coverage gap on a clinical write",
+   "wave": "repair",
+   "owner": "Platform / Clinical Standards",
+   "status": "MEASURED AND GUARDED — the dormant module is proved unsafe and pinned at zero wirings; the live implementation is correct and now ratcheted; the /samples gap is recorded, not closed",
+   "can_fix_now": false,
+   "blocker": "Whether POST /samples and the batch order path should require an Idempotency-Key is a clinical product decision, not an engineering one. Retiring app/core/idempotency.py versus rewriting it on the live design is likewise the owner's call.",
+   "complexity": "the proof is small; the decisions behind it are not",
+   "regression_risk": "None from this change — no application code was modified. Guards only.",
+   "evidence_strength": "EXECUTED — the dormant module's own three SQL statements, extracted by AST, run verbatim against PostgreSQL 16 with two labs.",
+   "verification_method": "Two labs and one shared idempotency key inserted on PostgreSQL 16 at head 20260915_0003 inside a transaction, then rolled back; the module's SELECT/INSERT/UPDATE taken from the source by AST rather than retyped. Probe rows before and after: 0.",
+   "affected_users": "None today — the dormant module is reachable from nothing. Any lab, if it is ever wired as written.",
+   "description": "app/core/idempotency.py is a FastAPI dependency whose docstring names four clinical write endpoints it is for (POST /api/orders, /api/results, /api/results/{id}/validate, /api/samples) and states as a rule: 'Keys are scoped per lab (prevents cross-lab replay attacks)'. Nothing imports it. idempotency_check is used as a Depends nowhere and purge_expired_keys is called by nothing, so the rule has never been exercised — which is the only reason the following are latent.\n\nThe rule is not implemented, and three defects compound.\n\n(1) A CACHED RESPONSE CROSSES TENANTS. idempotency_keys has PRIMARY KEY (key) alone, so a key is globally unique, while cache() runs UPDATE idempotency_keys SET status_code, response_body WHERE key = :key with no lab_id. Executed: lab A claims a key and caches an order for its own patient; lab B presents the same key, its SELECT misses on lab_id so it is told the request is new, it proceeds, and its cache() overwrites lab A's row — which keeps lab_id = 901. Lab A then replays its own key and is served {'order_id': 222, 'patient': 'LAB-B PATIENT'}.\n\n(2) A NULL-LAB ROW REPLAYS TO EVERY LAB. The lookup reads WHERE key = :key AND (lab_id = :lab_id OR lab_id IS NULL). lab_id comes from getattr(current_user, 'lab_id', None), so any principal without one — a citizen, ministry_admin, province_admin or service account — stores a row matching every lab's lookup. Executed: one such row was readable by lab 901 and lab 902 alike.\n\n(3) THE RESERVATION DOES NOT RESERVE. The insert is ON CONFLICT (key) DO NOTHING and rowcount is never read, so a key already held by another lab silently yields is_duplicate=False. Executed: rowcount 0, and the caller cannot tell.\n\nMeanwhile a correct implementation is live. app/services/order_service.py::create_order keys its cache f'idempotency:order:{lab_id}:{idempotency_key}' — tenant in the key rather than in a filter, so two labs cannot name the same entry — fingerprints the clinical payload so a key cannot be reused for different content, and claims atomically with set_if_absent. app/routes/results.py:177 passes the Idempotency-Key header through to it, so POST /orders is genuinely protected.\n\nCOVERAGE, measured rather than assumed: POST /orders is protected by the live mechanism. POST /samples (app/routes/samples.py:48) has no idempotency of any kind. POST /orders/{id}/validate uses an If-Match ETag instead, which is a different and arguably sufficient control for a state transition. app/routes/batch.py:68 passes idempotency_key=None explicitly, so a retried bulk order creation duplicates every row in it.",
+   "root_cause": "Four independent idempotency mechanisms exist with no canonical one: the dormant DB-backed dependency, the live Redis-backed order path, app/integration/esb/idempotency.py for message dedup, and idempotency_key_hash blind-index columns on identity ORM models. Nothing names which is authoritative, so the dormant one kept a docstring asserting coverage that another mechanism actually provides, for only one of the four endpoints it claims.",
+   "security_impact": "Latent. If the dormant dependency is wired as written, a lab replaying its own idempotency key can be served another lab's cached response body — which for these endpoints contains order and result payloads, so patient data. No path reaches it today.",
+   "clinical_impact": "POST /samples is replayable: a client retry after a timeout creates a second sample record. The batch order path is replayable for every row it carries. CLAUDE.md exempts /results, /orders and /samples from concurrency shedding because patient-safety operations must never be shed; replay protection is the other half of that guarantee and is present on only one of them.",
+   "data_integrity_impact": "Duplicate samples and duplicate batch-created orders on retry. No corruption of existing rows.",
+   "operational_impact": "None from this change. idempotency_keys is physical with an FK to labs and an index on lab_id, but no ORM maps it — it is one of NR-030's ten DROP candidates, so it is currently written by nothing.",
+   "scalability_impact": "None.",
+   "minimal_safe_fix": "Leave the dormant module unwired. The guard fails if anyone imports it while the three defects remain.",
+   "recommended_fix": "Do not repair app/core/idempotency.py in place. Either retire it, or rewrite it on the live design — tenant in the key, payload fingerprint, atomic claim, rowcount checked — and make idempotency_keys' primary key (lab_id, key) rather than (key). Separately, decide whether POST /samples and the batch order path must require an Idempotency-Key.",
+   "acceptance_criteria": [
+    "app/core/idempotency.py is imported by nothing while its three defects remain.",
+    "If a defect is repaired, the ledger pinning it is updated in the same change.",
+    "The live cache key keeps lab_id and the claim stays atomic."
+   ],
+   "evidence": [
+    "EXECUTED on PostgreSQL 16 at head 20260915_0003, module SQL extracted by AST and run verbatim: lab A caches under key 'shared-key-0001'; lab B's lookup returns None; lab B's INSERT ... ON CONFLICT (key) DO NOTHING returns rowcount 0; after lab B's UPDATE the row's lab_id is still 901; lab A's replay returns {'order_id': 222, 'patient': 'LAB-B PATIENT'}.",
+    "EXECUTED: a row inserted with lab_id NULL was returned by the module's own SELECT for lab 901 and for lab 902.",
+    "READ from the database: idempotency_keys PRIMARY KEY is btree (key) alone; lab_id is nullable, indexed as ix_idempotency_keys_lab_id, with FK idempotency_keys_lab_id_fkey to labs(id) ON DELETE CASCADE.",
+    "STATIC: no module in app/ imports app.core.idempotency. idempotency_check appears as a Depends nowhere; purge_expired_keys has no caller.",
+    "STATIC: app/routes/results.py:177 passes idempotency_key=request.headers.get('Idempotency-Key') into create_order. app/routes/samples.py:48 passes nothing. app/routes/batch.py:68 passes idempotency_key=None explicitly.",
+    "Negative proof, four guards, both sources restored byte-identical (md5 verified): importing the dependency into a route module, half-fixing the lookup, dropping lab_id from the live cache key and removing set_if_absent each fire their own assertion.",
+    "Gate: unit 438 -> 442 passed, 4 deselected, by exactly the four tests added."
+   ],
+   "affected_components": [
+    "app/core/idempotency.py",
+    "app/services/order_service.py",
+    "app/routes/samples.py",
+    "app/routes/batch.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-030 / NR-080 — idempotency_keys is one of the ten physical tables no ORM maps, and one of the ten DropTableOp autogenerate proposes. It must not be dropped: it is the store a corrected implementation would need.",
+    "NR-087 — the same disposition. A dormant module whose natural repair would create a live unsafe path, so it is held unreachable rather than fixed in place.",
+    "NR-090 — both found a docstring asserting a security property the code beneath it did not implement."
+   ],
+   "contradictions": [
+    "app/core/idempotency.py's docstring states 'Keys are scoped per lab (prevents cross-lab replay attacks)' while its UPDATE matches on key alone and its SELECT treats a NULL lab_id as a wildcard.",
+    "The same docstring lists POST /api/samples among the endpoints it supports; that endpoint has no idempotency of any kind."
+   ],
+   "related_tests": [
+    "backend/tests/test_idempotency_wiring_precondition.py"
+   ],
+   "related_files": [
+    "backend/app/core/idempotency.py",
+    "backend/app/services/order_service.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
   }
  ]
 }
