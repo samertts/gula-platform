@@ -3473,6 +3473,69 @@
    ],
    "related_adrs": [],
    "related_contracts": []
+  },
+  {
+   "id": "NR-093",
+   "title": "POST /api/ai/v2/agents/execute accepted any session_id and resumed that conversation — reading another user's AI history into a prompt sent to an external model, and writing back into it",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/routes/ai_platform.py, app/ai/memory.py",
+   "category": "Broken object-level authorization (IDOR) / Cross-tenant and cross-user read and write / External AI exposure",
+   "wave": "repair",
+   "owner": "Platform security / Clinical AI",
+   "status": "FIXED AND GUARDED — the control the module already had, applied to the third endpoint that needed it",
+   "can_fix_now": false,
+   "blocker": "None. Whether ConversationMemory.get_session should also constrain the tenant itself (defence in depth) is open; the route-layer check is the one the codebase already uses and is sufficient.",
+   "complexity": "one call; the reasoning is in what it reaches",
+   "regression_risk": "Low — a request with no session_id behaves exactly as before. A request naming a session the caller does not own now gets 404 instead of resuming it, which is the intent.",
+   "evidence_strength": "STATIC, traced end to end through the call graph and the SQL it reaches. No execution was needed: the missing call is a fact about the source, and what it guards is read directly from run_session and get_session.",
+   "verification_method": "AST over app/routes/ai_platform.py enumerating handlers that accept a session_id and the calls each makes; source trace of AgentRuntime.run_session -> ConversationMemory.get_session/get_history/add_message; three negative proofs with sources restored byte-identical.",
+   "affected_users": "Any doctor-role caller who knows another user's session id. Sessions are uuid4, so not guessable — but ids are returned by POST /sessions, travel in request bodies and logs, and run_session's own fallback id is f\"agent-{time.time()}\".",
+   "description": "app/routes/ai_platform.py defines _assert_session_owner, whose docstring is 'Prevent cross-user and cross-lab access to AI conversation history'. It raises 404 unless the conversation's user_id AND lab_id both match the caller.\n\nThree served endpoints take a session_id from the caller. POST /sessions/message and GET /sessions/{session_id} called it. POST /agents/execute did not, and AgentRequest.session_id is a plain optional string on the request body.\n\nAgentRuntime.run_session treats that id as a resumable conversation: it calls memory_store.get_session(session_id), creates a new one only if that returns None, then add_message(session_id, 'user', task) and get_history(session_id, max_tokens=500), and passes the history into _plan_tools -- which sends it to app.gateways.google_ai.generate_chat. ConversationMemory.get_session runs SELECT id, lab_id, user_id, session_id, title, metadata FROM ai_conversations WHERE session_id = :sid with no tenant constraint, loads every message of that conversation, and caches it.\n\nSo naming another user's session made the endpoint read that conversation's history, include it in a prompt sent to an external model, and append the caller's task and the run's summary back into it — a cross-user and cross-tenant read AND write, plus exposure of another lab's conversation content to a third party.\n\nFixed by calling the module's own _assert_session_owner when body.session_id is supplied. A request without one still gets a fresh session.",
+   "root_cause": "The control existed and was correct; it was applied per-endpoint by hand, and one of the three endpoints that needed it was missed. Nothing enumerated which handlers accept a session_id, so nothing could notice the omission.",
+   "security_impact": "Live broken object-level authorization on a served endpoint. Mitigated only by session ids being uuid4 and the caller needing the doctor role — neither of which is an authorization control. CLAUDE.md Security Invariant #1 requires tenant isolation on patient-data queries; AI conversation history about patients is within that spirit, and the module's own docstring already said so.",
+   "legal_impact": "Another lab's conversation content could be sent to an external AI provider, which §27 of the operating brief forbids by default.",
+   "clinical_impact": "Indirect: a doctor's agent session could be polluted with another user's conversation history, which becomes planning context for clinical tool selection.",
+   "data_integrity_impact": "The caller's task and the run summary were appended to another user's conversation, and persisted by add_message's INSERT via a subquery on ai_conversations.session_id.",
+   "operational_impact": "None — the no-session_id path is unchanged.",
+   "scalability_impact": "None.",
+   "minimal_safe_fix": "Applied: call _assert_session_owner on body.session_id in execute_agent, exactly as the two sibling endpoints do.",
+   "recommended_fix": "Applied. Optionally also constrain ConversationMemory.get_session by lab_id for defence in depth — the route check must stay regardless, because it also compares user_id, which a tenant filter does not.",
+   "acceptance_criteria": [
+    "Every handler accepting a caller-supplied session_id calls _assert_session_owner.",
+    "_assert_session_owner keeps comparing both user_id and lab_id.",
+    "If the underlying lookup becomes tenant-scoped, the reasoning recorded here is revisited."
+   ],
+   "evidence": [
+    "STATIC: app/routes/ai_platform.py:48 defines _assert_session_owner comparing conversation.user_id != current_user.id or conversation.lab_id != current_user.lab_id. Before the fix it was called at two sites (add_message, get_session) and not in execute_agent.",
+    "STATIC: AgentRuntime.run_session calls get_session(session_id), then add_message(session_id, 'user', task) and get_history(session_id, 500), and passes that history to _plan_tools, which calls app.gateways.google_ai.generate_chat.",
+    "STATIC: ConversationMemory.get_session executes SELECT ... FROM ai_conversations WHERE session_id = :sid with no lab_id or user_id constraint, then loads all rows of ai_conversation_messages for that conversation and caches the result in self._sessions.",
+    "STATIC: create_session mints uuid.uuid4(); run_session's fallback for an absent id is f\"agent-{time.time()}\".",
+    "Negative proof, three guards, sources restored byte-identical (md5 verified): reverting to the pre-fix route file names execute_agent; removing the user_id half of the comparison fires the second; tenant-scoping the underlying lookup fires the third.",
+    "Detector self-audit: the third guard's first version was a substring check and did NOT fire on its own negative proof, because appending 'AND lab_id = :lab' leaves the prefix intact. It was rewritten to extract the statement by AST and inspect the whole WHERE clause, and then fired.",
+    "Gate: unit 446 -> 449 passed, 4 deselected, by exactly the three tests added."
+   ],
+   "affected_components": [
+    "app/routes/ai_platform.py",
+    "app/ai/memory.py",
+    "app/ai/agent_runtime.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-092 — the same endpoint, a different boundary. That finding was about the tenant of the clinical data a tool reads; this is about the tenant of the conversation the request resumes. Both were reachable through POST /agents/execute.",
+    "NR-090 — both are a control that exists and is applied to some call sites but not all."
+   ],
+   "contradictions": [
+    "_assert_session_owner's docstring claims to 'prevent cross-user and cross-lab access to AI conversation history' while the endpoint that resumes a conversation did not call it."
+   ],
+   "related_tests": [
+    "backend/tests/test_ai_session_ownership.py"
+   ],
+   "related_files": [
+    "backend/app/routes/ai_platform.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
   }
  ]
 }
