@@ -183,15 +183,27 @@ owner — and Option A is the mechanically correct topology.
 Because running is not the same as usable. The diff:
 
 ```
-5060 operations
-  2372  CreateIndexOp        377  DropColumnOp
-   585  ModifyTableOps       314  AddColumnOp
+5039 operations                      (re-measured 2026-09-16, head 20260915_0003)
+  2372  CreateIndexOp        365  DropColumnOp
+   585  ModifyTableOps       293  AddColumnOp
    538  DropConstraintOp     303  CreateTableOp
-   454  DropIndexOp           73  AlterColumnOp
+   454  DropIndexOp           85  AlterColumnOp
                               27  CreateForeignKeyOp
                               10  DropTableOp
-  ── 1379 destructive ──
+                               7  CreateUniqueConstraintOp
+  ── 1367 destructive ──
 ```
+
+This block first read 5060 operations / 1379 destructive, over a breakdown that
+omitted `CreateUniqueConstraintOp` and so printed only 5053. Both headline
+figures were right when written, and the whole difference is accounted for:
+`DropColumnOp` −12 and `AlterColumnOp` +12 are one change seen twice, NR-089
+mapping twelve physical trust columns so they stopped being unmapped and became
+type mismatches instead; `AddColumnOp` 314 → 293 is migrations `20260915_0001`
+(11 `created_at`/`updated_at`/`version` columns across six `gov_*` and two
+`ecosystem_*` tables) and `20260915_0002` (10 attestation columns on
+`niam_machine_identities`) building columns the ORM already declared. The three
+causes sum to −21 exactly, with no remainder.
 
 None of that is caused by the topology change. It is pre-existing drift that the
 topology change merely made visible, and two cross-checks confirm both
