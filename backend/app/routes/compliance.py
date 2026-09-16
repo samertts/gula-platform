@@ -35,6 +35,7 @@ from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.dependencies import get_current_user
+from ..security.rbac import ROLE_PERMISSIONS
 from ..services.audit_service import get_latest_anchor, log_action, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
@@ -43,6 +44,26 @@ router = APIRouter(prefix="/compliance", tags=["government compliance"])
 
 
 _COMPLIANCE_ROLES = {"admin", "master_admin", "province_admin", "lab_admin"}
+
+
+def _rbac_claim() -> str:
+    """The RBAC line of the audit reports, derived from the enforced model.
+
+    This read "PASS - 4 roles: master_admin, admin, staff, technician" as a
+    string literal, in a document whose stated audience is government and
+    ISO 27001 auditors. `ROLE_PERMISSIONS` carries sixteen. The twelve it did
+    not mention include `ministry_admin` and `province_admin`, which reach
+    beyond a single lab, and the six-role financial separation-of-duties set
+    (`cashier`, `finance_operator`, `finance_controller`, `finance_auditor`,
+    `reconciler`, `refund_reviewer`). An auditor reading that line was told the
+    access-control model was a quarter of its real size.
+
+    Deriving it means the sentence cannot go stale the next time a role is
+    added, which is the only reason it was wrong: nobody edits a literal when
+    they add a role.
+    """
+    roles = sorted(ROLE_PERMISSIONS)
+    return f"PASS - {len(roles)} roles: {', '.join(roles)}"
 
 
 @router.get("/info", summary="System information for government audit")
@@ -698,11 +719,16 @@ def audit_integrity(
 
     result = verify_audit_chain(db, limit=min(limit, 5000))
     result["lab_id"] = current_user.lab_id
+    result["scope"] = "platform"
     result["checked_at"] = datetime.now(UTC).isoformat()
     result["note"] = (
         "Hash chain verification: each entry's chain_hash = "
         "SHA-256(previous_chain_hash + record_data). "
-        "A broken chain indicates record tampering or deletion."
+        "A broken chain indicates record tampering or deletion. "
+        "SCOPE: the chain links every lab's entries in one id-ordered sequence "
+        "(see audit_service._get_last_chain_hash), so it can only be verified "
+        "platform-wide. entries_checked and broken_entries therefore cover all "
+        "labs, not lab_id above -- lab_id identifies the caller, not the data."
     )
     return result
 
@@ -733,7 +759,9 @@ def security_report(
         SELECT COUNT(*) FROM audit_logs
         WHERE action = 'login_failed'
           AND created_at >= NOW() - INTERVAL '24 hours'
+          AND lab_id = :lab_id
     """),
+            {"lab_id": current_user.lab_id},
         ).scalar()
         or 0
     )
@@ -768,7 +796,7 @@ def security_report(
             "password_hashing": "PASS - bcrypt with random salt",
         },
         "access_control": {
-            "rbac": "PASS - 4 roles: master_admin, admin, staff, technician",
+            "rbac": _rbac_claim(),
             "multi_tenant": "PASS - per-lab data isolation enforced at query level",
             "object_level_auth": "PASS - patient/order/result access checked per lab_id",
             "failed_logins_24h": failed_logins_24h,
@@ -980,8 +1008,10 @@ def system_status(
         db.execute(
             sql_text(
                 "SELECT COUNT(*) FROM audit_logs "
-                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'",
+                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours' "
+                "AND lab_id = :lab_id",
             ),
+            {"lab_id": current_user.lab_id},
         ).scalar()
         or 0
     )
@@ -1101,7 +1131,7 @@ def system_status(
             "fhir_r4": "PASS",
             "dhis2_export": "PASS",
             "audit_immutability": "PASS - DB trigger + hash chain + external anchor",
-            "rbac": "PASS - 4 roles enforced",
+            "rbac": _rbac_claim(),
             "secure_cookies": "PASS" if IS_PRODUCTION else "DEV - Secure=False in development",
             "docs_protected": "PASS" if IS_PRODUCTION else "DEV - /docs open in development",
             "disaster_recovery": (

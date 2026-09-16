@@ -3277,6 +3277,72 @@
    "can_fix_now": false,
    "blocker": "Governance half needs a product decision: add flags to 38 models, or make delete() fail closed.",
    "evidence_strength": "EXECUTED — the defect and the repair were both run against real PostgreSQL."
+  },
+  {
+   "id": "NR-090",
+   "title": "The government compliance report attested to tenant isolation it was breaking in the same response, and described a 16-role access model as 4 roles",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/routes/compliance.py",
+   "category": "False compliance attestation / Cross-tenant read / Stale hard-coded verdict",
+   "wave": "repair",
+   "owner": "Platform security",
+   "status": "FIXED AND VERIFIED — both leaks closed and proved by execution; the residual unmeasurable claims are pinned at 23 and ratcheted",
+   "can_fix_now": false,
+   "blocker": "None for the fixed half. The 23 remaining hard-coded verdicts name controls in nginx, the TLS terminator and the deployment, which this process cannot observe; whether to measure, qualify or remove them from an auditor's checklist is a product decision.",
+   "complexity": "trivial to fix, serious in consequence",
+   "regression_risk": "Low — two COUNT(*) values become lab-scoped and one report string becomes derived. No key is added to or removed from any response; `scope` is additive.",
+   "evidence_strength": "EXECUTED — both the defect and the repair were run against real PostgreSQL with two labs of fixture data.",
+   "verification_method": "Fixture rows for two labs inserted into audit_logs on PostgreSQL 16 at head 20260915_0003 inside a transaction, the endpoints' own SQL extracted from the module by AST and executed verbatim, then rolled back. The probe database holds zero rows before and after.",
+   "affected_users": "Any lab admin or master_admin calling /compliance/security-report or /compliance/system-status — both endpoints are registered in app/factory.py and served.",
+   "description": "/compliance/security-report and /compliance/system-status describe themselves as reports for government and ISO 27001 auditors. Three separate ways of being untrue were found in them.\n\n(1) CROSS-TENANT READ, contradicted in the same response. security_report printed 'multi_tenant': 'PASS - per-lab data isolation enforced at query level' two keys above failed_logins_24h, which ran SELECT COUNT(*) FROM audit_logs WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours' with no lab_id. system_status carried a second copy of the same query, which a grep for the triple-quoted form missed and the AST guard caught on its first run. audit_logs.lab_id exists and carries its own index (ix_audit_logs_lab_id), so the omission was not a schema limitation.\n\n(2) A STALE LITERAL. 'rbac': 'PASS - 4 roles: master_admin, admin, staff, technician' was a string constant. ROLE_PERMISSIONS carries 16. The twelve undisclosed roles include ministry_admin and province_admin, which are not lab-scoped at all, and the entire six-role financial separation-of-duties set (cashier, finance_operator, finance_controller, finance_auditor, reconciler, refund_reviewer). An auditor was told the access-control model was a quarter of its real size.\n\n(3) A TRUE MEASUREMENT UNDER A FALSE LABEL. /compliance/audit-integrity verifies the hash chain platform-wide, which is correct and unavoidable — audit_service._get_last_chain_hash selects the newest chain_hash across all labs, so every lab's entries interleave in one id-ordered sequence and a per-lab chain would not verify. The endpoint then set result['lab_id'] = current_user.lab_id onto that result, presenting a platform-wide entries_checked as the caller's own.",
+   "root_cause": "The report asserts rather than measures. 23 of its verdicts are string literals that no code computes, so nothing fails when the system they describe changes — nobody edits a literal when they add a role, and nothing links the isolation claim to the queries beneath it. The two measured values it does carry (the chain result and the active-user count) lend their credibility to the literals beside them.",
+   "security_impact": "A lab admin was served a count of every lab's failed logins, from two separate endpoints. The disclosure is aggregate rather than row-level, but it is a cross-tenant read that CLAUDE.md Security Invariant #1 forbids, in the endpoint that certifies Invariant #1 is held.",
+   "legal_impact": "The stated audience is government and ISO 27001 auditors. A report that understates the access-control model by twelve roles, including two that cross lab boundaries and the whole financial separation-of-duties set, misinforms a regulator about the controls under review.",
+   "data_integrity_impact": "None — every change is to a read path. No write, schema or migration is touched.",
+   "clinical_impact": "None — no clinical data is read or written by these endpoints.",
+   "operational_impact": "Two COUNT(*) values fall to the caller's own lab, so dashboards reading them will show smaller numbers that are now correct.",
+   "scalability_impact": "Marginally positive — both counts now hit ix_audit_logs_lab_id instead of scanning every lab's rows.",
+   "minimal_safe_fix": "Add AND lab_id = :lab_id to both queries; derive the rbac line from ROLE_PERMISSIONS; add an additive 'scope' key to the chain result rather than removing 'lab_id'.",
+   "recommended_fix": "Applied. The remaining 23 unmeasurable verdicts need a product decision, not an engineering one.",
+   "acceptance_criteria": [
+    "Both failed-login counts return only the caller's lab, proved against PostgreSQL with two labs of fixture data.",
+    "No 'rbac' verdict in the module is a string literal.",
+    "/compliance/audit-integrity records that the chain result is platform-wide.",
+    "The hard-coded verdict count does not rise above 23."
+   ],
+   "evidence": [
+    "EXECUTED against PostgreSQL 16 at head 20260915_0003, three lab-1 and five lab-2 failed logins inserted in a transaction: the shipped security_report query returned 8 to a lab-1 caller; the same query with lab_id returned 3. Five of the eight rows belonged to lab 2.",
+    "EXECUTED after the fix, both endpoints' SQL extracted from the module by AST and run verbatim: security_report and system_status each return 3 as lab 1 and 5 as lab 2. Probe database rows before and after: 0.",
+    "MEASURED: app.security.rbac.ROLE_PERMISSIONS has 16 entries — admin, cashier, citizen, doctor, finance_auditor, finance_controller, finance_operator, lab_admin, lab_staff, master_admin, ministry_admin, province_admin, reconciler, refund_reviewer, staff, technician. The report named 4.",
+    "READ from the database: audit_logs.lab_id exists, is indexed as ix_audit_logs_lab_id, and the table carries trg_audit_logs_no_update and trg_audit_logs_no_delete — so the report's separate immutability claim is one of the true ones.",
+    "STATIC: audit_service._get_last_chain_hash runs SELECT chain_hash FROM audit_logs ORDER BY id DESC LIMIT 1 with no lab filter, and _compute_chain_hash's record omits lab_id entirely. The chain is global by construction, and tenant attribution is not covered by it.",
+    "AST: 23 hard-coded PASS/PARTIAL/FAIL verdicts remain across the two reports (20 in security_report, 5 in system_status, less the 2 rbac literals now derived).",
+    "Negative proof, all four guards, source restored byte-identical (md5 verified): removing the lab_id clause, restoring the rbac literal, dropping the scope key and adding one more PASS verdict each fire their own assertion.",
+    "Gate: unit 434 -> 438 passed, 4 deselected, by exactly the four tests added."
+   ],
+   "affected_components": [
+    "app/routes/compliance.py",
+    "app/services/audit_service.py",
+    "app/security/rbac.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-088 — the same class of defect (a raw-SQL read missing lab_id) in a different table. NR-088's guard watches app-wide reads of `patients` only, so neither of these two audit_logs sites was in its scope. The two guards now cover two tables; nothing covers the rest.",
+    "NR-062 — audit coverage. This finding is about reading audit_logs, not writing them, and does not change the coverage measurement.",
+    "The three audit_logs reads in this one router use three different tenant-scoping strategies: audit_summary scopes by LabUser.id membership, security_report now scopes by lab_id, and verify_audit_chain is deliberately unscoped. There is no canonical way to scope an audit query, which is why each site invented one."
+   ],
+   "contradictions": [
+    "routes/compliance.py printed 'per-lab data isolation enforced at query level' as PASS while two of its own queries read every lab's audit rows."
+   ],
+   "related_tests": [
+    "backend/tests/test_compliance_reports_are_true.py"
+   ],
+   "related_files": [
+    "backend/app/routes/compliance.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
   }
  ]
 }
