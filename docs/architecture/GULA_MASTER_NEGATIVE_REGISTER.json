@@ -5,9 +5,9 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 102,
+  "total": 103,
   "P0": 14,
-  "P1": 48,
+  "P1": 49,
   "P2": 30,
   "P3": 10
  },
@@ -4123,6 +4123,73 @@
    "related_files": [
     "backend/app/nursing/medication.py",
     "backend/app/nursing/routes.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-103",
+   "title": "The self-healing Redis repair reported 'Redis ping OK' while Redis was down, because the in-memory fallback's ping() always returns True",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/security/redis_client.py, app/core/auto_repair.py, app/security/auth.py",
+   "category": "False green / Security control degradation / Session revocation",
+   "wave": "repair",
+   "owner": "Platform security / SRE",
+   "status": "PARTLY RESOLVED — the false success is gone and the degradation is now reportable; recovery without a restart is NOT implemented and is the open half",
+   "can_fix_now": false,
+   "blocker": "Real recovery means rebuilding the `cache` singleton, and five modules bind it at import. Converting those to late lookups or a proxy changes the object behind rate limiting, sessions, MFA, the API firewall and idempotency platform-wide. That is a security-infrastructure change that needs review, not a side effect of fixing a log message.",
+   "complexity": "small for the honest reporting (applied); medium and review-gated for recovery",
+   "regression_risk": "Low for what was applied. The repair action's return value changed from True to False in exactly the case where it was lying; no control behaviour changed.",
+   "evidence_strength": "EXECUTED in all four states, including the positive one against a real Redis with two separate processes.",
+   "verification_method": "Ran the process with REDIS_URL pointing at a closed port, with REDIS_URL unset, and against a live redis-server on 6399; cross-process revocation checked by writing in one interpreter and reading in a second; 7 CI-gated guards with 7 negative proofs, sources restored byte-identical (md5).",
+   "affected_users": "Every authenticated user on a multi-worker deployment whose Redis was unavailable when a worker started.",
+   "description": "app/security/redis_client.py binds `cache` once, at import:\n\n    cache: _MemoryStore | _RedisWrapper = _build_cache()\n\n_build_cache() falls back to _MemoryStore when REDIS_URL is unset OR when Redis is merely unreachable at that moment. The first path is gated -- config.py exits in production unless ALLOW_DEGRADED_REDIS=true -- and that gate is correct. The SECOND path needs no flag at all: a deployment that sets REDIS_URL properly, but whose Redis happens to be down when a worker boots, silently gets a per-worker store.\n\nTHE FALSE GREEN. _MemoryStore.ping() returns True unconditionally, documented 'Always return True for in-memory store as it's always available'. The auto-repair engine's _repair_redis_reconnect called cache.ping() and on True recorded ('redis_reconnect', 'Redis ping OK', True). So the self-healing layer reported a SUCCESSFUL Redis repair while Redis was down and nothing had been repaired. It is a liveness check on the object, not on Redis.\n\nIT CANNOT RECONNECT. Nothing rebinds `cache` anywhere in the codebase -- one assignment, at line 152, at import. The docstring said 'Force Redis client to reconnect' and the comment in _build_cache said 'The self-healing system will attempt to recover it'. Neither was true. A worker that booted during an outage stays degraded for its entire lifetime, long after Redis returns, while monitoring says Redis is fine.\n\nWHAT IT COSTS. Token revocation runs on this cache: security/auth.py blacklist_token and is_token_blacklisted. Executed: worker A revokes a jti, worker A sees it revoked, worker B does not. So logout -- and revoking a session known to be compromised -- becomes worker-local and the token stays valid elsewhere until it expires naturally. Sessions, rate limiting, MFA challenges, the API firewall and HTTP idempotency (NR-095) ride the same store.\n\nWHY RECOVERY IS NOT ATTEMPTED HERE. Five modules bind `cache` at MODULE level: services/idempotency.py, security/session.py, security/rate_limit.py, routes/verification.py, firewall/api_firewall.py. They would keep the old store across any rebind, so a naive rebuild would recover revocation while leaving rate limiting and idempotency silently degraded -- partial recovery that looks total, which is worse than honest degradation. Those five are pinned in a shrink-only ledger so the cost of the real fix cannot grow unnoticed.",
+   "root_cause": "A generic store was given a Redis-shaped health method. _MemoryStore.ping() answers 'is this object usable', the repair asked 'is Redis healthy', and the two questions look identical at the call site. The singleton binding then made the condition permanent while the monitoring made it invisible.",
+   "security_impact": "Session revocation is not effective across workers while degraded. A token revoked on logout, or revoked because the session was compromised, continues to be accepted by every other worker until natural expiry. Rate limiting and the API firewall degrade with it.",
+   "legal_impact": "An audited logout that does not actually end the session elsewhere misrepresents what happened.",
+   "data_integrity_impact": "Indirect, through NR-095: idempotency claims are per-worker under the same degradation, so a retry can duplicate a clinical write.",
+   "clinical_impact": "Indirect and via NR-095 rather than direct.",
+   "operational_impact": "The material one. The health signal actively contradicted reality: an operator watching auto-repair saw 'Redis ping OK' successes during an outage. It now reports the failure and names the restart requirement.",
+   "scalability_impact": "Worsens with worker count: the more workers, the more of them a revoked token remains valid on.",
+   "minimal_safe_fix": "APPLIED: is_shared() and degraded_reason() in redis_client, and _repair_redis_reconnect now reports failure with an operator-readable reason instead of success whenever the cache is not Redis-backed.",
+   "recommended_fix": "Make `cache` a thin proxy delegating to a swappable backend, so a rebuild reaches every call site including the five module-level binders, then let the repair action genuinely rebuild and verify. Alternatively require Redis and let the worker refuse to start, which trades availability for a guarantee. Either is a deliberate decision.",
+   "acceptance_criteria": [
+    "No repair action reports success for a Redis reconnect while the process is on the in-memory store.",
+    "The degraded state is reportable by a function that does not rely on ping().",
+    "The operator-facing reason says the process cannot self-recover and needs a restart.",
+    "The set of modules binding `cache` at import does not grow.",
+    "When recovery is built, it reaches all call sites, proved by execution rather than by inspection."
+   ],
+   "evidence": [
+    "EXECUTED, REDIS_URL set to a closed port: cache=_MemoryStore, is_shared()=False, cache.ping()=True. Before the fix _repair_redis_reconnect() returned True and recorded 'Redis ping OK'; after it returns False with the degraded reason.",
+    "EXECUTED, REDIS_URL unset: same verdict.",
+    "EXECUTED against a live redis-server on 6399 (positive proof): cache=_RedisWrapper, is_shared()=True, degraded_reason()='', _repair_redis_reconnect() returns True.",
+    "EXECUTED cross-process with that live Redis: a jti blacklisted in one interpreter is seen as revoked by a SECOND, independent interpreter. Under the memory store the same test shows worker A True, worker B False.",
+    "MEASURED: `cache` is assigned exactly once in the codebase (redis_client.py:152) and no code rebinds it.",
+    "MEASURED: 25 call sites import `cache` inside a function and would see a rebuild; 5 bind it at module level and would not — services/idempotency.py, security/session.py, security/rate_limit.py, routes/verification.py, firewall/api_firewall.py.",
+    "Seven negative proofs, each failing with its intended message, sources restored byte-identical (md5), including a positive-direction one (the repair must still report success when the cache really is shared) and a genuinely new sixth module added and removed to prove the binder ledger catches growth."
+   ],
+   "affected_components": [
+    "app/security/redis_client.py",
+    "app/core/auto_repair.py",
+    "app/security/auth.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-095 — the same degradation reached through idempotency. That finding measured the store; this one found that the health layer reported it as healthy.",
+    "NR-097 — §32-D. idempotency_store already reports MEASURED_PASS/MEASURED_FAIL from is_shared(); this gives the cache the same honesty at its own layer.",
+    "NR-102 / NR-096 — the same species of defect: a mechanism reporting a result it did not compute."
+   ],
+   "contradictions": [
+    "_build_cache()'s own comment says 'The self-healing system will attempt to recover it'. Nothing rebuilds the singleton, so that sentence was false when written. The repair's docstring now says so."
+   ],
+   "related_tests": [
+    "backend/tests/test_cache_degradation_is_reported.py"
+   ],
+   "related_files": [
+    "backend/app/security/redis_client.py",
+    "backend/app/core/auto_repair.py"
    ],
    "related_adrs": [],
    "related_contracts": []

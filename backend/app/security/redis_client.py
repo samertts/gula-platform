@@ -150,3 +150,37 @@ def _build_cache() -> _MemoryStore | _RedisWrapper:
 
 
 cache: _MemoryStore | _RedisWrapper = _build_cache()
+
+
+def is_shared() -> bool:
+    """True when the cache is Redis-backed and therefore shared across workers.
+
+    False means this process fell back to `_MemoryStore`, which is per-process.
+    Everything built on the cache degrades with it, and not uniformly visibly:
+    token revocation (security/auth.py blacklist_token), sessions, rate
+    limiting, MFA challenges, the API firewall and HTTP idempotency all become
+    worker-local while continuing to behave normally within one worker.
+
+    `_MemoryStore.ping()` returns True unconditionally, so a liveness ping
+    cannot answer this question. Ask this instead.
+    """
+    return not isinstance(cache, _MemoryStore)
+
+
+def degraded_reason() -> str:
+    """Why the cache is not shared, phrased for an operator. Empty when shared."""
+    if is_shared():
+        return ""
+    if not REDIS_URL:
+        return (
+            "REDIS_URL is not set, so this process is using a per-worker in-memory "
+            "store. Token revocation, sessions, rate limiting and idempotency are "
+            "not shared across workers."
+        )
+    return (
+        "REDIS_URL is set but Redis was unreachable when this process started, so "
+        "it fell back to a per-worker in-memory store. The fallback is decided once "
+        "at import and is NOT re-attempted, so this process will not recover even "
+        "after Redis returns; it needs a restart. Token revocation, sessions, rate "
+        "limiting and idempotency are not shared across workers until then."
+    )
