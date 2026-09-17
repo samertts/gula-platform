@@ -42,13 +42,20 @@ module's own three statements extracted by AST and run verbatim:
     request proceeds unprotected. Executed: rowcount 0, and the caller cannot
     tell.
 
-A correct implementation already exists and is live.
-`app/services/order_service.py::create_order` keys its cache
-`f"idempotency:order:{lab_id}:{idempotency_key}"` -- tenant in the key, not in a
-filter -- fingerprints the payload so a key cannot be reused for different
-clinical content, and claims atomically with `set_if_absent`. `POST /orders`
-passes the header through to it. That is the design this module should adopt if
-it is ever wired, rather than the one it has.
+A correct implementation already exists and is live. It was inline in
+`order_service.create_order` when this file was written and is now
+`app/services/idempotency.py`, keyed
+`f"idempotency:{scope}:{tenant_id}:{key}"` -- tenant in the key, not in a
+filter -- fingerprinting the payload so a key cannot be reused for different
+clinical content, and claiming atomically with `set_if_absent`. `POST /orders`,
+`POST /samples` and `POST /batch/orders` all pass the header through to it.
+That is the design this module should adopt if it is ever wired, rather than
+the one it has.
+
+This module also has eleven tests of its own, in `tests/test_idempotency.py`,
+which is why §26's "no test dependency" precondition for retirement is not
+met either. One of them asserted a tenant guarantee the module does not have;
+its docstring now says what it actually covers.
 
 So these tests do not repair the module. They hold the precondition: it stays
 unreachable until the three defects are fixed, and the implementation that does
@@ -64,7 +71,11 @@ import pytest
 
 BACKEND = pathlib.Path(__file__).resolve().parents[1]
 DORMANT = BACKEND / "app" / "core" / "idempotency.py"
-LIVE = BACKEND / "app" / "services" / "order_service.py"
+#: The canonical claim. `order_service` used to carry this inline; it was
+#: extracted so the other call sites stop re-typing it, and this guard followed
+#: it rather than being relaxed -- the rot check is what forced the move to be
+#: deliberate instead of silent.
+LIVE = BACKEND / "app" / "services" / "idempotency.py"
 
 #: Route wirings of the dormant dependency. It may fall to stay at zero; it may
 #: not rise while the defects in this module's docstring remain.
@@ -169,11 +180,11 @@ def test_the_live_implementation_keeps_the_tenant_in_its_cache_key() -> None:
     acquires the defect this file exists to keep dormant.
     """
     source = LIVE.read_text(encoding="utf-8")
-    assert 'f"idempotency:order:{lab_id}:{idempotency_key}"' in source, (
-        "the live idempotency cache key no longer contains lab_id. Two labs "
-        "presenting the same Idempotency-Key would then share a cache entry, "
-        "which is exactly the cross-tenant replay app/core/idempotency.py is "
-        "held dormant for."
+    assert 'f"idempotency:{scope}:{tenant_id}:{key}"' in source, (
+        "the canonical idempotency cache key no longer contains the tenant. "
+        "Two labs presenting the same Idempotency-Key would then share a cache "
+        "entry, which is exactly the cross-tenant replay "
+        "app/core/idempotency.py is held dormant for."
     )
     assert "set_if_absent" in source, (
         "the live idempotency claim is no longer atomic. Without a "

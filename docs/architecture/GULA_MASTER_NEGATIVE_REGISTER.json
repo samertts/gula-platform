@@ -3353,9 +3353,9 @@
    "category": "Duplicate source of truth / Latent cross-tenant disclosure / Coverage gap on a clinical write",
    "wave": "repair",
    "owner": "Platform / Clinical Standards",
-   "status": "MEASURED AND GUARDED — the dormant module is proved unsafe and pinned at zero wirings; the live implementation is correct and now ratcheted; the /samples gap is recorded, not closed",
+   "status": "PARTLY RESOLVED — §32-A answered and implemented (POST /samples and POST /batch/orders now claim idempotency); §32-B answered REWRITE, not retire, and the rewrite is blocked on a schema decision. The dormant module remains pinned at zero application wirings.",
    "can_fix_now": false,
-   "blocker": "Whether POST /samples and the batch order path should require an Idempotency-Key is a clinical product decision, not an engineering one. Retiring app/core/idempotency.py versus rewriting it on the live design is likewise the owner's call.",
+   "blocker": "§32-B: retirement is NOT available. §26 requires proving no test dependency before retiring, and tests/test_idempotency.py has eleven tests against this module. Rewriting it is the right disposition because NR-095 shows the cache-backed store is correct only when Redis is present, but the rewrite needs idempotency_keys' primary key widened from (key) to (lab_id, key) — a deliberate schema decision.",
    "complexity": "the proof is small; the decisions behind it are not",
    "regression_risk": "None from this change — no application code was modified. Guards only.",
    "evidence_strength": "EXECUTED — the dormant module's own three SQL statements, extracted by AST, run verbatim against PostgreSQL 16 with two labs.",
@@ -3382,7 +3382,11 @@
     "STATIC: no module in app/ imports app.core.idempotency. idempotency_check appears as a Depends nowhere; purge_expired_keys has no caller.",
     "STATIC: app/routes/results.py:177 passes idempotency_key=request.headers.get('Idempotency-Key') into create_order. app/routes/samples.py:48 passes nothing. app/routes/batch.py:68 passes idempotency_key=None explicitly.",
     "Negative proof, four guards, both sources restored byte-identical (md5 verified): importing the dependency into a route module, half-fixing the lookup, dropping lab_id from the live cache key and removing set_if_absent each fire their own assertion.",
-    "Gate: unit 438 -> 442 passed, 4 deselected, by exactly the four tests added."
+    "Gate: unit 438 -> 442 passed, 4 deselected, by exactly the four tests added.",
+    "§32-A ANSWERED — MANDATORY for both. POST /samples creates a physical specimen record with no natural uniqueness: samples.barcode is NOT NULL and UNIQUE but generate_barcode() mints SMP- + secrets.token_hex(6) per INSERT, so the constraint guarantees barcode uniqueness rather than request identity, and (order_id, sample_type) must not be unique because an order legitimately carries several tubes of the same type. POST /batch/orders passed idempotency_key=None explicitly for up to 50 orders. Both now claim through the canonical helper; the batch claims once for the whole request, since a retry must reproduce the same outcome including its per-item errors.",
+    "§32-B ANSWERED — REWRITE, not retire and not canonicalise-as-is. Retire is unavailable: eleven tests in tests/test_idempotency.py depend on the module, so §26's precondition fails. Canonicalise-as-is is unsafe: the three defects above are unchanged. Rewrite is correct because NR-095 shows the live cache-backed store degrades to per-worker without Redis, and PostgreSQL is the only store the application cannot run without.",
+    "EXTRACTED, not rewritten: the one correct implementation, inline in order_service.create_order, is now app/services/idempotency.py and is used by all three endpoints. Behaviour preservation proved differentially — the pre-refactor block and the helper were run over the same seven scenarios (no key, first use, retry, different payload, in-flight, retry while in flight, different lab) and produced IDENTICAL outcomes in every one.",
+    "FALSE GREEN FOUND in the module's own suite: test_same_key_different_lab_is_not_duplicate was documented as 'lab 2 cannot replay lab 1's response', a tenant-isolation guarantee. It exercises idempotency_check only, never cache(), which is the half that crosses tenants. The assertion is kept; the docstring now states what it covers and what it does not."
    ],
    "affected_components": [
     "app/core/idempotency.py",
@@ -3596,6 +3600,68 @@
    ],
    "related_files": [
     "backend/app/models/claim.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-095",
+   "title": "Idempotency protection silently disappears without Redis: the claim store falls back to a per-worker in-memory dict, so a retry handled by another gunicorn worker creates a duplicate clinical write",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/security/redis_client.py, app/services/idempotency.py",
+   "category": "Conditional loss of a clinical safety control / Deployment-dependent correctness",
+   "wave": "repair",
+   "owner": "Platform / Operations",
+   "status": "MEASURED AND SURFACED — the degradation is now published as a measured state; the durable fix is a database-backed store and is not yet built",
+   "can_fix_now": false,
+   "blocker": "Making the claim store database-backed needs idempotency_keys' primary key changed from (key) to (lab_id, key) — a schema decision on a table that NR-030 lists among the ten no ORM maps. Worth doing deliberately rather than as a side effect of this finding.",
+   "complexity": "small to surface, real work to fix durably",
+   "regression_risk": "None from this change — reporting only.",
+   "evidence_strength": "EXECUTED — two _MemoryStore instances, standing for two workers, were shown not to share a claim.",
+   "verification_method": "_build_cache() inspected with REDIS_URL unset; two independent _MemoryStore instances exercised with the same key.",
+   "affected_users": "Every lab, in any deployment where REDIS_URL is unset or Redis is unreachable, whenever a client retries a clinical write.",
+   "description": "app/security/redis_client.py::_build_cache falls back to a process-local _MemoryStore when REDIS_URL is unset or Redis is unreachable. In production it logs CRITICAL and continues in degraded mode. Its own log line says 'not shared across workers'.\n\ngunicorn runs WEB_CONCURRENCY workers (the pool budget in CLAUDE.md assumes 3), each with its own _MemoryStore. Executed:\n\n    worker A claims the key                  : True\n    worker A sees it                          : True\n    worker B sees it                          : False\n    worker B's retry claims the SAME key      : True\n\nSo a retry landing on a different worker is treated as a new request and the clinical write is repeated. This applies to POST /orders, and now equally to POST /samples and POST /batch/orders, which were given the same mechanism under NR-091's follow-up.\n\nNothing surfaced this. The mechanism exists, its tests pass (single-process), and the security report asserted protection. /compliance/system-status now publishes idempotency_store as MEASURED_PASS or MEASURED_FAIL from idempotency.is_shared(), so the degraded state is visible rather than assumed away.",
+   "root_cause": "Idempotency was built on an optional cache. Redis is explicitly optional in this platform -- the fallback is deliberate and useful for development -- but a correctness control must not be optional. PostgreSQL is the only store the application cannot run without, which is why idempotency_keys exists.",
+   "security_impact": "None directly. The failure is duplication, not disclosure.",
+   "clinical_impact": "A duplicated order or sample is a clinical-safety issue: two accession records for one specimen, or two orders for one clinical intent. CLAUDE.md exempts these endpoints from concurrency shedding because patient-safety operations must never be shed; replay protection is the other half of that guarantee.",
+   "data_integrity_impact": "Duplicate clinical rows on retry, in the degraded configuration only.",
+   "operational_impact": "Deployments without REDIS_URL believe they have replay protection and do not. The report now says so.",
+   "scalability_impact": "Worsens with worker count: more workers, lower the chance a retry lands on the one holding the claim.",
+   "minimal_safe_fix": "Applied: publish the store topology as a measured state so the gap is visible. Set REDIS_URL in any deployment that relies on idempotency.",
+   "recommended_fix": "Move the canonical claim to PostgreSQL. idempotency_keys already exists with lab_id, an FK to labs and an index; it needs its primary key widened from (key) to (lab_id, key) — the same correction NR-094 made to claims — and a rewritten writer, because the module that currently owns it is unsafe (NR-091).",
+   "acceptance_criteria": [
+    "The security report publishes the claim store's topology as a measured state, never as an unconditional PASS.",
+    "is_shared() stays a measurement and never gates a clinical write.",
+    "If a database-backed store is built, idempotency_keys is keyed (lab_id, key)."
+   ],
+   "evidence": [
+    "STATIC: _build_cache() returns _MemoryStore when REDIS_URL is falsy, logging CRITICAL first if IS_PRODUCTION. The non-production log line reads 'REDIS_URL not set — using in-memory store (not shared across workers)'.",
+    "EXECUTED: with REDIS_URL unset, _build_cache() returns _MemoryStore. Two instances: A claims a key (True), A sees it (True), B does not (False), and B's set_if_absent on the same key returns True.",
+    "STATIC: _MemoryStore holds a plain dict guarded by a threading.Lock — process-local by construction.",
+    "Gate: /compliance/system-status now reports idempotency_store as MEASURED_PASS or MEASURED_FAIL, computed from idempotency.is_shared(), and a guard requires both the call and the MEASURED_FAIL branch to remain."
+   ],
+   "affected_components": [
+    "app/security/redis_client.py",
+    "app/services/idempotency.py",
+    "app/routes/compliance.py"
+   ],
+   "dependencies": [
+    "NR-091"
+   ],
+   "intersections": [
+    "NR-091 — that finding named the dormant DB-backed module unsafe. This one explains why a DB-backed store is nonetheless the right destination: the cache-backed one is correct only when an optional dependency is present.",
+    "NR-090 — the same report that asserted unmeasurable controls now carries this as a measured one, which is the pattern §32-D asks for.",
+    "NR-030 — idempotency_keys is one of the ten physical tables no ORM maps. It must not be dropped; it is the store the durable fix needs."
+   ],
+   "contradictions": [
+    "The security report asserted replay protection while the store backing it could be per-worker. That specific claim is now measured."
+   ],
+   "related_tests": [
+    "backend/tests/test_idempotency_is_canonical.py"
+   ],
+   "related_files": [
+    "backend/app/services/idempotency.py"
    ],
    "related_adrs": [],
    "related_contracts": []

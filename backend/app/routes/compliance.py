@@ -36,6 +36,7 @@ from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 from ..security.rbac import ROLE_PERMISSIONS
+from ..services import idempotency
 from ..services.audit_service import get_latest_anchor, log_action, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
@@ -817,6 +818,18 @@ def security_report(
             "coverage": "All login, patient, order, result, admin actions logged",
         },
         "api_security": {
+            # MEASURED, not asserted: replay protection is only effective when
+            # the claim store is shared by every worker. redis_client falls back
+            # to a per-process store when REDIS_URL is unset or Redis is
+            # unreachable -- including in production, where it logs CRITICAL and
+            # continues. Reporting that as PASS would be the exact defect this
+            # report was fixed for.
+            "idempotency_store": (
+                "MEASURED_PASS - shared across workers"
+                if idempotency.is_shared()
+                else "MEASURED_FAIL - per-worker in-memory store: a retry handled "
+                     "by another worker is not recognised as a replay. Set REDIS_URL."
+            ),
             "rate_limiting": "PASS - nginx: API 100/min, Auth 10/min, Upload 20/min",
             "request_body_limit": "PASS - 10MB max request body enforced",
             "security_headers": "PASS - CSP, X-Frame-Options, HSTS, Permissions-Policy",

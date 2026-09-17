@@ -1,6 +1,6 @@
 """Sample collection and tracking endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from ..models.lab_user import LabUser
 from ..models.sample import Sample
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
+from ..services import idempotency
 from ..services.audit_service import log_action
 
 router = APIRouter(prefix="/samples", tags=["samples"])
@@ -49,10 +50,39 @@ VALID_STATUSES = ["collected", "received", "processing", "analyzed", "rejected"]
 def create_sample(
     data: SampleCreate,
     request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Register a new sample for an order."""
+    """Register a new sample for an order.
+
+    A sample is a physical specimen record, and nothing about it is naturally
+    unique: `barcode` is minted per INSERT by `generate_barcode()`
+    (`SMP-` + `secrets.token_hex(6)`), so its unique constraint cannot
+    deduplicate a retry, and an order legitimately carries several tubes of the
+    same type, so `(order_id, sample_type)` must not be unique either. A client
+    that retries after a timeout therefore registers the same tube twice, and
+    the lab then has two accession records for one specimen.
+
+    So the key is the only mechanism available, and it is honoured when sent.
+    """
+    idem = idempotency.begin(
+        scope="sample",
+        tenant_id=current_user.lab_id,
+        key=idempotency_key,
+        payload={
+            "order_id": data.order_id,
+            "sample_type": data.sample_type,
+            "collected_by": data.collected_by,
+            "notes": data.notes,
+            "storage_location": data.storage_location,
+        },
+    )
+    if idem.conflict:
+        raise HTTPException(status_code=idem.conflict["status_code"], detail=idem.conflict["error"])
+    if idem.replay is not None:
+        return idem.replay
+
     order = (
         db.query(LabOrder)
         .filter(
@@ -62,12 +92,14 @@ def create_sample(
         .first()
     )
     if not order:
+        idem.release()
         raise HTTPException(status_code=404, detail="Order not found")
 
     # Block sample creation on locked (validated) orders
     assert_not_locked(order)
 
     if data.sample_type not in VALID_SAMPLE_TYPES:
+        idem.release()
         raise HTTPException(status_code=400, detail="Invalid sample type")
 
     sample = Sample(
@@ -94,10 +126,12 @@ def create_sample(
     db.commit()
     db.refresh(sample)
 
-    return {
+    response = {
         "message": "Sample registered",
         "sample": sample_to_dict(sample),
     }
+    idem.complete(response)
+    return response
 
 
 @router.get("")
