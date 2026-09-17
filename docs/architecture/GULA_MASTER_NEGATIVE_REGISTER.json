@@ -3705,7 +3705,8 @@
     "STATIC: the planner's except branch returns [{'tool': 'search_knowledge_graph', 'params': {'query': task}, 'required': False}] — a different tool, substituted silently.",
     "STATIC: all three clinical tools are registered with requires_approval=False, so the ai_suggest/approval path does not run for them.",
     "Negative proof, sources restored byte-identical (md5): moving the gate after next(get_db()) fires the ordering assertion; flipping the default to true fires the default assertion; restoring str(exc) fires the disclosure assertion.",
-    "Gate: unit 470 -> 473 passed, 4 deselected, by exactly the three tests added."
+    "Gate: unit 470 -> 473 passed, 4 deselected, by exactly the three tests added.",
+    "CORRECTION to this finding's own evaluation criterion, measured after it was written. The criterion said 'ai/governance.py INSERTs ai_evaluations with no lab_id', which is true of the statement but implied a live write. It is not one: app.ai.governance.evaluator.evaluate() has ZERO callers across app/. The only `.evaluate(` hits belong to different objects entirely — the certification evaluator, the governance policy engine, the research platform's early-warning SDK. app/routes/ai_platform.py imports the AI evaluator but uses only get_stats(), which reads an in-memory list. So _persist is unreachable and ai_evaluations has no writer at all; the table is physical with zero rows written. The criterion stands as a readiness gap — if the evaluator is ever wired, it will store prompts and responses with lab_id NULL despite the column carrying an FK to labs — but it is latent, not live, and this record previously did not say so."
    ],
    "affected_components": [
     "app/ai/agent_runtime.py",
