@@ -355,6 +355,33 @@ def list_hospitals(
     )
 
 
+@router.get("/occupancy", summary="Bed occupancy dashboard")
+def occupancy_stats(
+    hospital_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    return HospitalService.bed_occupancy_stats(db, current_user.lab_id, hospital_id)
+
+
+@router.get("/appointments", summary="List hospital appointments")
+def list_appointments(
+    hospital_id: int | None = Query(None),
+    patient_id: int | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    appointments = HospitalService.list_appointments(
+        db, current_user.lab_id, hospital_id, patient_id, skip, limit,
+    )
+    return _paginated_response(
+        [_model_to_dict(a) for a in appointments],
+        len(appointments), skip, limit,
+    )
+
+
 @router.get("/{hospital_id}", summary="Get hospital")
 def get_hospital(
     hospital_id: int,
@@ -744,15 +771,6 @@ def transfer_bed(
 # ── Occupancy ──────────────────────────────────────────────────────────────────
 
 
-@router.get("/occupancy", summary="Bed occupancy dashboard")
-def occupancy_stats(
-    hospital_id: int | None = Query(None),
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
-):
-    return HospitalService.bed_occupancy_stats(db, current_user.lab_id, hospital_id)
-
-
 # ── Unit CRUD ──────────────────────────────────────────────────────────────────
 
 
@@ -954,24 +972,6 @@ def create_cost_center(
 
 
 # ── Appointment management ─────────────────────────────────────────────────────
-
-
-@router.get("/appointments", summary="List hospital appointments")
-def list_appointments(
-    hospital_id: int | None = Query(None),
-    patient_id: int | None = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
-):
-    appointments = HospitalService.list_appointments(
-        db, current_user.lab_id, hospital_id, patient_id, skip, limit,
-    )
-    return _paginated_response(
-        [_model_to_dict(a) for a in appointments],
-        len(appointments), skip, limit,
-    )
 
 
 @router.post("/appointments", summary="Create hospital appointment", status_code=201)

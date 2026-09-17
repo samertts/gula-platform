@@ -5,10 +5,10 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 98,
-  "P0": 13,
+  "total": 100,
+  "P0": 14,
   "P1": 48,
-  "P2": 27,
+  "P2": 28,
   "P3": 10
  },
  "findings": [
@@ -3853,6 +3853,145 @@
    ],
    "related_files": [
     "backend/app/routes/clinical_orders.py",
+    "backend/app/config.py",
+    ".env.example"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-099",
+   "title": "Thirty literal routes are unreachable because a parameterised sibling is declared before them",
+   "severity": "P2",
+   "priority": 3,
+   "domain": "13 route modules across app/national, app/pharmacy, app/routes, app/identity, app/governance, app/public_health",
+   "category": "Correctness / Dead endpoint / Route resolution",
+   "wave": "repair",
+   "owner": "Platform engineering",
+   "status": "PARTLY RESOLVED — guard in CI with a 30-entry ledger; 4 fixed, 26 remain",
+   "can_fix_now": true,
+   "blocker": "",
+   "complexity": "small per module, thirteen modules; each fix ACTIVATES a handler that has never served a request, so each needs its tenant scoping confirmed first",
+   "regression_risk": "Low per route and the reorder is mechanically verifiable — the four applied here are pure reorders, proved by an identical sorted-line multiset before and after. The real risk is not the reorder but what it switches on.",
+   "evidence_strength": "EXECUTED — resolution confirmed through the application's own matcher, not a reimplementation of it.",
+   "verification_method": "create_app(), flatten the route tree through _IncludedRouter.original_router, then resolve each path with the routes' own matches()/path_regex. Auth comparison via each route's solved FastAPI dependant.",
+   "affected_users": "Anyone calling the affected endpoints, including three live frontend callers.",
+   "description": "Starlette resolves routes in declaration order. GET /pharmacy/drugs/{drug_id} matches /pharmacy/drugs/search, so a /drugs/search declared later never runs: the request lands in get_drug with drug_id='search'. Thirty routes across thirteen modules are in that state.\n\nMeasured, not inferred. The first version of this scan reported zero, because this FastAPI (0.141.1) mounts included routers as _IncludedRouter rather than flattening them into app.routes, so isinstance(r, APIRoute) matched nothing. Zero looked like good news. The corrected scan finds 2102 routes and 30 shadowed; ten were then re-checked one by one through the app's own matcher and all ten resolved to the parameterised sibling.\n\nSEVERITY. This is P2 rather than P1 because it does not weaken authorization: on all thirty pairs the swallowing handler's solved dependency set is equal to or stricter than the intended handler's, so no request reaches a weaker check than the one its path was meant to hit. That property is now itself a test — if it ever stops holding, the finding is P1.\n\nWhat it does do is make thirty endpoints dead, three of them with live frontend callers: PublicHealthApiPage.tsx calls /public-health/disease-cases/stats, and useApi.ts calls /hospital/occupancy and /hospital/appointments. POST /hospital/appointments is not shadowed, so appointments can be created and not listed — the same write-reachable, read-shadowed shape as NR-098.\n\nFIXING IT ACTIVATES CODE. Reordering makes a handler reachable that has never served a request, which is precisely the trap NR-098 names. An entry therefore leaves the ledger only with the reorder that fixes it and only after its handler is shown to scope reads to the caller's tenant. A crude regex over handler bodies called 28 of 30 unscoped; reading them showed that verdict is unreliable — the pharmacy handlers carry tenancy through _get_pharmacy_service(db, user), which passes user.lab_id into a service that filters DrugBatch.lab_id. That false positive is why each module is being read rather than pattern-matched.",
+   "root_cause": "Route order is a global property of a router but is edited locally, one handler at a time. A sub-resource added below an existing /{id} handler is dead on arrival and nothing says so: no import breaks, no test fails, and the endpoint returns a plausible 404 from the wrong handler.",
+   "security_impact": "None measured. Verified across all thirty pairs that the swallowing handler's dependency set is a superset of the intended one's; that check is now a standing test.",
+   "legal_impact": "None.",
+   "data_integrity_impact": "None. No shadowed route writes; the writes at these paths use methods that are not shadowed.",
+   "clinical_impact": "Indirect. /pharmacy/batches/expiring is the expiring-stock read, and /hospital/appointments the appointment list; both silently return nothing useful.",
+   "operational_impact": "Six /health sub-resources across the national platform routers are shadowed, so those platform health probes have never reported.",
+   "scalability_impact": "None.",
+   "minimal_safe_fix": "Move each literal declaration above its parameterised sibling, in tranches, confirming tenant scoping per handler.",
+   "recommended_fix": "Complete the remaining 26, then keep the guard with an empty ledger.",
+   "acceptance_criteria": [
+    "No literal route is matched by an earlier parameterised route.",
+    "No shadowed route is served by a handler with weaker authorization than the route addressed.",
+    "The ledger shrinks and never grows, and a fixed route must be removed from it.",
+    "The scan fails rather than passing vacuously if it stops seeing the route table."
+   ],
+   "evidence": [
+    "EXECUTED: 2102 routes flattened; 30 shadowed. Ten re-resolved through the app's own matcher: /pharmacy/drugs/search -> get_drug, /pharmacy/batches/expiring -> get_batch, /national/tasks/health -> get_task, /national/notifications/templates -> get_notification, /hospital/occupancy -> get_hospital, /clinical/documentation/templates -> get_document, /governance/workers/ranking -> get_worker, /public-health/disease-cases/stats -> get_case, /national/observability/traces/search -> get_trace. 10/10.",
+    "EXECUTED: auth comparison over all 30 pairs — 0 with a weaker swallower, 0 where an unauthenticated route moved behind auth, 30 equal or stricter.",
+    "APPLIED to 4 (pharmacy 2, hospital 2). Both files: the sorted-line multiset is identical before and after, so the change is a pure reorder with no content change. After: /pharmacy/drugs/search -> search_drugs, /pharmacy/batches/expiring -> get_expiring_batches, /hospital/occupancy -> occupancy_stats, /hospital/appointments -> list_appointments, and the parameterised siblings /drugs/DRUG-1, /batches/B-1, /hospital/7 still resolve to get_drug, get_batch, get_hospital.",
+    "Tenant scoping confirmed before activating each of the four: hospital passes current_user.lab_id into HospitalService; pharmacy passes user.lab_id into PharmacyService, whose get_expiring_batches filters DrugBatch.lab_id == self.lab_id.",
+    "Five negative proofs, each failing with its intended message, every source restored byte-identical (md5): a fixed route re-shadowed; a ledger entry dropped without a fix; a fixed route left in the ledger; the scan's floor raised so it goes blind; the intended handler given a guard its swallower lacks."
+   ],
+   "affected_components": [
+    "app/national/task_engine/api/routes.py",
+    "app/national/notification_platform/api/routes.py",
+    "app/national/background_platform/api/routes.py",
+    "app/national/document_platform/api/routes.py",
+    "app/national/rules_engine/api/routes.py",
+    "app/national/observability/api/routes.py",
+    "app/identity/certificates/routes.py",
+    "app/governance/routes.py",
+    "app/public_health/api/routes.py",
+    "app/routes/clinical_documentation.py",
+    "app/routes/hospital.py",
+    "app/pharmacy/routes.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-098 — the same defect on /clinical/orders, found first because that router was being read for a different reason. This is the platform-wide measurement of it.",
+    "NR-054 — the frontend calls /niam/certificates/expiring, which does not exist on the backend at all; the backend path is /certificates/expiring and is shadowed. Two different orphaning mechanisms on one feature."
+   ],
+   "contradictions": [],
+   "related_tests": [
+    "backend/tests/test_no_route_is_shadowed.py"
+   ],
+   "related_files": [
+    "backend/app/routes/hospital.py",
+    "backend/app/pharmacy/routes.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-100",
+   "title": "One lab could read and electronically sign another lab's clinical notes; the whole medical-record router is a module-level dict",
+   "severity": "P0",
+   "priority": 1,
+   "domain": "app/routes/clinical_documentation.py",
+   "category": "Tenant isolation / Clinical record integrity / Non-persistent write path",
+   "wave": "repair",
+   "owner": "Platform security / Clinical platform",
+   "status": "RESOLVED — lab_id stamped at the store, every reader scoped, surface gated default-off, /templates un-shadowed",
+   "can_fix_now": false,
+   "blocker": "",
+   "complexity": "small",
+   "regression_risk": "Low. GET /templates was unreachable (NR-099) and the frontend binds these endpoints in endpoints.ts without any view importing the hooks.",
+   "evidence_strength": "EXECUTED — the cross-tenant list, fetch, version-history read and electronic signature were all reproduced against the module before the fix and re-run after it.",
+   "verification_method": "Direct handler invocation with two LabUser identities; Starlette path_regex resolution inspected directly; 10 CI-gated guards with 7 negative proofs, every perturbed source restored byte-identical (md5).",
+   "affected_users": "Every lab on a deployment, for SOAP, progress, nursing, consultation, operation and emergency notes.",
+   "description": "Found by following NR-099: /clinical/documentation/templates was one of the thirty shadowed routes, and reordering it would have ACTIVATED an unscoped read. Reading the module to check that first is what surfaced this.\n\nThe module is registered in factory.py and served. Every handler declares db: Session = Depends(get_db). The module makes ZERO database calls — _DOCUMENTS, _TEMPLATES and _VERSION_HISTORY are module-level dicts.\n\n1. NO TENANT FIELD AT ALL. Unlike NR-098, where lab_id was written but never read, _store_document did not record lab_id, so no reader could have scoped by it even in principle. Executed before the fix: lab 901 listed lab 902's operation note with patient P-B-777 and findings 'LAB-B: confidential operative findings'; fetched it by id; read its version history.\n\n2. CROSS-TENANT ELECTRONIC SIGNATURE. lab 901 called POST /sign on lab 902's operation note. The document came back is_signed=True, signed_by=11 — a lab 901 user — and the version history recorded the action. An electronic signature is a legal attestation on a medical record, and one organisation could apply it to another organisation's operative note.\n\n3. NO PERSISTENCE, NO AUDIT. A signed operation note lives in one gunicorn worker's memory until the next restart. log_action is never called.\n\nFIX. lab_id is stamped inside _store_document rather than at each of the six create handlers, so a seventh create cannot forget it. _owned_doc() gates get/sign/version-history on the caller's lab and returns 404 rather than 403, so a caller cannot learn a document exists. list_documents and list_structured_templates filter by lab_id. All twelve handlers are gated behind ENABLE_CLINICAL_DOCUMENTATION_STUB (default false). The scoping applies regardless of the flag. GET /templates was then moved above GET /{document_id}, closing one NR-099 entry.",
+   "root_cause": "Same as NR-098 and from the same hand: a module written to the shape of a persisted API — Session dependency, pagination, version history — with neither half connected. Here it went one step further, because the tenant column was never introduced at all, so there was nothing even to forget to read.",
+   "security_impact": "Cross-tenant read of clinical narrative (operative findings, nursing assessments, emergency notes) and cross-tenant write of an electronic signature. Violates CLAUDE.md Security Invariant #1, and #2 as well: no mutation here was audited.",
+   "legal_impact": "An electronic signature attributable to a clinician of one organisation could be applied to another organisation's medical record. That is a records-integrity failure, not only a privacy one.",
+   "data_integrity_impact": "is_signed, signed_by, signed_at and a version-history entry could all be written by a foreign lab. No audit record of any of it.",
+   "clinical_impact": "The medical record is the artefact here. A note that appears signed but was signed by someone outside the treating organisation, and a note that disappears on restart, are both direct patient-safety problems.",
+   "operational_impact": "The surface now returns 503 by default. Nothing loses a working call: GET /templates was unreachable, and no frontend view imports the hooks.",
+   "scalability_impact": "Three dicts grow unbounded per worker for the process lifetime; the default-off gate removes that too.",
+   "minimal_safe_fix": "Applied.",
+   "recommended_fix": "Back the router with real tables and audit every signature, or retire it. §26 applies: endpoints.ts binds it, so that goes first.",
+   "acceptance_criteria": [
+    "Every document records the lab that created it.",
+    "No lab can list, fetch, sign or read the version history of another lab's clinical document.",
+    "No foreign-lab signature can be left on a document even if a future change stops the call from raising.",
+    "Every @router-decorated handler calls _require_enabled() first, including any added later.",
+    "ENABLE_CLINICAL_DOCUMENTATION_STUB defaults to false.",
+    "GET /templates resolves to list_structured_templates, not get_document."
+   ],
+   "evidence": [
+    "EXECUTED before the fix: 'is lab_id recorded on the document at all? False'. lab 901 LISTS -> 2 documents including CLN-DOC-000002 (lab 902, patient P-B-777, 'LAB-B: confidential operative findings'); lab 901 FETCHES it; lab 901 SIGNS it -> is_signed=True signed_by=user 11 (a lab 901 user); lab 901 reads its version history -> ['created', 'signed'].",
+    "EXECUTED before the fix: db.query/execute/add/commit calls in the module: 0.",
+    "EXECUTED after the fix: all 12 served handlers return 503 with the flag off (ungated: 0). With the flag on: lab_id recorded as 902; lab 901's list returns 1 document with 0 foreign rows; GET, SIGN and VERSIONS of lab 902's note each return 404; the note's is_signed is still False; lab 901 sees only its own template.",
+    "EXECUTED after the fix: GET /clinical/documentation/templates resolves to list_structured_templates, /CLN-DOC-000001 to get_document.",
+    "Seven negative proofs, each failing with its intended message, every source restored byte-identical (md5): lab_id no longer stamped; sign_document matching on id alone; list_documents losing its filter; one handler losing the gate; /templates re-shadowed; a new ungated handler appended; the flag defaulted to true."
+   ],
+   "affected_components": [
+    "app/routes/clinical_documentation.py",
+    "app/config.py",
+    "app/factory.py"
+   ],
+   "dependencies": [
+    "NR-099"
+   ],
+   "intersections": [
+    "NR-098 — the same defect class on /clinical/orders. This one is worse: there lab_id was written and not read; here it was never written.",
+    "NR-099 — this was found by checking a shadowed route before activating it, which is exactly what that finding's ledger discipline is for. Fixing it closes one NR-099 entry.",
+    "NR-045 — audit coverage. No mutation on this router is audited, signatures included."
+   ],
+   "contradictions": [
+    "All twelve handlers declare an unused db: Session dependency, so the module reads as though it persists."
+   ],
+   "related_tests": [
+    "backend/tests/test_clinical_documentation_is_contained.py"
+   ],
+   "related_files": [
+    "backend/app/routes/clinical_documentation.py",
     "backend/app/config.py",
     ".env.example"
    ],

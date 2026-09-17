@@ -443,6 +443,35 @@ ENABLE_CLINICAL_ORDERS_STUB = (
 )
 
 
+# ENABLE_CLINICAL_DOCUMENTATION_STUB — the /clinical/documentation router in
+#   app/routes/clinical_documentation.py (SOAP, progress, nursing,
+#   consultation, operation and emergency notes, their electronic signatures,
+#   structured templates and version history).
+#
+#   OFF, deliberately, and for the same reason as the orders stub above, with
+#   one difference that makes it worse: this router is the medical record, and
+#   the module makes zero database calls. _DOCUMENTS, _TEMPLATES and
+#   _VERSION_HISTORY are module-level dicts. A signed operation note lives in
+#   one worker's memory until the next restart.
+#
+#   Two defects fixed in the module regardless of this flag, because a gate
+#   that can be flipped must not uncover them:
+#     * lab_id was not recorded on a document at all, so every reader returned
+#       every lab's clinical notes. Executed: lab 901 listed lab 902's
+#       operation note, read its findings, read its version history, and
+#       electronically SIGNED it -- the signature recorded against a lab 901
+#       user on another organisation's medical record.
+#     * GET /templates was shadowed by GET /{document_id} (NR-099), so the
+#       template read was unreachable while POST /templates still accepted
+#       writes.
+#
+#   Turning this on requires the documents to persist and the signatures to be
+#   audited first.
+ENABLE_CLINICAL_DOCUMENTATION_STUB = (
+    os.getenv("ENABLE_CLINICAL_DOCUMENTATION_STUB", "false").lower() == "true"
+)
+
+
 # ── Bootstrap Configuration ───────────────────────────────────────────────────
 # Controls the National Bootstrap Engine.
 # ENABLE_BOOTSTRAP — master switch; when false, no bootstrap runs (default: true)

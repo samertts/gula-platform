@@ -769,6 +769,23 @@ async def create_drug(
     return svc.create_drug(data.model_dump(exclude_none=True))
 
 
+@router.get("/drugs/search", response_model=DrugCatalogListResponse)
+async def search_drugs(
+    name: str | None = Query(None),
+    code: str | None = Query(None),
+    category: str | None = Query(None),
+    atc_code: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    query = name or code
+    svc = _get_pharmacy_service(db, user)
+    items, total = svc.search_drugs(query, category, atc_code, None, skip, limit)
+    return DrugCatalogListResponse(items=items, total=total, skip=skip, limit=limit)
+
+
 @router.get("/drugs/{drug_id}", response_model=DrugCatalogResponse)
 async def get_drug(
     drug_id: str,
@@ -805,23 +822,6 @@ async def delete_drug(
     svc = _get_pharmacy_service(db, user)
     if not svc.delete_drug(drug_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}")
-
-
-@router.get("/drugs/search", response_model=DrugCatalogListResponse)
-async def search_drugs(
-    name: str | None = Query(None),
-    code: str | None = Query(None),
-    category: str | None = Query(None),
-    atc_code: str | None = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-):
-    query = name or code
-    svc = _get_pharmacy_service(db, user)
-    items, total = svc.search_drugs(query, category, atc_code, None, skip, limit)
-    return DrugCatalogListResponse(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.get("/drugs/atc/{atc_code}", response_model=DrugCatalogListResponse)
@@ -875,6 +875,16 @@ async def list_batches(
     return [_drug_batch_response(b) for b in svc.get_batches(drug.id)]
 
 
+@router.get("/batches/expiring", response_model=list[DrugBatchResponse])
+async def get_expiring_batches(
+    days: int = Query(90, ge=1, le=365),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    svc = _get_pharmacy_service(db, user)
+    return [_drug_batch_response(b) for b in svc.get_expiring_batches(days)]
+
+
 @router.get("/batches/{batch_id}", response_model=DrugBatchResponse)
 async def get_batch(
     batch_id: str,
@@ -886,16 +896,6 @@ async def get_batch(
     if not batch:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Batch not found: {batch_id}")
     return _drug_batch_response(batch)
-
-
-@router.get("/batches/expiring", response_model=list[DrugBatchResponse])
-async def get_expiring_batches(
-    days: int = Query(90, ge=1, le=365),
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-):
-    svc = _get_pharmacy_service(db, user)
-    return [_drug_batch_response(b) for b in svc.get_expiring_batches(days)]
 
 
 @router.get("/suppliers", response_model=list[SupplierResponse])
