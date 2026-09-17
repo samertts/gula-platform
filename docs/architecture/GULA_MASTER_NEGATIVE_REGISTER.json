@@ -3665,6 +3665,71 @@
    ],
    "related_adrs": [],
    "related_contracts": []
+  },
+  {
+   "id": "NR-096",
+   "title": "The clinical AI agent surface was kept inert only by a column-name typo; §32-C assessed it NOT READY and the safety is now a deliberate flag instead of a bug",
+   "severity": "P1",
+   "priority": 2,
+   "domain": "app/ai/agent_runtime.py, app/config.py",
+   "category": "AI governance / Fail-safe by accident / Information disclosure",
+   "wave": "repair",
+   "owner": "Clinical AI / Clinical governance",
+   "status": "ASSESSED AND GATED — decision recorded, gate installed and proved; activation is a clinical product decision",
+   "can_fix_now": false,
+   "blocker": "Activating the surface requires an audit path for tool invocations, a deterministic layer ahead of the planning model, and a decision about sending free text and conversation history to an external model. All three are product/clinical decisions, not engineering ones.",
+   "complexity": "small change, deliberately bounded",
+   "regression_risk": "None. All three tools raised before this change and return a disabled response after it; neither reaches the database.",
+   "evidence_strength": "EXECUTED — the gate was exercised against a live PostgreSQL connection and no tool reached the database.",
+   "verification_method": "Each registered tool invoked directly with the flag off; AST assertions that the gate precedes next(get_db()); three negative proofs.",
+   "affected_users": "Doctor-role callers of POST /api/ai/v2/agents/execute. The surface returned error strings before and returns a disabled response now.",
+   "description": "§32-C asked whether the AI clinical agent tools should become operational. Assessed against the operating brief's criteria:\n\n  READY   tenant isolation   - NR-092: the runtime injects the authenticated lab_id into every tool and the planning model cannot override it (a lab_id in its params raises TypeError).\n  READY   authorization      - _require_doctor on the route, plus session ownership after NR-093.\n  NOT     schema correctness - all three tools name columns the database lacks (patients.full_name not name; lab_results.created_at not result_date), so every call raises.\n  NOT     audit              - agent_runtime.py calls log_action ZERO times. No record exists that an AI tool read a patient's demographics or results.\n  PARTIAL provenance         - ai_suggest/approval_store exist but only run for requires_approval=True tools; all three clinical tools are registered with requires_approval=False.\n  NOT     external exposure  - _plan_tools sends the caller's free text and up to 500 tokens of conversation history to Google Gemini to choose both the tool and its patient_id. §27 forbids exposing patient data to external AI by default.\n  NOT     deterministic layer- §15 requires rule -> SQL/search -> small model -> large model. Here the model is first and picks the patient.\n  WRONG   fallback shape     - on any planner failure it silently substitutes a different tool (search_knowledge_graph) rather than declining.\n  NOT     evaluation         - ai/governance.py INSERTs ai_evaluations with no lab_id.\n  NOT     failure behaviour  - each tool returned {'error': str(exc)} to the caller, which is how 'column lr.result_date does not exist' became an API response.\n\nVERDICT: do not activate. Six criteria fail and three of them are structural, not bugs.\n\nThe more important finding is what was holding it. The ONLY thing keeping this surface inert was a column-name mismatch: correcting two identifiers during a tidy-up would have switched on a clinical AI path with no audit and an external planner. Safety that depends on a bug is not safety. ENABLE_AI_CLINICAL_AGENT_TOOLS now gates all three tools, defaults to false, and is read at call time so the switch is effective without a restart. The raw-exception disclosure is closed in the same change.",
+   "root_cause": "The surface was built and registered before the governance it needs existed, and then stopped working for an unrelated reason. Nothing recorded that it was not supposed to work, so its brokenness read as a defect to fix rather than a boundary to keep.",
+   "security_impact": "The failure path disclosed schema (table and column names) to any doctor-role caller. Closed.",
+   "clinical_impact": "None today — the surface returns a disabled response. Activating it without an audit path would put unlogged AI reads of patient results into clinical use.",
+   "data_integrity_impact": "None — every tool is a read.",
+   "operational_impact": "Callers now receive an explicit 'not enabled' response rather than a database error.",
+   "scalability_impact": "Positive: a disabled tool opens no database session.",
+   "minimal_safe_fix": "Applied: gate all three tools on ENABLE_AI_CLINICAL_AGENT_TOOLS (default false), checked before next(get_db()), and stop returning str(exc).",
+   "recommended_fix": "Before activation: audit every tool invocation, put a deterministic layer ahead of the planner, decide the external-model exposure question, and scope ai_evaluations by lab.",
+   "acceptance_criteria": [
+    "Every clinical agent tool checks the gate before opening a database session.",
+    "The flag defaults to False.",
+    "No tool returns a raw exception to the caller.",
+    "Tenant scoping from NR-092 remains in place, so activation is safe on that axis whenever the rest is ready."
+   ],
+   "evidence": [
+    "EXECUTED with a live PostgreSQL DATABASE_URL and the flag off: lookup_patient, get_recent_results and analyze_lab_pattern each returned the disabled envelope, and none produced a schema error — so none reached the database.",
+    "STATIC: grep for log_action / audit in app/ai/agent_runtime.py returns nothing. Tool invocations are unaudited.",
+    "STATIC: _plan_tools builds a prompt from the caller's task and memory_store.get_history(session_id, max_tokens=500) and passes it to app.gateways.google_ai.generate_chat, which posts to Gemini.",
+    "STATIC: the planner's except branch returns [{'tool': 'search_knowledge_graph', 'params': {'query': task}, 'required': False}] — a different tool, substituted silently.",
+    "STATIC: all three clinical tools are registered with requires_approval=False, so the ai_suggest/approval path does not run for them.",
+    "Negative proof, sources restored byte-identical (md5): moving the gate after next(get_db()) fires the ordering assertion; flipping the default to true fires the default assertion; restoring str(exc) fires the disclosure assertion.",
+    "Gate: unit 470 -> 473 passed, 4 deselected, by exactly the three tests added."
+   ],
+   "affected_components": [
+    "app/ai/agent_runtime.py",
+    "app/config.py",
+    ".env.example"
+   ],
+   "dependencies": [
+    "NR-092",
+    "NR-093"
+   ],
+   "intersections": [
+    "NR-092 — that finding made the surface tenant-safe; this one records that tenant safety was necessary but nowhere near sufficient.",
+    "NR-087 and NR-091 — the same shape a third and fourth time: a path safe only because it is broken. This is the first of them where the accidental safety has been replaced by a deliberate switch."
+   ],
+   "contradictions": [],
+   "related_tests": [
+    "backend/tests/test_agent_tools_are_tenant_scoped.py"
+   ],
+   "related_files": [
+    "backend/app/ai/agent_runtime.py",
+    "backend/app/config.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
   }
  ]
 }

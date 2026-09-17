@@ -54,6 +54,28 @@ class AgentTool:
 _tool_registry: dict[str, AgentTool] = {}
 
 
+#: Returned instead of clinical data while the surface is gated. Deliberately
+#: says nothing about the caller's request or the schema -- the previous
+#: behaviour returned `str(exc)` straight to the caller, which is how
+#: "column lr.result_date does not exist" became an API response.
+_DISABLED = {
+    "enabled": False,
+    "error": "Clinical AI agent tools are not enabled on this deployment",
+    "error_ar": "أدوات الذكاء الاصطناعي السريرية غير مفعّلة في هذا النظام",
+}
+
+
+def _clinical_tools_enabled() -> bool:
+    """Read the flag at call time, not at import.
+
+    Import-time capture would make the admin kill switch ineffective without a
+    restart, and a clinical surface must be switchable off faster than that.
+    """
+    from app.config import ENABLE_AI_CLINICAL_AGENT_TOOLS
+
+    return ENABLE_AI_CLINICAL_AGENT_TOOLS
+
+
 def register_tool(name: str, description: str, requires_approval: bool = False):
     def decorator(fn: AgentToolFn):
         _tool_registry[name] = AgentTool(name, description, fn, requires_approval)
@@ -63,6 +85,9 @@ def register_tool(name: str, description: str, requires_approval: bool = False):
 
 @register_tool("lookup_patient", "Find a patient by name, phone, or ID. Returns patient demographics and recent orders.", requires_approval=False)
 async def _lookup_patient(query: str, lab_id: int | None = None, **kwargs) -> dict[str, Any]:
+    if not _clinical_tools_enabled():
+        return dict(_DISABLED)
+
     db = next(get_db())
     try:
         row = db.execute(
@@ -73,7 +98,8 @@ async def _lookup_patient(query: str, lab_id: int | None = None, **kwargs) -> di
             return {"found": False, "message": f"No patient found matching '{query}'"}
         return {"found": True, "patient": {"id": row.id, "name": row.name, "phone": row.phone, "gender": row.gender, "birth_date": str(row.birth_date) if row.birth_date else None}}
     except Exception as exc:
-        return {"found": False, "error": str(exc)}
+        logger.error("[AgentRuntime] lookup_patient failed: %s", exc)
+        return {"found": False, "error": "Patient lookup failed"}
     finally:
         db.close()
 
@@ -87,6 +113,9 @@ async def _get_recent_results(
     # A None lab_id matches nothing on purpose: the runtime always supplies one
     # (execute_tool passes context.lab_id), so an absent tenant means something
     # is wrong upstream and no clinical row should be returned.
+    if not _clinical_tools_enabled():
+        return dict(_DISABLED)
+
     db = next(get_db())
     try:
         rows = db.execute(
@@ -96,7 +125,8 @@ async def _get_recent_results(
         results = [{"test_name": r.test_name, "value": r.value, "unit": r.unit, "normal_range_low": r.normal_range_low, "normal_range_high": r.normal_range_high, "result_date": str(r.result_date) if r.result_date else None} for r in rows]
         return {"patient_id": patient_id, "results": results, "count": len(results)}
     except Exception as exc:
-        return {"error": str(exc)}
+        logger.error("[AgentRuntime] get_recent_results failed: %s", exc)
+        return {"error": "Could not read results"}
     finally:
         db.close()
 
@@ -107,6 +137,9 @@ async def _analyze_lab_pattern(
 ) -> dict[str, Any]:
     # Tenanted through lo, and fail-closed on a missing lab_id -- see
     # _get_recent_results above for why.
+    if not _clinical_tools_enabled():
+        return dict(_DISABLED)
+
     db = next(get_db())
     try:
         rows = db.execute(
@@ -123,7 +156,8 @@ async def _analyze_lab_pattern(
             return {"patterns": result.output.get("patterns", []), "flag_summary": result.output.get("flag_summary", {}), "interpretations": result.output.get("interpretations", [])}
         return {"message": "Analysis pending approval", "approval_id": approval.id}
     except Exception as exc:
-        return {"error": str(exc)}
+        logger.error("[AgentRuntime] analyze_lab_pattern failed: %s", exc)
+        return {"error": "Could not analyse results"}
     finally:
         db.close()
 
@@ -142,7 +176,8 @@ async def _get_lab_info(lab_id: int | None = None, **kwargs) -> dict[str, Any]:
             return {"error": "Lab not found"}
         return {"lab": {"id": row.id, "name": row.name, "name_ar": row.name_ar, "phone": row.phone, "city": row.city, "address": row.address}}
     except Exception as exc:
-        return {"error": str(exc)}
+        logger.error("[AgentRuntime] analyze_lab_pattern failed: %s", exc)
+        return {"error": "Could not analyse results"}
     finally:
         db.close()
 
@@ -203,7 +238,10 @@ class AgentRuntime:
             return AgentResult(agent_name=tool_name, success=True, output=output, duration_ms=(time.monotonic() - start) * 1000)
         except Exception as exc:
             logger.error("[AgentRuntime] tool %s failed: %s", tool_name, exc)
-            return AgentResult(agent_name=tool_name, success=False, output=None, duration_ms=(time.monotonic() - start) * 1000, error=str(exc))
+            # The message is deliberately generic: this path catches anything a
+            # tool did not, including TypeErrors from the planning model's own
+            # params, and str(exc) on this endpoint has already disclosed schema.
+            return AgentResult(agent_name=tool_name, success=False, output=None, duration_ms=(time.monotonic() - start) * 1000, error="tool execution failed")
 
     async def execute_plan(
         self, plan: list[dict[str, Any]], context: AgentContext,

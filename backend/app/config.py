@@ -378,6 +378,42 @@ ENABLE_FINANCIAL_ENGINE = os.getenv("ENABLE_FINANCIAL_ENGINE", "false").lower() 
 ENABLE_ADS = os.getenv("ENABLE_ADS", "false").lower() == "true"
 
 
+# ENABLE_AI_CLINICAL_AGENT_TOOLS — the agent tools on POST /api/ai/v2/agents/execute
+#   that read patient demographics and lab results (lookup_patient,
+#   get_recent_results, analyze_lab_pattern).
+#
+#   OFF, deliberately, and this flag exists because until now the only thing
+#   keeping them inert was a typo: all three name columns the database does not
+#   have (patients.full_name, not name; lab_results.created_at, not
+#   result_date), so every call raised and returned an error string. Correcting
+#   two column names would have switched a clinical AI surface on as a side
+#   effect of a tidy-up. Safety that depends on a bug is not safety.
+#
+#   Assessed against the operating brief's criteria. What is ready:
+#   tenant isolation (NR-092 — the runtime injects the authenticated lab_id and
+#   the planning model cannot override it) and authorization (_require_doctor,
+#   plus session ownership after NR-093).
+#
+#   What is not, and none of it is fixed by repairing the column names:
+#     * no audit. agent_runtime.py calls log_action zero times, so no record
+#       exists that an AI tool read a patient's results.
+#     * external model exposure. _plan_tools sends the caller's free text and
+#       up to 500 tokens of conversation history to Google Gemini to choose the
+#       tool and its patient_id. §27 forbids exposing patient data to external
+#       AI by default.
+#     * no deterministic layer. §15 requires rule -> SQL/search -> small model
+#       -> large model. Here the model is first, and it picks both the tool and
+#       the patient.
+#     * the failure path returned str(exc) to the caller, disclosing schema.
+#     * ai_evaluations is written without a lab_id, so the evaluation record is
+#       not tenant-scoped.
+#
+#   Turning this on is a clinical product decision, not an engineering one.
+ENABLE_AI_CLINICAL_AGENT_TOOLS = (
+    os.getenv("ENABLE_AI_CLINICAL_AGENT_TOOLS", "false").lower() == "true"
+)
+
+
 # ── Bootstrap Configuration ───────────────────────────────────────────────────
 # Controls the National Bootstrap Engine.
 # ENABLE_BOOTSTRAP — master switch; when false, no bootstrap runs (default: true)

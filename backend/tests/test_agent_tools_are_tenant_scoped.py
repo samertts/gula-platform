@@ -184,3 +184,68 @@ def test_the_schema_mismatches_are_still_present_or_the_ledger_is_updated(source
         "so this is safe -- but update DECLARED_SCHEMA_MISMATCHES and confirm "
         "that making this AI surface functional was intended."
     )
+
+# ── the gate (NR-096, §32-C) ─────────────────────────────────────────────────
+
+
+def test_every_clinical_tool_checks_the_gate_before_touching_the_database(tree) -> None:
+    """§32-C's answer, held in place.
+
+    The assessment said do not activate: tenant isolation and authorization are
+    ready, but there is no audit of any tool invocation, the planning model
+    receives the caller's free text and conversation history, there is no
+    deterministic layer before the model, and ai_evaluations is written without
+    a lab_id. None of that is fixed by correcting the column names -- which is
+    all that stood between this surface and being live.
+
+    So the gate must be the FIRST thing each tool does. A check placed after
+    `next(get_db())` would still open a session, and one placed inside the
+    `try` would still run the query.
+    """
+    ungated = []
+    for name, node in _registered_tools(tree):
+        if not any(
+            re.search(rf"\b{t}\b", statement)
+            for statement in _sql_of(node)
+            for t in TENANT_TABLES
+        ):
+            continue  # not a clinical tool
+        body = node.body
+        first = body[1] if body and isinstance(body[0], ast.Expr) else (body[0] if body else None)
+        guarded = (
+            isinstance(first, ast.If)
+            and "_clinical_tools_enabled" in ast.dump(first.test)
+        )
+        if not guarded:
+            ungated.append(name)
+
+    assert ungated == [], (
+        f"these clinical agent tools do not check the gate first: {ungated}. "
+        "The check must precede next(get_db()); otherwise a disabled surface "
+        "still opens a session and runs its query."
+    )
+
+
+def test_the_gate_defaults_to_off() -> None:
+    """A clinical AI surface is off unless a deployment says otherwise."""
+    from app import config
+
+    assert config.ENABLE_AI_CLINICAL_AGENT_TOOLS is False, (
+        "ENABLE_AI_CLINICAL_AGENT_TOOLS no longer defaults to False. §32-C's "
+        "assessment has not been satisfied: there is still no audit of tool "
+        "invocations and the planning model still receives free text."
+    )
+
+
+def test_no_tool_returns_a_raw_exception_to_the_caller(source) -> None:
+    """The failure path disclosed the schema.
+
+    `return {"error": str(exc)}` is how "column lr.result_date does not exist"
+    became an API response -- which is also how the mismatch was found, but a
+    caller should not be the one finding it.
+    """
+    leaks = re.findall(r'"error":\s*str\(exc\)', source)
+    assert leaks == [], (
+        f"{len(leaks)} tool(s) return str(exc) to the caller. Log the detail "
+        "and return a message that names no column, table or query."
+    )
