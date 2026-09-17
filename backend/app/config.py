@@ -414,6 +414,35 @@ ENABLE_AI_CLINICAL_AGENT_TOOLS = (
 )
 
 
+# ENABLE_CLINICAL_ORDERS_STUB — the /clinical/orders router in
+#   app/routes/clinical_orders.py (order intake, templates, recurring and
+#   standing orders).
+#
+#   OFF, deliberately. The router is registered in factory.py and served, and
+#   every handler takes a `db: Session` it never uses. The backing store is a
+#   module-level dict. An authenticated clinician can POST a medication,
+#   radiology or procedure order, receive 201 with an id, and have that order
+#   exist in one gunicorn worker's memory until the next restart. Nothing is
+#   written to PostgreSQL, nothing is audited, and the other workers cannot
+#   see it.
+#
+#   Two further defects were measured on the same surface and are fixed in the
+#   module regardless of this flag, because a gate that can be flipped must not
+#   uncover them:
+#     * cross-tenant read and mutation. create recorded lab_id; no reader used
+#       it. Executed: lab 901 listed lab 902's orders, fetched one by id, and
+#       cancelled it.
+#     * GET /templates, /recurring and /standing were shadowed by
+#       GET /{order_id}, declared earlier, so those three reads were
+#       unreachable while the matching POSTs still accepted writes.
+#
+#   Turning this on requires the orders to persist first. Use /orders, which
+#   writes lab_orders rows, until then.
+ENABLE_CLINICAL_ORDERS_STUB = (
+    os.getenv("ENABLE_CLINICAL_ORDERS_STUB", "false").lower() == "true"
+)
+
+
 # ── Bootstrap Configuration ───────────────────────────────────────────────────
 # Controls the National Bootstrap Engine.
 # ENABLE_BOOTSTRAP — master switch; when false, no bootstrap runs (default: true)

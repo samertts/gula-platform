@@ -5,10 +5,10 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 89,
-  "P0": 12,
-  "P1": 41,
-  "P2": 26,
+  "total": 98,
+  "P0": 13,
+  "P1": 48,
+  "P2": 27,
   "P3": 10
  },
  "findings": [
@@ -2844,11 +2844,11 @@
    "domain": "platform-wide ORM/physical schema",
    "severity": "P0",
    "priority": 1,
-   "status": "GUARDED AND PARTLY REPAIRED — 44 measured, 9 repaired, 35 pinned and ratcheted",
+   "status": "GUARDED AND PARTLY REPAIRED — 44 measured, 9 repaired, 35 pinned and ratcheted. The 35 residual are ALL behind a protected decision or a domain owner; can_fix_now corrected True -> False on 2026-09-17.",
    "title": "35 mapped tables that exist in PostgreSQL cannot be read by the mapper that claims them, and no guard had ever asked a mapper to run its own query",
    "description": "Every schema guard in this suite compared descriptions of the schema — metadata against metadata, migration against model, list against list. None executed a mapper's own SELECT. Doing so for all 715 registered tables found that 303 have no physical table (independently equal to the autogenerate gate's CreateTableOp count of 303) and that of the 412 that do exist, 44 name at least one column their table does not have. For those 44 nothing works: SQLAlchemy builds the column list from the mapper, so SELECT, INSERT, UPDATE and COUNT all fail with UndefinedColumn before a row is examined. Blocks: radiology 17 (NR-082), NHDW 14 (NR-074), governance 6, ecosystem 3, financial 3, identity 1. Nine of the 44 are repaired here by two additive migrations -- eight pure timestamp/optimistic-lock mixin gaps and niam_machine_identities (NR-084); 35 remain.",
    "root_cause": "Nothing in CI ever executed a query built from a mapper against a real migrated database. Existing guards proved that migrations apply, that metadata is registered and that tables exist — none of which is disturbed by a mapper naming a column that is not there. The condition is invisible to `alembic upgrade head`, to table-existence checks and to the SQLite-backed unit suite, and visible only to PostgreSQL at statement time.",
-   "evidence": "715 mapped tables probed against nr078_probe (PostgreSQL 16 at head): 368 OK, 303 NO_TABLE, 44 ProgrammingError. After migrations 20260915_0001 and 20260915_0002: 377 OK, 35 ProgrammingError. The 303 NO_TABLE equals the autogenerate gate's independently derived CreateTableOp count — two instruments, different routes, same number. Sample failures: gov_break_glass_accesses(updated_at, version), gov_merge_proposals(updated_at, version), nhdw_admissions(16 columns), niam_machine_identities(10 columns).",
+   "evidence": "715 mapped tables probed against nr078_probe (PostgreSQL 16 at head): 368 OK, 303 NO_TABLE, 44 ProgrammingError. After migrations 20260915_0001 and 20260915_0002: 377 OK, 35 ProgrammingError. The 303 NO_TABLE equals the autogenerate gate's independently derived CreateTableOp count — two instruments, different routes, same number. Sample failures: gov_break_glass_accesses(updated_at, version), gov_merge_proposals(updated_at, version), nhdw_admissions(16 columns), niam_machine_identities(10 columns). | RE-MEASURED 2026-09-17 from DECLARED_UNREADABLE in tests/test_mapped_tables_are_readable.py: the 35 are 17 radiology_*, 14 nhdw_*, 3 fin_* and 1 ecosystem_*. Every one belongs to a blocked or approval-gated domain, so can_fix_now=True and the empty blocker were describing a state that ended when the 9 fixable ones were fixed. A work queue that still advertises finished work sends the next pass at phantom tasks, and this entry did exactly that during a re-scan.",
    "affected_components": [
     "backend/migrations/env.py target_metadata (18 metadata objects)",
     "RadiologyBase",
@@ -2897,8 +2897,8 @@
    "related_contracts": [],
    "wave": "now",
    "complexity": "M",
-   "can_fix_now": true,
-   "blocker": "",
+   "can_fix_now": false,
+   "blocker": "All 35 remaining are blocked, and this field previously said otherwise. Re-measured 2026-09-17 by domain: 17 radiology_* (NR-082, protected), 14 nhdw_* (NR-074, blocked on the NHDW owner), 3 fin_* whose mappers live in app/financial/models.py, which CLAUDE.md places under 'Requires human approval', and 1 ecosystem_partner_agreements, which is this finding's own open question. No unblocked remainder.",
    "evidence_strength": "EXECUTED — 715 mapper SELECTs against PostgreSQL 16 at migration head, before and after the migration"
   },
   {
@@ -3789,6 +3789,72 @@
    ],
    "related_files": [
     "backend/app/services/compliance_measurements.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-098",
+   "title": "The served /clinical/orders router let one lab read, cancel and complete another lab's clinical orders, and records those orders in a module-level dict",
+   "severity": "P0",
+   "priority": 1,
+   "domain": "app/routes/clinical_orders.py",
+   "category": "Tenant isolation / Clinical safety / Non-persistent write path",
+   "wave": "repair",
+   "owner": "Platform security / Clinical platform",
+   "status": "RESOLVED — tenant scoping applied to all four stores, the surface gated default-off, and route shadowing corrected",
+   "can_fix_now": false,
+   "blocker": "",
+   "complexity": "small",
+   "regression_risk": "Low. The router had no reachable consumer: frontend-v3 binds it in endpoints.ts, but client.ts's own read guard does not allowlist /clinical/orders and no view imports the hooks. The /api/v1/clinical/orders the frontend does call is the clinical_gateway router, which is a different, persisting surface.",
+   "evidence_strength": "EXECUTED — the cross-tenant read, the cross-tenant cancel and the route shadowing were all reproduced against the module before the fix and re-run after it.",
+   "verification_method": "Direct handler invocation with two LabUser identities; Starlette path_regex resolution order inspected directly; 8 CI-gated guards with 6 negative proofs, every perturbed source restored byte-identical (md5).",
+   "affected_users": "Every lab on a deployment, for medication, radiology, procedure, lab, consultation, referral, nutrition and nursing orders.",
+   "description": "app/routes/clinical_orders.py is registered at factory.py:675 and served at /clinical/orders. Three defects on one surface.\n\n1. CROSS-TENANT READ AND MUTATION. create_order recorded lab_id on every row; no reader consulted it. Executed before the fix: lab 901 listed lab 902's order CLN-ORD-000002 with patient P-B-777 and its notes, fetched it by id, and cancelled it. _ORDER_TEMPLATES, _RECURRING_ORDERS and _STANDING_ORDER_ASSIGNMENTS were shared the same way.\n\n2. ROUTE SHADOWING. GET /{order_id} was declared before GET /templates, /recurring and /standing. Starlette resolves in declaration order and /clinical/orders/{order_id} matches /clinical/orders/templates, so all three reads were unreachable while POST /templates and POST /recurring still accepted writes. This is the fourth instance in this register of a path that is safe only because it is broken (NR-087, NR-091, NR-092, NR-096 are the others), and its trap is specific: correcting the ordering alone would have opened three cross-tenant reads as a side effect of a tidy-up. Ordering, scoping and gating were therefore applied together.\n\n3. NO PERSISTENCE. Every handler declares db: Session = Depends(get_db) and none uses it. The backing store is a module-level dict: per-process, lost on restart, invisible to the other gunicorn workers. A clinician can POST a medication order, receive 201 with an id, and have that order exist nowhere. Nothing is audited. That is a patient-safety problem rather than a missing feature, so the whole surface is now gated behind ENABLE_CLINICAL_ORDERS_STUB, default false, and returns 503 naming /orders as the persisting alternative.\n\nThe tenant scoping is applied regardless of the flag, because a gate that can be flipped must not uncover a cross-tenant read.",
+   "root_cause": "The module was written to the shape of a persisted API — Session dependency, lab_id on every row, pagination — without either half being connected. The lab_id was written and never read; the Session was injected and never used. Both look like a working implementation at a glance, which is why neither was noticed.",
+   "security_impact": "Cross-tenant read of patient identifiers, order contents and clinical notes, plus cross-tenant mutation of clinical order status. Violates CLAUDE.md Security Invariant #1.",
+   "legal_impact": "Patient data from one laboratory was readable by another on the same deployment.",
+   "data_integrity_impact": "A foreign lab could set another lab's order to cancelled or completed. No audit record of any of it.",
+   "clinical_impact": "Two ways: a cancelled order a clinician still believes is active, and an order that returns 201 while being recorded nowhere. Both are the same class — the clinician's belief about an order diverges from reality.",
+   "operational_impact": "The surface now returns 503 by default. No known consumer loses a working call, because the three sub-resource GETs were unreachable and the frontend's own read guard blocks the rest.",
+   "scalability_impact": "The dict grows unbounded per worker for as long as the process lives; gating it default-off removes that too.",
+   "minimal_safe_fix": "Applied: _mine()/_owned() scope all four stores, _require_enabled() on all ten handlers, literal paths declared before /{order_id}.",
+   "recommended_fix": "Either back this router with real lab_orders rows and audit writes, or retire it. §26 applies to the retirement: it has a frontend endpoints.ts binding and three hooks, so those go first.",
+   "acceptance_criteria": [
+    "No lab can read, cancel or complete another lab's clinical order, template, recurring order or standing order.",
+    "Every @router-decorated handler in the module calls _require_enabled() as its first statement, including any added later.",
+    "ENABLE_CLINICAL_ORDERS_STUB defaults to false.",
+    "GET /templates, /recurring and /standing resolve to their own handlers, not to get_order."
+   ],
+   "evidence": [
+    "EXECUTED before the fix: lab 901 LISTS clinical orders -> rows belonging to another lab: 1 (CLN-ORD-000002, lab_id=902, patient P-B-777, notes 'LAB-B: confidential'); lab 901 FETCHES it by id -> same row; lab 901 CANCELS it -> status is now cancelled.",
+    "EXECUTED before the fix, route resolution: GET /clinical/orders/templates -> get_order (declared as /clinical/orders/{order_id}); same for /recurring and /standing.",
+    "EXECUTED after the fix: all ten handlers return 503 with the flag off; with the flag on, lab 901's list returns 1 row and 0 foreign rows, and GET/CANCEL/COMPLETE of lab 902's order each return 404 with lab 902's order still 'pending'.",
+    "EXECUTED after the fix, route resolution: /templates -> list_order_templates, /recurring -> list_recurring_orders, /standing -> get_standing_orders_for_patient, /CLN-ORD-000001 -> get_order.",
+    "404 not 403 on the foreign-order paths, so a caller cannot learn that an order exists.",
+    "Six negative proofs, each failing with its intended message and every source restored byte-identical (md5): gate removed from one handler; get_order moved back above the literal paths; _ORDER_TEMPLATES read unscoped; _owned matching on id alone; a new ungated handler appended; the flag defaulted to true."
+   ],
+   "affected_components": [
+    "app/routes/clinical_orders.py",
+    "app/config.py",
+    "app/factory.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-087 / NR-091 / NR-092 / NR-096 — the same pattern: a capability that was safe only because it was broken. Here the breakage was route shadowing rather than a wrong column name.",
+    "NR-092 — the sibling defect where a correct control existed but was not applied to every call site; here the control did not exist on any reader at all.",
+    "clinical_gateway — /api/v1/clinical/orders is a different, persisting router and is the one the frontend actually reads."
+   ],
+   "contradictions": [
+    "Every handler declares an unused db: Session dependency, which makes the module read as though it persists. That is what the gate's 503 message corrects."
+   ],
+   "related_tests": [
+    "backend/tests/test_clinical_orders_stub_is_contained.py"
+   ],
+   "related_files": [
+    "backend/app/routes/clinical_orders.py",
+    "backend/app/config.py",
+    ".env.example"
    ],
    "related_adrs": [],
    "related_contracts": []
