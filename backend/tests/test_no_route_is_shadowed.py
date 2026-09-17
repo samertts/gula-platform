@@ -91,7 +91,6 @@ DECLARED_SHADOWED = frozenset({
     "GET /national/tasks/queues",
     "GET /national/tasks/sla-definitions",
     "GET /national/tasks/stats",
-    "GET /public-health/disease-cases/stats",
 })
 
 #: Guard the guard. If the scan stops finding routes at all it must fail rather
@@ -138,7 +137,12 @@ def test_the_ledger_does_not_keep_stale_entries(flat_routes):
 
 
 def test_shadowing_never_weakens_authorization(flat_routes):
-    """The reason this is P2 and not P1. If that ever stops holding, it is P1."""
+    """The reason this is P2 and not P1. If that ever stops holding, it is P1.
+
+    This compares the two sides of each pair against each other. It does NOT
+    establish that either route is authenticated in absolute terms -- see the
+    pre-include note inline below.
+    """
 
     def security_deps(route: APIRoute) -> set[str]:
         names: set[str] = set()
@@ -161,6 +165,24 @@ def test_shadowing_never_weakens_authorization(flat_routes):
 
     weakened = []
     for intended, swallower in _shadowed(flat_routes):
+        # The walk reads each router's own routes, which are PRE-include: a
+        # dependency attached by `include_router(..., dependencies=[...])` is
+        # not visible here. app/identity/api/router.py mounts the certificates
+        # router that way, and reading its routes directly shows no auth at all
+        # even though every one of them requires get_current_niam_actor.
+        #
+        # The comparison below is still sound, but only because both routes of
+        # a pair come from the same module and so are mounted together and gain
+        # the same include-level dependencies. Assert that rather than assume
+        # it: a cross-router pair would make the two sides incomparable here and
+        # must be measured on the mounted app instead.
+        assert intended.endpoint.__module__ == swallower.endpoint.__module__, (
+            f"{intended.path} is shadowed by {swallower.path} from a DIFFERENT "
+            f"module ({intended.endpoint.__module__} vs "
+            f"{swallower.endpoint.__module__}). Include-level dependencies may "
+            "differ between them, so this pre-include comparison cannot decide "
+            "whether authorization is weakened. Measure it on the mounted app."
+        )
         wanted, actual = security_deps(intended), security_deps(swallower)
         if not actual >= wanted:
             weakened.append(

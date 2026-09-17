@@ -5,10 +5,10 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 100,
+  "total": 101,
   "P0": 14,
   "P1": 48,
-  "P2": 28,
+  "P2": 29,
   "P3": 10
  },
  "findings": [
@@ -3868,9 +3868,9 @@
    "category": "Correctness / Dead endpoint / Route resolution",
    "wave": "repair",
    "owner": "Platform engineering",
-   "status": "PARTLY RESOLVED — guard in CI with a 30-entry ledger; 4 fixed, 26 remain",
-   "can_fix_now": true,
-   "blocker": "",
+   "status": "PARTLY RESOLVED — 6 of 30 fixed; 20 of the remaining 24 are blocked on NR-065/NR-076, not on this finding",
+   "can_fix_now": false,
+   "blocker": "20 of the 24 remaining entries are in app/national packages whose tables are not built; that is blocked on the NR-065 tenancy decision and NR-076, both reserved for a human.",
    "complexity": "small per module, thirteen modules; each fix ACTIVATES a handler that has never served a request, so each needs its tenant scoping confirmed first",
    "regression_risk": "Low per route and the reorder is mechanically verifiable — the four applied here are pure reorders, proved by an identical sorted-line multiset before and after. The real risk is not the reorder but what it switches on.",
    "evidence_strength": "EXECUTED — resolution confirmed through the application's own matcher, not a reimplementation of it.",
@@ -3897,7 +3897,10 @@
     "EXECUTED: auth comparison over all 30 pairs — 0 with a weaker swallower, 0 where an unauthenticated route moved behind auth, 30 equal or stricter.",
     "APPLIED to 4 (pharmacy 2, hospital 2). Both files: the sorted-line multiset is identical before and after, so the change is a pure reorder with no content change. After: /pharmacy/drugs/search -> search_drugs, /pharmacy/batches/expiring -> get_expiring_batches, /hospital/occupancy -> occupancy_stats, /hospital/appointments -> list_appointments, and the parameterised siblings /drugs/DRUG-1, /batches/B-1, /hospital/7 still resolve to get_drug, get_batch, get_hospital.",
     "Tenant scoping confirmed before activating each of the four: hospital passes current_user.lab_id into HospitalService; pharmacy passes user.lab_id into PharmacyService, whose get_expiring_batches filters DrugBatch.lab_id == self.lab_id.",
-    "Five negative proofs, each failing with its intended message, every source restored byte-identical (md5): a fixed route re-shadowed; a ledger entry dropped without a fix; a fixed route left in the ledger; the scan's floor raised so it goes blind; the intended handler given a guard its swallower lacks."
+    "Five negative proofs, each failing with its intended message, every source restored byte-identical (md5): a fixed route re-shadowed; a ledger entry dropped without a fix; a fixed route left in the ledger; the scan's floor raised so it goes blind; the intended handler given a guard its swallower lacks.",
+    "DISPOSITION of the 24 still in the ledger, measured against built_tables() on PostgreSQL at head (422 physical tables): 20 are in app/national packages whose tables DO NOT EXIST — no national_* task, notification, job, document, rule or trace table is built, and no gov worker table either. NR-065 records the same for the fifteen task/workflow tables. Those routes already fail at the database, and building the tables is blocked on the NR-065 organization-rooted tenancy decision and NR-076. Reordering them now would change one failure into another, and would pre-position an untenanted read for whenever the tables are built. They stay in the ledger deliberately. 2 (certificates) ARE backed — niam_cert_certificates is built — and are authenticated, via include-level dependencies (see below). 1 (public-health stats) was backed and is fixed here. 1 (governance/workers/ranking) has no backing table.",
+    "GUARD CORRECTION. The walk reads each router's own routes, which are PRE-include, so a dependency attached by include_router(..., dependencies=[...]) is invisible to it. app/identity/api/router.py mounts the certificates router with _AUTH_REQUIRED = [Depends(get_current_niam_actor)], and reading that router's routes directly shows no auth at all — which is what the first pass reported for /certificates/expiring and /certificates/authorities. The pair comparison is still sound, but only because both sides of every pair come from the same module and are mounted together. The guard now ASSERTS that rather than assuming it, and the test's docstring says explicitly that it does not establish absolute authentication.",
+    "APPLIED to /public-health/disease-cases/stats: pure reorder, identical line multiset before and after. Safe to activate because the whole router carries dependencies=[Depends(require_permission('system:admin'))] and its sibling GET /disease-cases is already reachable at the same scope, so the aggregate adds no exposure class the list does not already have. PublicHealthApiPage.tsx calls this path."
    ],
    "affected_components": [
     "app/national/task_engine/api/routes.py",
@@ -3994,6 +3997,66 @@
     "backend/app/routes/clinical_documentation.py",
     "backend/app/config.py",
     ".env.example"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-101",
+   "title": "ph_disease_cases extends TenantEntity and not one line in the public_health package reads or writes the tenant column",
+   "severity": "P2",
+   "priority": 3,
+   "domain": "app/public_health/",
+   "category": "Tenancy semantics undecided / Unused control",
+   "wave": "decide",
+   "owner": "Public health product owner / Platform security",
+   "status": "OPEN — measured, not fixed. Which scope is correct is a product decision (§27).",
+   "can_fix_now": false,
+   "blocker": "Whether national disease surveillance should be tenant-scoped is a policy question, not an engineering one. §27 reserves changes to canonical scope semantics.",
+   "complexity": "small to apply once the semantics are decided",
+   "regression_risk": "Applying a tenant filter would CHANGE what existing callers see. That is why it is not being applied unilaterally.",
+   "evidence_strength": "EXECUTED — grep over the whole package and the built-table check; the count is zero, not small.",
+   "verification_method": "grep for tenant_id|lab_id across app/public_health (0 hits); model base read from source; ph_disease_cases confirmed present in built_tables() against PostgreSQL at head.",
+   "affected_users": "Anyone with system:admin on any deployment.",
+   "description": "Found while deciding whether /public-health/disease-cases/stats was safe to un-shadow (NR-099).\n\nDiseaseCaseModel extends TenantEntity, so ph_disease_cases carries a tenant column, and the table is built. Across the entire app/public_health package the strings tenant_id and lab_id appear ZERO times. Nothing writes the column and nothing filters on it: list_cases, get_case and get_case_stats all read every row.\n\nThis is the third instance this session of a tenant column that exists and is not used (NR-098 wrote lab_id and never read it; NR-100 never wrote it). The difference is that here the unscoped behaviour may well be CORRECT. The router is gated on require_permission('system:admin'), and national disease surveillance is cross-lab epidemiology by purpose — a per-lab view of an outbreak is close to useless.\n\nSo the finding is not 'this is a leak'. It is: the model declares a tenancy the code does not implement, and nothing records which of the two is intended. Either the column is vestigial and should be justified in the model, or surveillance is meant to be scoped and the filter is missing. A reader cannot tell, and neither could I.\n\nWhat this record deliberately does NOT do is apply a filter. Adding one would change what every existing system:admin caller sees, and §27 reserves changes to canonical scope semantics.\n\nNote the row contents: patient_national_id, patient_age, patient_gender, location_lat/lng, travel_history and exposure_history. If the intended answer is 'scoped', the exposure is patient-level.",
+   "root_cause": "TenantEntity was chosen as the base — plausibly for created_at/updated_at/soft-delete rather than for tenancy — and the tenant column came along with it. Inheriting a mixin is not the same as adopting its semantics, and nothing in the codebase distinguishes the two.",
+   "security_impact": "Conditional. If surveillance is meant to be national, none. If it is meant to be scoped, every system:admin principal reads every lab's reportable disease cases including patient national IDs and travel history.",
+   "legal_impact": "Depends on the same decision. Iraqi national IDs appear in these rows.",
+   "data_integrity_impact": "None. The column is simply never populated.",
+   "clinical_impact": "None directly.",
+   "operational_impact": "None.",
+   "scalability_impact": "None.",
+   "minimal_safe_fix": "Record the decision. If national: document why the tenant column is unused, or drop it in a later migration once §11 is satisfied. If scoped: add the filter to all three readers and populate the column on report_case, with a backfill plan for existing rows.",
+   "recommended_fix": "Ask the public health product owner which scope is intended, then apply one of the two above.",
+   "acceptance_criteria": [
+    "The intended scope of ph_disease_cases is recorded somewhere a reader can find it.",
+    "If scoped: list_cases, get_case and get_case_stats all filter, and report_case populates the column.",
+    "If national: the unused tenant column is justified in the model or removed under the §11 sequence."
+   ],
+   "evidence": [
+    "EXECUTED: grep -rn 'tenant_id|lab_id' app/public_health/ returns 0 lines.",
+    "app/public_health/infrastructure/models.py:6 — class DiseaseCaseModel(TenantEntity), __tablename__ = 'ph_disease_cases'.",
+    "ph_disease_cases IS present in built_tables() against PostgreSQL at head, so this is a live table rather than an unbuilt one.",
+    "The router carries dependencies=[Depends(require_permission('system:admin'))], so the surface is not open, which is why this is P2 rather than P0.",
+    "Row contents include patient_national_id, patient_age, patient_gender, location_lat, location_lng, travel_history and exposure_history."
+   ],
+   "affected_components": [
+    "app/public_health/api/routes.py",
+    "app/public_health/application/service.py",
+    "app/public_health/infrastructure/models.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-099 — found while deciding whether this route was safe to un-shadow.",
+    "NR-098 / NR-100 — the same shape (a tenant column no reader uses), but those were unambiguous defects and this one is a genuine question.",
+    "NR-065 — the same class of question for national orchestration, decided there as organization-rooted."
+   ],
+   "contradictions": [
+    "The model declares tenancy via TenantEntity; the package implements none. One of the two is wrong and nothing records which."
+   ],
+   "related_tests": [],
+   "related_files": [
+    "backend/app/public_health/infrastructure/models.py"
    ],
    "related_adrs": [],
    "related_contracts": []

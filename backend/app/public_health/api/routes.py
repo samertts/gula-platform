@@ -59,6 +59,15 @@ async def list_cases(
     return [_case_to_dict(c) for c in service.list_cases(disease_code, region, confirmed, skip, limit)]
 
 
+@router.get("/disease-cases/stats")
+async def get_case_stats(
+    region: str | None = Query(None),
+    days: int = Query(30, ge=1, le=365),
+    service: PublicHealthService = Depends(_get_service),
+) -> dict[str, Any]:
+    return service.get_case_stats(region, days)
+
+
 @router.get("/disease-cases/{case_id}")
 async def get_case(
     case_id: str,
@@ -68,15 +77,6 @@ async def get_case(
         return _case_to_dict(service.get_case(case_id))
     except DiseaseCaseNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
-
-
-@router.get("/disease-cases/stats")
-async def get_case_stats(
-    region: str | None = Query(None),
-    days: int = Query(30, ge=1, le=365),
-    service: PublicHealthService = Depends(_get_service),
-) -> dict[str, Any]:
-    return service.get_case_stats(region, days)
 
 
 # ── Outbreak Alerts ──
