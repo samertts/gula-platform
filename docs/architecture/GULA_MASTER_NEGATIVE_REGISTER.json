@@ -5,10 +5,10 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 101,
+  "total": 102,
   "P0": 14,
   "P1": 48,
-  "P2": 29,
+  "P2": 30,
   "P3": 10
  },
  "findings": [
@@ -4057,6 +4057,72 @@
    "related_tests": [],
    "related_files": [
     "backend/app/public_health/infrastructure/models.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-102",
+   "title": "The five-rights medication safety check answered 'All five rights verified' from five booleans the caller supplied",
+   "severity": "P2",
+   "priority": 3,
+   "domain": "app/nursing/medication.py, app/nursing/routes.py",
+   "category": "Fake verification / Clinical safety signal",
+   "wave": "repair",
+   "owner": "Nursing clinical lead / Platform security",
+   "status": "PARTLY RESOLVED — the false claim is gone and the attestation is now recorded; verifying against the record is NR-102's open half",
+   "can_fix_now": false,
+   "blocker": "Actually verifying the five rights needs a clinical decision: the right-time tolerance, and what must happen when a check fails (warn, block, require override with reason). That is not an engineering judgement.",
+   "complexity": "small for the honesty fix (applied); medium for real verification",
+   "regression_risk": "Low. The endpoint had no consumer — no frontend call site and no backend caller — so no working call changed shape. The response gained fields rather than losing any.",
+   "evidence_strength": "EXECUTED — the old and new responses were both produced by calling the handler.",
+   "verification_method": "Direct handler invocation with log_action captured; AST/type-hint scan over all 2102 served routes for request bodies that are entirely client booleans; 5 CI-gated guards with 7 negative proofs, every source restored byte-identical (md5).",
+   "affected_users": "Nursing staff administering medication, and any future consumer of this endpoint.",
+   "description": "POST /nursing/medication-admin/verify was summarised 'Verify five rights'. Its request body is five booleans — right_patient, right_drug, right_dose, right_route, right_time — all supplied by the caller. The service computed all(checks) and returned, for five trues:\n\n    {\"passed\": true, \"message\": \"All five rights verified\"}\n\nThe five rights are the standard barrier against medication error. Nothing on this path read the patient record, the active MedicationRequest, the ordered dose or route, or the scheduled time. The handler bound db: Session = Depends(get_db) and never referenced it. It wrote nothing and audited nothing, so the attestation did not outlive the HTTP response.\n\nWHY THIS IS A FINDING RATHER THAN A STYLE COMPLAINT. The same codebase contains the correct shape of this, in the same clinical domain: complete_surgical_safety_checklist in app/routes/hospital.py takes TEN caller booleans, including consent_verified and site_marked, and records them tenant-scoped, under an optimistic lock, with an idempotency key, through an audited command. It records attestations and never claims to have verified them — which is exactly what a WHO surgical checklist is. The five-rights endpoint took the same kind of input and claimed a different kind of output.\n\nNOT CURRENTLY LOAD-BEARING, and that is stated as a measured fact rather than a mitigation: nothing consumes this endpoint (no frontend call site, no backend caller), and record_administration does not require a prior verification — it inserts and audits independently. The risk is forward-looking: if a medication administration screen is ever wired to this route, a nurse would be shown 'All five rights verified' by a call that checked nothing.\n\nWHAT WAS APPLIED. The response no longer claims verification; it states that the clinician attested and carries verified_against_record: false explicitly, so a consumer cannot infer otherwise from the route name. The attestation is written to the hash-chained audit log attributed to the clinician and the lab, which is what gives the db parameter its purpose — an unattributed, unrecorded attestation protects nobody. A partial attestation is recorded too, because a clinician declining to attest two of the five rights is precisely the event worth keeping.\n\nWHAT WAS NOT APPLIED. Real verification against the record. That is the open half and it is a clinical decision, not an engineering one.",
+   "root_cause": "The endpoint was named for the clinical ritual rather than for what the code does. 'Verify five rights' describes what a nurse does at the bedside; the code only ever received the nurse's answer. Nothing in the type system or the tests distinguishes an attestation from a verification, so the two collapsed.",
+   "security_impact": "None directly — nothing is bypassed and no authorization depends on the result. §7 nonetheless forbids fake verification, and this was one.",
+   "legal_impact": "An attestation that is neither attributed nor stored is not evidence. It now is both.",
+   "data_integrity_impact": "Previously nil — nothing was written. Now the attestation joins the audit chain.",
+   "clinical_impact": "The material risk. A screen showing 'All five rights verified' from a call that verified nothing would substitute a false assurance for the check it names. That is a medication-safety failure mode, and it is the reason this is not filed as cosmetic.",
+   "operational_impact": "One additional audit row per attestation. The endpoint has no current traffic.",
+   "scalability_impact": "Negligible.",
+   "minimal_safe_fix": "APPLIED: stop claiming verification, state verified_against_record: false, and record the attestation to the audit chain attributed to the clinician.",
+   "recommended_fix": "Verify against the record: resolve the patient and the active MedicationRequest, compare the ordered drug, dose and route, and evaluate the scheduled time against an agreed tolerance. Decide first what a failed check must do — warn, block, or require an override with a recorded reason.",
+   "acceptance_criteria": [
+    "No response from this endpoint claims the medication record was checked while it was not.",
+    "Every attestation, complete or partial, is recorded in the audit chain, attributed to the clinician and tenant.",
+    "No served endpoint whose request body is entirely caller-supplied booleans presents itself as a verification.",
+    "When real verification is built, the right-time tolerance and the failed-check behaviour are recorded decisions."
+   ],
+   "evidence": [
+    "BEFORE, executed: a request of five trues returned {'passed': True, 'message': 'All five rights verified'}; the handler's db parameter was never referenced; log_action was called zero times on the path.",
+    "AFTER, executed: the same request returns attested=True, verified_against_record=False, and 'All five rights attested by the administering clinician. Attestation recorded; not verified against the medication record.'",
+    "AFTER, executed: the audit write is action='nursing.medication.five_rights_attested', user_id=77, lab_id=901, details={'checks': {...}, 'complete': True, 'verified_against_record': False}.",
+    "AFTER, executed: a partial attestation (right_drug and right_time withheld) returns attested=False, message 'Not attested: right_drug, right_time', and is still recorded.",
+    "MEASURED across all 2102 served routes: exactly ONE endpoint has a request body consisting entirely of caller-supplied booleans, and it is this one. It is pinned in a shrink-only ledger with a rot check.",
+    "CONTRAST, measured: complete_surgical_safety_checklist takes ten caller booleans and is tenant-scoped, version-locked, idempotent and audited, and claims only to record.",
+    "NO CONSUMER, measured: no frontend call site and no backend caller for /nursing/medication-admin/verify; record_administration does not consult any verification result.",
+    "Seven negative proofs, each failing with its intended message, every source restored byte-identical (md5): the old 'All five rights verified' claim restored; verified_against_record dropped from the response; the audit write removed; the clinician attribution removed; a partial attestation discarded; a new all-boolean verification endpoint added; a ledger entry left stale."
+   ],
+   "affected_components": [
+    "app/nursing/medication.py",
+    "app/nursing/routes.py"
+   ],
+   "dependencies": [],
+   "intersections": [
+    "NR-096 — the same species: a clinical surface whose safety came from something other than a control. There it was a column-name typo; here it was the absence of any consumer.",
+    "NR-062 — audit coverage. This adds one mutating clinical event to the audited set.",
+    "app/routes/hospital.py complete_surgical_safety_checklist — the correct pattern, in the same domain, already in this codebase."
+   ],
+   "contradictions": [
+    "The route is still named /medication-admin/verify while its summary and response now say it attests. Renaming the path is an API break and is left to the same decision that builds real verification."
+   ],
+   "related_tests": [
+    "backend/tests/test_attestations_are_not_verifications.py"
+   ],
+   "related_files": [
+    "backend/app/nursing/medication.py",
+    "backend/app/nursing/routes.py"
    ],
    "related_adrs": [],
    "related_contracts": []

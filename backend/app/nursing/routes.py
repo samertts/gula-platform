@@ -1183,17 +1183,30 @@ def get_medication_alerts(
     return {"items": MedicationAdminService.get_medication_alerts(db, current_user.lab_id, patient_id)}
 
 
-@router.post("/medication-admin/verify", summary="Verify five rights")
+@router.post(
+    "/medication-admin/verify",
+    summary="Record the clinician's five-rights attestation (not a verification)",
+)
 def verify_five_rights(
     body: MedicationVerifyRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = MedicationAdminService.verify_five_rights(
+    # Every input is caller-supplied, so this attests; it does not verify.
+    # `verified_against_record` says so in the response rather than leaving a
+    # consumer to infer it from the route name. See NR-102.
+    result = MedicationAdminService.record_five_rights_attestation(
+        db, current_user.lab_id, current_user.id,
         body.right_patient, body.right_drug,
         body.right_dose, body.right_route, body.right_time,
     )
-    return {"passed": result.passed, "checks": result.checks, "message": result.message}
+    return {
+        "attested": result.passed,
+        "passed": result.passed,
+        "checks": result.checks,
+        "message": result.message,
+        "verified_against_record": False,
+    }
 
 
 @router.post("/medication-admin/record", summary="Record medication administration", status_code=201)

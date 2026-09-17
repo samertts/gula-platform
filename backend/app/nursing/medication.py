@@ -28,13 +28,36 @@ class FiveRightsResult:
 class MedicationAdminService:
 
     @staticmethod
-    def verify_five_rights(
+    def record_five_rights_attestation(
+        db: Session,
+        lab_id: int,
+        user_id: int,
         right_patient: bool,
         right_drug: bool,
         right_dose: bool,
         right_route: bool,
         right_time: bool,
     ) -> FiveRightsResult:
+        """Record the administering clinician's five-rights attestation.
+
+        This is an ATTESTATION, not a verification. Every one of the five
+        inputs is supplied by the caller, so nothing here is checked against
+        the patient record, the active MedicationRequest, the ordered dose or
+        route, or the scheduled time. It previously returned
+        "All five rights verified" for a request that asserted five trues,
+        which is a clinical safety claim the code never earned.
+
+        What it now does instead is make the attestation evidence: it is
+        attributed to the clinician and written to the hash-chained audit log,
+        the way the sibling surgical safety checklist in app/routes/hospital.py
+        records the theatre team's attestations. An unattributed, unrecorded
+        attestation protects nobody.
+
+        Verifying the five rights against the record is a separate, larger
+        piece of clinical work -- it needs a decision on the right-time
+        tolerance and on what must happen when a check fails -- and is
+        registered as NR-102 rather than guessed at here.
+        """
         checks = {
             "right_patient": right_patient,
             "right_drug": right_drug,
@@ -42,13 +65,25 @@ class MedicationAdminService:
             "right_route": right_route,
             "right_time": right_time,
         }
-        passed = all(checks.values())
-        if not passed:
-            failed = [k for k, v in checks.items() if not v]
-            message = f"Failed checks: {', '.join(failed)}"
+        complete = all(checks.values())
+        if complete:
+            message = (
+                "All five rights attested by the administering clinician. "
+                "Attestation recorded; not verified against the medication record."
+            )
         else:
-            message = "All five rights verified"
-        return FiveRightsResult(passed=passed, checks=checks, message=message)
+            withheld = [k for k, v in checks.items() if not v]
+            message = f"Not attested: {', '.join(withheld)}"
+
+        log_action(
+            db,
+            "nursing.medication.five_rights_attested",
+            "medication_administration",
+            user_id=user_id,
+            lab_id=lab_id,
+            details={"checks": checks, "complete": complete, "verified_against_record": False},
+        )
+        return FiveRightsResult(passed=complete, checks=checks, message=message)
 
     @staticmethod
     def scan_barcode(barcode_data: str) -> dict[str, Any]:
