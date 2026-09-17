@@ -5,11 +5,11 @@
  "production_ready": false,
  "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
  "counts": {
-  "total": 103,
+  "total": 104,
   "P0": 14,
   "P1": 49,
   "P2": 30,
-  "P3": 10
+  "P3": 11
  },
  "findings": [
   {
@@ -4190,6 +4190,62 @@
    "related_files": [
     "backend/app/security/redis_client.py",
     "backend/app/core/auto_repair.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
+  },
+  {
+   "id": "NR-104",
+   "title": "FHIRTerminologyService.validate_code() returns True for every code, and lookup_code() echoes an unknown code back as its own display name",
+   "severity": "P3",
+   "priority": 4,
+   "domain": "app/national/fhir/terminology.py",
+   "category": "Stub that would pass everything if wired / Unbuilt capability",
+   "wave": "decide",
+   "owner": "Interoperability",
+   "status": "MEASURED — unreachable today; registered as a trap rather than repaired, because the repair is a BUILD decision",
+   "can_fix_now": false,
+   "blocker": "The intended data source, ref_fhir_terminology, is declared as an ORM model but is NOT a built physical table. Implementing real validation means building that table and deciding what an unknown code must do — the same BUILD-vs-RETIRE question as NR-076.",
+   "complexity": "small once the terminology source exists",
+   "regression_risk": "None today: the method has no callers.",
+   "evidence_strength": "MEASURED — call-site census and built-table check, both executed.",
+   "verification_method": "grep for validate_code across backend/ excluding the definition (zero hits); import census for FHIRTerminologyService; built_tables() against PostgreSQL at head.",
+   "affected_users": "Nobody today. Anyone relying on code validation if it is ever wired.",
+   "description": "Found by generalising NR-103's root cause: a method whose name asks a question and whose body can only answer yes. An AST sweep over app/ found 13 such functions.\n\n    def validate_code(self, system: str, code: str) -> bool:\n        return True\n\nand beside it\n\n    def lookup_code(self, system: str, code: str) -> dict:\n        return {\"system\": system, \"code\": code, \"display\": code}\n\nso an unrecognised code is not merely accepted, it is handed back with itself as its human-readable display name. For SNOMED, LOINC or ICD that turns an arbitrary string into something that renders like a validated clinical concept.\n\nTHREE LAYERS OF UNREACHABLE, all measured rather than assumed: validate_code has zero call sites anywhere in backend/; FHIRTerminologyService is exported from app/national/fhir/__init__.py and re-exported from app/fhir/__init__.py but never instantiated; and ref_fhir_terminology — the model that would hold the real code system, complete with a unique index on (system, concept_code) — is NOT among the 422 built physical tables.\n\nThat is why this is P3 and not the P2 that NR-102 got. NR-102's endpoint was served and answerable by any authenticated caller. This one cannot be reached at all. It is registered because it is a trap: the day someone wires terminology validation, it passes everything silently, and nothing would fail.\n\nThe other ten hits from the same sweep are app/capabilities/*/capability.py validate() stubs, which return True alongside an execute() that returns a hard-coded {'success': True}. They are generated scaffolding and already covered by NR-050 and NR-053; they are not re-registered here.",
+   "root_cause": "A service interface was written before its data source existed, and the placeholder chose the permissive answer. A stub that returns False would have been equally untrue but would have failed loudly the moment it was wired.",
+   "security_impact": "None today.",
+   "legal_impact": "None today.",
+   "data_integrity_impact": "None today. If wired, arbitrary strings would enter the record as valid coded concepts, which is a clinical data-quality failure rather than a security one.",
+   "clinical_impact": "None today; potentially significant if wired, since coded concepts drive decision support and reporting.",
+   "operational_impact": "None.",
+   "scalability_impact": "None.",
+   "minimal_safe_fix": "None applied. The honest interim would be to raise NotImplementedError rather than return True, so wiring it fails loudly instead of silently — but that changes an exported interface and is left with the BUILD decision.",
+   "recommended_fix": "Decide BUILD or RETIRE. If BUILD: create ref_fhir_terminology, back validate_code with it, and decide whether an unknown code is rejected or recorded as unvalidated. If RETIRE: remove the service and its two re-exports under §26.",
+   "acceptance_criteria": [
+    "validate_code either consults a real terminology source or fails loudly; it never silently returns True.",
+    "lookup_code does not present an unknown code as its own display name."
+   ],
+   "evidence": [
+    "AST sweep of app/: 13 functions named for a health or verification question whose body can only return True. Two are the redis ping()s addressed in NR-103 (_RedisWrapper.ping correctly raises on failure), ten are capability scaffolding, one is this.",
+    "MEASURED: grep for validate_code across backend/ excluding its definition returns ZERO call sites.",
+    "MEASURED: FHIRTerminologyService is exported by app/national/fhir/__init__.py and app/fhir/__init__.py and is never instantiated.",
+    "MEASURED: ref_fhir_terminology is NOT in built_tables() (422 physical tables at head), so the data source the real implementation needs does not exist."
+   ],
+   "affected_components": [
+    "app/national/fhir/terminology.py"
+   ],
+   "dependencies": [
+    "NR-076"
+   ],
+   "intersections": [
+    "NR-103 — this was found by generalising that finding's root cause into an AST sweep.",
+    "NR-102 — the same species (a validator that validates nothing), but that one was served and this one is unreachable, which is the whole difference in severity.",
+    "NR-050 / NR-053 — already cover the ten capability validate() stubs the same sweep found."
+   ],
+   "contradictions": [],
+   "related_tests": [],
+   "related_files": [
+    "backend/app/national/fhir/terminology.py"
    ],
    "related_adrs": [],
    "related_contracts": []
