@@ -20,13 +20,13 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
-from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, NID_HMAC_KEY
+from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, MAX_REQUEST_BODY_MB, NID_HMAC_KEY
 from ..database import get_db
 from ..models.audit_log import AuditLog
 from ..models.lab import Lab
@@ -36,6 +36,7 @@ from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 from ..security.rbac import ROLE_PERMISSIONS
+from ..services import compliance_measurements as measure
 from ..services import idempotency
 from ..services.audit_service import get_latest_anchor, log_action, verify_audit_chain
 
@@ -736,6 +737,7 @@ def audit_integrity(
 
 @router.get("/security-report", summary="Security posture report for government audit")
 def security_report(
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -798,13 +800,22 @@ def security_report(
         },
         "access_control": {
             "rbac": _rbac_claim(),
-            "multi_tenant": "PASS - per-lab data isolation enforced at query level",
-            "object_level_auth": "PASS - patient/order/result access checked per lab_id",
+            "multi_tenant": measure.enforced_by_gate(
+                "per-lab data isolation on ORM and raw-SQL read paths",
+                "tests/test_patient_sql_is_tenant_scoped.py and "
+                "tests/test_idempotency_keys_are_tenant_scoped.py",
+            ),
+            "object_level_auth": measure.enforced_by_gate(
+                "patient/order/result access scoped by lab_id",
+                "tests/test_tenant_isolation_matrix.py",
+            ),
             "failed_logins_24h": failed_logins_24h,
             "active_users_this_lab": total_users,
         },
         "encryption": {
-            "data_in_transit": "PASS - HTTPS/TLS via nginx (production)",
+            "data_in_transit": measure.unobservable(
+                "HTTPS/TLS termination", "the host nginx configuration",
+            ),
             "data_at_rest": "PARTIAL - Fernet encryption for sensitive fields",
             "national_id_storage": "PASS - HMAC-SHA256 one-way hash (not reversible)",
             "key_management": "Env var injection (Vault recommended for enterprise)",
@@ -813,8 +824,8 @@ def security_report(
             "status": chain_result["status"],
             "entries_verified": chain_result["entries_checked"],
             "chain_intact": chain_result["verified"],
-            "tamper_detection": "PASS - SHA-256 hash chain (immutable trigger + chain hash)",
-            "immutability": "PASS - PostgreSQL trigger blocks UPDATE/DELETE",
+            "tamper_detection": measure.audit_immutability(db),
+            "immutability": measure.audit_immutability(db),
             "coverage": "All login, patient, order, result, admin actions logged",
         },
         "api_security": {
@@ -830,11 +841,26 @@ def security_report(
                 else "MEASURED_FAIL - per-worker in-memory store: a retry handled "
                      "by another worker is not recognised as a replay. Set REDIS_URL."
             ),
-            "rate_limiting": "PASS - nginx: API 100/min, Auth 10/min, Upload 20/min",
-            "request_body_limit": "PASS - 10MB max request body enforced",
-            "security_headers": "PASS - CSP, X-Frame-Options, HSTS, Permissions-Policy",
-            "server_disclosure": "PASS - proxy_hide_header X-Powered-By/Server",
-            "attack_path_blocking": "PASS - wp-admin, phpMyAdmin, .env, .git blocked",
+            "rate_limiting": measure.unobservable(
+                "API 100/min, Auth 10/min, Upload 20/min",
+                "the host nginx configuration",
+            ),
+            "request_body_limit": measure.middleware_verdict(
+                request.app, "MaxBodySizeMiddleware",
+                f"{MAX_REQUEST_BODY_MB}MB maximum request body",
+            ),
+            "security_headers": measure.middleware_verdict(
+                request.app, "SecurityHeadersMiddleware",
+                "CSP, X-Frame-Options, HSTS, Permissions-Policy",
+            ),
+            "server_disclosure": measure.unobservable(
+                "proxy_hide_header X-Powered-By/Server",
+                "the host nginx configuration",
+            ),
+            "attack_path_blocking": measure.unobservable(
+                "wp-admin, phpMyAdmin, .env and .git request paths blocked",
+                "the host nginx configuration",
+            ),
             "intrusion_detection": "PASS - IP blocking after repeated failures",
         },
         "compliance_standards": {
@@ -851,7 +877,9 @@ def security_report(
         "runtime": {
             "python_version": python_ver,
             "container_user": "appuser (non-root)",
-            "no_new_privileges": "PASS - security_opt in docker-compose",
+            "no_new_privileges": measure.unobservable(
+                "no-new-privileges", "the container runtime (docker-compose security_opt)",
+            ),
         },
         "recommendations": [
             "Obtain ISO 27001:2022 formal certification",
@@ -1143,7 +1171,7 @@ def system_status(
         "compliance_checklist": {
             "fhir_r4": "PASS",
             "dhis2_export": "PASS",
-            "audit_immutability": "PASS - DB trigger + hash chain + external anchor",
+            "audit_immutability": measure.audit_immutability(db),
             "rbac": _rbac_claim(),
             "secure_cookies": "PASS" if IS_PRODUCTION else "DEV - Secure=False in development",
             "docs_protected": "PASS" if IS_PRODUCTION else "DEV - /docs open in development",

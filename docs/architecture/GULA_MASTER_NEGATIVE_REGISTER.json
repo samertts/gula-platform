@@ -3730,6 +3730,67 @@
    ],
    "related_adrs": [],
    "related_contracts": []
+  },
+  {
+   "id": "NR-097",
+   "title": "§32-D: twelve of the compliance report's twenty-three hard-coded verdicts now measure, name where they cannot be measured, or name the gate that holds them",
+   "severity": "P2",
+   "priority": 3,
+   "domain": "app/routes/compliance.py, app/services/compliance_measurements.py",
+   "category": "Compliance reporting integrity / Unmeasured assertion",
+   "wave": "repair",
+   "owner": "Platform security / Compliance",
+   "status": "PARTLY RESOLVED — 12 of 23 converted and the ratchet tightened 23 -> 11; the remaining 11 are app-internal and derivable",
+   "can_fix_now": false,
+   "blocker": "The remaining eleven are weaker claims rather than false ones. Turning them into measurements is possible but each needs its own probe; whether an auditor's checklist should carry them at all is a product decision.",
+   "complexity": "small per claim, eleven still to go",
+   "regression_risk": "Low. Every change is to a reported string; no control was altered. security_report gained a `request` parameter, which FastAPI injects.",
+   "evidence_strength": "EXECUTED — the audit-immutability measurement was exercised in all four of its states against real PostgreSQL and SQLite.",
+   "verification_method": "Trigger dropped inside a transaction and re-measured, then rolled back; the same call made against SQLite; AST recount of the remaining literals.",
+   "affected_users": "Auditors and anyone reading the compliance endpoints.",
+   "description": "NR-090 fixed the two statements in these reports that were outright false. This is the rest: 23 verdicts that were string literals no code computed, so nothing failed when the system they described changed.\n\nClassified per §32-D. Twelve converted:\n\n  UNOBSERVABLE (5) — data_in_transit, rate_limiting, server_disclosure, attack_path_blocking, no_new_privileges. Each names a control in nginx or the container runtime, which this process cannot see, and now says where it would have to be verified instead of asserting PASS.\n\n  MEASURED (5) — tamper_detection, immutability and audit_immutability now ask pg_trigger whether trg_audit_logs_no_update and trg_audit_logs_no_delete exist; request_body_limit and security_headers ask app.user_middleware what is actually installed rather than what factory.py intends.\n\n  ENFORCED_BY_GATE (2) — multi_tenant and object_level_auth. A blanket PASS from inside one request cannot speak for the whole codebase, and this platform has found four tenant-scope defects in as many days (NR-088, NR-090, NR-092, NR-094). The verdict now names the CI guard that holds each invariant, so an auditor can ask for its output.\n\nThe eleven remaining are app-internal and derivable — a hasher in use, a route registered. Weaker than measured, but not the same species as telling an auditor this process verified nginx. The guard's ceiling came down 23 -> 11 with them, because a ratchet that keeps its old headroom is not a ratchet.",
+   "root_cause": "The report was written as a description of the system rather than as an observation of it. A description is correct on the day it is written and silently stops being correct afterwards, with nothing to notice.",
+   "security_impact": "None directly. The risk was an auditor forming a false picture of controls that were never checked.",
+   "legal_impact": "The stated audience is government and ISO 27001 auditors. Five claims about infrastructure this process cannot observe were being presented as verified findings.",
+   "data_integrity_impact": "None — reporting only.",
+   "clinical_impact": "None.",
+   "operational_impact": "The audit-immutability verdict now reports MEASURED_FAIL if the triggers are ever absent, which is a real operational signal the report previously could not give.",
+   "scalability_impact": "Negligible: one catalogue query per report.",
+   "minimal_safe_fix": "Applied for twelve. The rest stay literal and are pinned at 11.",
+   "recommended_fix": "Continue converting the remaining eleven, or decide with the compliance owner which belong on the checklist at all.",
+   "acceptance_criteria": [
+    "No verdict that names infrastructure outside this process reports PASS.",
+    "The audit-immutability verdict reflects the actual trigger state, including MEASURED_FAIL and UNOBSERVABLE.",
+    "The hard-coded verdict count does not rise above 11."
+   ],
+   "evidence": [
+    "EXECUTED against PostgreSQL 16: with both triggers present the verdict is 'MEASURED_PASS - trg_audit_logs_no_delete, trg_audit_logs_no_update present on audit_logs'.",
+    "EXECUTED with trg_audit_logs_no_update dropped inside a transaction: 'MEASURED_FAIL - audit_logs is NOT append-only: trg_audit_logs_no_update absent. Rows can be updated or deleted.' Rolled back; the verdict returned to MEASURED_PASS.",
+    "EXECUTED against SQLite, where pg_trigger does not exist: 'UNOBSERVABLE - the audit trigger catalogue could not be read on this backend; verify on the PostgreSQL primary'. It does NOT fall back to PASS, which is the rule §32-D sets.",
+    "AST recount: hard-coded PASS/PARTIAL/FAIL literals across both reports fell from 23 to 11, and the guard's declared ceiling was lowered to match.",
+    "Gate: unit 473 passed, 4 deselected — unchanged, because this converts assertions rather than adding tests."
+   ],
+   "affected_components": [
+    "app/routes/compliance.py",
+    "app/services/compliance_measurements.py"
+   ],
+   "dependencies": [
+    "NR-090"
+   ],
+   "intersections": [
+    "NR-090 — that finding fixed the two false statements; this one addresses the unmeasured ones behind them.",
+    "NR-095 — idempotency_store was the first verdict converted to a MEASURED state, in that finding rather than this one.",
+    "NR-088 / NR-092 / NR-094 — the reason multi_tenant became ENFORCED_BY_GATE rather than staying PASS."
+   ],
+   "contradictions": [],
+   "related_tests": [
+    "backend/tests/test_compliance_reports_are_true.py"
+   ],
+   "related_files": [
+    "backend/app/services/compliance_measurements.py"
+   ],
+   "related_adrs": [],
+   "related_contracts": []
   }
  ]
 }

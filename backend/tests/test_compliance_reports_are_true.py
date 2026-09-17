@@ -79,9 +79,25 @@ def _sql_literals(fn: ast.FunctionDef) -> list[str]:
 #: rather than removed, because deleting an auditor's checklist line is a
 #: product decision, and pinned so the set cannot quietly grow.
 #:
-#: 23 is measured across both reports, not estimated: 20 in `security_report`
-#: and 5 in `system_status`, less the two `rbac` literals now derived.
-DECLARED_UNVERIFIABLE_CLAIMS = 23
+#: Was 23. Twelve were converted under §32-D and the ceiling came down with
+#: them, because a ratchet that keeps its old headroom is not a ratchet.
+#:
+#: What the twelve became. Five name controls that live in nginx or the
+#: container runtime -- TLS, rate limits, header hiding, attack-path blocking,
+#: no-new-privileges -- and are now `UNOBSERVABLE`, each saying where it would
+#: have to be checked. Three are measured against the database or the running
+#: middleware stack: the two audit-immutability claims ask pg_trigger for
+#: `trg_audit_logs_no_update`/`no_delete`, and the body-limit and
+#: security-header claims ask `app.user_middleware` what is actually installed.
+#: Two -- `multi_tenant` and `object_level_auth` -- became `ENFORCED_BY_GATE`,
+#: naming the CI guard that holds each invariant, because this platform has
+#: found four tenant-scope defects in as many days and a blanket PASS from
+#: inside a request cannot speak for the whole codebase.
+#:
+#: The eleven that remain are app-internal and derivable -- a hasher in use, a
+#: route registered. Weaker than measured, but not the same species as telling
+#: an auditor this process verified nginx.
+DECLARED_UNVERIFIABLE_CLAIMS = 11
 
 
 def test_every_audit_log_read_in_a_served_report_is_tenant_scoped(functions) -> None:
