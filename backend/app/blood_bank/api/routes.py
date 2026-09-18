@@ -18,14 +18,11 @@ from app.blood_bank.exceptions import (
 )
 from app.blood_bank.infrastructure.models import (
     BloodRequestModel,
+    BloodReservationModel,
     BloodUnitModel,
     CrossmatchModel,
-    TransfusionModel,
     PatientBloodSampleModel,
-    BloodReservationModel,
-    TransfusionReactionModel,
-    BloodReturnModel,
-    BloodDiscardModel,
+    TransfusionModel,
 )
 from app.clinical.command_guard import ClinicalCommandGuard
 from app.clinical.failure_injection import maybe_fail
@@ -84,7 +81,8 @@ def _get_service(
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
         event_bus = None
-    return BloodBankService(db=db, event_bus=event_bus, lab_id=_lab_id(current_user))
+    return BloodBankService(db=db, event_bus=event_bus, lab_id=_lab_id(current_user),
+                            user_id=current_user.id)
 
 
 # ---- Donor Management ----

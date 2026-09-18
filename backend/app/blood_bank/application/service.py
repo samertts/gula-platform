@@ -26,7 +26,6 @@ from app.blood_bank.domain.enums import (
     TransfusionStatus,
 )
 from app.blood_bank.domain.state_machine import transition
-from app.clinical.failure_injection import maybe_fail
 from app.blood_bank.exceptions import (
     BloodBankValidationError,
     BloodBankWorkflowError,
@@ -39,27 +38,60 @@ from app.blood_bank.exceptions import (
 )
 from app.blood_bank.infrastructure.models import (
     BloodComponentModel,
+    BloodDiscardModel,
     BloodDonationModel,
     BloodDonorModel,
     BloodInventoryModel,
     BloodRequestModel,
+    BloodReservationModel,
+    BloodReturnModel,
+    BloodTraceabilityEventModel,
     BloodUnitModel,
     CrossmatchModel,
     DonorDeferralModel,
-    TransfusionModel,
     InventoryMovementModel,
     PatientBloodSampleModel,
-    BloodReservationModel,
+    TransfusionModel,
     TransfusionReactionModel,
-    BloodTraceabilityEventModel,
-    BloodReturnModel,
-    BloodDiscardModel,
 )
+from app.clinical.failure_injection import maybe_fail
 from app.national.events.base import NationalDomainEvent
+from app.services.audit_service import log_action
+
+
+def _audit_resource_id(resource_id: str | int | None) -> int | None:
+    """audit_logs.resource_id is INTEGER; blood bank keys are varchar.
+
+    Mirrors ClinicalCommandGuard._audit_resource_id so both audit paths in the
+    blood bank record the typed column identically. The caller keeps the full
+    string identifier in details["resource_id"].
+    """
+    if resource_id is None:
+        return None
+    try:
+        return int(resource_id)
+    except (TypeError, ValueError):
+        return None
+
+
+# Fields the SERVER owns, never the request body. lab_id is here because a
+# client-supplied lab_id is a tenant reassignment (NR-021); id because a
+# client-supplied primary key is row hijacking.
+_SERVER_OWNED_FIELDS = frozenset({"lab_id", "id"})
+
+# The same set, plus the immutable creation timestamp, for update paths.
+_DONOR_UPDATE_EXCLUDED = _SERVER_OWNED_FIELDS | {"created_at"}
 
 
 class BloodBankService:
-    def __init__(self, db: Session, event_bus: Any = None, lab_id: int | None = None):
+    def __init__(self, db: Session, event_bus: Any = None, lab_id: int | None = None,
+                 user_id: int | None = None):
+        # NR-027. user_id carries the ACTOR so the six legacy mutations below can
+        # write an attributable audit row. The service had lab_id but no actor,
+        # which is why those routes could not be audited without threading it in.
+        # Optional so existing constructions -- BloodBankService(db) in the
+        # row-locked sample routes -- keep working unchanged.
+        self.user_id = user_id
         self.db = db
         self.event_bus = event_bus
         # Server-authoritative tenant context. Every blood bank table carries
@@ -91,7 +123,7 @@ class BloodBankService:
         """
         cleaned = {
             k: v for k, v in data.items()
-            if hasattr(model, k) and k not in {"lab_id", "id"}
+            if hasattr(model, k) and k not in _SERVER_OWNED_FIELDS
         }
         cleaned["lab_id"] = self._require_lab()
         return cleaned
@@ -101,6 +133,37 @@ class BloodBankService:
             self.event_bus.emit(event.event_type, event.__dict__)
 
     # ---- Donor Management ----
+
+    def _audit(self, action: str, resource_type: str, resource_id: str | int | None,
+               details: dict[str, Any] | None = None) -> None:
+        """Write a hash-chained audit row for a legacy mutation (NR-027).
+
+        Called BEFORE the method's own commit so the audit row and the clinical
+        effect land in one transaction: log_action does db.add + db.flush and
+        never commits, so an audit that is written cannot survive a rolled-back
+        mutation, and a mutation cannot commit without its audit.
+
+        These routes are NOT under ClinicalCommandGuard. Bringing them under it
+        needs an idempotency key and a precondition contract on each -- a
+        behavioural change to live endpoints, which CLAUDE.md reserves. Audit
+        coverage needs neither, so it is not held hostage to that decision:
+        CLAUDE.md Security Invariant #2 requires every mutation to be audited,
+        and these clinical blood-bank mutations were not.
+
+        audit_logs.resource_id is INTEGER while every blood bank primary key is
+        a varchar identifier, so passing the key straight through raises a
+        DataError from inside the audit writer and takes the clinical
+        transaction down with it -- an audit attempt that breaks the endpoint is
+        worse than the gap it closes. The identifier is therefore normalised the
+        same way ClinicalCommandGuard normalises it, and the unabridged string
+        is always carried in details["resource_id"] so identity is never lost.
+        """
+        payload: dict[str, Any] = {"resource_id": str(resource_id)}
+        payload.update(details or {})
+        log_action(
+            self.db, action, resource_type, _audit_resource_id(resource_id),
+            user_id=self.user_id, lab_id=self.lab_id, details=payload,
+        )
 
     def register_donor(self, data: dict[str, Any]) -> BloodDonor:
         existing = self._scoped(BloodDonorModel).filter(
@@ -114,6 +177,9 @@ class BloodBankService:
         if not model.next_eligible_date:
             model.next_eligible_date = datetime.now(UTC)
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.donor.register", "blood_donor", model.id,
+                    {"blood_group": data.get("blood_group", "")})
         self.db.commit()
         self.db.refresh(model)
         donor = self._donor_from_model(model)
@@ -142,16 +208,32 @@ class BloodBankService:
         if not donor:
             raise DonorNotFoundError()
         deferral_days = data.get("deferral_days", 0)
-        deferred_until = datetime.now(UTC) + timedelta(days=deferral_days) if deferral_days else None
+        # NR-027. blood_bank_donor_deferrals.deferred_from is NOT NULL with no
+        # default in either the ORM or the physical schema, and this was the
+        # only construction site and never set it -- so every call to
+        # POST /donors/{donor_id}/defer raised NotNullViolation and returned
+        # 500. The consequence is not cosmetic: register_donation refuses a
+        # donation only when an ACTIVE deferral row exists, so while no
+        # deferral row could be written, the donor-deferral safety gate could
+        # never fire and a deferred donor was never actually blocked.
+        # The deferral starts now, which is the same instant deferred_until is
+        # already measured from one line above.
+        deferred_from = datetime.now(UTC)
+        deferred_until = deferred_from + timedelta(days=deferral_days) if deferral_days else None
         model = DonorDeferralModel(
             lab_id=self._require_lab(),
             donor_id=donor_id, deferral_type=data.get("deferral_type", "temporary"),
             reason=data.get("reason", "other"), reason_detail=data.get("reason_detail", ""),
-            deferral_days=deferral_days, deferred_until=deferred_until,
+            deferral_days=deferral_days, deferred_from=deferred_from,
+            deferred_until=deferred_until,
             deferred_by=data.get("deferred_by", ""), notes=data.get("notes", ""),
         )
         donor.status = DonorStatus.DEFERRED.value
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.donor.defer", "donor_deferral", model.id,
+                    {"donor_id": donor_id, "deferral_days": deferral_days,
+                     "reason": data.get("reason", "other")})
         self.db.commit()
         self.db.refresh(model)
         return DonorDeferral(id=model.id, donor_id=donor_id, deferral_days=deferral_days,
@@ -174,6 +256,9 @@ class BloodBankService:
         model = BloodDonationModel(**self._owned(data, BloodDonationModel))
         model.status = DonationStatus.REGISTERED.value
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.donation.register", "blood_donation", model.id,
+                    {"donor_id": donor_id, "volume_ml": data.get("volume_ml", 450)})
         self.db.commit()
         self.db.refresh(model)
         donor.last_donation_date = datetime.now(UTC)
@@ -191,7 +276,10 @@ class BloodBankService:
         model = self._scoped(BloodDonationModel).filter_by(id=donation_id).first()
         if not model:
             raise DonationNotFoundError()
+        state_before = model.status
         model.status = DonationStatus.COMPLETED.value
+        self._audit("bloodbank.donation.complete", "blood_donation", model.id,
+                    {"state_before": state_before, "state_after": model.status})
         self.db.commit()
         self.db.refresh(model)
         return BloodDonation(id=model.id, donor_id=model.donor_id, status=model.status, donation_type=model.donation_type,
@@ -204,6 +292,9 @@ class BloodBankService:
         model.processing_date = datetime.now(UTC)
         model.status = ComponentStatus.AVAILABLE.value
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.component.process", "blood_component", model.id,
+                    {"donation_id": model.donation_id, "component": model.component})
         self.db.commit()
         self.db.refresh(model)
         return BloodComponentEntity(id=model.id, donation_id=model.donation_id, component=model.component, status=model.status,
@@ -837,6 +928,10 @@ class BloodBankService:
         # the authenticated context, exactly as the other create paths do.
         model = BloodRequestModel(**self._owned(data, BloodRequestModel))
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.request.create", "blood_request", model.id,
+                    {"patient_id": model.patient_id, "blood_group": model.blood_group,
+                     "units_requested": model.units_requested})
         self.db.commit()
         self.db.refresh(model)
         return BloodRequest(id=model.id, patient_id=model.patient_id, blood_group=model.blood_group,
@@ -875,9 +970,31 @@ class BloodBankService:
         )
 
     def _update_donor(self, model: BloodDonorModel, data: dict[str, Any]) -> BloodDonor:
-        for k, v in data.items():
-            if hasattr(model, k) and k not in ("id", "created_at"):
-                setattr(model, k, v)
+        """Apply a client payload to an existing donor, tenant-safely (NR-027).
+
+        Reached from register_donor when the citizen already has a donor record
+        in the caller's laboratory, so it is a live, client-reachable write
+        path. Two defects were fixed here:
+
+        1. `lab_id` was assignable from the request body. `_owned()` was added
+           on the create path precisely to stop a caller attributing a row to
+           another laboratory (NR-021), but this update path did not use it, so
+           the same payload could hand one laboratory's donor to another. The
+           exclusion set is now shared with `_owned()` instead of re-listed.
+        2. The write was not audited, so a donor demographic change left no
+           trail. CLAUDE.md Security Invariant #2 requires every mutation to
+           be audited.
+        """
+        changed = sorted(
+            k for k, v in data.items()
+            if hasattr(model, k)
+            and k not in _DONOR_UPDATE_EXCLUDED
+            and getattr(model, k) != v
+        )
+        for k in changed:
+            setattr(model, k, data[k])
+        self._audit("bloodbank.donor.update", "blood_donor", model.id,
+                    {"fields_changed": changed})
         self.db.commit()
         self.db.refresh(model)
         return self._donor_from_model(model)

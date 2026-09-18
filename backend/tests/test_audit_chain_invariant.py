@@ -81,7 +81,9 @@ DECLARED_UNAUDITED_MUTATION_PACKAGES = {
     "app/control_plane": 10,
     "app/billing": 5,
     "app/biomedical": 11,
-    "app/blood_bank": 21,
+    # app/blood_bank removed under NR-027: the six legacy mutating routes
+    # now call log_action directly, so the package no longer qualifies.
+    # Proof: backend/tests/test_blood_bank_mutations_are_audited.py.
     "app/capabilities": 29,
     "app/chronic_care": 6,
     "app/command_center": 6,
