@@ -33,7 +33,9 @@ if (isProduction && (!process.env.DEMO_SESSION_SECRET || demoSessionSecret.lengt
   throw new Error('DEMO_SESSION_SECRET must be set to a random value of at least 32 characters in production.');
 }
 const demoAttempts = new Map<string, { count: number; resetAt: number }>();
-const revokedDemoSessions = new Map<string, number>();
+// Exported so tests can drive the exact same revocation bookkeeping the
+// DELETE /api/v1/demo/session handler performs, without a second HTTP layer.
+export const revokedDemoSessions = new Map<string, number>();
 
 type DemoClaims = {
   environment: 'demo';
@@ -86,11 +88,11 @@ const demoDashboard = {
   safety: { verifiedSamples: 96, pendingReview: 7, auditEvents: 184 },
 };
 
-function base64url(value: string): string {
+export function base64url(value: string): string {
   return Buffer.from(value).toString('base64url');
 }
 
-function unbase64url(value: string): string | null {
+export function unbase64url(value: string): string | null {
   try {
     return Buffer.from(value, 'base64url').toString('utf8');
   } catch {
@@ -98,11 +100,11 @@ function unbase64url(value: string): string | null {
   }
 }
 
-function signDemoPayload(payload: string): string {
+export function signDemoPayload(payload: string): string {
   return createHmac('sha256', demoSessionSecret).update(payload).digest('base64url');
 }
 
-function createDemoToken(): string {
+export function createDemoToken(): string {
   const now = Date.now();
   const claims: DemoClaims = {
     environment: 'demo',
@@ -114,7 +116,7 @@ function createDemoToken(): string {
   return `${encodedPayload}.${signDemoPayload(encodedPayload)}`;
 }
 
-function parseCookies(header: string | undefined): Record<string, string> {
+export function parseCookies(header: string | undefined): Record<string, string> {
   if (!header) return {};
   return header.split(';').reduce<Record<string, string>>((cookies, pair) => {
     const separatorIndex = pair.indexOf('=');
@@ -126,7 +128,7 @@ function parseCookies(header: string | undefined): Record<string, string> {
   }, {});
 }
 
-function isDemoSessionRevoked(sessionId: string): boolean {
+export function isDemoSessionRevoked(sessionId: string): boolean {
   const expiresAt = revokedDemoSessions.get(sessionId);
   if (!expiresAt) return false;
   if (expiresAt <= Date.now()) {
@@ -136,7 +138,7 @@ function isDemoSessionRevoked(sessionId: string): boolean {
   return true;
 }
 
-function readDemoClaims(req: Request): DemoClaims | null {
+export function readDemoClaims(req: Request): DemoClaims | null {
   const token = parseCookies(req.headers.cookie).gula_demo;
   if (!token) return null;
   const [payload, signature] = token.split('.');
@@ -154,12 +156,12 @@ function readDemoClaims(req: Request): DemoClaims | null {
   }
 }
 
-function setNoStoreHeaders(res: Response): void {
+export function setNoStoreHeaders(res: Response): void {
   res.set('Cache-Control', 'no-store, private');
   res.set('Pragma', 'no-cache');
 }
 
-function canStartDemo(requestIP: string): boolean {
+export function canStartDemo(requestIP: string): boolean {
   const now = Date.now();
   const current = demoAttempts.get(requestIP);
   if (!current || current.resetAt <= now) {
@@ -401,15 +403,25 @@ app.use((err: any, req: Request, res: Response, _next: any) => {
 
 const server = createServer(app);
 
-server.listen(port, () => {
-  structuredLogger.info('Server started', {
-    port,
-    environment: nodeEnv,
-    uptime: process.uptime(),
-  });
-  
-  // Log startup info
-  console.log(`
+// Only bind a real listener when this file is the actual process entry point
+// (`node dist/server/index.js`, matching package.json's "main"/"start").
+// Importing this module as a library — e.g. from a test file that needs the
+// exported pure helpers (createDemoToken, readDemoClaims, etc.) or `app`
+// itself for supertest — must not also start a live listener on `port`.
+const isEntryPoint = process.argv[1]
+  ? import.meta.url === `file://${process.argv[1]}`
+  : false;
+
+if (isEntryPoint) {
+  server.listen(port, () => {
+    structuredLogger.info('Server started', {
+      port,
+      environment: nodeEnv,
+      uptime: process.uptime(),
+    });
+
+    // Log startup info
+    console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║          GULA Platform - Backend Server                    ║
 ╠════════════════════════════════════════════════════════════╣
@@ -430,7 +442,8 @@ Test Endpoints:
 
 Ready to serve requests ✓
   `);
-});
+  });
+}
 
 // ============================================================================
 // GRACEFUL SHUTDOWN
