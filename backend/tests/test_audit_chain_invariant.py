@@ -92,7 +92,14 @@ DECLARED_UNAUDITED_MUTATION_PACKAGES = {
     "app/critical_care": 14,
     "app/devices": 15,
     "app/document_intelligence": 25,
-    "app/governance": 47,
+    # app/governance removed under NR-109: GovernanceRepository._write_audit
+    # now calls log_action directly. It previously wrote a HealthNumberAudit
+    # row into a table no migration builds, which is why the package looked
+    # unaudited to this ledger AND failed at flush in production.
+    # Proof: backend/tests/test_governance_mutations_reach_the_audit_chain.py.
+    # NOT a claim that all 47 of its mutating endpoints are audited -- this
+    # ledger only tracks packages with NO audit call anywhere. Per-endpoint
+    # coverage across the platform is NR-062.
     "app/health_data": 3,
     "app/integration": 9,
     "app/knowledge_graph": 6,

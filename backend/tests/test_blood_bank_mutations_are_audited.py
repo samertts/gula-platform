@@ -166,15 +166,27 @@ def test_the_server_owns_tenant_and_identity_fields_on_every_write_path() -> Non
 
 
 def test_the_varchar_primary_key_is_normalised_for_the_integer_audit_column() -> None:
-    """audit_logs.resource_id is INTEGER; blood bank keys are varchar."""
-    from app.blood_bank.application.service import _audit_resource_id
+    """audit_logs.resource_id is INTEGER; blood bank keys are varchar.
 
-    assert _audit_resource_id(None) is None
-    assert _audit_resource_id(41) == 41
-    assert _audit_resource_id("41") == 41
+    The service used to carry its own copy of this rule, and so did
+    ClinicalCommandGuard. NR-109 consolidated both onto
+    audit_service.normalize_resource_id, because two copies of one rule is
+    what let the blood bank create and update paths disagree under NR-105.
+    This test follows the rule to its single home rather than pinning a
+    duplicate back into place.
+    """
+    from app.blood_bank.application import service as blood_bank
+    from app.services.audit_service import normalize_resource_id
+
+    assert normalize_resource_id(None) is None
+    assert normalize_resource_id(41) == 41
+    assert normalize_resource_id("41") == 41
     # The real shape of a blood bank key. Passing it through raises DataError
     # from inside the audit writer and takes the clinical transaction with it.
-    assert _audit_resource_id("FB038B3AF71045168A6F3437C1") is None
+    assert normalize_resource_id("FB038B3AF71045168A6F3437C1") is None
+    # And the blood bank genuinely reaches it -- a consolidation that left the
+    # service calling something else would still pass the three lines above.
+    assert blood_bank.normalize_resource_id is normalize_resource_id
 
 
 def test_every_not_null_column_without_a_default_is_set_at_its_write_site() -> None:
