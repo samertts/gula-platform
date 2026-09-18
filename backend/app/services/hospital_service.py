@@ -132,7 +132,7 @@ class HospitalService:
 
     @staticmethod
     def _get_entity(db: Session, model, entity_id: int, lab_id: int, parent_filter=None):
-        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, not model.is_deleted)
+        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, ~model.is_deleted)
         if parent_filter is not None:
             q = q.filter(parent_filter)
         entity = q.first()

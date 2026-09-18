@@ -253,6 +253,20 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     }
 
 
+def _bearer(request: Request) -> str | None:
+    """The access token an API client actually sent, if it used the header."""
+    header = request.headers.get("Authorization") or ""
+    scheme, _, value = header.partition(" ")
+    if scheme.lower() == "bearer" and value.strip():
+        return value.strip()
+    return None
+
+
+def _body_refresh_token(request: Request) -> str | None:
+    """A refresh token supplied out of band, so it can be revoked too."""
+    return request.headers.get("X-Refresh-Token") or None
+
+
 @router.post("/logout")
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     """Logout with two-layer revocation:
@@ -264,8 +278,16 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     user_id = None
     account_kind = None
 
-    # Layer 1: blacklist access token JTI in Redis
-    access_token = request.cookies.get("access_token")
+    # Layer 1: blacklist access token JTI in Redis.
+    #
+    # The cookie alone is not the session. Every non-browser client -- the
+    # mobile app, the device bridge, anything using the documented
+    # `Authorization: Bearer` contract -- sends no cookie, so this read
+    # returned None, nothing was blacklisted, user_id stayed None, and the
+    # perm_version bump below never ran either. MEASURED on a live server:
+    # POST /logout returned 200 and GET /session with the same bearer token
+    # still returned 200 afterwards. Logout was a no-op for API clients.
+    access_token = request.cookies.get("access_token") or _bearer(request)
     if access_token:
         payload = decode_token(access_token)
         if payload:
@@ -278,7 +300,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                     blacklist_token(jti, remaining)
 
     # Layer 1b: blacklist refresh token JTI in Redis
-    refresh_cookie = request.cookies.get("refresh_token")
+    refresh_cookie = request.cookies.get("refresh_token") or _body_refresh_token(request)
     if refresh_cookie:
         rp = decode_refresh_token(refresh_cookie)
         if rp and rp.get("jti"):

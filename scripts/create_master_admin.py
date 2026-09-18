@@ -11,6 +11,7 @@ Or with inline args (non-interactive):
 """
 import argparse
 import getpass
+import os
 import sys
 
 
@@ -32,9 +33,11 @@ def main():
         password = getpass.getpass("Admin password: ")
         confirm  = getpass.getpass("Confirm password: ")
         if password != confirm:
+            print("ERROR: passwords do not match.", file=sys.stderr)
             sys.exit(1)
 
     if len(password) < 8:
+        print("ERROR: password must be at least 8 characters.", file=sys.stderr)
         sys.exit(1)
 
     # ── DB setup ──────────────────────────────────────────────────────────────
@@ -77,7 +80,12 @@ def main():
 
         if existing:
             if not args.force:
-                return
+                print(
+                    f"A master_admin already exists ({existing.email}). "
+                    f"Re-run with --force to reset its password.",
+                    file=sys.stderr,
+                )
+                sys.exit(3)
             # --force: reset password and email
             db.execute(
                 text("UPDATE lab_users SET email=:email, name=:name, "
@@ -86,6 +94,7 @@ def main():
                 {"email": email, "name": name, "pw": pw_hash, "id": existing.id}
             )
             db.commit()
+            print(f"Reset master_admin {email} (id={existing.id}).")
         else:
             db.execute(
                 text("INSERT INTO lab_users (lab_id, name, email, password_hash, role, is_active, created_at) "
@@ -93,10 +102,19 @@ def main():
                 {"lab_id": lab_id, "name": name, "email": email, "pw": pw_hash}
             )
             db.commit()
+            print(f"Created master_admin {email} in lab {lab_id}.")
 
+        print(
+            "\nA privileged account cannot log in until it has a second factor.\n"
+            "Enrol one now:\n"
+            f"    python3 scripts/enroll_mfa.py --email {email}",
+        )
 
-    except Exception:
+    # A silent failure here reads as success to the operator, and the account
+    # they believe exists does not. Say what broke.
+    except Exception as exc:
         db.rollback()
+        print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
         sys.exit(1)
     finally:
         db.close()

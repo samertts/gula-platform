@@ -28,6 +28,23 @@ from ..services.patient_service import (
 router = APIRouter(prefix="/patients", tags=["patients"])
 
 
+# patients.gender is varchar(1) in the base schema, which is immutable. The
+# validator accepted "male" and "female" and then handed them straight to the
+# column, so POST /patients with the documented value answered 500 --
+# StringDataRightTruncation, not a 422. The accepted input set is unchanged;
+# the value is now folded to what the column stores before it gets there.
+_GENDER_CANONICAL = {"male": "M", "m": "M", "female": "F", "f": "F"}
+
+
+def _normalise_gender(value: str | None) -> str | None:
+    if value in (None, ""):
+        return value
+    canonical = _GENDER_CANONICAL.get(str(value).strip().lower())
+    if canonical is None:
+        raise ValueError("Gender must be 'male' or 'female'")
+    return canonical
+
+
 class PatientCreate(BaseModel):
     full_name: str
     phone: str
@@ -59,9 +76,7 @@ class PatientCreate(BaseModel):
     @field_validator("gender")
     @classmethod
     def validate_gender(cls, v):
-        if v and v not in ("male", "female", "M", "F"):
-            raise ValueError("Gender must be 'male' or 'female'")
-        return v
+        return _normalise_gender(v)
 
     @field_validator("birth_date")
     @classmethod
@@ -133,6 +148,11 @@ class PatientUpdate(BaseModel):
     gender: str | None = None
     email: str | None = None
     family_id: str | None = None  # set/update civil registry family number
+
+    @field_validator("gender")
+    @classmethod
+    def validate_gender(cls, v):
+        return _normalise_gender(v)
 
     @field_validator("full_name")
     @classmethod

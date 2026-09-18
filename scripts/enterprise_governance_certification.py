@@ -224,8 +224,10 @@ class GovernanceCertification:
         pct = (authed_endpoints / total_endpoints * 100) if total_endpoints else 0
         self._result("Auth: Endpoint authentication", PASS if pct >= 90 else WARN,
                      f"{authed_endpoints}/{total_endpoints} endpoints ({pct:.0f}%) authenticated")
-        if public:
-            self._result("Auth: Unauthenticated route files", WARN, ", ".join(public[:5]))
+        if unauth_files:
+            self._result(
+                "Auth: Unauthenticated route files", WARN, ", ".join(unauth_files[:5]),
+            )
 
         # RBAC model check
         rbac_path = REPO_ROOT / "backend/app/security/rbac.py"

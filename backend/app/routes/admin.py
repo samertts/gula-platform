@@ -55,6 +55,42 @@ def require_manage_users(
     return current_user
 
 
+# platform:manage_users is held by master_admin (100), ministry_admin (90),
+# province_admin (80) AND by the tenant-level admin/lab_admin (50). That is
+# enough for the handlers that scope their own query by actor.lab_id, and it
+# is NOT enough for anything acting on a lab other than the actor's own.
+#
+# MEASURED, on a live server, as a lab admin of Lab Alpha:
+#   PUT  /admin/labs/4/activate  -> 200 "Lab activated successfully"
+#   PUT  /admin/labs/3/toggle    -> 200 "Lab deactivated"   (another live lab)
+#   POST /admin/labs             -> 201 "Lab created"
+#   GET  /admin/labs/3           -> 200, another lab's licence and director
+#   GET  /admin/labs/pending     -> 200, every pending registrant's admin email
+# Three other handlers in this file already made exactly this check inline.
+# These five did not, so a tenant admin could approve labs, create labs, and
+# switch a different laboratory off.
+_PLATFORM_ROLES = ("master_admin", "ministry_admin", "province_admin")
+
+
+def _require_platform_scope(actor: LabUser) -> None:
+    """Acting on the platform, rather than inside one laboratory."""
+    if actor.role not in _PLATFORM_ROLES:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
+def _require_province_scope(actor: LabUser, lab_id: int, db: Session) -> None:
+    """A province_admin may only act on labs staffed from their own province."""
+    if actor.role != "province_admin":
+        return
+    staffed_here = (
+        db.query(LabUser.id)
+        .filter(LabUser.lab_id == lab_id, LabUser.province_id == actor.province_id)
+        .first()
+    )
+    if not staffed_here:
+        raise HTTPException(status_code=403, detail="Lab not in your province")
+
+
 # ── Serialization helper ──────────────────────────────────────────────────────
 
 
@@ -176,22 +212,12 @@ def toggle_lab(
     db: Session = Depends(get_db),
 ):
     """Activate or deactivate a lab (ministry_admin+ or province_admin for their province)."""
+    _require_platform_scope(actor)
     lab = db.query(Lab).filter(Lab.id == lab_id).first()
     if not lab:
         raise HTTPException(status_code=404, detail="Lab not found")
 
-    # Province admin: only own province
-    if actor.role == "province_admin":
-        has_lab = (
-            db.query(LabUser)
-            .filter(
-                LabUser.lab_id == lab_id,
-                LabUser.province_id == actor.province_id,
-            )
-            .first()
-        )
-        if not has_lab:
-            raise HTTPException(status_code=403, detail="Lab not in your province")
+    _require_province_scope(actor, lab_id, db)
 
     lab.is_active = not lab.is_active
     log_action(
@@ -219,9 +245,11 @@ def activate_lab(
     """Approve and activate a pending lab registration (and its admin user).
     Explicit activate-only endpoint — safer than toggle for the approval workflow.
     """
+    _require_platform_scope(actor)
     lab = db.query(Lab).filter(Lab.id == lab_id).first()
     if not lab:
         raise HTTPException(status_code=404, detail="Lab not found")
+    _require_province_scope(actor, lab_id, db)
     if lab.is_active:
         return {"message": "Lab is already active", "lab_id": lab_id, "is_active": True}
 
@@ -254,7 +282,8 @@ def list_pending_labs(
     limit: int = Query(default=50, le=200),
 ):
     """List labs pending activation (registered but not yet approved)."""
-    query = db.query(Lab).filter(not Lab.is_active)
+    _require_platform_scope(actor)
+    query = db.query(Lab).filter(Lab.is_active.is_not(True))
 
     if actor.role == "province_admin" and actor.province_id:
         lab_ids_in_province = [
@@ -297,9 +326,12 @@ def get_lab_detail(
     db: Session = Depends(get_db),
 ):
     """Get full lab detail including new profile fields."""
+    if actor.role not in _PLATFORM_ROLES and actor.lab_id != lab_id:
+        raise HTTPException(status_code=403, detail="Access denied")
     lab = db.query(Lab).filter(Lab.id == lab_id).first()
     if not lab:
         raise HTTPException(status_code=404, detail="Lab not found")
+    _require_province_scope(actor, lab_id, db)
 
     admin_user = db.query(LabUser).filter(LabUser.lab_id == lab.id, LabUser.role == "admin").first()
     staff_count = db.query(func.count(LabUser.id)).filter(LabUser.lab_id == lab.id).scalar() or 0
@@ -341,8 +373,7 @@ def list_doctors(
 
     Pass is_verified=false to see doctors pending approval.
     """
-    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
-        raise HTTPException(status_code=403, detail="Access denied")
+    _require_platform_scope(actor)
 
     query = db.query(User).filter(User.role == "doctor")
     if is_verified is not None:
@@ -381,8 +412,7 @@ def approve_doctor(
     Sets is_verified=True and is_active=True so the doctor gains full
     API access. Only ministry_admin and above may approve.
     """
-    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
-        raise HTTPException(status_code=403, detail="Access denied")
+    _require_platform_scope(actor)
 
     doctor = db.query(User).filter(User.id == doctor_id, User.role == "doctor").first()
     if not doctor:
@@ -465,8 +495,7 @@ def list_citizens(
     limit: int = Query(default=50, le=200),
 ):
     """List citizen accounts. ministry_admin+ only."""
-    if actor.role not in ("master_admin", "ministry_admin", "province_admin"):
-        raise HTTPException(status_code=403, detail="Access denied")
+    _require_platform_scope(actor)
 
     query = db.query(User).filter(User.role == "citizen")
     if is_active is not None:
@@ -597,6 +626,7 @@ def create_lab(
     db: Session = Depends(get_db),
 ):
     """Create a new lab with its admin user."""
+    _require_platform_scope(actor)
     if len(data.admin_password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
@@ -914,8 +944,10 @@ def get_audit_logs(
     """View audit logs. Admins see only their lab's logs; higher roles see all."""
     query = db.query(AuditLog)
 
-    # Lab admins: only their users' actions
-    if actor.role == "admin":
+    # Tenant-level roles see only their own lab's users. Keying this on the
+    # level rather than the literal "admin" matters: lab_admin is the same
+    # level 50, holds audit:read, and was reading every lab's audit trail.
+    if get_role_level(actor.role) < 80:
         lab_user_ids = [
             row[0] for row in db.query(LabUser.id).filter(LabUser.lab_id == actor.lab_id).all()
         ]

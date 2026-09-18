@@ -50,6 +50,27 @@ class PatientDict:
         }
 
 
+
+_HEALTH_ID_PREFIX = "GULA-"
+
+
+def _generate_health_id() -> str:
+    """A health id that fits the column it is stored in.
+
+    ``patients.health_id`` is ``varchar(20)`` in the base schema, and that
+    migration is immutable. The previous generator emitted ``GULA-`` plus 16
+    hex characters -- 21 -- so on PostgreSQL every patient INSERT failed with
+    ``StringDataRightTruncation``, i.e. POST /patients answered 500 for every
+    request. SQLite does not enforce varchar length, which is why the test
+    suite never saw it.
+
+    The width is read from the column rather than repeated here, so the two
+    cannot drift apart again.
+    """
+    width = Patient.__table__.c.health_id.type.length or 20
+    return (_HEALTH_ID_PREFIX + secrets.token_hex(width).upper())[:width]
+
+
 def patient_to_dict(p: Patient) -> dict:
     """Convert Patient ORM to dict DTO."""
     return {
@@ -162,7 +183,7 @@ def create_patient(
         if not guardian:
             return {"error": "Guardian patient not found in this lab", "status_code": 404}
 
-    health_id = f"GULA-{secrets.token_hex(8).upper()}"
+    health_id = _generate_health_id()
 
     patient = Patient(
         lab_id=lab_id,
