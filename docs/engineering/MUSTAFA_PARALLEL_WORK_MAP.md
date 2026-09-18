@@ -330,17 +330,93 @@ PYTHONPATH=<repo-root> python3 -m pytest services/device_bridge/tests/ -q
 # 36 passed (was 0 collected — 2 collection errors)
 ```
 
+## Batch 3 — security review of Batch 2's authorization fix
+
+Requested before continuing: review whether finding #9's `require_roles`
+gate on citizens.py/test_results.py is real access control, since "callers
+must send some header" is not the same claim as "callers are
+authenticated."
+
+### 11. [CONFIRMED DEFECT, DOCUMENTED — coordination finding, not fixed here] `X-Role` is client-controlled input, not verified server-side context
+
+- **Files:** `nhop-platform/app/core/rbac.py` (existing, unchanged by me);
+  `nhop-platform/app/api/v1/citizens.py`,
+  `nhop-platform/app/api/v1/test_results.py` (my finding #9 fix, now
+  re-documented — see below).
+- **Verdict: unsafe, confirmed.** `require_roles()`'s dependency reads the
+  raw `X-Role` HTTP header (`Header(default=None, alias="X-Role")`),
+  uppercases it, and checks set membership. That is the entire check —
+  no JWT decode, no signature, no session lookup, no cross-reference to
+  any other request field. The module's own docstring already says this
+  plainly: "The production auth stack (JWT-backed) lives in the GULA
+  platform. Until NHOP shares that identity surface, routes... read the
+  caller's role from the X-Role request header." `outbreak.py` and
+  `doctor.py` (my two precedents for finding #9) share the exact same
+  property — this was never a security boundary anywhere in this
+  package, only a shape/consistency pattern.
+- **Runtime proof:**
+  `nhop-platform/tests/test_rbac_is_not_a_trust_boundary.py` (3 tests, all
+  passing — i.e. all three vulnerable behaviors are reproducible right
+  now): (1) the identical request with no authentication material at all,
+  differing only in a self-declared `X-Role`, flips 403->200; (2) a
+  request with zero prior auth step and a made-up `X-Role: ADMIN` header
+  successfully registers a new citizen; (3) the only actually-enforced
+  property is that *some* value is present (401 if it's missing) — not
+  that it's true.
+- **Why not fixed here:** the real fix is verifying a token against the
+  GULA identity stack — `backend/app/security/auth.py` and
+  `backend/app/identity/services/{authentication_service,
+  authorization_service_v2,authorization_decision}.py`. Checked before
+  writing this off as protected (per corrected guidance: don't assume,
+  verify): `git diff --stat origin/main...origin/claude/p0-2-pharmacy-reconciliation`
+  shows Abu Ali's branch is *actively editing all four of those files*
+  right now (96 lines changed across them). Building nhop-platform's own
+  JWT verification today means either depending on an identity surface
+  that is mid-refactor elsewhere, or inventing a second one that will
+  need reconciling with his the moment it merges — both are real
+  conflict, not caution for its own sake. Classified **C — conflict with
+  Abu Ali's active stream**, not D: the blocker isn't "needs a human
+  decision," it's "the canonical mechanism to depend on is being rewritten
+  under us right now."
+- **What was safe to do without touching his work, and was done:** the
+  module docstrings in `citizens.py` and `test_results.py` (written during
+  finding #9) have been corrected — they described the `require_roles`
+  gate as "implemented authorization" without qualification, which
+  overstates what it provides. They now say plainly that this is a role
+  gate, not verified access control, and point at the proof test and at
+  the real fix's location for whoever picks this up once Abu Ali's
+  identity work lands.
+- **Explicitly not done, per instruction:** the pattern was not expanded
+  to any further endpoint while this is unresolved.
+- **Recommended fix (for whenever the identity stack settles):** nhop
+  gains a dependency that verifies a bearer token against
+  `backend/app/security/auth.py`'s (post-refactor) verification logic —
+  either by importing it directly (if nhop and backend end up sharing a
+  process/deployment boundary) or via a lightweight introspection call to
+  the backend — and derives role/membership/organization/scope from the
+  verified token's claims, never from a client-supplied header. Delete
+  `test_rbac_is_not_a_trust_boundary.py`'s premise at that point: its
+  tests are written to fail once real verification lands, by design.
+
+## Verification (Batch 3)
+
+```
+cd nhop-platform && PYTHONPATH=<repo-root> python3 -m pytest tests/ -q
+# 54 passed (was 51) — 3 new characterization tests proving the X-Role gap
+```
+
 ## Next independent work (not started yet)
 
-- `edge_agent/`, `client/`, `frontend/`, `frontend-v2/` remain unaudited
-  and are outside Abu Ali's current footprint.
-- device_bridge concurrency: `DataPipeline.sessions[device_id]` (an
-  `ASTMDeviceSession` buffer) is shared across concurrent `/ingest`
+- `services/device_bridge/` concurrency: `DataPipeline.sessions[device_id]`
+  (an `ASTMDeviceSession` buffer) is shared across concurrent `/ingest`
   requests for the same device_id with no lock. In practice a device has
   one physical connection at a time, so this is lower-confidence/lower
-  demonstrated impact than findings #5–#7 above and wasn't chased further
-  this pass — worth a concurrent-asyncio-request test if two ingest paths
-  for the same device_id ever become a real scenario (e.g. a device with a
-  flaky connection retried by two different callers).
+  demonstrated impact than findings #5–#7 and wasn't chased further —
+  worth a concurrent-asyncio-request test if two ingest paths for the same
+  device_id ever become a real scenario.
 - Finding #8 (backend idempotency on `/device/results`) needs a human
   decision on the migration before implementation.
+- Finding #11 (X-Role trust boundary) needs Abu Ali's identity/auth
+  refactor to land before nhop-platform can verify tokens for real.
+- `edge_agent/`, `client/`, `frontend/`, `frontend-v2/` remain unaudited
+  and outside Abu Ali's current footprint — next up.

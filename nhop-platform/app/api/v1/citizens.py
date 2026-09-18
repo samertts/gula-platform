@@ -13,16 +13,30 @@ Route order matters: the static ``/search`` path is declared before the
 ``/{health_id}`` dynamic path so FastAPI does not treat "search" as a
 health_id.
 
-Authorization: this file previously had none at all (unlike its siblings
-doctor.py and outbreak.py, which both use core.rbac.require_roles). Writes
-(register/update) are restricted to the roles that actually onboard and
-maintain citizen records — LAB, DOCTOR, ADMIN. Reads add MINISTRY, matching
-outbreak.py's existing oversight-role precedent. A citizen reading only
-their own record (self-service) is deliberately NOT modeled here: nhop
-has no session/identity binding yet that could prove "this caller IS this
-health_id", so CITIZEN is left out of every role set below rather than
-guessed at — building that binding is a distinct piece of work, not an
-extension of this fix.
+Authorization: this file previously had no gate at all (unlike its
+siblings doctor.py and outbreak.py, which both use core.rbac.require_roles
+the same way this file now does). Writes (register/update) require LAB,
+DOCTOR, or ADMIN; reads add MINISTRY, matching outbreak.py's precedent.
+
+IMPORTANT — this is NOT real access control yet. core.rbac.require_roles
+reads the caller-supplied X-Role header verbatim with no verification
+against any session, token, or server-side identity (see that module's
+own docstring, and nhop-platform/tests/test_rbac_is_not_a_trust_boundary.py
+for a runtime proof). Any caller can send X-Role: ADMIN and pass every
+gate below. What this fix actually provides: it closes the "zero
+intent required" gap (previously nothing was needed at all) and matches
+this file to its siblings' existing pattern, but a deliberate caller is
+not stopped by it. Do not treat 401/403 here as evidence the endpoint is
+secured. Real authorization requires nhop-platform to verify a token
+against the GULA identity stack (backend/app/security/auth.py and the
+identity/authorization services under backend/app/identity/), which is
+out of scope for this fix — see the work map for why (that stack is
+under active development elsewhere).
+
+A citizen reading only their own record (self-service) is also not
+modeled: nhop has no session/identity binding yet that could prove "this
+caller IS this health_id", so CITIZEN is left out of every role set below
+rather than guessed at.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status

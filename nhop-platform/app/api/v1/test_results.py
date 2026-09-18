@@ -13,8 +13,14 @@ Route order matters: static segments (``/validate``) are declared before
 
 Authorization: mirrors citizens.py — LAB/ADMIN produce and verify results
 (DOCTOR added on verify, since sign-off is a clinical responsibility),
-reads add MINISTRY for oversight, matching outbreak.py's precedent. See
-citizens.py's module docstring for why CITIZEN self-access isn't modeled.
+reads add MINISTRY for oversight, matching outbreak.py's precedent.
+
+IMPORTANT — as in citizens.py, this is a role gate, not real access
+control: X-Role is unverified, client-supplied input (see
+core/rbac.py and tests/test_rbac_is_not_a_trust_boundary.py). It closes
+the "no gate at all" gap but does not stop a deliberate caller. See
+citizens.py's module docstring for the full explanation and why CITIZEN
+self-access isn't modeled either.
 """
 from __future__ import annotations
 
