@@ -56,23 +56,7 @@ from app.blood_bank.infrastructure.models import (
 )
 from app.clinical.failure_injection import maybe_fail
 from app.national.events.base import NationalDomainEvent
-from app.services.audit_service import log_action
-
-
-def _audit_resource_id(resource_id: str | int | None) -> int | None:
-    """audit_logs.resource_id is INTEGER; blood bank keys are varchar.
-
-    Mirrors ClinicalCommandGuard._audit_resource_id so both audit paths in the
-    blood bank record the typed column identically. The caller keeps the full
-    string identifier in details["resource_id"].
-    """
-    if resource_id is None:
-        return None
-    try:
-        return int(resource_id)
-    except (TypeError, ValueError):
-        return None
-
+from app.services.audit_service import log_action, normalize_resource_id
 
 # Fields the SERVER owns, never the request body. lab_id is here because a
 # client-supplied lab_id is a tenant reassignment (NR-021); id because a
@@ -161,7 +145,7 @@ class BloodBankService:
         payload: dict[str, Any] = {"resource_id": str(resource_id)}
         payload.update(details or {})
         log_action(
-            self.db, action, resource_type, _audit_resource_id(resource_id),
+            self.db, action, resource_type, normalize_resource_id(resource_id),
             user_id=self.user_id, lab_id=self.lab_id, details=payload,
         )
 

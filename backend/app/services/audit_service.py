@@ -181,6 +181,32 @@ def get_latest_anchor() -> dict | None:
         return None
 
 
+def normalize_resource_id(resource_id: str | int | None) -> int | None:
+    """Fit a resource identifier to audit_logs.resource_id, which is INTEGER.
+
+    Most domains outside the legacy core key their rows with a varchar
+    identifier -- a UUID, a ULID, a 26-character blood bank key. Passing one
+    through raises DataError from inside this module and takes the caller's
+    whole transaction with it, so an audit attempt breaks the operation it was
+    meant to record (NR-027).
+
+    Returns None for anything that is not integer-like. The caller is expected
+    to keep the unabridged identifier in `details`, so identity is preserved
+    even though the typed column cannot hold it.
+
+    This is the CANONICAL implementation. It existed independently in
+    ClinicalCommandGuard and in the blood bank service, which is exactly the
+    drift that let the blood bank update path and create path disagree about
+    tenant ownership under NR-105. One copy, three callers.
+    """
+    if resource_id is None:
+        return None
+    try:
+        return int(resource_id)
+    except (TypeError, ValueError):
+        return None
+
+
 def log_action(
     db: Session,
     action: str,

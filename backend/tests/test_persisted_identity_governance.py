@@ -3,19 +3,23 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app._compat import UTC
 from app.governance.base import GovernanceBase
 from app.governance.models.health_number import HealthNumberAudit, MergedIdentityRecord
-from app.governance.models.identity import GovernanceBreakGlassAccess, GovernanceIdentityRecord, MergeProposal
+from app.governance.models.identity import (
+    GovernanceBreakGlassAccess,
+    GovernanceIdentityRecord,
+    MergeProposal,
+)
 from app.governance.services.identity_persistence_service import (
     PersistedBreakGlassService,
     PersistedIdentityGovernanceService,
     PersistedIdentityMergeEngine,
 )
+from app.models.audit_log import AuditLog
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 @pytest.fixture()
@@ -26,12 +30,25 @@ def gov_db():
         poolclass=StaticPool,
     )
     GovernanceBase.metadata.create_all(engine)
+    # NR-109. The governance repositories audit into the canonical
+    # hash-chained audit_logs, which lives on app.database.Base, not on
+    # GovernanceBase. Creating only GovernanceBase left this fixture without
+    # the table the code under test writes.
+    #
+    # It is worth being precise about what this fixture used to prove, because
+    # the answer is "less than it looked". GovernanceBase.metadata contains
+    # gov_health_number_audit, which NO MIGRATION BUILDS -- so this suite
+    # passed against a table production does not have, while the production
+    # path raised ProgrammingError on every write. That is NR-036 in one file:
+    # a schema built from ORM metadata certifies the ORM, not the database.
+    AuditLog.__table__.create(bind=engine, checkfirst=True)
     Session = sessionmaker(bind=engine, autoflush=False)
     session = Session(expire_on_commit=False)
     try:
         yield session
     finally:
         session.close()
+        AuditLog.__table__.drop(bind=engine, checkfirst=True)
         GovernanceBase.metadata.drop_all(engine)
         engine.dispose()
 
