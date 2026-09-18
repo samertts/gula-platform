@@ -474,20 +474,72 @@ Isolation re-checked: `git diff --stat origin/main...origin/claude/p0-2-pharmacy
   of a contract-drift fix. Flagging for whoever owns the edge agent
   roadmap rather than guessing at scope.
 
+## Batch 5 — client/ + server/ (tRPC/Express SPA)
+
+Isolation re-checked: `git diff --stat origin/main...origin/claude/p0-2-pharmacy-reconciliation -- client/ server/ package.json package-lock.json` returns nothing — untouched by Abu Ali.
+
+`client/` itself (React SPA) is a thin, honest scaffold: `useAuth()` is an
+unconnected stub returning `{user: null, isAuthenticated: false}`, the
+real "دخول المؤسسة" (enterprise login) button is `disabled` pending
+identity-provider integration, and the only live path is an explicitly-
+labeled demo mode ("لا تستخدم النسخة التجريبية في الأعمال السريرية أو مع
+بيانات المرضى" — do not use the demo for clinical work or patient data).
+No real auth/tenant logic exists yet to audit. `server/` (the Express/tRPC
+backend it talks to) is where the actual demo-session security logic
+lives, and is where this batch's work went.
+
+### 15. [FIXED] `server/`'s demo-session security logic was untestable and untested
+
+- **Files:** `server/index.ts`, `server/tests/demoSession.test.ts` (new),
+  `server/vitest.config.ts` (new).
+- **What:** two compounding CI-false-green issues. (1) The root
+  `package.json`'s `"test"` script is
+  `npm --prefix frontend-v3 run test` — it never touches `server/` or
+  `client/` at all. (2) Even a manual `npx vitest` from the repo root
+  silently only discovers `client/`'s tests: the repo's root
+  `vite.config.ts` sets `root: "client"`, and vitest inherits that when no
+  more specific config is in scope. So `server/index.ts`'s demo-session
+  logic — HMAC-SHA256 signed tokens, `timingSafeEqual` comparison,
+  revocation with lazy TTL cleanup, per-IP rate limiting, a hard
+  production fail if `DEMO_SESSION_SECRET` is missing/short, CORS
+  wildcard-with-credentials rejection — had **never been exercised by any
+  test**, despite being well-implemented on manual review (no defect
+  found in the logic itself).
+- **Why untestable, not just untested:** every helper was module-private
+  (no `export`), and the module unconditionally called `server.listen(port)`
+  at the bottom — importing it for a test would also bind a real port.
+- **Fix:** exported the pure helpers (additive only — no behavior change);
+  guarded `server.listen()` behind an `isEntryPoint` check
+  (`import.meta.url === file://process.argv[1]`) so importing the module
+  as a library no longer binds a port, while running it directly is
+  unaffected.
+- **Positive proof:** `server/vitest.config.ts` (scoped root, so these
+  tests are actually discoverable) + 17 new tests — token round-trip,
+  signature tampering, payload tampering with a reused signature, wrong
+  `environment` claim, expiry, revocation (including the lazy-cleanup path
+  that keeps the revocation map from growing unboundedly), cookie
+  parsing, and the rate limiter's window/reset behavior.
+- **Negative/behavior-preservation proof:** ran the test suite twice in a
+  row (no port conflicts, ~550ms each — consistent with no real listener
+  ever binding); separately smoke-tested `tsx server/index.ts` directly
+  (the project's actual `dev` script) and confirmed it still logs the
+  full startup banner and shuts down cleanly on SIGTERM — the entry-point
+  guard doesn't change real runtime behavior, only what happens on import.
+- **Not done:** wiring `server/vitest.config.ts` into the root `"test"`
+  script (or CI). That changes what a shared, root-level script — and by
+  extension CI's test gate — considers passing, which reads as a
+  coordination call rather than something to flip unilaterally.
+  Recommended fix: add `"test:server": "vitest run --config
+  server/vitest.config.ts"` and include it in the root `"test"` script.
+
 ## Next independent work (not started yet)
 
-- `client/`, `frontend/`, `frontend-v2/` remain unaudited and outside
-  Abu Ali's current footprint — next up.
+- `frontend/`, `frontend-v2/` remain unaudited and outside Abu Ali's
+  current footprint — next up.
 - `services/device_bridge/` concurrency: `DataPipeline.sessions[device_id]`
   (an `ASTMDeviceSession` buffer) is shared across concurrent `/ingest`
-  requests for the same device_id with no lock. In practice a device has
-  one physical connection at a time, so this is lower-confidence/lower
-  demonstrated impact than findings #5–#7 and wasn't chased further —
-  worth a concurrent-asyncio-request test if two ingest paths for the same
-  device_id ever become a real scenario.
-- Finding #8 (backend idempotency on `/device/results`) needs a human
-  decision on the migration before implementation.
-- Finding #11 (X-Role trust boundary) needs Abu Ali's identity/auth
-  refactor to land before nhop-platform can verify tokens for real.
-- Finding #14 (edge_agent capability/runtime mismatch) needs a product
-  decision on the 5 unimplemented kinds.
+  requests for the same device_id with no lock. Lower-confidence/lower
+  demonstrated impact than findings #5–#7, not chased further.
+- Wiring `server/`'s new test config into the root `test` script / CI
+  (finding #15's "not done" item) — a coordination call, not a blocker.
+- Findings #8, #11, #14 (see above) still need their respective owners.
