@@ -21,9 +21,11 @@ status, scope classification, and findings for later integration.
 - **C (conflict, avoided):** anything under `backend/app/`, `frontend-v3/`,
   `docs/architecture/`, `docs/pharmacy-platform/`, `scripts/enterprise_readiness/`,
   `tools/gula_intel/` — Abu Ali's active footprint.
-- **E (read-only, documented below, not implemented):** the citizens/test-results
-  authorization gap — touches "auth logic," which `CLAUDE.md` marks as requiring
-  human approval.
+- **E (read-only, documented below):** batch 1 flagged the citizens/test-results
+  authorization gap as D/protected; batch 2 revisited it under corrected
+  guidance and implemented the role-based part (see finding #9) — the one
+  piece still E is citizen self-access, which needs an identity binding
+  that doesn't exist yet anywhere in nhop-platform.
 
 ## Findings
 
@@ -92,7 +94,7 @@ status, scope classification, and findings for later integration.
 - **Always-safe per `CLAUDE.md`:** "Add test cases for untested business
   logic" — no production behavior changed by this file addition.
 
-### 4. [FINDING ONLY — D, requires human approval] `citizens.py` and `test_results.py` have no authorization check at all
+### 4. [RESOLVED — see Batch 2 §9] `citizens.py` and `test_results.py` have no authorization check at all
 
 - **Files:** `nhop-platform/app/api/v1/citizens.py`,
   `nhop-platform/app/api/v1/test_results.py`
@@ -144,14 +146,201 @@ cd nhop-platform && PYTHONPATH=<repo-root> python3 -m pytest tests/ -q
 - No file in this change set overlaps Abu Ali's active diff (verified via
   `git diff --stat origin/main...origin/claude/p0-2-pharmacy-reconciliation`).
 
-## Next independent work (not started this pass)
+## Batch 2 — device_bridge forensic sweep + authorization decision + NHOP/Patient resolution
 
-- `services/device_bridge/` (LabLink-Core): no raw SQL found on first pass;
-  worth a closer concurrency/idempotency look at ASTM/HL7 ingestion.
-- `nhop-platform` citizen registry vs. `backend/app` patient registry: two
-  separate "patient" concepts (`Citizen`/`LabTest` here vs. `Patient`/
-  `LabResult` in the monolith) with no visible reconciliation — worth an
-  architecture-contradiction writeup once Abu Ali's active identity/MPI
-  work settles enough to compare against.
-- `edge_agent/`, `client/`, `frontend/`, `frontend-v2/` remain unaudited and
-  are outside Abu Ali's current footprint.
+Isolation re-checked before starting: re-ran
+`git diff --stat origin/main...origin/claude/p0-2-pharmacy-reconciliation`
+— still zero overlap with `services/device_bridge/`, `nhop-platform/`, or
+`docs/engineering/`. One file this batch touches sits formally under
+`backend/app/` scope (`backend/app/routes/device_results.py` was *read*,
+not edited — see §8) but is untouched by Abu Ali's diff and is a different
+capability (lab device ingestion) from his pharmacy-reconciliation work.
+
+### 5. [FIXED] device_bridge: auth footgun + whole test suite never ran
+
+- **Files:** `services/device_bridge/app/security/auth.py`,
+  `services/device_bridge/tests/conftest.py` (new),
+  `test_sync_and_auth.py`, `test_device_onboarding_api.py`.
+- **What:** `verify_api_key()` called `sys.exit(1)` when `LABLINK_API_KEY`
+  was unset — killing the whole process (every other device's in-flight
+  connection along with it), not just failing the one request. It also
+  compared the key with `!=` (timing side-channel). Separately, two test
+  files imported `DEFAULT_API_KEY` from `app.security.auth`, which has
+  never existed on any branch in this repo's history — an `ImportError` at
+  collection that took the entire 12-file suite down with it (0 tests
+  collected).
+- **Evidence a fix already existed, unmerged:** commit `3f7aba82` ("fix:
+  enforce truthful data preservation and security gates") already applied
+  `hmac.compare_digest` + `HTTPException(503)` on two abandoned branches
+  (`fix/main-migration-graph-20260822`,
+  `fix/migration-sqlite-compatibility-20260826`, neither an ancestor of
+  `main` or of Abu Ali's branch) — ported that exact fix rather than
+  re-deriving it. Neither branch defines `DEFAULT_API_KEY` either, and for
+  good reason: a hardcoded default key in production code is itself the
+  vulnerability the rest of that fix was removing. The correct fix for the
+  tests is a test-only fixture, not a production constant.
+- **Fix:** `hmac.compare_digest` + 503-not-crash in `auth.py`;
+  `tests/conftest.py` gained an autouse fixture that sets `LABLINK_API_KEY`
+  to a test-only value, plus an `api_key_headers` fixture used at every
+  call site that previously imported the dead constant.
+- **Before → after:** 0 collected (2 collection errors) → 29 passed.
+
+### 6. [FIXED] device_bridge: failed-delivery retry path silently dropped data
+
+- **Files:** `services/device_bridge/app/core/retry_queue.py`,
+  `app/pipeline/data_pipeline.py`, `app/pipeline/normalizer.py`,
+  `app/main.py`; test: `tests/test_retry_and_sync_recovery.py` (new, 4
+  tests).
+- **Three compounding bugs**, found by tracing what actually happens after
+  a GULA send fails (not just reading the retry_queue class in isolation):
+  1. `retry_queue.enqueue()` stored only `[test_code, ...]` strings — no
+     patient_id, value, unit, or timestamp survived, so even a working
+     retry mechanism would have nothing left to resend.
+  2. `main.py` read `retry_queue.list_all()` (which never removes
+     anything) after every `/ingest` call. One persistent failure got
+     re-staged into `sync_engine` again on every subsequent request,
+     forever, each time under a fresh `uuid.uuid4()` — which also defeated
+     `sync_engine`'s own item_id-based dedup, so the queue grew
+     unboundedly across the life of the process.
+  3. `POST /edge/sync`'s `sender` moved the item into `pipeline.edge_buffer`
+     and unconditionally returned `{"status": "ok"}`. `sync_engine`
+     treated that as a real delivery and dropped the item from its queue —
+     but nothing had actually called GULA. A "successful retry" was
+     indistinguishable from silent data loss from the operator's point of
+     view (the health check would show `remaining: 0`, looking recovered).
+- **Fix:** `NormalizedResult` now carries `barcode` (was already flowing
+  through the pipeline, just never attached); `retry_queue.enqueue()`
+  stores `asdict()` of the full result plus a content-derived
+  `idempotency_key` (`retry_queue.content_key()` — sha256 over
+  device_id + patient_id + test_code + value + timestamp, so re-staging
+  the same failure collapses instead of piling up); `RetryQueue.drain()`
+  (list+clear, mirroring the existing `EdgeAgentBuffer.drain()` pattern)
+  replaces `list_all()`; `/edge/sync`'s sender reconstructs
+  `NormalizedResult` objects and calls the real `gula_client.send_results()`.
+- **Before → after:** 29 passed → 33 passed (4 new).
+
+### 7. [FIXED] device_bridge -> GULA payload contract was 100% incompatible
+
+- **File:** `services/device_bridge/app/integration/gula_client.py`; test:
+  `tests/test_gula_client_contract.py` (new, 3 tests, no backend import
+  required — see its docstring for why).
+- **What:** `GulaClient.send_results()` posted
+  `{"lab_id", "results": [{"patient_id", "test_code", "value", "unit",
+  "timestamp"}]}` with **no auth header at all**. The real, already-live
+  backend endpoint — `backend/app/routes/device_results.py`'s
+  `POST /device/results` — expects `DeviceSubmission`:
+  `{"barcode", "device_id", "results": [{"test_name", "value",
+  "value_text", "unit", "normal_range_low", "normal_range_high"}]}` and
+  requires `Depends(get_current_user)` (a JWT-bearing `LabUser`); it
+  doesn't read `lab_id` from the body at all (tenant scope comes from the
+  authenticated user). Every real submission would 422 on the missing
+  `barcode` field alone, before auth was even checked — the two services'
+  wiring together was completely non-functional, not just missing
+  hardening.
+- **Fix (device_bridge side only, matching the backend's unchanged,
+  live contract — confirmed not in Abu Ali's diff):** send the correct
+  shape using the barcode from finding #6; fail fast with
+  `{"status": "failed", "error": "missing_barcode"}` (no network call) when
+  a batch has no barcode; add an optional bearer-token pass-through
+  (`GULA_DEVICE_BEARER_TOKEN` env var / `auth_token` constructor arg).
+- **Before → after:** 33 passed → 36 passed (3 new).
+
+### 8. [FINDING ONLY — D, needs a migration] `POST /device/results` has no idempotency protection
+
+- **File:** `backend/app/routes/device_results.py` (read, not edited —
+  see the isolation note above).
+- **Evidence:** the endpoint has no idempotency_key field, and no
+  natural-key dedup check before `db.add(LabResult(...))` — a resend of
+  the identical `DeviceSubmission` (which finding #6 shows was a real risk
+  before this pass: the retry path could stage the same failure more than
+  once) creates a second, indistinguishable `LabResult` row every time.
+  The canonical mechanism for exactly this already exists in this repo —
+  `backend/app/integration/inbox.py`'s `IntegrationInboxEvent` +
+  `idempotency_key`, with `stage_event()` already implementing "same
+  event_id, different idempotency_key -> reject" and "same
+  idempotency_key, different event_id -> reject" — reuse that design
+  rather than invent a second one.
+- **Why not fixed here:** wiring `device_results.py` through to that
+  pattern means either adding an `idempotency_key` column (a migration —
+  `CLAUDE.md`: "DB schema changes... Requires human approval") or a
+  heuristic dedup on existing columns, which risks silently rejecting a
+  legitimate distinct-but-same-value re-test for a clinical result — worse
+  than the bug it would fix. Classified **D — protected**.
+- **Recommended fix:** add `DeviceSubmission.idempotency_key: str`
+  (client-generated, e.g. device_bridge's own `content_key()` from
+  finding #6), a migration adding a unique `idempotency_key` column to
+  `lab_results` or a new dedup table modeled on `IntegrationInboxEvent`,
+  and a pre-insert check mirroring `stage_event()`'s logic.
+
+### 9. [DECIDED + IMPLEMENTED] Citizen/results authorization — derived from existing policy, not left as a punt
+
+Per corrected guidance: investigated whether the role model was actually
+derivable from existing architecture before defaulting to "needs a human."
+It was — `core.rbac.require_roles` already exists and is already used by
+two sibling files in this same package (`outbreak.py`:
+`require_roles(Role.MINISTRY, Role.ADMIN)`; `doctor.py`: its own
+`_require_doctor` dependency). Implemented (see the commit for the full
+per-endpoint role table): mutations -> LAB/DOCTOR/ADMIN
+(`create_test_result` -> LAB/ADMIN only, matching doctor.py's own
+division of labor: a lab produces results, a doctor orders/verifies);
+reads -> add MINISTRY, matching outbreak.py's oversight precedent.
+
+**Deliberately left unmodeled:** a citizen reading only their own record.
+nhop-platform has no session/identity binding anywhere that could prove
+"this caller IS this health_id" — that's a new policy semantic (subject/
+ownership-based access control layered on top of role-based control), not
+an inference from what already exists, so `Role.CITIZEN` is excluded from
+every allowed set below rather than guessed at. This is the one piece of
+the original finding that stays **D — protected**; the rest is fixed.
+
+### 10. [INVESTIGATED, RESOLVED — E, no action needed] nhop `Citizen` vs. backend `Patient`: separate bounded contexts, not duplication
+
+Question from batch 1: are `nhop-platform`'s `Citizen`/`LabTest` and
+`backend/app`'s `Patient`/`LabResult` a duplicate domain, a compatibility
+layer, or genuinely separate systems? Resolved by evidence, not
+assumption:
+
+- `CLAUDE.md` itself documents the intended split: "`nhop-platform/` —
+  National Health Oversight Platform... Owns the national citizen
+  registry; GULA owns the per-lab LIMS view." This is a designed
+  national-HIE-over-per-facility-LIMS pattern, not an accident.
+- The backend already models NHOP as an external system with a
+  cross-reference code, not an internal duplicate:
+  `backend/app/governance/models/laboratory.py:42` and
+  `backend/app/national/domain/laboratory.py:29` both carry a
+  `nhop_lab_code` column; `backend/app/national/domain/organization.py:33`
+  carries `nhop_code`; `backend/app/interoperability/trust_domain.py:27`
+  lists `NHOP = "nhop"` as one of the recognized external trust domains.
+- No code anywhere in `backend/app` calls `nhop-platform`'s API (or vice
+  versa) — the cross-reference columns exist, but live data sync between
+  a GULA `Patient` and an NHOP `Citizen` is not implemented yet. That's a
+  legitimate future-integration gap (worth its own ticket once someone
+  needs it), not a bug and not something to merge/delete toward — per the
+  Mustafa brief's own instruction, nothing here was merged or deleted;
+  ownership was proven first, and ownership is: separate, intentional,
+  not yet wired together.
+
+## Verification (Batch 2)
+
+```
+cd nhop-platform && PYTHONPATH=<repo-root> python3 -m pytest tests/ -q
+# 51 passed (was 47)
+
+PYTHONPATH=<repo-root> python3 -m pytest services/device_bridge/tests/ -q
+# 36 passed (was 0 collected — 2 collection errors)
+```
+
+## Next independent work (not started yet)
+
+- `edge_agent/`, `client/`, `frontend/`, `frontend-v2/` remain unaudited
+  and are outside Abu Ali's current footprint.
+- device_bridge concurrency: `DataPipeline.sessions[device_id]` (an
+  `ASTMDeviceSession` buffer) is shared across concurrent `/ingest`
+  requests for the same device_id with no lock. In practice a device has
+  one physical connection at a time, so this is lower-confidence/lower
+  demonstrated impact than findings #5–#7 above and wasn't chased further
+  this pass — worth a concurrent-asyncio-request test if two ingest paths
+  for the same device_id ever become a real scenario (e.g. a device with a
+  flaky connection retried by two different callers).
+- Finding #8 (backend idempotency on `/device/results`) needs a human
+  decision on the migration before implementation.
