@@ -229,3 +229,63 @@ def test_no_engineering_module_imports_through_the_nonexistent_backend_root() ->
         "these engineering modules import through the non-existent `backend` "
         f"root and will not load outside a repository checkout: {offenders}"
     )
+
+
+# ── NR-124: the same shadow root, reached from the test suite ────────────────
+#
+# This guard covered app/engineering/ only, because that is where NR-056 found
+# the defect. It came back in tests/notifications/test_ntfy_connector.py:
+#
+#     from backend.app.integration.connectors.ntfy import NtfyConnector
+#
+# which loads a SECOND copy of that module and everything under it, each with
+# its own state. Worse in a test suite than anywhere else: the import stays in
+# sys.modules for the whole session, so it became a cross-test failure. It is
+# what made test_capability_import_roots::
+# test_a_real_application_start_loads_no_stateful_second_copy fail in company
+# and pass alone -- one of the order-dependent failures recorded as NR-118.
+#
+# The scan is widened to every Python file under backend/, tests included,
+# because "where the defect was found" is a weaker boundary than "everywhere
+# the root is importable from".
+
+_SCANNED_TREES = ("app", "tests")
+
+
+def _every_backend_module() -> list[Path]:
+    found: list[Path] = []
+    for tree in _SCANNED_TREES:
+        root = BACKEND / tree
+        if not root.exists():
+            continue
+        found.extend(
+            p for p in root.rglob("*.py") if "__pycache__" not in p.parts
+        )
+    return sorted(found)
+
+
+def test_the_shadow_root_scan_covers_the_test_suite_too() -> None:
+    """Positive control: the widened scan actually reaches tests/."""
+    scanned = _every_backend_module()
+    assert any("tests" in p.parts for p in scanned), (
+        "the scan no longer reaches tests/, so a shadow import there would "
+        "pass unnoticed"
+    )
+    assert len(scanned) > 500, f"only {len(scanned)} modules scanned"
+
+
+def test_nothing_under_backend_imports_the_shadow_root() -> None:
+    """NR-056, NR-058, NR-124 — one root cause, three places it surfaced."""
+    offenders = []
+    for path in _every_backend_module():
+        try:
+            roots = _imported_roots(path)
+        except SyntaxError:
+            continue
+        if INVALID_ROOT in roots:
+            offenders.append(str(path.relative_to(BACKEND)))
+    assert offenders == [], (
+        f"these modules import through `{INVALID_ROOT}.`, which is not a "
+        f"package on a deployed backend and which loads a second, separately "
+        f"stateful copy of everything it touches: {offenders}"
+    )

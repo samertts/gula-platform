@@ -35,7 +35,8 @@ earlier report.
 | NR-115 | P0 | Logout was a no-op for every non-browser client | **CLOSED** — both revocation layers now run for bearer sessions |
 | NR-116 | P0 | Any lab admin could approve, create and switch off other laboratories | **CLOSED** — five handlers gained the platform-scope check |
 | NR-117 | P0 | `POST /patients` answered 500 for every request on PostgreSQL | **CLOSED** — health_id and gender both overflowed their columns |
-| NR-118 | P2 | 87 unit tests fail only when the suite runs together | **OPEN** — measured at HEAD and after: identical, so not a regression |
+| NR-118 | P2 | 87 unit tests fail only when the suite runs together | **OPEN, 87 → 86** — first cause attributed and fixed (NR-124); each remaining cluster needs its own |
+| NR-124 | P2 | A test imported through the shadow package root two findings exist to prevent | **CLOSED** — import corrected, guard widened from `app/engineering/` to all of `backend/` |
 | NR-119 | P1 | Four clinical endpoints 500 — `national_patients` is built by no migration | **OPEN** — the fix is a migration, which CLAUDE.md reserves |
 | NR-120 | P2 | Clinical audit rows carry a NULL `lab_id` | **OPEN** — nothing leaks today; any query keyed on `lab_id` misses them |
 | NR-121 | P1 | Patient check-in 500s — `nhdw_queue_entries.encounter_id` is in the ORM, not the table | **OPEN** — the fix is a migration, which CLAUDE.md reserves |

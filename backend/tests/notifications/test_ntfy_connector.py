@@ -4,7 +4,12 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from backend.app.integration.connectors.ntfy import NtfyConnector
+# NR-124. This read `from backend.app...`, which is the shadow root
+# NR-056 and NR-058 exist to keep out of the tree: it loads a SECOND copy
+# of the module and everything it imports, each with its own state. It
+# also polluted sys.modules for the rest of the session, which is what
+# made test_capability_import_roots fail in company and pass alone.
+from app.integration.connectors.ntfy import NtfyConnector
 
 
 @pytest.mark.asyncio
