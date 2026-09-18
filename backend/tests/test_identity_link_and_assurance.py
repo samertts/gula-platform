@@ -1219,31 +1219,49 @@ def test_the_token_and_the_session_row_are_bound_by_the_platforms_own_jti(db, ni
     assert live["jti"] == session_row.token_jti
 
 
-def test_the_gate_does_not_consult_the_session_row_expiry(db, niam_session) -> None:
-    """Phase 4 — an honest negative result, recorded as NR-046.
+def test_the_gate_rejects_an_expired_session_row(db, niam_session) -> None:
+    """Phase 4 — NR-046, now pinned as the fix rather than as the defect.
 
-    `UserSession.expires_at` is NOT NULL and is set at login, but the actor
-    dependency filters only on `UserSession.is_active`. A session row whose
-    `expires_at` is in the past still authenticates, provided the bearer token
-    itself has not expired.
+    This test previously asserted the OPPOSITE: that `get_current_niam_actor`
+    filtered only on `UserSession.is_active` and so authenticated a session row
+    whose `expires_at` was in the past. Its docstring said it recorded today's
+    behaviour "so that adding the check fails here and this test is rewritten
+    to pin the fix". The check was added under NR-046 and this test duly failed,
+    which is the tripwire working. It is rewritten here to pin the fix.
 
-    This is NOT a NR-044.1 regression: the converted query is byte-for-byte the
-    pre-existing `get_current_niam_actor_sync`, and the async twin did not check
-    `expires_at` either. The practical exposure is bounded by the access token's
-    own `exp` (JWT_EXPIRE_MINUTES, default 15), which IS enforced — so this
-    matters only where a session is meant to expire sooner than its tokens.
-
-    The test asserts today's behaviour so that adding the check fails here and
-    this test is rewritten to pin the fix.
+    Why it mattered: nothing reaps `is_active` when a session expires, so the
+    row stays active indefinitely. Two other call sites --
+    authentication_service.py:118 and authorization_decision.py:220 -- already
+    rejected on expiry. The one place that did not was the dependency guarding
+    every /niam/* route and the clinical gateway, so shortening a session's
+    lifetime to end it had no effect there.
     """
     from app.identity.api.workspaces import get_current_niam_actor
+    from fastapi import HTTPException
 
     account, session_row, request = niam_session
+
+    # Positive control FIRST. Without it, a gate that rejected everything --
+    # or a fixture whose session never matched its token in the first place --
+    # would make the rejection below look like proof.
+    live = get_current_niam_actor(request, None, db)
+    assert live.account.id == account.id, (
+        "the valid session does not authenticate, so the rejection asserted "
+        "below would prove nothing about expiry"
+    )
+
     session_row.expires_at = _now() - timedelta(days=1)
     db.flush()
 
-    actor = get_current_niam_actor(request, None, db)
-    assert actor.account.id == account.id, "unexpected: the gate now rejects on expiry"
+    with pytest.raises(HTTPException) as caught:
+        get_current_niam_actor(request, None, db)
+    assert caught.value.status_code == 401, (
+        f"an expired session was refused with {caught.value.status_code}, "
+        f"not 401"
+    )
+
+    # The row itself is untouched: the gate rejects on expires_at, it does not
+    # rely on something having flipped is_active.
     assert session_row.is_active is True
     assert session_row.expires_at < _now()
 
