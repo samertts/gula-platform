@@ -270,3 +270,51 @@ false-success defects found beyond what's already fixed/documented.
   the inherited root config would otherwise hide it — see main work map
   finding #15).
 - All four confirmed green in this pass, immediately before this report.
+
+---
+
+## INTEGRATION_HANDOFF
+
+Machine-readable handoff block. F1 and F2 are **not** resolved, safe, or
+passing — they are proven-live defects whose fix is out of this
+engagement's ownership. Neither is fixable without either (a) building a
+second, competing identity/authorization mechanism ahead of the canonical
+one Abu Ali's stream is actively building, or (b) waiting for that
+canonical mechanism to land and wiring nhop-platform to it. A finding
+being blocked on another stream's architecture does not make it safe —
+it means ownership is transferred pending coordination, not that the
+exposure has closed.
+
+```
+F1:
+  severity: P0
+  owner: Abu-Ali-auth
+  status: BLOCKED_BY_CANONICAL_IDENTITY
+  required_outcome: actor identity MUST be derived from trusted authenticated context, never request-controlled actor ID
+  no_competing_auth_implementation: true
+  proof: nhop-platform/tests/test_notifications_actor_id_is_not_a_trust_boundary.py
+  location: nhop-platform/app/api/v1/notifications.py
+
+F2:
+  severity: P1
+  owner: Abu-Ali-auth/backend
+  status: BLOCKED_BY_SERVER_AUTH_CONTEXT
+  required_outcome: lab ownership MUST be derived/validated server-side; request_lab_id MUST NOT itself establish authority
+  proof: nhop-platform/tests/test_results_lab_id_is_not_ownership_checked.py
+  location: nhop-platform/app/api/v1/test_results.py:204
+
+F4:
+  severity: P1
+  owner: GULA-CI/HUMAN-APPROVAL
+  status: COORDINATION
+  required_outcome: affected service tests (nhop-platform, services/device_bridge, edge_agent) must execute in CI
+  do_not_modify_workflow: true
+  location: .github/workflows/ci.yml
+```
+
+**Explicit non-status:** F1 and F2 remain **BLOCKED / COORDINATION**, not
+`PASS`, `SAFE`, or `RESOLVED`, until a trusted server-side identity/
+authorization control is proven at runtime against them (i.e. until the
+proof tests above are updated to assert the *rejection* of a spoofed
+`X-Actor-Id` / unowned `lab_id`, and that updated assertion passes against
+real code, not until they are merely deprioritized or reclassified).
