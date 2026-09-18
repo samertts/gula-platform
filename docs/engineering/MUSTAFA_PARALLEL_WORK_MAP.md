@@ -405,8 +405,79 @@ cd nhop-platform && PYTHONPATH=<repo-root> python3 -m pytest tests/ -q
 # 54 passed (was 51) — 3 new characterization tests proving the X-Role gap
 ```
 
+## Batch 4 — edge_agent (zero test coverage, one startup-crash bug)
+
+Isolation re-checked: `git diff --stat origin/main...origin/claude/p0-2-pharmacy-reconciliation -- edge_agent/` returns nothing — untouched by Abu Ali.
+
+### 12. [FIXED] edge_agent config loader crashed on Python <3.11 (unreachable fallback)
+
+- **File:** `edge_agent/gula_edge_agent/cli.py::_load_config`.
+- **What:** the function read
+  `import tomllib; with cfg_path.open("rb") as f: return tomllib.load(f)`
+  followed by a second `import tomli` + `with` block that could never
+  execute — the `return` above it always exits the function first.
+  `edge_agent/requirements.txt` declares
+  `tomli>=2.2.1; python_version < "3.11"`, meaning the agent is meant to
+  run on Python <3.11 too, but `tomllib` is stdlib-only from 3.11 — on any
+  older interpreter, `import tomllib` raises immediately with no
+  surrounding `try/except`, so the CLI would crash on every invocation
+  before ever reaching the (dead) `tomli` branch.
+- **Fix:** standard `try: import tomllib / except ImportError: import
+  tomli as tomllib` pattern (caught `ImportError`, not the narrower
+  `ModuleNotFoundError`, since a test-simulated absence via
+  `sys.modules["tomllib"] = None` raises the former).
+- **Positive proof:** `test_load_config_falls_back_to_tomli_when_tomllib_is_unavailable`
+  simulates the missing-tomllib case via `sys.modules` and confirms the
+  file still loads correctly through the `tomli` path.
+- **Negative proof:** reverted the fix locally and re-ran that one test —
+  fails with the exact `ModuleNotFoundError` this fix removes (verified
+  before committing).
+
+### 13. [ADDED] edge_agent test coverage — 0 -> 22 tests
+
+- **Files:** `edge_agent/tests/{test_state,test_security,test_agent,test_cli_config}.py` (all new — the package had no tests directory at all).
+- **What's covered:** `state.py`'s encrypted-at-rest storage (round-trip,
+  0600 file permissions on both the state and key files, corrupt-file
+  handling, persistence across new `AgentState` instances); `security.py`'s
+  keypair generation (valid 2048-bit RSA, distinct per call); and —
+  highest value — `agent.py`'s own documented "Sandboxing rules enforced
+  here (NOT delegated to the runtime)": unknown `kind` rejected before
+  ever reaching the runtime, oversized payload rejected the same way, a
+  runtime that exceeds `timeout_s` is reported failed (not left to hang),
+  and the CPU/battery resource gate (`_can_take_work`) across five
+  telemetry scenarios.
+
+### 14. [FINDING ONLY — low severity, not fixed] `security.ALLOWED_KINDS` advertises 5 kinds `OllamaRuntime` cannot run
+
+- **Files:** `edge_agent/gula_edge_agent/security.py` (`ALLOWED_KINDS`),
+  `edge_agent/gula_edge_agent/runtime.py` (`OllamaRuntime.run`).
+- **What:** `ALLOWED_KINDS` lists 12 task kinds; `OllamaRuntime.run()`
+  only implements 7 of them (`ai.summarize_report`, `ai.translate`,
+  `ai.classify`, `ai.extract_lab_values`, `ai.embed`, `diag.ping`,
+  `diag.benchmark`). The other 5 — `image.thumbnail`, `pdf.extract_text`,
+  `agent.self_update`, `agent.warmup_model`, `agent.gc` — fall through to
+  `raise RuntimeError(f"runtime cannot handle kind={kind}")`, which
+  `_execute_task`'s `except Exception` catches and reports as an ordinary
+  failed task. So this is **not a security hole** (the sandbox in
+  `agent.py` still gates every call, and an unimplemented kind fails
+  safely, reported back to the control plane) — it's a capability
+  contract mismatch: the heartbeat's `capabilities.kinds` tells the
+  server the agent can do things it can't, so the server may keep
+  dispatching tasks that are guaranteed to fail.
+- **Why not fixed here:** the fix isn't a bug fix, it's a design decision
+  — either narrow `ALLOWED_KINDS` to what's implemented, or implement the
+  5 missing kinds. The last three (`agent.self_update`, `agent.gc`,
+  `agent.warmup_model`) are agent-lifecycle operations, not AI-runtime
+  calls — `agent.self_update` in particular is a genuinely
+  security-sensitive operation (how the agent fetches/verifies/applies a
+  new version) that shouldn't be designed from scratch as a side effect
+  of a contract-drift fix. Flagging for whoever owns the edge agent
+  roadmap rather than guessing at scope.
+
 ## Next independent work (not started yet)
 
+- `client/`, `frontend/`, `frontend-v2/` remain unaudited and outside
+  Abu Ali's current footprint — next up.
 - `services/device_bridge/` concurrency: `DataPipeline.sessions[device_id]`
   (an `ASTMDeviceSession` buffer) is shared across concurrent `/ingest`
   requests for the same device_id with no lock. In practice a device has
@@ -418,5 +489,5 @@ cd nhop-platform && PYTHONPATH=<repo-root> python3 -m pytest tests/ -q
   decision on the migration before implementation.
 - Finding #11 (X-Role trust boundary) needs Abu Ali's identity/auth
   refactor to land before nhop-platform can verify tokens for real.
-- `edge_agent/`, `client/`, `frontend/`, `frontend-v2/` remain unaudited
-  and outside Abu Ali's current footprint — next up.
+- Finding #14 (edge_agent capability/runtime mismatch) needs a product
+  decision on the 5 unimplemented kinds.
