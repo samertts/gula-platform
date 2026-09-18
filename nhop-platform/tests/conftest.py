@@ -124,6 +124,14 @@ def doctor_headers():
 
 
 @pytest.fixture()
+def admin_headers():
+    """core.rbac.require_roles reads X-Role (distinct from doctor.py's own
+    X-Actor-Role scheme) — ADMIN is accepted by every require_roles(...)
+    gate in citizens.py and test_results.py."""
+    return {"X-Role": "ADMIN"}
+
+
+@pytest.fixture()
 def db_session():
     """Bare SQLAlchemy session against a fresh in-memory SQLite DB.
 

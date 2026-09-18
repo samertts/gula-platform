@@ -10,6 +10,11 @@ Routes:
 
 Route order matters: static segments (``/validate``) are declared before
 ``/{result_id}`` so FastAPI does not treat "validate" as an id.
+
+Authorization: mirrors citizens.py — LAB/ADMIN produce and verify results
+(DOCTOR added on verify, since sign-off is a clinical responsibility),
+reads add MINISTRY for oversight, matching outbreak.py's precedent. See
+citizens.py's module docstring for why CITIZEN self-access isn't modeled.
 """
 from __future__ import annotations
 
@@ -23,6 +28,7 @@ from sqlalchemy.orm import Session
 from backend.app._compat import UTC
 
 from ...core.database import get_db
+from ...core.rbac import Role, require_roles
 from ...models.citizen import Citizen
 from ...models.lab import Lab
 from ...models.notification import NotificationPriority, NotificationType
@@ -52,6 +58,10 @@ from ...services.smart_analysis import (
 )
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])
+
+_lab_staff = require_roles(Role.LAB, Role.ADMIN)
+_clinical_staff = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN)
+_clinical_staff_and_ministry = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN, Role.MINISTRY)
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
@@ -149,7 +159,10 @@ def _fire_critical_alert(
     response_model=TestResultValidateResponse,
     status_code=status.HTTP_200_OK,
 )
-def validate_payload(payload: TestResultValidateRequest) -> TestResultValidateResponse:
+def validate_payload(
+    payload: TestResultValidateRequest,
+    role: str = Depends(_clinical_staff),
+) -> TestResultValidateResponse:
     vr = validate_result(
         test_code=payload.test_code,
         value=payload.value_numeric,
@@ -178,6 +191,7 @@ def create_test_result(
     payload: TestResultCreate,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_lab_staff),
 ) -> TestResultRead:
     citizen = _require_citizen(db, payload.health_id)
 
@@ -260,6 +274,7 @@ def create_test_result(
             "is_abnormal": row.is_abnormal,
             "is_critical": row.is_critical,
             "sample_barcode": row.sample_barcode,
+            "role": role,
         },
     )
 
@@ -282,6 +297,7 @@ def citizen_timeline(
     request: Request,
     test_code: str | None = Query(default=None, max_length=60),
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> CitizenTimelineResponse:
     citizen = _require_citizen(db, health_id)
 
@@ -327,7 +343,7 @@ def citizen_timeline(
         target_id=citizen.health_id,
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"series": len(by_code), "test_code": test_code},
+        metadata={"series": len(by_code), "test_code": test_code, "role": role},
     )
     db.commit()
 
@@ -353,6 +369,7 @@ def list_citizen_results(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> TestResultListResponse:
     citizen = _require_citizen(db, health_id)
 
@@ -385,7 +402,7 @@ def list_citizen_results(
         metadata={
             "total": total, "skip": skip, "limit": limit,
             "category": category.value if category else None,
-            "is_abnormal": is_abnormal,
+            "is_abnormal": is_abnormal, "role": role,
         },
     )
     db.commit()
@@ -405,6 +422,7 @@ def get_test_result(
     result_id: UUID,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> TestResultRead:
     row = _require_result(db, result_id)
 
@@ -415,6 +433,7 @@ def get_test_result(
         target_id=str(row.id),
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
+        metadata={"role": role},
     )
     db.commit()
     return TestResultRead.model_validate(row)
@@ -428,6 +447,7 @@ def verify_test_result(
     payload: TestResultVerifyRequest,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff),
 ) -> TestResultRead:
     row = _require_result(db, result_id)
 
@@ -453,7 +473,7 @@ def verify_test_result(
         target_id=str(row.id),
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"verified_by": payload.verified_by},
+        metadata={"verified_by": payload.verified_by, "role": role},
     )
     db.commit()
     db.refresh(row)
