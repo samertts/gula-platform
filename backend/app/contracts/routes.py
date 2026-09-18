@@ -1,8 +1,10 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
+
+from app.security.dependencies import require_permission
 
 from .events import EVENT_REGISTRY, get_event_catalog
 from .fhir import get_capability_statement, get_fhir_profiles, get_structure_definitions
@@ -155,7 +157,18 @@ async def get_contract_catalog():
     return JSONResponse(content=catalog)
 
 
-@router.post("/export", summary="Export all contracts to filesystem")
+# NR-108. The only mutating route here, and it answered an unauthenticated
+# request with 200 while writing files to the server's filesystem. The
+# path itself is already safe -- ContractExport.output_dir is constrained
+# to a single safe directory name and resolved under a configured root --
+# so this was unauthenticated disk consumption rather than traversal. The
+# GET routes stay public on purpose: publishing the OpenAPI, AsyncAPI and
+# FHIR contracts is what this router is for.
+@router.post(
+    "/export",
+    summary="Export all contracts to filesystem",
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 async def export_contracts(export: ContractExport):
     try:
         exported_files = _generator.export_all(export.output_dir)

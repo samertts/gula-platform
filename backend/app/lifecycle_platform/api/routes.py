@@ -20,8 +20,20 @@ from app.lifecycle_platform.exceptions import (
     UpgradePathNotFoundError,
     VersionConflictError,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/lifecycle", tags=["National Platform Lifecycle & Governance"])
+# NR-108. This router was mounted with no dependency and its route module
+# contained no reference to get_current_user, require_permission or
+# require_role, so every one of its mutating routes answered an
+# unauthenticated request -- measured against the served app, not read off
+# the decorators. system:admin matches the neighbouring platform-operations
+# routers (app/ems, app/command_center, app/critical_care, app/biomedical)
+# and is held only by master_admin.
+router = APIRouter(
+    prefix="/lifecycle",
+    tags=["National Platform Lifecycle & Governance"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> LifecycleService:

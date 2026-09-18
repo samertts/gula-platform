@@ -206,7 +206,7 @@ jobs:
           set -o pipefail
           mkdir -p artifacts
           cd backend
-          python -m pytest tests/test_security_regression.py tests/test_auth_identity_discriminator.py tests/test_identity_assurance_boundaries.py tests/test_identity_platform_runtime.py tests/test_tenant_isolation_matrix.py tests/test_clinical_gateway_contracts.py tests/test_clinical_gateway_service.py -q --junitxml=../artifacts/pytest-security-regression.xml 2>&1 | tee ../artifacts/pytest-security-regression.log
+          python -m pytest tests/test_security_regression.py tests/test_auth_identity_discriminator.py tests/test_identity_assurance_boundaries.py tests/test_identity_platform_runtime.py tests/test_tenant_isolation_matrix.py tests/test_clinical_gateway_contracts.py tests/test_clinical_gateway_service.py tests/test_unauthenticated_mutations_are_declared.py -q --junitxml=../artifacts/pytest-security-regression.xml 2>&1 | tee ../artifacts/pytest-security-regression.log
       - name: Upload security evidence
         if: always()
         # Evidence archival must not fail the gate it merely documents.
