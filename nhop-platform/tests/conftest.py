@@ -8,12 +8,14 @@ Run tests from the nhop-platform directory:
 """
 from __future__ import annotations
 
+import sys
 import uuid
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 @pytest.fixture()
@@ -119,3 +121,31 @@ def make_result():
 @pytest.fixture()
 def doctor_headers():
     return {"X-Actor-Role": "DOCTOR", "X-Actor-Id": "dr-001"}
+
+
+@pytest.fixture()
+def db_session():
+    """Bare SQLAlchemy session against a fresh in-memory SQLite DB.
+
+    For service-layer unit tests that talk to the ORM directly, without
+    going through the FastAPI app (see ``app_client`` for that).
+    """
+    from app.core.database import Base
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    from app import models  # noqa: F401  (populate Base.metadata)
+
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+    session = Session()
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(engine)
