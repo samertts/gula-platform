@@ -50,6 +50,12 @@ CANONICAL_ENCOUNTERS = "/national-data/encounters"
 # NR-054's to fix — the same defect class in other domains, recorded as NR-057.
 # This ledger exists so the guard passes on today's repository while still
 # failing the moment a *new* orphan appears. It may shrink, never grow.
+#
+# It shrank by eight on NR-122. Those /niam/* calls were never orphans: the
+# backend served them one segment deeper, at /niam/niam/*, because three
+# routers under app/identity repeated the prefix their parent already applied.
+# Correcting the prefix made the paths the frontend had been asking for all
+# along reachable, and this guard's rot check is what flagged them for removal.
 DECLARED_UNREGISTERED_CALLS = frozenset({
     "/blood-bank/crossmatch/compatible-groups",
     "/certification/level",
@@ -64,21 +70,13 @@ DECLARED_UNREGISTERED_CALLS = frozenset({
     "/health-data/lineage",
     "/lifecycle/components/name",
     "/national/notifications/delivery",
-    "/niam/adaptive-auth/policies",
     "/niam/adaptive-auth/risk-history",
-    "/niam/adaptive-auth/session-policies",
     "/niam/certificates",
     "/niam/federation/identities",
-    "/niam/governance/appeals",
-    "/niam/governance/authorities",
-    "/niam/governance/councils",
     "/niam/governance/registries",
-    "/niam/governance/suspensions",
     "/niam/lifecycle/citizen",
     "/niam/lifecycle/enterprise",
     "/niam/lifecycle/workforce",
-    "/niam/trust/assurance-profiles",
-    "/niam/trust/frameworks",
     "/niam/trust/trust-anchors",
     "/pilot-platform/certify",
 })
@@ -116,9 +114,29 @@ def _frontend_calls() -> dict[str, set[str]]:
         for match in _CALL.finditer(path.read_text(encoding="utf-8", errors="ignore")):
             endpoint = match.group(1)
             if "//" in endpoint:
-                # The literal half of a concatenated URL, not a real endpoint.
+                # NR-123. These were skipped here as "the literal half of a
+                # concatenated URL". RE-MEASURED: there is no concatenated API
+                # URL anywhere in frontend-v3 -- all 21 are single literal
+                # strings, e.g. api.get("/national/documents//versions"), and
+                # every one is a guaranteed 404 on page load. Skipping them
+                # excluded from this guard exactly the calls that are most
+                # certainly broken. They go to _malformed_calls() instead of
+                # being dropped.
                 continue
             calls.setdefault(endpoint, set()).add(str(path.relative_to(FRONTEND_SRC)))
+    return calls
+
+
+def _malformed_calls() -> dict[str, set[str]]:
+    """Calls with an empty path segment where an id belongs (NR-123)."""
+    calls: dict[str, set[str]] = {}
+    for path in FRONTEND_SRC.rglob("*.ts*"):
+        if _is_disabled_page(path):
+            continue
+        for match in _CALL.finditer(path.read_text(encoding="utf-8", errors="ignore")):
+            endpoint = match.group(1)
+            if "//" in endpoint:
+                calls.setdefault(endpoint, set()).add(str(path.relative_to(FRONTEND_SRC)))
     return calls
 
 
@@ -332,3 +350,68 @@ def test_dynamic_calls_are_acknowledged_not_silently_ignored() -> None:
         f"{dynamic} dynamic API calls — the statically checkable share is shrinking; "
         "consider a typed client before this guard stops being meaningful"
     )
+
+
+# ── NR-123: calls that cannot be served, whatever the backend registers ───────
+#
+# 21 calls contain an empty path segment where an id belongs, e.g.
+# api.get("/pilot-platform/pilots//gates"). They are generated pages firing an
+# unconditional query at a detail endpoint with no id in scope, so each is a
+# guaranteed 404 on page load. Fixing them means giving each page selection
+# state, which is feature work rather than a contract repair, so they are
+# declared rather than papered over.
+DECLARED_MALFORMED_CALLS = frozenset({
+    "/certification/dimensions//checks",
+    "/ecosystem/connectors//health",
+    "/ecosystem/partners//audit",
+    "/integration/connectors//health",
+    "/intelligence/kpis//trend",
+    "/national/documents//attachments",
+    "/national/documents//history",
+    "/national/documents//qrcode",
+    "/national/documents//signatures",
+    "/national/documents//versions",
+    "/national/jobs//executions",
+    "/national/jobs//schedules",
+    "/national/rules//evaluations",
+    "/national/rules//versions",
+    "/national/tasks//comments",
+    "/national/tasks//history",
+    "/national/workflows/executions//approvals",
+    "/national/workflows/executions//steps",
+    "/pilot-platform/facilities//readiness",
+    "/pilot-platform/pilots//facilities",
+    "/pilot-platform/pilots//gates",
+})
+_MALFORMED_CEILING = 21
+
+
+def test_the_malformed_scanner_still_finds_them() -> None:
+    """Positive control. This guard's whole value is that it stopped skipping."""
+    assert _malformed_calls(), (
+        "no malformed calls found at all — either they were all fixed (remove "
+        "the ledger) or the scanner stopped seeing them"
+    )
+
+
+def test_no_new_call_has_an_empty_path_segment() -> None:
+    """A path with `//` in it can only ever be a 404, on any backend."""
+    malformed = set(_malformed_calls())
+    undeclared = sorted(malformed - DECLARED_MALFORMED_CALLS)
+    assert not undeclared, (
+        "these frontend calls have an empty path segment where an id belongs:\n  "
+        + "\n  ".join(undeclared)
+    )
+
+
+def test_the_malformed_ledger_only_shrinks() -> None:
+    assert len(DECLARED_MALFORMED_CALLS) <= _MALFORMED_CEILING, (
+        f"the malformed-call ledger grew to {len(DECLARED_MALFORMED_CALLS)}; "
+        f"the ceiling is {_MALFORMED_CEILING}"
+    )
+
+
+def test_the_malformed_ledger_does_not_rot() -> None:
+    live = set(_malformed_calls())
+    stale = sorted(DECLARED_MALFORMED_CALLS - live)
+    assert not stale, f"declared but no longer in the source: {stale}"

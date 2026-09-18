@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 121,
+    "total": 123,
     "P0": 19,
-    "P1": 61,
-    "P2": 30,
+    "P1": 62,
+    "P2": 31,
     "P3": 11
   },
   "findings": [
@@ -4664,6 +4664,39 @@
       "evidence": "live POST /nhdw/queue/check-in -> 500, UndefinedColumn in the server log",
       "tests": [
         "scripts/runtime_gates.py gate 6 (records it as UNAVAILABLE)"
+      ],
+      "generated": "2026-09-18"
+    },
+    {
+      "id": "NR-122",
+      "category": "API surface / Routing",
+      "domain": "Identity (NIAM)",
+      "severity": "P1",
+      "priority": 122,
+      "status": "CLOSED — prefix corrected, 24 frontend calls now reach a real endpoint, CI-gated.",
+      "title": "Sixty identity routes were served one segment deeper than any client asks for",
+      "description": "app/identity/api/router.py mounts the NIAM tree with prefix=\\\"/niam\\\". Three of its children declared the prefix again -- prefix=\\\"/niam/governance\\\", \\\"/niam/trust\\\", \\\"/niam/adaptive-auth\\\" -- so FastAPI served them at /niam/niam/governance/..., /niam/niam/trust/... and /niam/niam/adaptive-auth/....\\nMEASURED: 60 served paths carried the doubled prefix. frontend-v3 calls the single-prefix form throughout, so all 24 of those calls got 404 -- the governance, trust and adaptive-auth pages could not load anything. Nothing in the repository calls the doubled form (one generated report file catalogues it; no code, no test, no client), so correcting it breaks no caller.\\nFIX: the three children carry only their own segment. 60 doubled paths -> 0. Frontend calls with no backend: 83 -> 67.\\nThis also shrank NR-054's orphan ledger by eight: those /niam/* calls were never orphans, they were reachable at an address nobody used. The existing rot check is what flagged them, which is the ledger pattern working.",
+      "evidence": "OpenAPI before/after; frontend contract scan 83 -> 67 unserved",
+      "tests": [
+        "backend/tests/test_runtime_activation_guards.py::test_no_router_declares_a_prefix_its_parent_already_carries"
+      ],
+      "generated": "2026-09-18"
+    },
+    {
+      "id": "NR-123",
+      "category": "Frontend / Contract",
+      "domain": "frontend-v3",
+      "severity": "P2",
+      "priority": 123,
+      "status": "OPEN — 21 declared in a shrink-only ledger. The guard that should have caught them was skipping them.",
+      "title": "Twenty-one frontend calls request a path with an empty segment, and the contract guard skipped exactly those",
+      "description": "frontend-v3 calls 434 distinct backend paths; 367 are served after NR-122. 21 of the remainder contain an empty path segment where an id belongs:\\n    api.get(\\\"/pilot-platform/pilots//gates\\\")\\n    api.get(\\\"/national/documents//versions\\\")\\n    api.get(\\\"/national/workflows/executions//approvals\\\")   ... and 18 more\\nThey are generated pages firing an unconditional query at a detail endpoint with no id in scope, so each is a guaranteed 404 on page load.\\nTHE GUARD ITSELF WAS THE BIGGER FINDING. tests/test_frontend_backend_contract.py (NR-054) scanned the frontend's calls and explicitly skipped any endpoint containing '//', commented as 'the literal half of a concatenated URL, not a real endpoint'. RE-MEASURED: there is no concatenated API URL anywhere in frontend-v3 -- zero matches -- and all 21 are single literal strings. The exclusion removed from the contract guard precisely the calls that are certainly broken. The scanner now routes them to their own ledger instead of dropping them, with a positive control asserting it still finds them.\\nNOT FIXED: repairing them means giving each generated page selection state so the query only fires once an id exists. That is frontend feature work, not activation work, and §0 of the brief says to defer anything that does not contribute to running or securing the system in this window.",
+      "evidence": "21 literal matches in frontend-v3/src; 0 concatenated API URLs; 42 contract tests green",
+      "tests": [
+        "backend/tests/test_frontend_backend_contract.py::test_no_new_call_has_an_empty_path_segment",
+        "backend/tests/test_frontend_backend_contract.py::test_the_malformed_scanner_still_finds_them",
+        "backend/tests/test_frontend_backend_contract.py::test_the_malformed_ledger_only_shrinks",
+        "backend/tests/test_frontend_backend_contract.py::test_the_malformed_ledger_does_not_rot"
       ],
       "generated": "2026-09-18"
     }

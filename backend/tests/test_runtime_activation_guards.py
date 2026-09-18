@@ -292,3 +292,23 @@ def test_the_login_gate_still_demands_a_second_factor_for_privileged_roles() -> 
     assert "has_mfa_enabled" in source, (
         "login.py no longer checks that a privileged account has a second factor"
     )
+
+
+def test_no_router_declares_a_prefix_its_parent_already_carries() -> None:
+    """NR-122. app/identity mounted three routers at /niam/niam/...
+
+    The parent router in app/identity/api/router.py carries prefix="/niam".
+    Three children declared prefix="/niam/..." as well, so 60 paths were served
+    one segment deeper than any client asks for; frontend-v3 called the single
+    prefix and got 404 from all of them.
+    """
+    identity = _BACKEND / "app" / "identity"
+    offenders = []
+    for path in sorted(identity.rglob("*.py")):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            if 'APIRouter(' in line and 'prefix="/niam/' in line:
+                offenders.append(f"{path.relative_to(_REPO)}:{lineno}: {line.strip()}")
+    assert not offenders, (
+        "these routers repeat the /niam prefix their parent already applies, so "
+        "their routes are served at /niam/niam/...:\n  " + "\n  ".join(offenders)
+    )

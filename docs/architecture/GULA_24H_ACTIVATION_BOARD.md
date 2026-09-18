@@ -20,7 +20,7 @@ earlier report.
 | 4 | Authorization | **VERIFIED** | 11/11. A lab admin reads its own session, its own patients and its own lab profile, and is refused another lab's profile, the pending queue, lab creation, lab approval and lab deactivation. An expired token is refused a tenant read. Its audit view contains no other tenant's rows. |
 | 5 | Tenant isolation | **VERIFIED** | 11/11. Beta cannot read, update, list, search or id-guess Alpha's patient. Three alternate EHR routes answer 500 for *everyone* including the owner — classified UNAVAILABLE (NR-119), not scored as isolation, because a route broken for every caller leaks nothing tenant-specific. |
 | 6 | Core clinical path | **VERIFIED, with two steps UNAVAILABLE** | 14/14. Organization context → patient → order → specimen (barcoded) → result entry → read-back → audit. The optimistic lock is driven, not routed around: no `If-Match` → 428, stale `If-Match` → 409, observed version → 200, and the value reads back. The audit chain carries ('create', patient), ('create', lab_order) and ('create', sample). CHECK-IN and CLINICAL NOTE answer 500 for everyone and are reported UNAVAILABLE (NR-119, NR-121), not skipped. |
-| 7 | Frontend ↔ backend | **NOT STARTED** | — |
+| 7 | Frontend ↔ backend | **PARTIALLY VERIFIED (contract only)** | frontend-v3 calls 434 distinct backend paths; 367 are served, 67 are not. One backend fix (NR-122) took that from 83 to 67 by removing a doubled `/niam/niam/` prefix on 60 routes. 21 of the remaining 67 are malformed on the frontend side (NR-123). No browser run yet — this is contract alignment, not a rendered login. |
 | — | Golden path (§24) | **VERIFIED to step 13** | Infrastructure → database → migrations → backend → login → organization context → authorization → patient access → clinical workflow → mutation → audit → logout all run in one sequence from a dropped database. Steps 5 (frontend) and 14–15 (restart, coherence after restart) are not yet included. |
 | — | Clean-start test (§25) | **VERIFIED through gate 5** | Empty database → 423 tables → server start → bootstrap → MFA enrolment → login → 43/43 gates, run three times from a dropped database and a flushed Redis. The clinical path beyond patient creation is not yet included. |
 
@@ -36,7 +36,11 @@ earlier report.
 | NR-116 | P0 | Any lab admin could approve, create and switch off other laboratories | **CLOSED** — five handlers gained the platform-scope check |
 | NR-117 | P0 | `POST /patients` answered 500 for every request on PostgreSQL | **CLOSED** — health_id and gender both overflowed their columns |
 | NR-118 | P2 | 87 unit tests fail only when the suite runs together | **OPEN** — measured at HEAD and after: identical, so not a regression |
-| NR-119 | P1 | Three clinical read endpoints 500 — `national_patients` is built by no migration | **OPEN** — the fix is a migration, which CLAUDE.md reserves |
+| NR-119 | P1 | Four clinical endpoints 500 — `national_patients` is built by no migration | **OPEN** — the fix is a migration, which CLAUDE.md reserves |
+| NR-120 | P2 | Clinical audit rows carry a NULL `lab_id` | **OPEN** — nothing leaks today; any query keyed on `lab_id` misses them |
+| NR-121 | P1 | Patient check-in 500s — `nhdw_queue_entries.encounter_id` is in the ORM, not the table | **OPEN** — the fix is a migration, which CLAUDE.md reserves |
+| NR-122 | P1 | Sixty identity routes served at `/niam/niam/…`, which no client calls | **CLOSED** — 24 frontend calls now reach a real endpoint |
+| NR-123 | P2 | 21 frontend calls request a path with an empty segment — and the contract guard skipped exactly those | **OPEN** — declared in a shrink-only ledger; the guard no longer skips them |
 
 ## CRITICAL — do next, in this order
 
@@ -44,7 +48,7 @@ earlier report.
 |----|--------|--------------|------------|
 | G6-a | Gate 6: login → org context → patient → check-in → queue → encounter → note → order → specimen/result → audit | real endpoints only; no parallel workflow built to make a demo pass | — |
 | G7-a | Frontend ↔ backend: a real login and one real read from `frontend-v2` | browser or fetch against the running API | G6-a |
-| NR-119 | Decide whether `national_patients` gets a migration or the three routes get retired | `alembic upgrade head` on a clean DB, then the three routes answer | human approval |
+| NR-119 | Decide whether `national_patients` gets a migration or the four routes get retired | `alembic upgrade head` on a clean DB, then the three routes answer | human approval |
 
 ## HIGH
 
