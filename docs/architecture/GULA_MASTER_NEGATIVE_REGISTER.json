@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 124,
+    "total": 125,
     "P0": 19,
     "P1": 62,
-    "P2": 32,
+    "P2": 33,
     "P3": 11
   },
   "findings": [
@@ -4617,7 +4617,7 @@
       "domain": "Platform-wide",
       "severity": "P2",
       "priority": 118,
-      "status": "OPEN — 87 measured, one attributed and fixed (NR-124), 86 remain. The largest cluster, test_tenant_isolation_matrix (45), is next.",
+      "status": "OPEN — 87 measured; 3 attributed and fixed (NR-124, NR-125); 84 remain in five clusters, each needing its own cause.",
       "title": "87 unit tests fail only when the suite runs together",
       "description": "MEASURED both ways, on the same machine, same interpreter, same flags (pytest tests/ -q -p no:randomly -m 'not integration'):\\n  at HEAD (1dbca8f0), unmodified:   87 failed, 3021 passed\\n  with this session's changes:      87 failed, 3031 passed  (+10 new tests)\\nIdentical count, identical files. Re-running exactly those 87 with --lf: 87 passed in 42s. So every one of them passes alone and fails in company -- shared state, not broken code.\\nConcentrated in: test_tenant_isolation_matrix (45), test_tiers_privilege (14), test_system_improvements (12), test_wearable_measurements (8), test_user_preferences (5), test_startup_guard (2), test_capability_import_roots (1).\\nThis matters beyond tidiness: a suite that is red for reasons unrelated to the diff trains everyone to ignore it, and it makes a real regression indistinguishable from the background noise. Recorded here with the exact before/after numbers so the next pass starts from measurement rather than from a guess about whose change did it.\\nFIRST CAUSE ATTRIBUTED (NR-124): tests/notifications/test_ntfy_connector.py imported `from backend.app.integration.connectors.ntfy import NtfyConnector`. That loads a second copy of the module tree under a root that does not exist on a deployed backend, and it stays in sys.modules for the rest of the session, so test_capability_import_roots::test_a_real_application_start_loads_no_stateful_second_copy failed in company and passed alone. Corrected to `app.…`; the full suite went 87 -> 86 failures and 3031 -> 3039 passes. Each remaining cluster still needs its own cause found rather than assumed.",
       "evidence": "two full runs, /tmp comparison, plus a 87/87 --lf pass",
@@ -4713,6 +4713,21 @@
       "tests": [
         "backend/tests/test_engineering_tooling_imports.py::test_nothing_under_backend_imports_the_shadow_root",
         "backend/tests/test_engineering_tooling_imports.py::test_the_shadow_root_scan_covers_the_test_suite_too"
+      ],
+      "generated": "2026-09-18"
+    },
+    {
+      "id": "NR-125",
+      "category": "Test integrity",
+      "domain": "Startup guard",
+      "severity": "P2",
+      "priority": 125,
+      "status": "CLOSED — the two tests now patch the constant the code actually reads.",
+      "title": "Two startup-guard tests set an environment variable the code had already frozen",
+      "description": "TestTestModeBypass set os.environ[\\\"RUNTIME_MODE\\\"] = \\\"test\\\" and expected run_startup_guard() to take the test-mode bypass. It does not. The function reads `from ..config import RUNTIME_MODE`, a module constant bound the first time app.config is imported.\\nRun alone, that import happens inside the call and picks the freshly set variable up, so the test passes. Run after anything that has already touched app.config -- which is nearly the whole suite -- the constant is already \\\"api\\\", the bypass never fires, run_startup_guard() attempts real validation against an in-memory SQLite with no alembic_version table, and system_ready stays False.\\nSo the failure was the test's assumption about import timing, not the guard. Both now monkeypatch app.config.RUNTIME_MODE, which is the faithful analogue of production, where the value is fixed at process start and the constant IS the truth.\\nFull suite: 86 -> 84 failures. Attributed causes of NR-118 so far: NR-124 (1), NR-125 (2). The three remaining clusters -- test_tenant_isolation_matrix (45), test_tiers_privilege (14), test_system_improvements (12), test_wearable_measurements (8), test_user_preferences (5) -- each still need their own cause found rather than assumed from these two.",
+      "evidence": "both tests pass alone and after test_system_improvements; full suite 86 -> 84",
+      "tests": [
+        "backend/tests/test_startup_guard.py::TestTestModeBypass"
       ],
       "generated": "2026-09-18"
     }
