@@ -7,8 +7,8 @@
  "counts": {
   "total": 104,
   "P0": 14,
-  "P1": 49,
-  "P2": 30,
+  "P1": 50,
+  "P2": 29,
   "P3": 11
  },
  "findings": [
@@ -1558,26 +1558,51 @@
   },
   {
    "id": "NR-046",
-   "severity": "P2",
-   "domain": "Identity Platform",
-   "category": "Session management",
+   "severity": "P1",
+   "domain": "app/identity/api/workspaces.py",
+   "category": "Control coverage / Session lifetime not enforced",
    "title": "The NIAM actor dependency does not consult UserSession.expires_at",
-   "status": "OPEN",
-   "blocker": false,
-   "can_fix_now": true,
-   "priority": 46,
-   "description": "get_current_niam_actor filters on UserSession.is_active but never on UserSession.expires_at, which is NOT NULL and is set at login. A session row whose expires_at is in the past still authenticates, provided the bearer token itself has not expired.",
+   "status": "RESOLVED — expires_at now constrained in the canonical actor dependency; proved in four states against PostgreSQL",
+   "blocker": "",
+   "can_fix_now": false,
+   "priority": 2,
+   "description": "get_current_niam_actor is the canonical actor dependency: it guards every /niam/* route and the clinical gateway. Its filter checked Account.status, Account.is_active, Account.is_locked, UserSession.token_jti and UserSession.is_active -- and never UserSession.expires_at, which is NOT NULL and set at login. Nothing reaps is_active when a session expires, so the row stays is_active=True indefinitely and the session authenticated for as long as the bearer token lived.\n\nRAISED TO P1. This was filed P2. It is an authorization control: server-side session lifetime was not enforced on the surface that guards the whole NIAM router and the clinical gateway, so revoking a session by shortening its lifetime did nothing there.\n\nCONTROL COVERAGE, not a missing control. Two other call sites already enforced the same rule -- authentication_service.py:118 (expires_at < now) and authorization_decision.py:220 (expires_at <= now). The one place not applying it was the one guarding the router. That is the inverse pattern the brief names in section 6.\n\nFIXED by adding `UserSession.expires_at > datetime.now(UTC)` to the filter, matching authorization_decision's reject-on-<=.\n\nA note on the proof, because it nearly inverted. The first probe reported all three sessions rejected INCLUDING the valid control, which would have read as 'expired sessions are already refused, no defect'. The cause was the probe: create_token mints its own jti and discards any passed in, so the session row never matched the token. Only the valid-session control revealed it. Both directions are now asserted.",
    "root_cause": "The predicate was written from the account's standing and the session's active flag; the row's own declared lifetime was not part of the conjunction.",
-   "evidence": "Measured on migrated PostgreSQL: with session_row.expires_at set one day in the past and is_active still True, get_current_niam_actor returns the actor rather than raising 401. NOT a NR-044.1 regression - the converted query is byte-for-byte the pre-existing get_current_niam_actor_sync, and the async twin omitted the check too (it also omitted Account.is_locked, which the conversion kept).",
-   "security_impact": "Bounded by the access token's own exp, which IS enforced (JWT_EXPIRE_MINUTES, default 15). The gap matters only where a session is intended to expire sooner than the tokens minted against it - for example an administrative session cut short, or a shorter server-side session policy.",
+   "evidence": [
+    "BEFORE, executed on PostgreSQL: session expires_at 30 days in the past, is_active=True -> AUTHENTICATED. Same for expires_at 1 second in the past.",
+    "AFTER, executed: expired 30 days -> rejected 401; expired 1 second -> rejected 401; valid 1 hour -> AUTHENTICATED; valid 30 seconds -> AUTHENTICATED.",
+    "MEASURED: nothing in the codebase reaps UserSession.is_active on expiry, so the row remains is_active=True indefinitely.",
+    "MEASURED: authentication_service.py:118 and authorization_decision.py:220 already enforced expiry; the actor dependency did not. Control coverage, not a missing control.",
+    "DETECTOR HONESTY: the first probe rejected all three sessions including the valid control, which would have recorded a false negative. Cause was create_token minting its own jti, discarding the one passed in. The guard now asserts both directions, and a negative proof perturbs the filter to reject everything to prove the control case fails.",
+    "Five negative proofs, each failing with its intended message, every source restored byte-identical (md5)."
+   ],
+   "security_impact": "Server-side session expiry was unenforced on the NIAM surface and the clinical gateway. Shortening a session's lifetime to end it had no effect there; the session remained usable until its bearer token expired.",
    "clinical_impact": "Indirect: the clinical gateway depends on this actor, so a session past its declared expiry could still reach authorization.",
-   "recommended_fix": "Add `or_(UserSession.expires_at.is_(None), UserSession.expires_at > now)` to the actor's filter, matching how Membership.expires_at is already handled in ClinicalGatewayContextResolver.",
+   "recommended_fix": "Consider also reaping is_active on expiry so the row state matches reality, and so other readers of niam_sessions cannot repeat this.",
    "verification": "backend/tests/test_identity_link_and_assurance.py::test_the_gate_does_not_consult_the_session_row_expiry asserts today's behaviour so that adding the check fails there and the test is rewritten to pin the fix.",
    "affected_components": "backend/app/identity/api/workspaces.py",
    "discovered_by": "NR-044.1 final verification",
    "owner": "Identity Platform",
    "artifact": "docs/architecture/identity/nr-044-decision.md",
-   "next_batch": ""
+   "next_batch": "",
+   "evidence_strength": "EXECUTED against real PostgreSQL at head, in four states, before and after.",
+   "verification_method": "Person/IdentityRecord/Account/UserSession fixtures inserted into PostgreSQL and rolled back (zero residue verified by count); the dependency called directly for expired and live sessions; 5 CI-gated guards (3 structural in the unit job, 2 behavioural in the PostgreSQL migration job) with 5 negative proofs, every source restored byte-identical (md5).",
+   "minimal_safe_fix": "APPLIED: UserSession.expires_at > datetime.now(UTC) in the actor dependency's filter.",
+   "acceptance_criteria": [
+    "The canonical actor dependency constrains UserSession.expires_at against the current time.",
+    "An expired session is rejected; a live session still authenticates.",
+    "No existing path that enforces session expiry silently stops doing so."
+   ],
+   "related_tests": [
+    "backend/tests/test_session_expiry_is_enforced.py"
+   ],
+   "related_files": [
+    "backend/app/identity/api/workspaces.py"
+   ],
+   "intersections": [
+    "NR-044.1 — this dependency is the one that finding consolidated to a single sync implementation; the expiry gap survived the consolidation.",
+    "NR-103 — session revocation via the jti blacklist degrades per-worker without Redis. That is the other half of session termination; this one is the server-side lifetime."
+   ]
   },
   {
    "id": "NR-047",

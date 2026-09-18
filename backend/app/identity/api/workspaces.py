@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
@@ -67,6 +69,17 @@ def get_current_niam_actor(
             Account.is_locked.is_(False),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
+            # NR-046. expires_at is NOT NULL and is set at login, but this
+            # filter never consulted it, so a session row that expired weeks
+            # ago still authenticated for as long as the bearer token lived.
+            # Nothing reaps is_active on expiry, so the row stays is_active=True
+            # indefinitely. Two other call sites already enforce this --
+            # authentication_service.py:118 and authorization_decision.py:220 --
+            # which made this a control-coverage gap rather than a missing
+            # control: the one place that guards the whole /niam/* router and
+            # the clinical gateway was the one place not applying it.
+            # `>` matches authorization_decision's reject-on-`<=`.
+            UserSession.expires_at > datetime.now(UTC),
         )
         .first()
     )
