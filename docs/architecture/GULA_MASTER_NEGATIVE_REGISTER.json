@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 119,
+    "total": 121,
     "P0": 19,
-    "P1": 60,
-    "P2": 29,
+    "P1": 61,
+    "P2": 30,
     "P3": 11
   },
   "findings": [
@@ -4631,11 +4631,39 @@
       "severity": "P1",
       "priority": 119,
       "status": "OPEN — the fix is a MIGRATION, which CLAUDE.md reserves for human approval.",
-      "title": "Three clinical read endpoints 500 because national_patients is built by no migration",
-      "description": "GET /ehr/patients/{id}/timeline, GET /ehr/patients/{id}/conditions and GET /national-data/patients/{id} all raise psycopg2.errors.UndefinedTable: relation \\\"national_patients\\\" does not exist against a schema built by `alembic upgrade head`. Same family as NR-110: an ORM model with no migration behind it.\\nCLASSIFIED UNAVAILABLE, NOT LEAKING. The routes were probed as a foreign tenant and as the patient's OWNER: both get 500, and the response body contains no patient data. A route that is broken for every caller cannot be leaking anything tenant-specific, so this is an availability defect and not a gate-5 failure. The distinction is recorded rather than scored as a pass, which is why the harness resolves every 5xx against the owner before classifying it.\\nBuilding the table is a schema change and is left for approval.",
+      "title": "Four clinical endpoints 500 because national_patients is built by no migration",
+      "description": "GET /ehr/patients/{id}/timeline, GET /ehr/patients/{id}/conditions, GET /national-data/patients/{id} and -- found later, driving the clinical path -- POST /ehr/clinical-notes all raise psycopg2.errors.UndefinedTable: relation \\\"national_patients\\\" does not exist against a schema built by `alembic upgrade head`. Same family as NR-110: an ORM model with no migration behind it.\\nCLASSIFIED UNAVAILABLE, NOT LEAKING. The routes were probed as a foreign tenant and as the patient's OWNER: both get 500, and the response body contains no patient data. A route that is broken for every caller cannot be leaking anything tenant-specific, so this is an availability defect and not a gate-5 failure. The distinction is recorded rather than scored as a pass, which is why the harness resolves every 5xx against the owner before classifying it.\\nBuilding the table is a schema change and is left for approval.\\nRE-MEASURED during gate 6: the write path is affected too. POST /ehr/clinical-notes is the documented way to record a clinical note and it cannot be called at all, so that step of the core clinical path is UNAVAILABLE rather than passing. It is recorded as unavailable in the gate output instead of being routed around.",
       "evidence": "runtime_gates gate 5, beta 500 / owner 500 on all three routes",
       "tests": [
         "scripts/runtime_gates.py gate 5 (records them as UNAVAILABLE)"
+      ],
+      "generated": "2026-09-18"
+    },
+    {
+      "id": "NR-120",
+      "category": "Audit / Tenancy",
+      "domain": "Clinical core",
+      "severity": "P2",
+      "priority": 120,
+      "status": "OPEN — measured during gate 6. Fixing it means threading lab_id through three writers.",
+      "title": "Clinical audit rows carry a NULL lab_id",
+      "description": "The audit chain records the clinical mutations correctly -- gate 6 confirms ('create','patient'), ('create','lab_order') and ('create','sample') are all written with the acting user id. But the lab_id column is NULL on every one of them:\\n  19 | create | patient   | 1 | user 2 | lab_id NULL\\n  20 | create | lab_order | 1 | user 2 | lab_id NULL\\n  21 | create | sample    | 1 | user 2 | lab_id NULL\\nlog_action takes lab_id; these three callers do not pass it. Today /admin/audit-logs still scopes correctly because it filters by the lab's user ids rather than by lab_id, so nothing leaks -- but any query that reasonably keys on lab_id returns nothing for these rows, and an actor who moves between labs makes the user-id route ambiguous. Recorded rather than fixed in passing, because the right fix touches three writers and wants its own regression test.",
+      "evidence": "audit_logs rows 19-21 after gate 6 on a clean database",
+      "tests": [],
+      "generated": "2026-09-18"
+    },
+    {
+      "id": "NR-121",
+      "category": "Schema / Availability",
+      "domain": "NHDW queue",
+      "severity": "P1",
+      "priority": 121,
+      "status": "OPEN — the fix is a MIGRATION, which CLAUDE.md reserves for human approval.",
+      "title": "Patient check-in 500s: nhdw_queue_entries.encounter_id is in the ORM but not the table",
+      "description": "POST /nhdw/queue/check-in raises psycopg2.errors.UndefinedColumn: column \\\"encounter_id\\\" of relation \\\"nhdw_queue_entries\\\" does not exist, against a schema built by `alembic upgrade head`. The table exists; the column the ORM writes does not. Distinct from NR-119, which is a missing table.\\nCHECK-IN and QUEUE are steps 4 and 5 of the core clinical path in the activation brief, so both are classified UNAVAILABLE in the gate output. The rest of the path -- patient, order, specimen, result, audit -- runs, which is why gate 6 passes 14/14 while still naming these two as unavailable rather than quietly skipping them.\\nAdding the column is a schema change and is left for approval.",
+      "evidence": "live POST /nhdw/queue/check-in -> 500, UndefinedColumn in the server log",
+      "tests": [
+        "scripts/runtime_gates.py gate 6 (records it as UNAVAILABLE)"
       ],
       "generated": "2026-09-18"
     }

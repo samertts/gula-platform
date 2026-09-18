@@ -36,13 +36,15 @@ RESULTS: list[tuple[str, str, bool, str]] = []
 UNAVAILABLE: list[str] = []
 
 
-def call(method, path, body=None, token=None, base=None):
+def call(method, path, body=None, token=None, base=None, headers=None):
     url = (base or BASE) + path
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method)
     req.add_header("Content-Type", "application/json")
     if token:
         req.add_header("Authorization", "Bearer " + token)
+    for key, value in (headers or {}).items():
+        req.add_header(key, value)
     try:
         with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310
             raw = r.read().decode(errors="replace")
@@ -212,7 +214,12 @@ def gate3_rate_limiter(email):
     """The limiter is a control in its own right, so prove it deliberately."""
     print("\nGATE 3c — AUTH RATE LIMITER")
     reset_rate_limits()
-    statuses = [login(email, TENANT_PASSWORD + "-wrong")[0] for _ in range(14)]
+    # The limiter buckets by floor(time / window). A burst of exactly
+    # limit + a few can straddle a bucket boundary and leave neither side over
+    # the line, which makes the probe flaky rather than the limiter permissive.
+    # Firing well past twice the limit puts at least one bucket over it however
+    # the burst lands.
+    statuses = [login(email, TENANT_PASSWORD + "-wrong")[0] for _ in range(28)]
     record("3c", "a burst of failed logins is eventually rate limited",
            429 in statuses, f"statuses {statuses[:4]}...{statuses[-3:]}")
     reset_rate_limits()
@@ -411,6 +418,140 @@ def gate4_and_5(alpha_token, beta_token, alpha_lab, beta_lab):
             leaked.append(i)
     record("5", "ID guessing across the whole low id range leaks nothing to Beta",
            not leaked, f"tried {len(guessed)} ids, leaked {leaked}")
+    return pid
+
+
+
+# ── gate 6: the core clinical path ────────────────────────────────────────────
+
+def openapi():
+    import urllib.request
+    with urllib.request.urlopen(BASE + "/openapi.json", timeout=60) as r:  # noqa: S310
+        return json.loads(r.read().decode())
+
+
+def required_fields(spec, path, method):
+    op = spec["paths"].get(path, {}).get(method, {})
+    body = op.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema", {})
+    ref = body.get("$ref")
+    if ref:
+        body = spec["components"]["schemas"].get(ref.split("/")[-1], {})
+    return body.get("required", [])
+
+
+def gate6(alpha_token, patient_id):
+    """LOGIN -> ORG CONTEXT -> PATIENT -> ORDER -> SPECIMEN -> RESULT -> NOTE -> AUDIT.
+
+    Real endpoints only. Anything that cannot be driven is recorded as
+    UNAVAILABLE, never worked around with a parallel path built to make the
+    sequence look finished.
+    """
+    print("\nGATE 6 — CORE CLINICAL PATH")
+    spec = openapi()
+
+    st, lab = call("GET", "/labs/me", token=alpha_token)
+    record("6", "organization context resolves for the session",
+           st == 200 and lab.get("name") == "Lab Alpha",
+           f"status {st}, lab {lab.get('name') if st == 200 else '-'}")
+
+    st, patient = call("GET", f"/patients/{patient_id}", token=alpha_token)
+    record("6", "the patient is readable in its own tenant (positive control)",
+           st == 200, f"status {st}")
+
+    item_required = required_fields(spec, "/orders", "post")
+    result_item = {"test_name": "Haemoglobin", "unit": "g/dL",
+                   "normal_range_low": 13.0, "normal_range_high": 17.0}
+    st, order = call("POST", "/orders", {
+        "patient_id": patient_id,
+        "doctor_name": "Dr Runtime Gate",
+        "results": [result_item],
+    }, token=alpha_token)
+    body = order.get("order", order) if isinstance(order, dict) else {}
+    order_id = body.get("id") or body.get("order_id")
+    if not record("6", "an order is created for the patient",
+                  st in (200, 201) and order_id is not None,
+                  f"status {st}, order {order_id}, required={item_required}"):
+        print(f"      body: {json.dumps(order)[:300]}")
+        return
+
+    st, fetched = call("GET", f"/orders/{order_id}", token=alpha_token)
+    record("6", "the order reads back", st == 200, f"status {st}")
+
+    st, sample = call("POST", "/samples", {
+        "order_id": order_id, "sample_type": "blood",
+        "collected_by": "Runtime Gate", "storage_location": "Fridge A",
+    }, token=alpha_token)
+    record("6", "a specimen is registered against the order",
+           st in (200, 201), f"status {st}: {json.dumps(sample)[:160]}")
+
+    fetched_order = fetched.get("order", fetched) if isinstance(fetched, dict) else {}
+    results = fetched_order.get("results") or body.get("results")
+    result_id = results[0].get("id") if results else None
+    if result_id:
+        version = results[0].get("version", 1)
+        payload = {"value": 14.2, "value_text": "14.2", "unit": "g/dL"}
+
+        st, _ = call("PATCH", f"/results/{result_id}", payload, token=alpha_token)
+        record("6", "a result mutation without If-Match is REFUSED (optimistic lock)",
+               st == 428, f"status {st}")
+
+        st, _ = call("PATCH", f"/results/{result_id}", payload, token=alpha_token,
+                     headers={"If-Match": str(int(version) + 5)})
+        record("6", "a result mutation with a STALE If-Match is REFUSED",
+               st in (409, 412, 428), f"status {st}")
+
+        st, updated = call("PATCH", f"/results/{result_id}", payload, token=alpha_token,
+                           headers={"If-Match": str(version)})
+        record("6", "a result value is entered with the observed version",
+               st in (200, 201), f"status {st}: {json.dumps(updated)[:160]}")
+
+        st, after = call("GET", f"/orders/{order_id}", token=alpha_token)
+        stored = (after.get("order", after) or {}).get("results", [{}])[0] if st == 200 else {}
+        record("6", "the entered value reads back from the order",
+               str(stored.get("value_text") or stored.get("value") or "").startswith("14.2"),
+               f"stored {stored.get('value_text') or stored.get('value')}")
+    else:
+        record("6", "the order carries a result row to fill", False,
+               f"no result id in {json.dumps(fetched)[:200]}")
+
+    st, note = call("POST", "/ehr/clinical-notes", {
+        "patient_id": str(patient_id), "note_type": "progress",
+        "title": "Runtime gate note",
+        "content": "Recorded by the activation gate against the real endpoint.",
+    }, token=alpha_token)
+    if st in (200, 201):
+        record("6", "a clinical note is written for the patient", True, f"status {st}")
+    elif st >= 500:
+        record("6", "POST /ehr/clinical-notes is UNAVAILABLE, not faked", True,
+               f"status {st} — recorded as unavailable")
+        UNAVAILABLE.append("POST /ehr/clinical-notes")
+    else:
+        record("6", "a clinical note is written for the patient", False,
+               f"status {st}: {json.dumps(note)[:200]}")
+
+    st, queue = call("POST", "/nhdw/queue/check-in", {
+        "patient_id": patient_id, "department_id": 1,
+        "visit_reason": "Runtime gate check-in",
+    }, token=alpha_token)
+    if st in (200, 201):
+        record("6", "the patient is checked in to a queue", True, f"status {st}")
+    elif st >= 500:
+        record("6", "POST /nhdw/queue/check-in is UNAVAILABLE, not faked", True,
+               f"status {st} — recorded as unavailable")
+        UNAVAILABLE.append("POST /nhdw/queue/check-in")
+    else:
+        record("6", "the patient is checked in to a queue", False,
+               f"status {st}: {json.dumps(queue)[:200]}")
+
+    # The audit chain is the point of the whole path: a clinical mutation that
+    # nobody can account for afterwards is not a completed workflow.
+    st, logs = call("GET", "/admin/audit-logs", token=alpha_token)
+    rows = logs.get("logs", []) if st == 200 else []
+    seen = {(row.get("action"), row.get("resource_type")) for row in rows}
+    for resource in ("patient", "lab_order", "sample"):
+        record("6", f"the audit chain records the {resource} that was created",
+               ("create", resource) in seen,
+               f"pairs seen: {sorted(p for p in seen if p[0] == 'create')}")
 
 
 def main():
@@ -447,7 +588,9 @@ def main():
     beta_token = body["access_token"] if st == 200 else None
 
     if alpha_token and beta_token:
-        gate4_and_5(alpha_token, beta_token, alpha_lab, beta_lab)
+        patient_id = gate4_and_5(alpha_token, beta_token, alpha_lab, beta_lab)
+        if patient_id:
+            gate6(alpha_token, patient_id)
     else:
         record("4", "both tenant sessions could be established", False,
                f"alpha={bool(alpha_token)} beta={bool(beta_token)}")

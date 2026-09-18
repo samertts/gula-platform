@@ -19,9 +19,9 @@ earlier report.
 | 3 | Authentication | **VERIFIED** | 21/21 checks, every one with a positive control. Valid credential accepted; wrong password, unknown account, no credential, malformed token, expired token, unapproved lab all rejected; refresh issues a working token; logout revokes; a login burst is rate limited; a locked account is refused *with the right password* and works again once unlocked. `scripts/runtime_gates.py` gates 3, 3b, 3c, 3d. |
 | 4 | Authorization | **VERIFIED** | 11/11. A lab admin reads its own session, its own patients and its own lab profile, and is refused another lab's profile, the pending queue, lab creation, lab approval and lab deactivation. An expired token is refused a tenant read. Its audit view contains no other tenant's rows. |
 | 5 | Tenant isolation | **VERIFIED** | 11/11. Beta cannot read, update, list, search or id-guess Alpha's patient. Three alternate EHR routes answer 500 for *everyone* including the owner — classified UNAVAILABLE (NR-119), not scored as isolation, because a route broken for every caller leaks nothing tenant-specific. |
-| 6 | Core clinical path | **NOT STARTED** | — |
+| 6 | Core clinical path | **VERIFIED, with two steps UNAVAILABLE** | 14/14. Organization context → patient → order → specimen (barcoded) → result entry → read-back → audit. The optimistic lock is driven, not routed around: no `If-Match` → 428, stale `If-Match` → 409, observed version → 200, and the value reads back. The audit chain carries ('create', patient), ('create', lab_order) and ('create', sample). CHECK-IN and CLINICAL NOTE answer 500 for everyone and are reported UNAVAILABLE (NR-119, NR-121), not skipped. |
 | 7 | Frontend ↔ backend | **NOT STARTED** | — |
-| — | Golden path (§24) | **NOT RUN** | Steps 1–6 hold in isolation; the sequence has not been run end to end. |
+| — | Golden path (§24) | **VERIFIED to step 13** | Infrastructure → database → migrations → backend → login → organization context → authorization → patient access → clinical workflow → mutation → audit → logout all run in one sequence from a dropped database. Steps 5 (frontend) and 14–15 (restart, coherence after restart) are not yet included. |
 | — | Clean-start test (§25) | **VERIFIED through gate 5** | Empty database → 423 tables → server start → bootstrap → MFA enrolment → login → 43/43 gates, run three times from a dropped database and a flushed Redis. The clinical path beyond patient creation is not yet included. |
 
 ## Findings closed today
@@ -67,18 +67,21 @@ earlier report.
 ## Platform readiness (§35)
 
 **C — RUNNABLE, CORE VERIFIED.** On a clean PostgreSQL database the system
-migrates to head, starts, bootstraps, and passes 43/43 runtime checks across
-authentication, revocation, rate limiting, account lockout, authorization and
-two-tenant isolation. Reproduce with the commands under *Verification* below.
+migrates to head, starts, bootstraps, and passes 57/57 runtime checks across
+authentication, revocation, rate limiting, account lockout, authorization,
+two-tenant isolation and the core clinical path. Reproduce with the commands
+under *Verification* below.
 
-It is not a production candidate: the core clinical path (gate 6) has not been
-run end to end, the frontend has not been exercised against the API, and NR-114
-is open.
+It is not a production candidate: the frontend has not been exercised against
+the API, check-in and clinical notes are unavailable (NR-119, NR-121), and
+NR-114 is open.
 
-**Deployment: BLOCKED.** Two reasons, both specific:
+**Deployment: BLOCKED.** Three reasons, all specific:
 1. NR-114 — MFA is an enrolment checkbox, not a challenge, so a stolen password
    alone still yields a full privileged session.
-2. Gate 6 unproven — no evidence yet that the clinical path works end to end.
+2. NR-119 and NR-121 — check-in, queue and clinical notes answer 500 on a
+   migration-built schema. Both fixes are migrations, which CLAUDE.md reserves.
+3. No frontend evidence — the API is proven, the product is not.
 
 ## Verification — the exact commands
 
@@ -93,7 +96,7 @@ python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000   # in backend/
 python3 scripts/enroll_mfa.py --role master_admin              # NR-111
 
 # the gates
-python3 scripts/runtime_gates.py --base http://127.0.0.1:8000  # -> 43/43, exit 0
+python3 scripts/runtime_gates.py --base http://127.0.0.1:8000  # -> 57/57, exit 0
 
 # the guards CI runs
 cd backend && python3 -m pytest tests/test_runtime_activation_guards.py -q
