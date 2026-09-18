@@ -532,10 +532,38 @@ lives, and is where this batch's work went.
   Recommended fix: add `"test:server": "vitest run --config
   server/vitest.config.ts"` and include it in the root `"test"` script.
 
+## Batch 6 — frontend/ and frontend-v2/ don't exist; CLAUDE.md corrected
+
+Priority queue items 4 and 5 were `frontend/` and `frontend-v2/`. Neither
+exists anywhere in `origin/main`'s history: `git log origin/main --oneline
+--diff-filter=A -- frontend-v2` returns nothing, meaning main's own
+lineage never carried that directory, even though `CLAUDE.md` describes
+both at length (a directory table entry, a "Firebase Removal" section, a
+`frontend-v2/src/` key-files row) as if they're live. A separate branch
+(`b2b73850`, not an ancestor of `main`) shows an intentional "frontend
+unification... removing legacy frontend and frontend-v2 trees, aligning
+with frontend-v3" migration happened somewhere in this repo's broader
+history; `main` simply never carried those directories forward, and
+`CLAUDE.md` was never corrected. `frontend-v3/` is the actual live
+frontend (and is deep in Abu Ali's active diff — RoleGuard.tsx,
+permissions/index.ts, routes/index.tsx, etc. — so out of scope here
+regardless).
+
+### 16. [FIXED — documentation accuracy] `CLAUDE.md` describes two nonexistent directories
+
+- **File:** `CLAUDE.md`.
+- **Fix:** added one clear note at the top of the directory table (the
+  first place a reader encounters the claim) stating that `frontend/`
+  and `frontend-v2/` aren't present in this branch's tree and that every
+  later mention of either should be treated as historical. Did not rewrite
+  every individual section that mentions them — there are several, and
+  rewriting each would mean asserting architectural details (what
+  Firebase removal actually covered, what `frontend-v2/src/` actually
+  contained) I can't independently verify from a branch that no longer
+  has the code to check against.
+
 ## Next independent work (not started yet)
 
-- `frontend/`, `frontend-v2/` remain unaudited and outside Abu Ali's
-  current footprint — next up.
 - `services/device_bridge/` concurrency: `DataPipeline.sessions[device_id]`
   (an `ASTMDeviceSession` buffer) is shared across concurrent `/ingest`
   requests for the same device_id with no lock. Lower-confidence/lower
@@ -543,3 +571,10 @@ lives, and is where this batch's work went.
 - Wiring `server/`'s new test config into the root `test` script / CI
   (finding #15's "not done" item) — a coordination call, not a blocker.
 - Findings #8, #11, #14 (see above) still need their respective owners.
+- Priority queue items 1–5 (device_bridge, edge_agent, client, frontend,
+  frontend-v2) are now all either fixed, documented, or confirmed
+  nonexistent. Remaining queue items (API contract drift, concurrency/
+  idempotency, tenant isolation, audit coverage, CI false-green) were
+  substantially covered as cross-cutting themes across findings #1–#16
+  above rather than as separate standalone sweeps — see each finding's
+  own classification for which theme it maps to.
