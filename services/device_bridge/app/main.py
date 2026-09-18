@@ -307,15 +307,14 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
         barcode=payload.barcode,
     )
 
-    if pipeline.retry_queue.size() > 0:
-        for item in pipeline.retry_queue.list_all():
-            repository.enqueue_offline(item)
-            sync_engine.stage(
-                item_id=str(uuid.uuid4()),
-                device_id=item["device_id"],
-                payload=item,
-                version=1,
-            )
+    for item in pipeline.retry_queue.drain():
+        repository.enqueue_offline(item)
+        sync_engine.stage(
+            item_id=item.get("idempotency_key") or str(uuid.uuid4()),
+            device_id=item["device_id"],
+            payload=item,
+            version=1,
+        )
 
     for _ in results:
         repository.save_log(
@@ -331,9 +330,21 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
 
 @app.post("/edge/sync")
 async def sync_edge_buffer(_auth: Auth) -> dict[str, int]:
+    """Retry every staged failed-delivery item against GULA for real.
+
+    Previously `sender` just moved each item into ``pipeline.edge_buffer``
+    and unconditionally reported success, so a staged item was marked
+    "sent" and dropped from the queue without ever reaching GULA — restart
+    the process and that data was gone. Reconstruct the original results
+    and actually attempt delivery so `gula_client`'s real success/failure
+    decides whether the item is cleared or stays queued for the next sync.
+    """
+
     async def sender(payload: dict) -> dict:
-        pipeline.edge_buffer.enqueue(payload)
-        return {"status": "ok"}
+        results = [NormalizedResult(**row) for row in payload.get("results", [])]
+        if not results:
+            return {"status": "failed", "error": "no results to resend"}
+        return await pipeline.gula_client.send_results(results)
 
     return await sync_engine.sync(sender)
 

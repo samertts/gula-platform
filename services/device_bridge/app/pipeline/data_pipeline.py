@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import asdict
 
 from app.adapters.registry import AdapterRegistry
-from app.core.retry_queue import RetryQueue
+from app.core.retry_queue import RetryQueue, content_key
 from app.edge.agent import EdgeAgentBuffer
 from app.integration.gula_client import GulaClient
 from app.pipeline.normalizer import NormalizedResult, Normalizer
@@ -101,6 +102,7 @@ class DataPipeline:
                         parsed,
                         patient_id=patient_id,
                         device_id=device_id,
+                        barcode=barcode,
                     )
                     normalized_results.append(normalized)
             except Exception:
@@ -126,7 +128,8 @@ class DataPipeline:
                 self.retry_queue.enqueue(
                     {
                         "device_id": device_id,
-                        "results": [r.test_code for r in normalized_results],
+                        "idempotency_key": content_key(device_id, normalized_results),
+                        "results": [asdict(r) for r in normalized_results],
                         "reason": response.get("error", "send_failed"),
                     }
                 )
