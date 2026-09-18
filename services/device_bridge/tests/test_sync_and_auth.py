@@ -1,5 +1,4 @@
 from app.main import app
-from app.security.auth import DEFAULT_API_KEY
 from fastapi.testclient import TestClient
 
 
@@ -9,9 +8,9 @@ def test_auth_required() -> None:
     assert response.status_code == 401
 
 
-def test_mode_and_sync_endpoints() -> None:
+def test_mode_and_sync_endpoints(api_key_headers) -> None:
     client = TestClient(app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = api_key_headers
 
     response = client.post("/mode", json={"mode": "hybrid"}, headers=headers)
     assert response.status_code == 200
