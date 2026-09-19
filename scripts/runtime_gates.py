@@ -25,11 +25,21 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
 BASE = "http://127.0.0.1:8000"
+
+#: Identities this run creates are tagged with it. Without a tag the gates pass
+#: once against a fresh database and then fail forever: the patient fixtures
+#: carried fixed phone numbers, so the second run collided on the uniqueness
+#: constraint and returned 409, taking gate 5 and everything after it down with
+#: a failure that says nothing about the system under test. A suite that can
+#: only be run once cannot re-verify anything.
+RUN_TAG = f"{int(time.time()) % 10_000_000:07d}"
 TENANT_PASSWORD = "Tenant#Passw0rd!1"
 
 RESULTS: list[tuple[str, str, bool, str]] = []
@@ -387,7 +397,7 @@ def gate4_and_5(alpha_token, beta_token, alpha_lab, beta_lab):
     # A client-supplied lab_id in the BODY must not place the row in another
     # tenant. create_patient sends the honest body; this sends a forged one.
     st_f, forged = call("POST", "/patients", {
-        "full_name": "Forged Tenant Subject", "phone": "07701000099",
+        "full_name": f"Forged Tenant Subject {RUN_TAG}", "phone": f"0771{RUN_TAG}",
         "gender": "male", "lab_id": beta_lab, "id": 9999,
     }, token=alpha_token)
     if st_f in (200, 201):
@@ -401,7 +411,8 @@ def gate4_and_5(alpha_token, beta_token, alpha_lab, beta_lab):
         record("5", "a forged lab_id in the body is refused outright", denied(st_f),
                f"status {st_f}")
 
-    st, created = create_patient(alpha_token, "Alpha Isolation Subject", "07701000001")
+    alpha_subject = f"Alpha Isolation Subject {RUN_TAG}"
+    st, created = create_patient(alpha_token, alpha_subject, f"0770{RUN_TAG}")
     if st not in (200, 201):
         record("5", "Alpha could create a patient (fixture)", False, f"status {st}: {created}")
         return
@@ -430,10 +441,11 @@ def gate4_and_5(alpha_token, beta_token, alpha_lab, beta_lab):
     record("5", "Alpha's patient does not appear in Beta's LISTING",
            pid not in ids, f"{len(ids)} rows visible to Beta")
 
-    st, search = call("GET", "/patients?search=Alpha%20Isolation%20Subject", token=beta_token)
+    quoted = urllib.parse.quote(alpha_subject)
+    st, search = call("GET", f"/patients?search={quoted}", token=beta_token)
     body_text = json.dumps(search)
     record("5", "Alpha's patient does not appear in Beta's SEARCH",
-           "Alpha Isolation Subject" not in body_text, f"status {st}")
+           alpha_subject not in body_text, f"status {st}")
 
     # Alternate read surfaces. A 500 is not a denial and not a leak -- it is an
     # inconclusive result, so it is resolved rather than scored either way: the

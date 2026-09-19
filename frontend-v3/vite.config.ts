@@ -105,6 +105,18 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        // The production gateway serves this prefix as
+        //     location /api/ { proxy_pass http://gula_backend/; }
+        // and the trailing slash on proxy_pass strips /api before the
+        // request reaches the backend. The API client's base URL is /api,
+        // so every live-mode path arrives here carrying that prefix while
+        // the backend serves it stripped: /api/login is POST /login, and
+        // the genuinely /api-prefixed subtree is reached as /api/api/ai/*.
+        // Without the same strip, `npm run dev` is not the same system as
+        // production -- every live call 404s. Measured: 5 of 5 probed paths
+        // returned 404 through the dev server and 401/405/422 against the
+        // backend directly.
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

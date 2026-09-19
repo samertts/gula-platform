@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 130,
+    "total": 133,
     "P0": 21,
-    "P1": 64,
-    "P2": 33,
+    "P1": 65,
+    "P2": 35,
     "P3": 12
   },
   "findings": [
@@ -4804,6 +4804,50 @@
       "description": "MEASURED at HEAD, before any change of mine: `pytest tests/` in nhop-platform reports 5 passed, 21 errors. Every one of the 21 is the same cause -- nhop-platform/tests/conftest.py:25 does `for mod in list(sys.modules)` in the app_client fixture, and the module never imports sys. So NameError: name 'sys' is not defined at fixture setup, and the 21 tests in test_doctor_api.py and test_outbreak_detection.py have no coverage value.\\n\\nNOT fixed by adding `import sys`, for two reasons, both measured:\\n1. The line it would enable purges every `app.*` entry from sys.modules mid-suite. That is precisely the NR-126 state-leak class just closed in backend/: modules imported earlier keep stale references while later imports get fresh ones. Enabling it unexamined trades 21 errors for an order-dependent suite.\\n2. The tests encode the pre-NR-127 contract -- the `doctor_headers` fixture returns {'X-Actor-Role': 'DOCTOR', 'X-Actor-Id': 'dr-001'} as a credential. Against the trusted-context boundary they would fail rather than pass, so this is not a one-line repair but a rewrite to app.dependency_overrides, as was done for test_outbreak_api.py.\\n\\nPriority is P2 because the code the 21 tests cover is largely dormant: doctor.py and outbreak.py are not mounted on api_router, so they serve no traffic.",
       "evidence": "nhop-platform/tests/conftest.py:25 (sys used, never imported); nhop-platform/tests/conftest.py:130 doctor_headers; baseline `pytest tests/` = 5 passed / 21 errors, confirmed via git stash",
       "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-131",
+      "category": "Integration / Frontend-backend contract",
+      "domain": "frontend-v3",
+      "severity": "P1",
+      "priority": 131,
+      "status": "CLOSED — 2026-09-19. Fixed and proven end to end. Regression: frontend-v3/src/api/devProxyContract.test.ts.",
+      "title": "The documented `npm run dev` workflow could not reach the backend at all",
+      "description": "MEASURED against a real backend. The API client's base URL is /api (frontend-v3/src/api/client.ts:7). In production the gateway serves that prefix as `location /api/ { proxy_pass http://gula_backend/; }` (config/nginx/conf.d/api.conf:159-161), and the trailing slash on proxy_pass STRIPS /api before the request reaches the backend. The dev proxy in frontend-v3/vite.config.ts forwarded /api to http://localhost:8000 with changeOrigin but NO rewrite, so the prefix survived and the backend, which does not serve it, answered 404.\\n\\nProbed through `npm run dev` against a running backend:\\n    POST /api/login            -> 404      POST /login            -> 422\\n    POST /api/patients         -> 404      POST /patients         -> 401\\n    POST /api/admin/labs       -> 404      POST /admin/labs       -> 401\\n    POST /api/api/ai/providers -> 404      POST /api/ai/providers -> 405\\n    POST /api/health/ready     -> 404      POST /health/ready     -> 405\\n5 of 5. Not login alone -- every live-mode call in development.\\n\\nThe backend serves 1794 paths, of which 66 sit under a genuine /api prefix (/api/ai/*). endpoints.ts declares both shapes, and both are correct in production: /admin/labs arrives as /api/admin/labs and is stripped to /admin/labs; /api/ai/chat arrives as /api/api/ai/chat and is stripped to /api/ai/chat. One prefix, not two. The fix is the same anchored strip the gateway performs, so a greedy replace would corrupt the second shape -- the regression test covers that case explicitly.\\n\\nWHY IT SURVIVED: all 13 Playwright e2e specs mock the API with page.route (e2e/auth.spec.ts:8 mocks **/api/login outright), so the entire suite passes against a frontend that cannot talk to a backend. 53 e2e tests, 64 unit tests, typecheck, lint and build were all green over this defect.\\n\\nPROOF OF THE FIX: scripts/runtime_gates.py was pointed at http://127.0.0.1:5173/api -- the frontend's dev server, at the API client's own base URL -- and all 62 gates passed: authentication, session, refresh, revocation, rate limiting, lockout, authorization, forged-header rejection, tenant isolation and the clinical path. The same 62 run directly against the backend give the same result, so the proxy is transparent. Before the fix the same run scored 0 reachable.",
+      "evidence": "frontend-v3/vite.config.ts server.proxy['/api']; config/nginx/conf.d/api.conf:159-161; frontend-v3/src/api/client.ts:7; frontend-v3/e2e/auth.spec.ts:8",
+      "tests": [
+        "frontend-v3/src/api/devProxyContract.test.ts (5 tests)",
+        "scripts/runtime_gates.py --base http://127.0.0.1:5173/api (62/62)"
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-132",
+      "category": "Integration / Demo Mode",
+      "domain": "frontend-v3",
+      "severity": "P2",
+      "priority": 132,
+      "status": "OPEN — registered 2026-09-19, deliberately NOT wired. See the description.",
+      "title": "Demo Mode cannot be exercised in development: /demo-api has no target",
+      "description": "frontend-v3/src/api/client.ts:10 hardcodes DEMO_API_BASE_URL = '/demo-api', and vite.config.ts declares no proxy entry for it. Measured through `npm run dev`: POST /demo-api/login and /demo-api/patients both return 404 with no content-type. Demo Mode is unreachable locally.\\n\\nNOT fixed by adding a proxy entry. .env.example states that the demo base URL 'must target a separate API deployment using DEMO_MODE=true, DEMO_DATA_ISOLATION_ACK=true, and synthetic data only'. Pointing /demo-api at the live backend on :8000 -- the only backend a developer has running -- would serve REAL patient data through the surface whose entire contract is that it serves synthetic data. That is a data isolation violation dressed as a convenience, and a 404 is the safer failure.\\n\\nCorrect fix: run a second backend with DEMO_MODE=true and point the proxy at it, or document that Demo Mode requires that deployment. Either way it is a deployment decision, not a config line.",
+      "evidence": "frontend-v3/src/api/client.ts:10; frontend-v3/vite.config.ts server.proxy; .env.example",
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-133",
+      "category": "Verification tooling",
+      "domain": "scripts",
+      "severity": "P2",
+      "priority": 133,
+      "status": "CLOSED — 2026-09-19. Fixed in scripts/runtime_gates.py; proven by running the suite twice against one database.",
+      "title": "The runtime gate suite could only be run once, and its second run lied about tenant isolation",
+      "description": "scripts/runtime_gates.py created its gate 5 patient fixtures with fixed phone numbers (07701000001, 07701000099). Against a fresh database the suite scored 62/62. Run a second time against the SAME database, the create collided with the uniqueness constraint and returned 409, so the fixture guard returned early: 36/38, with gate 5 reported as failing and gate 6 never executed at all.\\n\\nThe reported failure was 'a forged lab_id in the body is refused outright' -- which reads as a tenant-isolation regression and is nothing of the kind. A verification suite whose second run reports a security failure it did not observe is worse than one that does not run: it is a false negative aimed at the highest-severity gate it owns.\\n\\nCaught because the same 36/38 appeared BOTH through the frontend dev proxy and directly against the backend. Identical results on both paths ruled out the proxy and pointed at shared state.\\n\\nFixed with a per-run RUN_TAG applied to the fixture phone numbers and names, and to the search assertion that looks for those names -- so a row left by an earlier run can no longer collide with, or be mistaken for, this run's. Proven by two consecutive runs against one persistent database: 62/62 then 62/62.",
+      "evidence": "scripts/runtime_gates.py gate5 fixtures; two consecutive runs 62/62 on one database",
+      "tests": [
+        "scripts/runtime_gates.py (62/62, re-runnable)"
+      ],
       "generated": "2026-09-19"
     }
   ]
