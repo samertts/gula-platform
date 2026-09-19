@@ -28,6 +28,7 @@ from .core.error_contract import (
     validation_details,
 )
 from .domain.exceptions import DomainError
+from .security.origins import allowed_origins
 
 logger = logging.getLogger("gula.factory")
 
@@ -448,22 +449,10 @@ def _build_middleware_stack(app: FastAPI) -> None:
 
         app.add_middleware(DocsAuthMiddleware)
 
-    _configured_origins = [
-        origin.strip().rstrip("/")
-        for origin in os.getenv("CORS_ORIGINS", "").split(",")
-        if origin.strip()
-    ]
-    _allowed_origins = _configured_origins or [
-        "https://gula-platform.org",
-        "https://www.gula-platform.org",
-    ]
-    if not _configured_origins and os.getenv("ENV", "production") in ("development", "test"):
-        _allowed_origins += [
-            "http://localhost:3000",
-            "http://localhost:4173",
-            "http://localhost:5173",
-            "http://localhost:8000",
-        ]
+    # One list, shared with the CSRF origin check. See security/origins.py:
+    # a write has to pass both layers, so a second copy here rejects what the
+    # other one allows. This module still owns what to DO about the result.
+    _allowed_origins = allowed_origins()
     if "*" in _allowed_origins:
         raise RuntimeError("CORS_ORIGINS cannot contain '*' when credentials are enabled")
     if IS_PRODUCTION and any(not origin.startswith("https://") for origin in _allowed_origins):

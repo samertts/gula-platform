@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
 from urllib.parse import urlparse
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from .origins import allowed_origins
 
 logger = logging.getLogger("gula.security.csrf")
 _MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -16,25 +17,16 @@ _BROWSER_MARKERS = ("mozilla", "chrome", "safari", "firefox", "edg/")
 
 
 def _allowed_origins() -> set[str]:
-    configured = {
-        origin.strip().rstrip("/")
-        for origin in os.getenv("CORS_ORIGINS", "").split(",")
-        if origin.strip()
-    }
-    if not configured:
-        configured.update({
-            "https://gula-platform.org",
-            "https://www.gula-platform.org",
-        })
-        if os.getenv("ENV", "production").lower() in {"development", "test"}:
-            configured.update({
-                "http://localhost:5173",
-                "http://localhost:4173",
-                "http://localhost:3000",
-                "http://localhost:8000",
-            })
-    configured.discard("*")
-    return configured
+    """The shared allowlist, minus the wildcard.
+
+    This used to be a second copy of the list in factory.py. See origins.py for
+    why one of them is not enough: a write has to pass both the CORS middleware
+    and this check, so the two drifting apart rejects requests that the other
+    layer allowed.
+    """
+    origins = set(allowed_origins())
+    origins.discard("*")
+    return origins
 
 
 def _origin_from_referer(referer: str | None) -> str | None:

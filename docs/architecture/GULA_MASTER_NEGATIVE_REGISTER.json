@@ -5,9 +5,9 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 133,
+    "total": 134,
     "P0": 21,
-    "P1": 65,
+    "P1": 66,
     "P2": 35,
     "P3": 12
   },
@@ -4847,6 +4847,24 @@
       "evidence": "scripts/runtime_gates.py gate5 fixtures; two consecutive runs 62/62 on one database",
       "tests": [
         "scripts/runtime_gates.py (62/62, re-runnable)"
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-134",
+      "category": "Security configuration / Duplicated policy",
+      "domain": "backend",
+      "severity": "P1",
+      "priority": 134,
+      "status": "CLOSED — 2026-09-19. One allowlist in backend/app/security/origins.py, both layers read it. Regression: backend/tests/test_dev_origin_allowlist.py (15 tests).",
+      "title": "Two copies of the origin allowlist, both missing the loopback spelling the repo's own tooling uses",
+      "description": "MEASURED. A browser write must pass TWO independent origin checks:\\n  backend/app/factory.py  — the CORS middleware allowlist\\n  backend/app/security/csrf.py::_allowed_origins — the origin check on cookie-authenticated mutations\\nEach read CORS_ORIGINS itself and each carried its own hardcoded development fallback. Two copies of one policy, and they had drifted identically: both listed http://localhost:{3000,4173,5173,8000} and NEITHER listed the 127.0.0.1 spelling.\\n\\nThe repository uses both spellings. frontend-v3/vite.config.ts sets allowedHosts: ['localhost', '127.0.0.1']; frontend-v3/playwright.config.ts drives the browser from http://127.0.0.1:4173 and starts its web server on --host 127.0.0.1. To a browser those are different origins. So every browser-originated write from a Playwright run against a real backend was answered 403 {\\\"detail\\\": \\\"Cross-origin request rejected\\\"} -- which reads as a defect in the page and is a gap in a list.\\n\\nHOW THE SECOND COPY WAS FOUND: fixing factory.py alone changed nothing. POST /api/register still returned the same 403, because the rejection came from the other layer. That is the whole argument for one list: a request has to satisfy both, so repairing either in isolation is invisible.\\n\\nFIX: backend/app/security/origins.py is now the only place the allowlist is computed, and both layers call it. It decides WHAT is allowed; factory.py keeps its own production validation on top (no wildcard with credentials, HTTPS-only in production). The development fallback now carries both spellings of the loopback host, and only when ENV is development or test -- production behaviour is unchanged and is asserted as such.\\n\\nSeparately, CORS_ORIGINS and TRUSTED_HOSTS are named in config.py under required_network_settings but were absent from .env.example, so a developer copying the template got an empty allowlist with no indication why writes were refused. Both are now documented there.",
+      "evidence": "backend/app/factory.py CORS block; backend/app/security/csrf.py::_allowed_origins; frontend-v3/playwright.config.ts:13,33-35; frontend-v3/vite.config.ts allowedHosts; POST /api/register -> 403 Cross-origin request rejected, reproduced before and after the factory-only fix",
+      "tests": [
+        "backend/tests/test_dev_origin_allowlist.py::test_the_cors_middleware_and_the_csrf_check_never_disagree",
+        "backend/tests/test_dev_origin_allowlist.py::test_the_dev_fallback_allows_the_origins_this_repo_serves_from",
+        "backend/tests/test_dev_origin_allowlist.py::test_the_fallback_is_development_only",
+        "frontend-v3/e2e/live-backend.spec.ts (4 tests, GULA_LIVE_BACKEND=1)"
       ],
       "generated": "2026-09-19"
     }
