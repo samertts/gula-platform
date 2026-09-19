@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from backend.app._compat import UTC
 
 from ...core.database import get_db
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab import Lab
 from ...models.notification import NotificationPriority, NotificationType
@@ -57,7 +58,9 @@ router = APIRouter(prefix="/test-results", tags=["test-results"])
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
 def _actor_id(request: Request) -> str | None:
-    return request.headers.get("X-Actor-Id")
+    # NR-127. This read the actor off the wire. Identity now comes from
+    # the server-established context; see app/core/trusted_context.py.
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:

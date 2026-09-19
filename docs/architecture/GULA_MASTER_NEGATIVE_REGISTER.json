@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
-  "generated": "2026-09-13T02:45:00Z",
+  "generated": "2026-09-19",
   "head_commit": "24bc8da3",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 128,
+    "total": 130,
     "P0": 21,
-    "P1": 63,
-    "P2": 32,
+    "P1": 64,
+    "P2": 33,
     "P3": 12
   },
   "findings": [
@@ -4752,11 +4752,17 @@
       "domain": "nhop-platform",
       "severity": "P0",
       "priority": 127,
-      "status": "OPEN — BLOCKED ON AN ARCHITECTURAL DECISION. nhop-platform has no identity system to derive a trusted context from; supplying one is a canonical identity change.",
+      "status": "CONTAINED — 2026-09-19. The header trust boundary is removed. nhop-platform/app/core/trusted_context.py is now the only source of caller identity in the service and it fails closed: require_trusted_context raises 503 because no identity provider is federated with NHOP. It is attached once, to api_router in app/api/v1/__init__.py, so it covers all 14 served /v1 operations including the ones that read no actor. All 6 header reads across citizens.py, doctor.py, notifications.py, outbreak.py, test_results.py and core/rbac.py now read current_context(request); zero Header() reads remain under app/. There is deliberately no env var or header that can switch the context on -- tests supply one through app.dependency_overrides. NOT CLOSED: the 21 endpoints are unavailable until GULA identity is federated, which replaces only the body of require_trusted_context. Regression: nhop-platform/tests/test_trust_boundary.py (32 tests).",
       "title": "nhop-platform has no authentication: every authority decision reads a client-supplied header",
       "description": "MEASURED, whole-repository scan. The X-Actor-Id / X-Role trust-boundary defect is NOT in backend/. backend/ has zero occurrences outside one unrelated docstring, and backend/tests/test_security_regression.py:177 already asserts that X-Role / X-Lab-Id / X-User-Id confer no authority there. The entire defect lives in nhop-platform/.\\n\\nnhop-platform has NO authentication stack at all. app/core/ contains exactly database.py and rbac.py -- no JWT, no login, no session, no token, no current-user dependency anywhere in the tree. rbac.py says so itself:\\n    \\\"The production auth stack (JWT-backed) lives in the GULA platform.\\n     Until NHOP shares that identity surface, routes that need\\n     authorisation read the caller's role from the X-Role request header.\\\"\\n\\nSo the complete authority model is: whatever the client puts in a header.\\n  app/core/rbac.py:33   role taken from the X-Role header. Any caller may\\n                        send X-Role: MINISTRY and pass require_roles().\\n  citizens.py:47, doctor.py:60, notifications.py:36, outbreak.py:40,\\n  test_results.py:60    actor identity taken from X-Actor-Id. Any caller\\n                        may act as any actor, and the value is PERSISTED\\n                        as the recorded actor.\\n  doctor.py:76-86       the doctor gate requires X-Actor-Role == DOCTOR\\n                        and a non-empty X-Actor-Id. Both are client input.\\n21 routes across five modules; only 2 of them even call require_roles.\\n\\nDEPLOYMENT STATUS, stated precisely because it changes the urgency and I do not want it overstated either way: nhop-platform is INDEPENDENTLY DEPLOYABLE -- it ships its own Dockerfile and its own docker-compose.yml -- but it is NOT wired into the platform deployment. Zero references in the root docker-compose.yml / .full.yml / .scale.yml, and nothing matching nhop under k8s/, helm/, terraform/ or digitalocean/. The two CI workflows that name it use it for an import-walk and a dependency scan only. So it is not exposed by the current stack, and it is one `docker compose up` away from being exposed.\\n\\nWHY THIS IS NOT FIXED HERE. Closing it requires a trusted server-derived context, and nhop-platform has none to derive from. The only routes to one are (a) build an identity stack inside nhop-platform, or (b) federate GULA's. Both create or move canonical identity semantics across a service boundary, which is an explicit stop condition and is reserved. Patching the 21 endpoints individually is also explicitly out of bounds, and would leave the same header as the root of authority.",
       "evidence": "repo-wide grep: 27 header occurrences, all under nhop-platform/ and its tests; app/core/ has no auth module; 0 deployment references",
-      "tests": [],
+      "tests": [
+        "nhop-platform/tests/test_trust_boundary.py::test_no_v1_operation_is_served_without_a_trusted_context",
+        "nhop-platform/tests/test_trust_boundary.py::test_forged_identity_headers_change_nothing",
+        "nhop-platform/tests/test_trust_boundary.py::test_no_module_derives_identity_from_the_request_headers",
+        "nhop-platform/tests/test_outbreak_api.py::test_a_forged_role_header_confers_nothing",
+        "nhop-platform/tests/test_outbreak_api.py::test_a_forged_actor_header_confers_nothing"
+      ],
       "generated": "2026-09-19"
     },
     {
@@ -4765,10 +4771,38 @@
       "domain": "nhop-platform",
       "severity": "P0",
       "priority": 128,
-      "status": "OPEN — same blocker as NR-127: there is no caller identity to compare the body's lab_id against.",
+      "status": "CONTAINED — 2026-09-19 by NR-127's fix. POST /v1/test-results/ now answers 503 before the handler runs, so a result can no longer be filed against a lab named in the request body. This route is exactly why the dependency was attached to api_router rather than to each handler that reads an actor: create_test_result reads no actor at all, so per-handler wiring would have missed the worst route. NOT CLOSED: the body's lab_id must still be compared against the caller's own lab when federation lands -- containment removes the reachability, not the missing ownership check.",
       "title": "A clinical test result can be filed against any lab, for any citizen, by anyone",
       "description": "nhop-platform/app/api/v1/test_results.py:184, in create_test_result:\\n    lab = db.query(Lab).filter(Lab.id == payload.lab_id).first()\\n    if lab is None: 404\\n    if not lab.is_active: 400\\nThe lab is taken from the REQUEST BODY and the only checks are that it exists and is active. Nothing establishes that the caller is that lab, because nothing establishes who the caller is -- the route has no authentication and does not even call require_roles (see NR-127).\\n\\nConsequence: an unauthenticated caller can file a fabricated clinical test result, attributed to a real named laboratory, against any citizen identified by health_id. The result is validated for plausibility (validate_result checks unit and reference range) and persisted with lab_id=lab.id, so it is indistinguishable downstream from a genuine result from that lab.\\n\\nThis is the classic BOLA shape -- a client-supplied object id used as authority -- but it cannot be fixed in the usual way (compare the body's lab_id to the caller's own) until a caller identity exists. It is therefore blocked on the same decision as NR-127 and recorded with it rather than patched at this one endpoint.",
       "evidence": "nhop-platform/app/api/v1/test_results.py:184; route has 0 require_roles and no auth dependency",
+      "tests": [
+        "nhop-platform/tests/test_trust_boundary.py::test_no_v1_operation_is_served_without_a_trusted_context[POST-/v1/test-results/]"
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-129",
+      "category": "Packaging / Deployability",
+      "domain": "nhop-platform",
+      "severity": "P1",
+      "priority": 129,
+      "status": "OPEN — registered 2026-09-19, found while wiring NR-127.",
+      "title": "The nhop-platform container cannot start: 15 modules import the backend shadow root",
+      "description": "MEASURED. 15 modules under nhop-platform/app/ do `from backend.app._compat import UTC`, among them app/models/citizen.py and app/models/lab.py, which app/main.py reaches transitively at import time.\\n\\nnhop-platform/Dockerfile copies only `app/`, `alembic/` and `alembic.ini` into /app and runs `uvicorn app.main:app`. There is no `backend/` anywhere in that image, so the import raises ModuleNotFoundError: No module named 'backend' before the app object is built. The service as packaged cannot boot. Reproduced directly: running pytest from nhop-platform/ without PYTHONPATH=<repo root> fails collection at app/models/lab.py:17 with that exact error; the suite only passes because the repo root happens to be on sys.path when run from the monorepo.\\n\\nThis is the NR-124 shadow-root class (`backend/` is not a package -- it has no __init__.py, and pyproject publishes include=[\"app*\"]), but the existing guard in backend/tests/test_engineering_tooling_imports.py scans backend/app and backend/tests only, so nhop-platform is outside its reach.\\n\\nBlast radius is bounded: nhop-platform is not referenced by the root docker-compose.yml, k8s/, helm, terraform/ or digitalocean/ -- it ships its own compose file and is not part of the primary deployment. That is why this is P1 and not P0.\\n\\nFix shape: nhop needs its own UTC compat shim (the symbol is a one-line datetime.timezone.utc alias) and the import guard should be widened to cover nhop-platform/. Not done here because it touches 15 modules across a service outside the P0 trust boundary.",
+      "evidence": "nhop-platform/app/models/lab.py:17 and 14 sibling modules; nhop-platform/Dockerfile:19-21 (COPY app/ alembic/ alembic.ini only), Dockerfile:27 CMD uvicorn app.main:app",
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-130",
+      "category": "Test infrastructure",
+      "domain": "nhop-platform",
+      "severity": "P2",
+      "priority": 130,
+      "status": "OPEN — registered 2026-09-19, deliberately not fixed. See the description.",
+      "title": "21 nhop-platform tests have never run: the shared fixture raises NameError",
+      "description": "MEASURED at HEAD, before any change of mine: `pytest tests/` in nhop-platform reports 5 passed, 21 errors. Every one of the 21 is the same cause -- nhop-platform/tests/conftest.py:25 does `for mod in list(sys.modules)` in the app_client fixture, and the module never imports sys. So NameError: name 'sys' is not defined at fixture setup, and the 21 tests in test_doctor_api.py and test_outbreak_detection.py have no coverage value.\\n\\nNOT fixed by adding `import sys`, for two reasons, both measured:\\n1. The line it would enable purges every `app.*` entry from sys.modules mid-suite. That is precisely the NR-126 state-leak class just closed in backend/: modules imported earlier keep stale references while later imports get fresh ones. Enabling it unexamined trades 21 errors for an order-dependent suite.\\n2. The tests encode the pre-NR-127 contract -- the `doctor_headers` fixture returns {'X-Actor-Role': 'DOCTOR', 'X-Actor-Id': 'dr-001'} as a credential. Against the trusted-context boundary they would fail rather than pass, so this is not a one-line repair but a rewrite to app.dependency_overrides, as was done for test_outbreak_api.py.\\n\\nPriority is P2 because the code the 21 tests cover is largely dormant: doctor.py and outbreak.py are not mounted on api_router, so they serve no traffic.",
+      "evidence": "nhop-platform/tests/conftest.py:25 (sys used, never imported); nhop-platform/tests/conftest.py:130 doctor_headers; baseline `pytest tests/` = 5 passed / 21 errors, confirmed via git stash",
       "tests": [],
       "generated": "2026-09-19"
     }

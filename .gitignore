@@ -66,3 +66,7 @@ __pycache__/
 
 # Local Gradle caches and generated state
 mobile/android/.gradle/
+
+# nhop-platform local sqlite (created by importing app.main outside a container)
+/nhop-platform/*.db
+/nhop-platform/*.db-*
