@@ -1,6 +1,6 @@
-# ADR-028 — The `services/` tree has no caller identity; a decision is required before it can have one
+# ADR-028 — The `services/` tree is DORMANT, and has no caller identity
 
-**Status:** Proposed — decision required
+**Status:** Accepted — classified DORMANT 2026-09-19
 **Date:** 2026-09-19
 **Supersedes:** nothing
 **Related:** NR-142, NR-127 (`nhop-platform/app/core/trusted_context.py`), NR-128/F2,
@@ -86,35 +86,56 @@ It is containment. It narrows *who can reach* an unauthenticated clinical
 surface. It does not give that surface a caller, and it must not be recorded as
 having fixed the authorization defect.
 
-## The decision required
+## The decision, taken
 
-**Is the `services/` tree a live deployment surface, or is it dead code kept
-for a decomposition that has not happened?**
+**`services/` is DORMANT.** Not live, not dead, and the distinction carries
+work either way.
 
-Nothing in the repository answers this, and the two answers demand opposite
-work:
+It is not DEAD, because `docker-compose.full.yml` — a deployment target
+CLAUDE.md documents — builds all eight services from source and points them at
+the production database. Code that a documented target will start is not dead
+code, whatever its state of repair.
 
-| | If **live** | If **dead** |
-|---|---|---|
-| Control | Federate GULA identity into the tree and derive `lab_id` from it — never from the query string | Remove the eight services from `docker-compose.full.yml`; nothing else references them |
-| Precedent | `nhop-platform/app/core/trusted_context.py` is the shape to copy: one dependency, applied once to the router, failing closed until federation lands | ADR-002 already says the monolith is the source of truth |
-| Cost | Real: eight services, eight Dockerfiles, and a token-verification path that does not yet exist outside `backend/app/security/` | Small, but irreversible-feeling, and it deletes a documented deployment target |
+It is not LIVE either, and the evidence for that is a conjunction, not one
+observation:
 
-The evidence leans toward **dead**: CLAUDE.md states the monolith is the source
-of truth for business logic and that `services/` "is not the primary deployment
-target"; the tree has **zero tests** outside `device_bridge`; **no workflow builds
-its images** — CLAUDE.md describes a `build-and-push` job publishing "backend +
-7 microservices" to GHCR, and `ci.yml` has no such job, only the vestigial
-`REGISTRY: ghcr.io` env var it used to read, so the images these compose
-entries would run are not produced by CI at all; `backend/gateway/api_gateway.py` — the only other thing
-that knows these ports — is imported by nothing and maps `patients` to 8001 and
-`labs` to 8002 while the compose file assigns them the other way round, a
-contradiction that could only survive in code no one runs.
+| Question | Answer |
+|---|---|
+| Does CI build its images? | No. CLAUDE.md describes a `build-and-push` job publishing "backend + 7 microservices" to GHCR; `ci.yml` has no such job, only the vestigial `REGISTRY: ghcr.io` it used to read. |
+| Do any tests cover it? | None, outside `device_bridge`. |
+| Does anything import it? | No. (`backend/services/identity_engine/` is a different tree; `app/engineering/crud/generator.py:217` is a codegen template string.) |
+| Does any deploy script or k8s manifest name these services? | No. |
+| Is it the source of truth for its own logic? | No — CLAUDE.md states the monolith is, and that `services/` "is not the primary deployment target". |
+| Is it reachable if started? | Yes, but only on loopback now, and it authenticates nothing (NR-142). |
 
-That is an argument, not an authority to act on. Retiring a documented
-deployment target is exactly the kind of change that needs a person, and
-"abruptly deleting legacy" is out of scope by instruction. So the finding is
-contained, the decision is recorded here, and the work resumes elsewhere.
+So: startable, and maintained by nothing.
+
+**`services/device_bridge/` is explicitly excluded from this classification and
+is LIVE.** It has its own `docker-compose.yml` profile, thirteen test modules,
+and does real ASTM/HL7 instrument work. It is the one part of this tree that is
+neither dormant nor unauthenticated — its routes carry an `_auth` dependency.
+
+### What DORMANT obliges, and what it does not
+
+Per the programme's own rule for this state: document it and move on. So:
+
+- **Nothing is deleted.** Retirement stays available and is not taken here.
+- **The containment stands.** Loopback binding (NR-142) and the guard in
+  `tests/integration/test_deployment_exposure.py` keep a dormant,
+  unauthenticated surface off every interface.
+- **NR-142 stays OPEN at P0** on the authorization defect itself. Dormant is a
+  statement about maintenance, not about safety: `GET /patients` still returns
+  every patient row across every tenant to anyone who reaches it.
+- **The precondition for retirement is recorded, not met.** Removing the eight
+  services from `docker-compose.full.yml` is safe and reversible in git, but it
+  deletes a documented deployment target, and that is a person's call rather
+  than a consequence of this classification.
+
+### If it is ever woken
+
+`nhop-platform/app/core/trusted_context.py` is the template: one dependency,
+applied once to the router, failing closed until a real identity provider is
+federated. Waking this tree without that is waking the P0 with it.
 
 ## Consequences
 
