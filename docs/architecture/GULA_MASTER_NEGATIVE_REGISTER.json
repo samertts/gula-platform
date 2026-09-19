@@ -5,8 +5,8 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 126,
-    "P0": 19,
+    "total": 128,
+    "P0": 21,
     "P1": 63,
     "P2": 32,
     "P3": 12
@@ -4745,6 +4745,32 @@
         "backend/tests/test_staging_config_guard.py::test_loading_config_in_isolation_leaves_the_canonical_module_untouched"
       ],
       "generated": "2026-09-18"
+    },
+    {
+      "id": "NR-127",
+      "category": "Authentication / Trust boundary",
+      "domain": "nhop-platform",
+      "severity": "P0",
+      "priority": 127,
+      "status": "OPEN — BLOCKED ON AN ARCHITECTURAL DECISION. nhop-platform has no identity system to derive a trusted context from; supplying one is a canonical identity change.",
+      "title": "nhop-platform has no authentication: every authority decision reads a client-supplied header",
+      "description": "MEASURED, whole-repository scan. The X-Actor-Id / X-Role trust-boundary defect is NOT in backend/. backend/ has zero occurrences outside one unrelated docstring, and backend/tests/test_security_regression.py:177 already asserts that X-Role / X-Lab-Id / X-User-Id confer no authority there. The entire defect lives in nhop-platform/.\\n\\nnhop-platform has NO authentication stack at all. app/core/ contains exactly database.py and rbac.py -- no JWT, no login, no session, no token, no current-user dependency anywhere in the tree. rbac.py says so itself:\\n    \\\"The production auth stack (JWT-backed) lives in the GULA platform.\\n     Until NHOP shares that identity surface, routes that need\\n     authorisation read the caller's role from the X-Role request header.\\\"\\n\\nSo the complete authority model is: whatever the client puts in a header.\\n  app/core/rbac.py:33   role taken from the X-Role header. Any caller may\\n                        send X-Role: MINISTRY and pass require_roles().\\n  citizens.py:47, doctor.py:60, notifications.py:36, outbreak.py:40,\\n  test_results.py:60    actor identity taken from X-Actor-Id. Any caller\\n                        may act as any actor, and the value is PERSISTED\\n                        as the recorded actor.\\n  doctor.py:76-86       the doctor gate requires X-Actor-Role == DOCTOR\\n                        and a non-empty X-Actor-Id. Both are client input.\\n21 routes across five modules; only 2 of them even call require_roles.\\n\\nDEPLOYMENT STATUS, stated precisely because it changes the urgency and I do not want it overstated either way: nhop-platform is INDEPENDENTLY DEPLOYABLE -- it ships its own Dockerfile and its own docker-compose.yml -- but it is NOT wired into the platform deployment. Zero references in the root docker-compose.yml / .full.yml / .scale.yml, and nothing matching nhop under k8s/, helm/, terraform/ or digitalocean/. The two CI workflows that name it use it for an import-walk and a dependency scan only. So it is not exposed by the current stack, and it is one `docker compose up` away from being exposed.\\n\\nWHY THIS IS NOT FIXED HERE. Closing it requires a trusted server-derived context, and nhop-platform has none to derive from. The only routes to one are (a) build an identity stack inside nhop-platform, or (b) federate GULA's. Both create or move canonical identity semantics across a service boundary, which is an explicit stop condition and is reserved. Patching the 21 endpoints individually is also explicitly out of bounds, and would leave the same header as the root of authority.",
+      "evidence": "repo-wide grep: 27 header occurrences, all under nhop-platform/ and its tests; app/core/ has no auth module; 0 deployment references",
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-128",
+      "category": "Authorization / BOLA",
+      "domain": "nhop-platform",
+      "severity": "P0",
+      "priority": 128,
+      "status": "OPEN — same blocker as NR-127: there is no caller identity to compare the body's lab_id against.",
+      "title": "A clinical test result can be filed against any lab, for any citizen, by anyone",
+      "description": "nhop-platform/app/api/v1/test_results.py:184, in create_test_result:\\n    lab = db.query(Lab).filter(Lab.id == payload.lab_id).first()\\n    if lab is None: 404\\n    if not lab.is_active: 400\\nThe lab is taken from the REQUEST BODY and the only checks are that it exists and is active. Nothing establishes that the caller is that lab, because nothing establishes who the caller is -- the route has no authentication and does not even call require_roles (see NR-127).\\n\\nConsequence: an unauthenticated caller can file a fabricated clinical test result, attributed to a real named laboratory, against any citizen identified by health_id. The result is validated for plausibility (validate_result checks unit and reference range) and persisted with lab_id=lab.id, so it is indistinguishable downstream from a genuine result from that lab.\\n\\nThis is the classic BOLA shape -- a client-supplied object id used as authority -- but it cannot be fixed in the usual way (compare the body's lab_id to the caller's own) until a caller identity exists. It is therefore blocked on the same decision as NR-127 and recorded with it rather than patched at this one endpoint.",
+      "evidence": "nhop-platform/app/api/v1/test_results.py:184; route has 0 require_roles and no auth dependency",
+      "tests": [],
+      "generated": "2026-09-19"
     }
   ]
 }
