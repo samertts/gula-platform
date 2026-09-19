@@ -325,3 +325,59 @@ def test_r_the_audit_records_the_server_derived_actor_not_the_body():
         "the audit helper reads from the request body; the recorded actor must "
         "come from the authenticated user (NR-151)"
     )
+
+
+# ─── NR-153: a merge must not erase where a record came from ────────────────
+
+def test_s_merge_preserves_the_sources_provenance(db, world):
+    """The scenario an independent review demonstrated end to end.
+
+    Before this fix, `merge_canonicals` set `source.lab_id = None`. One national
+    merge therefore revoked, permanently, the contributing laboratory's sight of
+    the record IT had created -- while the function's own docstring promised the
+    orphan was kept "for audit trail", and services/mpi/scope.py argued that
+    lab_id outlives the laboratory. Three statements, mutually contradictory.
+    """
+    from app.services.mpi.canonical_service import merge_canonicals
+
+    source = world["own_a"]          # contributed by Lab A
+    target = world["foreign"]        # contributed by Lab B
+    source_lab = source.lab_id
+    assert scope.visible_canonical(db, source.id, world["staff_a"]) is not None
+
+    merge_canonicals(db, target_id=target.id, source_id=source.id)
+    db.commit()
+    db.refresh(source)
+
+    assert source.lab_id == source_lab, (
+        "the merge erased the source's provenance; the contributing laboratory "
+        "can no longer see the record it created (NR-153)"
+    )
+    assert scope.visible_canonical(db, source.id, world["staff_a"]) is not None, (
+        "Lab A lost sight of its own contribution after a merge it did not make"
+    )
+
+
+def test_t_merge_still_clears_the_identity_claims(db, world):
+    """The part that was right stays right.
+
+    national_id_hash and health_id are claims the TARGET owns after a merge.
+    Leaving them on the orphan would leave two records asserting the same
+    national identity -- the confusion an MPI exists to prevent. This is the
+    control that stops the NR-153 fix from being over-broad.
+    """
+    from app.services.mpi.canonical_service import merge_canonicals
+
+    source = world["own_a"]
+    source.national_id_hash = "hash-to-be-released"
+    source.health_id = "HID-RELEASED"
+    db.commit()
+
+    merge_canonicals(db, target_id=world["foreign"].id, source_id=source.id)
+    db.commit()
+    db.refresh(source)
+
+    assert source.national_id_hash is None
+    assert source.health_id is None
+    assert source.is_verified is False
+    assert "merged into" in source.full_name

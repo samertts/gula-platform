@@ -5201,13 +5201,18 @@
       "domain": "app/services/mpi",
       "severity": "P1",
       "priority": 153,
-      "status": "OPEN — measured, not fixed. The semantics need deciding, not patching.",
+      "status": "FIXED and VERIFIED 2026-09-19. Provenance survives a merge; the identity claims are still released to the target. Regression: backend/tests/test_canonical_patient_scope.py::test_s and ::test_t.",
       "title": "Merge destroys the source record's provenance, contradicting NR-148's own premise",
-      "description": "From the NR-148 adversarial review. canonical_service.py:123-125 nulls source.lab_id, national_id_hash and health_id on merge, while the docstring two lines above claims 'the source record is NOT deleted -- it remains orphaned for audit trail'. The audit value is exactly what gets blanked. Proven end to end: after a national merge, Lab A gains a record it could not see a moment earlier AND permanently loses access to the one it contributed, with provenance re-attributed purely by which id the caller named as target. Part of that is arguably correct MPI semantics; the provenance destruction is not, and it contradicts the premise NR-148's whole policy rests on.",
+      "description": "From the NR-148 adversarial review. canonical_service.py:123-125 nulls source.lab_id, national_id_hash and health_id on merge, while the docstring two lines above claims 'the source record is NOT deleted -- it remains orphaned for audit trail'. The audit value is exactly what gets blanked. Proven end to end: after a national merge, Lab A gains a record it could not see a moment earlier AND permanently loses access to the one it contributed, with provenance re-attributed purely by which id the caller named as target. Part of that is arguably correct MPI semantics; the provenance destruction is not, and it contradicts the premise NR-148's whole policy rests on.\n\nRESOLVED, and it turned out to need no new semantics -- only the removal of a line that contradicted three existing statements at once.\n\nReading the whole block separates two different things it was doing:\n  * `national_id_hash` and `health_id` are IDENTITY CLAIMS. After a merge the target owns them, and leaving them on the orphan would leave two records asserting the same national identity -- the exact confusion an MPI exists to prevent. Correct, and untouched. `full_name` tombstoning and `is_verified = False` likewise.\n  * `lab_id` is PROVENANCE, not a claim of that kind. Clearing it contradicted (1) this function's own docstring, which kept the orphan 'for audit trail' -- provenance being precisely that audit value; (2) the premise NR-148's scope policy rests on, that lab_id outlives the laboratory; and (3) the contributing laboratory's ability to see its own contribution, which a single national merge revoked permanently.\n\nOne line removed. The docstring now states which fields are released and why the list is shorter than it was.\n\nTHE OVER-BROADNESS CONTROL MATTERS AS MUCH AS THE FIX: test_t asserts the identity claims are STILL cleared, and it passes both before and after the change -- so the negative proof is exactly one test, test_s, rather than a blanket difference that would have hidden an over-correction.",
       "evidence": [
-        "independent adversarial verification of NR-148, 2026-09-19"
+        "backend/app/services/mpi/canonical_service.py: `source.lab_id = None` removed; docstring rewritten to state the release list",
+        "canonical/mpi/identity regression subset: 456 passed"
       ],
-      "tests": [],
+      "tests": [
+        "test_s_merge_preserves_the_sources_provenance (behavioural; the scenario the reviewer demonstrated)",
+        "test_t_merge_still_clears_the_identity_claims (guards against over-correction)",
+        "Negative proof: exactly test_s fails against the pre-fix source; test_t passes on both sides."
+      ],
       "generated": "2026-09-19"
     },
     {
