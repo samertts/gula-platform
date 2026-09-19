@@ -5,8 +5,8 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 139,
-    "P0": 21,
+    "total": 140,
+    "P0": 22,
     "P1": 70,
     "P2": 36,
     "P3": 12
@@ -4940,6 +4940,22 @@
       "description": "Swept backend/app by AST for parameters and request-body fields named account_uuid, user_id, person_id, identity_id, lab_id, organization_id, role, permission or session_id, against the 2103 served operations enumerated from app.openapi(). scripts/identity_entrypoint_sweep.py reproduces it.\\n\\nREAD THE TWO CATEGORIES DIFFERENTLY -- getting this wrong would make the numbers alarming and meaningless:\\n  `param:` counts (lab_id 464, user_id 206, organization_id 59, person_id 55, session_id 30, identity_id 24, role 17, permission 16, account_uuid 2) walk EVERY function definition, not only route handlers. The overwhelming majority are ordinary internal signatures -- a service function taking a lab_id it was given by a caller that already validated it. They are NOT a client-authored surface and must not be reported as one.\\n  `body:` counts ARE client-authored: a field on a request payload. role 17, lab_id 14, organization_id 6, session_id 6, user_id 2, identity_id 1, permission 1.\\n\\nA client-authored value is still not a defect. The defect is one that becomes a SECURITY FACT. The highest-risk sites -- a client naming a tenant -- were read individually:\\n  app/routes/service_accounts.py:61 — SERVER-VALIDATED. master_admin may name a lab; every other admin must hold a lab_id, the requested one must equal it (403 otherwise), and the value is then OVERWRITTEN with the caller's own.\\n  app/routes/edge.py:778,790 — SERVER-VALIDATED. A body lab_id differing from the caller's requires master; a global assignment requires master; otherwise it falls back to the caller's own lab.\\n  app/routes/admin.py:784 and the role sites — SERVER-VALIDATED by _require_platform_scope / _require_province_scope (NR-116).\\n  app/identity/api/accounts.py — both account_uuid parameters are the lock and unlock routes, fail-closed at 410: BLOCKED-BY-DESIGN.\\n  nhop-platform test_results lab_id — the one real instance of a client-named tenant becoming authority, closed as F2 (NR-128).\\n\\nNO NEW P0/P1 on the reachable surface.\\n\\nUNKNOWN, and recorded as UNKNOWN rather than assumed safe: the body-field sites under app/identity/api/memberships.py, app/identity/api/security.py, app/routes/authorization.py and app/routes/ai_platform.py were not read individually. session_id under ai_platform appears to be an AI conversation identifier rather than an auth session, which should be confirmed before anyone reads it as an auth finding.",
       "evidence": "scripts/identity_entrypoint_sweep.py; counts and sites as listed",
       "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-140",
+      "category": "Authorization / Privilege escalation",
+      "domain": "backend",
+      "severity": "P0",
+      "priority": 140,
+      "status": "FIXED 2026-09-19 — the guard exists and is proven at runtime. Regression: backend/tests/test_role_grant_authority.py (11 tests).",
+      "title": "POST /authz/assignments granted roles with no authorization check; only a foreign key stood in the way",
+      "description": "FOUND by resolving the UNKNOWNs that NR-139 deliberately refused to call safe.\\n\\napp/routes/authorization.py::assign_role depended on get_current_user and NOTHING else -- no role requirement, no permission check, no router-level dependency (APIRouter(prefix='/authz') carries none). app/services/authorization_service.py::RoleAssignmentService.assign_role performs no authorization check of its own either: it reads user_id, role_id, organization_id and facility_id from the request BODY and writes the role_assignments row.\\n\\nMEASURED against a live server (scripts/nr140_role_grant_probe.py). A freshly registered, ordinary lab admin -- role 'admin', its own lab -- posted a grant of a seeded high-level role to another user id. The request passed the route, passed the service, and reached the INSERT carrying every attacker-chosen value:\\n    INSERT INTO role_assignments (user_id, role_id, organization_id, ..., assigned_by, ...) VALUES (1, 'probe_super_admin', 1, ..., 10, ...)\\nIt failed on role_assignments_assigned_by_fkey, because that caller was a lab_users row while both user_id and assigned_by reference `users`.\\n\\nA FOREIGN KEY IS NOT AN AUTHORIZATION CONTROL. It refuses an id that does not exist; it does not refuse a caller who may not act. Any caller that is a `users` row clears both constraints, and nothing else was in the way.\\n\\nHONEST LIMIT OF THE EVIDENCE: end-to-end escalation was NOT demonstrated, because the probe's caller is a lab_users row. What is demonstrated is that no authorization decision was made anywhere on the path, and that the write was attempted with body-supplied values. That is the defect.\\n\\nFIX: _require_role_granting_authority requires two things, both necessary. The actor must be platform-scoped (master_admin, ministry_admin, province_admin) -- mirroring _PLATFORM_ROLES in routes/admin.py rather than inventing a second notion of acting on the platform -- AND must pass the existing can_manage_role() for the role being granted, without which a province_admin could mint a master_admin. It runs before the service is constructed, so a refused caller never reaches the database.\\n\\nRuntime confirmation: the identical request that previously reached the INSERT now returns 403 from authorization.",
+      "evidence": "app/routes/authorization.py::assign_role (pre-fix: get_current_user only); app/services/authorization_service.py::RoleAssignmentService.assign_role (no checks); server log role_assignments_assigned_by_fkey with attacker-controlled parameters; post-fix 403",
+      "tests": [
+        "backend/tests/test_role_grant_authority.py (11 tests)",
+        "scripts/nr140_role_grant_probe.py"
+      ],
       "generated": "2026-09-19"
     }
   ]
