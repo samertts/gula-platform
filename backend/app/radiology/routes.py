@@ -36,6 +36,20 @@ logger = logging.getLogger("gula.radiology.routes")
 
 router = APIRouter(prefix="/radiology", tags=["radiology"])
 
+# Clinical-write roles for radiology operational mutations (order/exam status,
+# report drafting) — mirrors the same tier already used for LabResult/Sample
+# mutations in the Laboratory slice (services/order_service.py::update_result,
+# routes/samples.py::_SAMPLE_WRITE_ROLES). "radiologist" and "pathologist" are
+# canonical extended roles (app/models/authorization.py); "technician" covers
+# imaging technologists, matching Laboratory's precedent.
+_RADIOLOGY_WRITE_ROLES = {"admin", "master_admin", "doctor", "radiologist", "pathologist", "technician"}
+# Clinical sign-off roles for report finalize/amend/verify — narrower than
+# the tier above, excluding plain "technician": these are irreversible (or
+# history-preserving-amendment) clinical attestation acts, the same
+# narrower-tier-for-lock-actions pattern services/order_service.py::
+# validate_order already uses relative to update_result.
+_REPORT_SIGNOFF_ROLES = {"admin", "master_admin", "doctor", "radiologist", "pathologist"}
+
 
 # ==============================================================================
 # Pydantic schemas
@@ -290,6 +304,8 @@ def _run_exam_status_command(
     idempotency_key: str | None,
 ):
     """Run an examination state transition under a durable clinical command."""
+    if current_user.role not in _RADIOLOGY_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to change an exam's status")
     svc = _get_radiology_service(db, current_user)
     existing = svc.get_exam(exam_id)
     if existing is None:
@@ -353,8 +369,11 @@ def _run_report_command(
     current_user: LabUser,
     if_match: str | None,
     idempotency_key: str | None,
+    allowed_roles: set[str],
 ):
     """Run a report state change under durable idempotency and audit controls."""
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this report operation")
     svc = _get_radiology_service(db, current_user)
     existing = svc.get_report(report_id)
     if existing is None:
@@ -645,12 +664,17 @@ def update_order_status(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    svc = _get_radiology_service(db)
+    if current_user.role not in _RADIOLOGY_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to update an order's status")
+    svc = _get_radiology_service(db, current_user)
     order = svc.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     _patient_for_user(db, current_user, order.patient_id)
-    updated = svc.update_order_status(order_id, data.status)
+    try:
+        updated = svc.update_order_status(order_id, data.status)
+    except RadiologyWorkflowError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not updated:
         raise HTTPException(status_code=404, detail="Order not found")
     return _to_dict(updated)
@@ -1049,8 +1073,33 @@ def create_report(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _RADIOLOGY_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create a report")
     _patient_for_user(db, current_user, data.patient_id)
-    svc = _get_radiology_service(db)
+    # radiologist_id is the clinical author-of-record — a client-supplied
+    # value must resolve to a real, same-lab, clinically-qualified account,
+    # the same canonical pattern services/order_service.py::create_order
+    # already uses for doctor_user_id. Never honored as bare, unverified
+    # client input (finalize_report/amend_report below already enforce this
+    # for their own actor; this closes the same gap at creation time, where
+    # no such check previously existed at all).
+    if data.radiologist_id is not None:
+        try:
+            radiologist_pk = int(data.radiologist_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="radiologist_id must be a valid user id") from None
+        radiologist = (
+            db.query(LabUser)
+            .filter(
+                LabUser.id == radiologist_pk,
+                LabUser.lab_id == current_user.lab_id,
+                LabUser.role.in_(("doctor", "radiologist")),
+            )
+            .first()
+        )
+        if not radiologist:
+            raise HTTPException(status_code=400, detail="radiologist_id must reference a radiologist or doctor in this lab")
+    svc = _get_radiology_service(db, current_user)
     report = svc.create_report(
         exam_id=data.exam_id,
         accession_number=data.accession_number,
@@ -1110,6 +1159,7 @@ def save_report_draft(
         current_user=current_user,
         if_match=if_match,
         idempotency_key=idempotency_key,
+        allowed_roles=_RADIOLOGY_WRITE_ROLES,
     )
     return _to_dict(report)
 
@@ -1138,6 +1188,7 @@ def finalize_report(
         current_user=current_user,
         if_match=if_match,
         idempotency_key=idempotency_key,
+        allowed_roles=_REPORT_SIGNOFF_ROLES,
     )
     return _to_dict(report)
 
@@ -1170,6 +1221,7 @@ def amend_report(
         current_user=current_user,
         if_match=if_match,
         idempotency_key=idempotency_key,
+        allowed_roles=_REPORT_SIGNOFF_ROLES,
     )
     return _to_dict(report)
 
@@ -1194,6 +1246,7 @@ def verify_report(
         current_user=current_user,
         if_match=if_match,
         idempotency_key=idempotency_key,
+        allowed_roles=_REPORT_SIGNOFF_ROLES,
     )
     return _to_dict(report)
 
