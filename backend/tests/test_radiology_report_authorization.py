@@ -23,7 +23,17 @@ from __future__ import annotations
 
 from app.models.patient import Patient
 from app.radiology.enums import ExamStatus, ModalityType, ReportStatus
-from app.radiology.models import RadiologyExam, RadiologyOrder, RadiologyReport
+from app.radiology.models import (
+    CriticalFinding,
+    DICOMStudy,
+    ImageShare,
+    ModalityDevice,
+    Protocol,
+    RadiologyExam,
+    RadiologyOrder,
+    RadiologyReport,
+    ReportTemplate,
+)
 
 from tests.conftest import auth_headers
 
@@ -404,3 +414,266 @@ def test_update_exam_status_requires_write_role(client, db, make_lab, make_lab_u
     exam_db = db.query(RadiologyExam).filter(RadiologyExam.id == exam.id).first()
     assert exam_db.status == ExamStatus.SCHEDULED
     assert exam_db.version == version_before
+
+
+# ─── create_exam: radiologist_id ownership validation ──────────────────────
+
+
+def test_create_exam_rejects_radiologist_id_in_another_lab(client, db, make_lab, make_lab_user):
+    lab_one = make_lab("Radiology Authz Lab 16a")
+    lab_two = make_lab("Radiology Authz Lab 16b")
+    tech = make_lab_user(lab_one.id, role="technician")
+    other_lab_doctor = make_lab_user(lab_two.id, role="doctor")
+    patient = _make_patient(db, lab_one.id, "H-RA-016")
+
+    res = client.post(
+        "/radiology/exams",
+        headers=auth_headers(tech.id, lab_one.id, role="technician"),
+        json={
+            "patient_id": str(patient.id), "modality": "CT",
+            "radiologist_id": str(other_lab_doctor.id),
+        },
+    )
+    assert res.status_code == 400
+
+
+def test_create_exam_accepts_valid_same_lab_radiologist_id(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 17")
+    tech = make_lab_user(lab.id, role="technician")
+    radiologist = make_lab_user(lab.id, role="doctor")
+    patient = _make_patient(db, lab.id, "H-RA-017")
+
+    res = client.post(
+        "/radiology/exams",
+        headers=auth_headers(tech.id, lab.id, role="technician"),
+        json={
+            "patient_id": str(patient.id), "modality": "CT",
+            "radiologist_id": str(radiologist.id),
+        },
+    )
+    assert res.status_code == 201
+    assert res.json()["radiologist_id"] == str(radiologist.id)
+
+
+# ─── MPPS: cross-tenant scope + exam state-machine bypass ──────────────────
+
+
+def test_mpps_completion_for_another_lab_exam_is_denied(client, db, make_lab, make_lab_user):
+    """process_mpps resolved its target exam by accession_number alone, with
+    no lab scope in that lookup at all — any authenticated account of any
+    lab could complete another lab's exam by supplying its accession
+    number."""
+    lab_one = make_lab("Radiology Authz Lab 18a")
+    lab_two = make_lab("Radiology Authz Lab 18b")
+    tech_one = make_lab_user(lab_one.id, role="technician")
+    patient_two = _make_patient(db, lab_two.id, "H-RA-018")
+    exam_two = _make_exam(db, patient_two, "018", status=ExamStatus.IN_PROGRESS)
+    db.commit()
+
+    res = client.post(
+        "/radiology/mpps",
+        headers=auth_headers(tech_one.id, lab_one.id, role="technician"),
+        json={"accession_number": exam_two.accession_number, "status": "COMPLETED"},
+    )
+    assert res.status_code == 404
+
+    db.expire_all()
+    exam_db = db.query(RadiologyExam).filter(RadiologyExam.id == exam_two.id).first()
+    assert exam_db.status == ExamStatus.IN_PROGRESS
+
+
+def test_mpps_completion_for_own_lab_exam_succeeds(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 19")
+    tech = make_lab_user(lab.id, role="technician")
+    patient = _make_patient(db, lab.id, "H-RA-019")
+    exam = _make_exam(db, patient, "019", status=ExamStatus.IN_PROGRESS)
+    db.commit()
+
+    res = client.post(
+        "/radiology/mpps",
+        headers=auth_headers(tech.id, lab.id, role="technician"),
+        json={"accession_number": exam.accession_number, "status": "COMPLETED"},
+    )
+    assert res.status_code == 201
+
+    db.expire_all()
+    exam_db = db.query(RadiologyExam).filter(RadiologyExam.id == exam.id).first()
+    assert exam_db.status == ExamStatus.COMPLETED
+
+
+def test_mpps_completion_ignores_illegal_transition(client, db, make_lab, make_lab_user):
+    """An exam already CANCELLED (terminal) receiving a COMPLETED MPPS
+    message must not have its status silently overwritten — process_mpps
+    previously did `exam.status = "completed"` unconditionally, bypassing
+    the same _EXAM_TRANSITIONS guard update_exam_status enforces."""
+    lab = make_lab("Radiology Authz Lab 20")
+    tech = make_lab_user(lab.id, role="technician")
+    patient = _make_patient(db, lab.id, "H-RA-020")
+    exam = _make_exam(db, patient, "020", status=ExamStatus.CANCELLED)
+    db.commit()
+
+    res = client.post(
+        "/radiology/mpps",
+        headers=auth_headers(tech.id, lab.id, role="technician"),
+        json={"accession_number": exam.accession_number, "status": "COMPLETED"},
+    )
+    # The MPPS event itself is still recorded (device message accepted);
+    # only the derived exam-status side effect is refused.
+    assert res.status_code == 201
+
+    db.expire_all()
+    exam_db = db.query(RadiologyExam).filter(RadiologyExam.id == exam.id).first()
+    assert exam_db.status == ExamStatus.CANCELLED
+
+
+# ─── Global reference data (Protocol / ReportTemplate / device registration) ─
+
+
+def test_create_protocol_requires_system_admin(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 21")
+    doctor = make_lab_user(lab.id, role="doctor")
+
+    before = db.query(Protocol).count()
+    res = client.post(
+        "/radiology/protocols",
+        headers=auth_headers(doctor.id, lab.id, role="doctor"),
+        json={"code": "CT-CHEST-STD", "name": "CT Chest Standard", "modality": "CT"},
+    )
+    assert res.status_code == 403
+    assert db.query(Protocol).count() == before
+
+
+def test_create_protocol_allowed_for_master_admin(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 22")
+    admin = make_lab_user(lab.id, role="master_admin")
+
+    res = client.post(
+        "/radiology/protocols",
+        headers=auth_headers(admin.id, lab.id, role="master_admin"),
+        json={"code": "CT-CHEST-STD-2", "name": "CT Chest Standard", "modality": "CT"},
+    )
+    assert res.status_code == 201
+
+
+def test_create_report_template_requires_system_admin(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 23")
+    doctor = make_lab_user(lab.id, role="doctor")
+
+    before = db.query(ReportTemplate).count()
+    res = client.post(
+        "/radiology/report-templates",
+        headers=auth_headers(doctor.id, lab.id, role="doctor"),
+        json={"template_code": "CT-CHEST-TPL", "template_name": "CT Chest Template"},
+    )
+    assert res.status_code == 403
+    assert db.query(ReportTemplate).count() == before
+
+
+def test_register_device_requires_system_admin(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 24")
+    doctor = make_lab_user(lab.id, role="doctor")
+
+    before = db.query(ModalityDevice).count()
+    res = client.post(
+        "/radiology/devices",
+        headers=auth_headers(doctor.id, lab.id, role="doctor"),
+        json={"device_id": "DEV-001", "device_name": "CT Scanner 1", "modality_type": "CT"},
+    )
+    assert res.status_code == 403
+    assert db.query(ModalityDevice).count() == before
+
+
+# ─── Critical findings: role gates ──────────────────────────────────────────
+
+
+def test_create_critical_finding_requires_clinical_write_role(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 25")
+    staff = make_lab_user(lab.id, role="staff")
+    patient = _make_patient(db, lab.id, "H-RA-025")
+    exam = _make_exam(db, patient, "025")
+    db.commit()
+
+    before = db.query(CriticalFinding).count()
+    res = client.post(
+        "/radiology/critical-findings",
+        headers={
+            **auth_headers(staff.id, lab.id, role="staff"),
+            "If-Match": str(exam.version), "Idempotency-Key": "k-025",
+        },
+        json={"exam_id": exam.id, "finding_type": "critical", "finding_description": "pneumothorax"},
+    )
+    assert res.status_code == 403
+    assert db.query(CriticalFinding).count() == before
+
+
+def test_acknowledge_critical_finding_requires_clinical_write_role(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 26")
+    staff = make_lab_user(lab.id, role="staff")
+    patient = _make_patient(db, lab.id, "H-RA-026")
+    exam = _make_exam(db, patient, "026")
+    finding = CriticalFinding(
+        exam_id=exam.id, finding_type="critical", finding_description="d",
+    )
+    db.add(finding)
+    db.commit()
+
+    res = client.put(
+        f"/radiology/critical-findings/{finding.id}/acknowledge",
+        headers={
+            **auth_headers(staff.id, lab.id, role="staff"),
+            "If-Match": str(finding.version), "Idempotency-Key": "k-026",
+        },
+        json={"acknowledged_by": str(staff.id)},
+    )
+    assert res.status_code == 403
+
+    db.expire_all()
+    finding_db = db.query(CriticalFinding).filter(CriticalFinding.id == finding.id).first()
+    assert finding_db.acknowledged_by is None
+
+
+# ─── Image sharing: audit identity must be the real actor ──────────────────
+
+
+def test_create_share_records_real_actor_identity(client, db, make_lab, make_lab_user):
+    """create_share previously hardcoded shared_by="" — every share in the
+    system recorded no actor at all. citizen_create_share hardcoded
+    shared_by="citizen" — equally fabricated, not the real authenticated
+    principal. Both must now record the real actor's id."""
+    lab = make_lab("Radiology Authz Lab 27")
+    doctor = make_lab_user(lab.id, role="doctor")
+    patient = _make_patient(db, lab.id, "H-RA-027")
+    study = DICOMStudy(study_instance_uid="STUDY-AUTHZ-027", patient_id=str(patient.id))
+    db.add(study)
+    db.commit()
+
+    res = client.post(
+        "/radiology/sharing/share",
+        headers=auth_headers(doctor.id, lab.id, role="doctor"),
+        json={"study_uid": study.study_instance_uid},
+    )
+    assert res.status_code == 201
+
+    db.expire_all()
+    share = db.query(ImageShare).filter(ImageShare.study_uid == study.study_instance_uid).first()
+    assert share.shared_by == str(doctor.id)
+
+
+def test_citizen_create_share_records_real_actor_identity(client, db, make_lab, make_lab_user):
+    lab = make_lab("Radiology Authz Lab 28")
+    doctor = make_lab_user(lab.id, role="doctor")
+    patient = _make_patient(db, lab.id, "H-RA-028")
+    study = DICOMStudy(study_instance_uid="STUDY-AUTHZ-028", patient_id=str(patient.id))
+    db.add(study)
+    db.commit()
+
+    res = client.post(
+        "/radiology/citizen/share",
+        headers=auth_headers(doctor.id, lab.id, role="doctor"),
+        json={"study_uid": study.study_instance_uid},
+    )
+    assert res.status_code == 201
+
+    db.expire_all()
+    share = db.query(ImageShare).filter(ImageShare.study_uid == study.study_instance_uid).first()
+    assert share.shared_by == str(doctor.id)

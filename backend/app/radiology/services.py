@@ -11,6 +11,7 @@ from app._compat import UTC
 from app.radiology.enums import (
     CriticalFindingStatus,
     ExamStatus,
+    ProtocolType,
     ReportStatus,
 )
 from app.radiology.models import (
@@ -1063,7 +1064,15 @@ class RadiologyService:
             name_ar=name_ar,
             modality=modality.upper(),
             body_part=body_part,
-            protocol_type=protocol_type,
+            # Protocol.protocol_type is Enum(ProtocolType); SQLAlchemy's Enum
+            # column validates by member name, not by value, so the raw
+            # value string ("standard") must become the matching member
+            # (ProtocolType("standard") -> ProtocolType.STANDARD) — passing
+            # the bare string raised LookupError at commit time for every
+            # protocol ever created (found while verifying this endpoint's
+            # new authorization gate; same class of bug as
+            # pacs.py::create_share's share_type).
+            protocol_type=ProtocolType(protocol_type),
             contrast_protocol=contrast_protocol,
             typical_duration=typical_duration,
             typical_dose=typical_dose,

@@ -23,6 +23,7 @@ from app.radiology.device import (
     MPPSHandler,
 )
 from app.radiology.enums import ExamStatus
+from app.radiology.models import RadiologyExam
 from app.radiology.pacs import (
     DICOMStorageService,
     DICOMStudyService,
@@ -30,7 +31,7 @@ from app.radiology.pacs import (
     ImageViewerService,
 )
 from app.radiology.services import RadiologyService, RadiologyWorkflowError
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
 logger = logging.getLogger("gula.radiology.routes")
 
@@ -439,6 +440,8 @@ def _run_critical_finding_command(
     idempotency_key: str | None,
 ):
     """Run a critical-finding transition with immutable command evidence."""
+    if current_user.role not in _RADIOLOGY_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this critical-finding operation")
     finding = _critical_finding_for_user(db, current_user, finding_id)
     guard = ClinicalCommandGuard(
         db,
@@ -831,7 +834,8 @@ def create_exam(
     current_user: LabUser = Depends(get_current_user),
 ):
     _patient_for_user(db, current_user, data.patient_id)
-    svc = _get_radiology_service(db)
+    _validate_radiologist_id(db, current_user, data.radiologist_id)
+    svc = _get_radiology_service(db, current_user)
     exam = svc.create_exam(
         order_id=data.order_id,
         appointment_id=data.appointment_id,
@@ -964,7 +968,16 @@ def list_protocols(
 def create_protocol(
     data: ProtocolCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    # Protocol (radiology_protocols) is genuinely global — no lab_id column
+    # exists, `code` is globally unique, and every lab reads the same rows.
+    # A malicious or careless single-lab account writing here (e.g. wrong
+    # typical_dose/preparation_instructions) would corrupt clinical
+    # reference data for every other tenant on the platform. Gated the same
+    # way every other genuinely-global resource in this codebase already is
+    # (pilot_platform's router, the 29 SYSTEM_CONTROLLED tenant-scope
+    # candidates) — require_permission("system:admin"), held only by
+    # master_admin, not a new mechanism.
+    current_user: LabUser = Depends(require_permission("system:admin")),
 ):
     svc = _get_radiology_service(db)
     protocol = svc.create_protocol(
@@ -1067,6 +1080,33 @@ def search_reports(
     return {"items": [_to_dict(r) for r in reports], "total": len(reports), "skip": skip, "limit": limit}
 
 
+def _validate_radiologist_id(db: Session, current_user: LabUser, radiologist_id: str | None) -> None:
+    """radiologist_id is the clinical author-of-record on both exams and
+    reports — a client-supplied value must resolve to a real, same-lab,
+    clinically-qualified account, the same canonical pattern
+    services/order_service.py::create_order already uses for
+    doctor_user_id. Never honored as bare, unverified client input
+    (finalize_report/amend_report already enforce this for their own
+    actor; this closes the same gap at creation time)."""
+    if radiologist_id is None:
+        return
+    try:
+        radiologist_pk = int(radiologist_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="radiologist_id must be a valid user id") from None
+    radiologist = (
+        db.query(LabUser)
+        .filter(
+            LabUser.id == radiologist_pk,
+            LabUser.lab_id == current_user.lab_id,
+            LabUser.role.in_(("doctor", "radiologist")),
+        )
+        .first()
+    )
+    if not radiologist:
+        raise HTTPException(status_code=400, detail="radiologist_id must reference a radiologist or doctor in this lab")
+
+
 @router.post("/reports", status_code=201)
 def create_report(
     data: RadiologyReportCreate,
@@ -1076,29 +1116,7 @@ def create_report(
     if current_user.role not in _RADIOLOGY_WRITE_ROLES:
         raise HTTPException(status_code=403, detail="Insufficient permissions to create a report")
     _patient_for_user(db, current_user, data.patient_id)
-    # radiologist_id is the clinical author-of-record — a client-supplied
-    # value must resolve to a real, same-lab, clinically-qualified account,
-    # the same canonical pattern services/order_service.py::create_order
-    # already uses for doctor_user_id. Never honored as bare, unverified
-    # client input (finalize_report/amend_report below already enforce this
-    # for their own actor; this closes the same gap at creation time, where
-    # no such check previously existed at all).
-    if data.radiologist_id is not None:
-        try:
-            radiologist_pk = int(data.radiologist_id)
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="radiologist_id must be a valid user id") from None
-        radiologist = (
-            db.query(LabUser)
-            .filter(
-                LabUser.id == radiologist_pk,
-                LabUser.lab_id == current_user.lab_id,
-                LabUser.role.in_(("doctor", "radiologist")),
-            )
-            .first()
-        )
-        if not radiologist:
-            raise HTTPException(status_code=400, detail="radiologist_id must reference a radiologist or doctor in this lab")
+    _validate_radiologist_id(db, current_user, data.radiologist_id)
     svc = _get_radiology_service(db, current_user)
     report = svc.create_report(
         exam_id=data.exam_id,
@@ -1268,7 +1286,10 @@ def list_report_templates(
 def create_report_template(
     data: ReportTemplateCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    # ReportTemplate (radiology_report_templates) is genuinely global for
+    # the same reason Protocol is — no lab_id, globally-unique
+    # template_code, shared structured_template read by every tenant.
+    current_user: LabUser = Depends(require_permission("system:admin")),
 ):
     svc = _get_radiology_service(db)
     template = svc.create_report_template(
@@ -1413,7 +1434,7 @@ def create_share(
     sharing = ImageSharingService(db)
     share = sharing.create_share(
         study_uid=data.study_uid,
-        shared_by="",
+        shared_by=str(current_user.id),
         shared_with=data.shared_with,
         share_type=data.share_type,
         expires_in_hours=data.expires_in_hours,
@@ -1478,7 +1499,11 @@ def list_devices(
 def register_device(
     data: ModalityDeviceCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    # ModalityDevice is also global (no lab_id) and holds real DICOM network
+    # configuration (ip_address/ae_title/port) — a one-time provisioning
+    # action for new hardware, not something a not-yet-registered device
+    # could call about itself. Same admin gate as Protocol/ReportTemplate.
+    current_user: LabUser = Depends(require_permission("system:admin")),
 ):
     device_svc = DeviceMonitoringService(db)
     device = device_svc.register_device(
@@ -1534,6 +1559,20 @@ def receive_mpps(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    # process_mpps resolves the target exam by accession_number alone, with
+    # no lab scope anywhere in that lookup — any authenticated account of
+    # any lab could otherwise mutate another lab's exam by guessing/reusing
+    # an accession number. When a matching exam exists, verify it belongs
+    # to the caller's own lab before any mutation, via the same canonical
+    # tenant check used everywhere else in this file. An exam-less MPPS
+    # (no matching exam yet) has nothing to scope against and is unchanged.
+    existing_exam = (
+        db.query(RadiologyExam)
+        .filter(RadiologyExam.accession_number == data.accession_number, ~RadiologyExam.is_deleted)
+        .first()
+    )
+    if existing_exam is not None:
+        _patient_for_user(db, current_user, existing_exam.patient_id)
     mpps_handler = MPPSHandler(db)
     mpps_data = {
         "accession_number": data.accession_number,
@@ -1613,6 +1652,8 @@ def create_critical_finding(
     if_match: str | None = Header(None, alias="If-Match"),
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    if current_user.role not in _RADIOLOGY_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create a critical finding")
     svc = _get_radiology_service(db, current_user)
     exam = svc.get_exam(data.exam_id)
     if exam is None:
@@ -1867,7 +1908,7 @@ def citizen_create_share(
     sharing = ImageSharingService(db)
     share = sharing.create_share(
         study_uid=data.study_uid,
-        shared_by="citizen",
+        shared_by=str(current_user.id),
         shared_with=data.shared_with,
         share_type=data.share_type,
         expires_in_hours=data.expires_in_hours,

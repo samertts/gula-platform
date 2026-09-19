@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
-from app.radiology.enums import DeviceStatus
+from app.radiology.enums import DeviceStatus, ExamStatus
 from app.radiology.models import (
     MPPS,
     DICOMStorage,
@@ -16,6 +16,7 @@ from app.radiology.models import (
     RadiologyOrder,
     WorklistEntry,
 )
+from app.radiology.services import _EXAM_TRANSITIONS
 
 logger = logging.getLogger("gula.radiology.device")
 
@@ -196,10 +197,25 @@ class MPPSHandler:
         self.db.add(mpps)
 
         if exam and mpps_status == "COMPLETED":
-            exam.status = "completed"
-            exam.completed_at = datetime.now(UTC)
-            exam.series_count = mpps_data.get("series_count", exam.series_count or 0)
-            exam.images_count = mpps_data.get("images_count", exam.images_count or 0)
+            # exam.status is the same column update_exam_status guards with
+            # _EXAM_TRANSITIONS + a version check — this device-originated
+            # path must not be a parallel, ungated way to reach the same
+            # mutation. A completion message for an exam that is not in a
+            # state _EXAM_TRANSITIONS allows -> COMPLETED from (e.g. it was
+            # already cancelled, or already completed/verified/reported) is
+            # recorded as an MPPS event for audit history, but does not
+            # silently overwrite the exam's actual clinical state.
+            current_status = exam.status if isinstance(exam.status, ExamStatus) else ExamStatus(exam.status)
+            if ExamStatus.COMPLETED in _EXAM_TRANSITIONS.get(current_status, set()):
+                exam.status = ExamStatus.COMPLETED
+                exam.completed_at = datetime.now(UTC)
+                exam.series_count = mpps_data.get("series_count", exam.series_count or 0)
+                exam.images_count = mpps_data.get("images_count", exam.images_count or 0)
+            else:
+                logger.warning(
+                    "MPPS COMPLETED for exam %s ignored: illegal transition from %s",
+                    exam.id, current_status.value,
+                )
 
         if worklist_entry and mpps_status in ("COMPLETED", "DISCONTINUED"):
             worklist_entry.status = "completed" if mpps_status == "COMPLETED" else "discontinued"

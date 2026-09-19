@@ -11,7 +11,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
-from app.radiology.enums import ArchiveTier, StorageCompressionType
+from app.radiology.enums import ArchiveTier, SharingType, StorageCompressionType
 from app.radiology.models import (
     DICOMStorage,
     DICOMStudy,
@@ -341,7 +341,13 @@ class ImageSharingService:
             study_uid=study_uid,
             shared_by=shared_by,
             shared_with=shared_with,
-            share_type=share_type,
+            # ImageShare.share_type is Enum(SharingType); SQLAlchemy's Enum
+            # column stores/validates by member name, not by value, so the
+            # raw value string ("link") must be converted to the matching
+            # SharingType member (SharingType("link") -> SharingType.LINK)
+            # before assignment — passing the bare string raised
+            # LookupError at commit time for every share ever created.
+            share_type=SharingType(share_type),
             access_code=access_code,
             expires_at=expires_at,
             metadata=metadata or {},
