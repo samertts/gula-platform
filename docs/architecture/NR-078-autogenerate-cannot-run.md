@@ -1,7 +1,15 @@
 # NR-078 — `alembic revision --autogenerate` cannot run against this repository
 
-**Status:** MEASURED. Not fixed. The fix is a declarative-base topology decision
-and is reserved for a human.
+**Status:** CLOSED 2026-09-19 — see the final UPDATE section. Option A is applied
+(ADR-029); all 310 resolve and the 76 unwritable tables are writable. NR-080, the
+drift the repair made visible, is still open and is now held by an explicit
+refusal in `migrations/env.py`.
+
+The two sections below are kept as written, in order, because the reasoning
+changed twice and each reversal is part of the evidence.
+
+**Status when written:** MEASURED. Not fixed. The fix is a declarative-base
+topology decision and is reserved for a human.
 
 ## The claim, and how to reproduce it
 
@@ -277,3 +285,70 @@ the ledger.
 
 The previous version of this document put step 2 first. That was wrong, and the
 measurement is what showed it.
+
+---
+
+# UPDATE 2026-09-19 — applied. NR-078 and NR-086 are closed; NR-080 is not.
+
+**Status: VERIFIED.** Option A is applied to the measured closure. See
+`docs/adr/ADR-029-shared-metadata-for-the-mutually-referencing-bases.md` for the
+decision record; this section says what changed against the two sections above.
+
+## The order of operations above was inverted, and this says why
+
+The revised order said: reconcile the drift (NR-080) first, *then* adopt one
+`MetaData`. That ordering rested on one fact — merging makes autogenerate usable
+— and it weighed a tooling risk against a tooling inconvenience. Correct for
+that pair.
+
+It was the wrong pair. **NR-086** measured the other half afterwards: the same
+310 declarations mean 76 mapped tables cannot be written through the ORM at all,
+because a `flush` sorts the mapper's tables and sorting resolves every foreign
+key. Six live write endpoints were failing on it, `POST /api/v1/trust/consent`
+and `/consent/{id}/withdraw` among them. Reconciling ~365 unmapped columns first
+would have left consent capture broken for the duration, to protect against a
+command nobody could run.
+
+The two halves are separable, and separating them is the whole change:
+
+* the merge repairs the ORM write path — `app/orm_topology.py`, seven bases, the
+  transitive closure of referrer and target, at a fixed point;
+* `app.orm_topology.refuse_unreconciled_destructive_autogenerate`, installed by
+  `migrations/env.py` on both the online and offline paths, keeps the
+  autogenerate hazard shut — it refuses any revision containing a destructive
+  operation, names the count, the kinds and the first ten targets, and lets an
+  additive diff through untouched.
+
+So the block did not disappear; it became deliberate. Before, it was a
+`NoReferencedTableError` on `ehr_allergies.citizen_id` that mentioned nothing
+about `patients.national_id`. Now the refusal names what it refused, and lifts on
+its own as NR-080 is reconciled, with no change to the guard.
+
+## Measured after
+
+| | Before | After |
+|---|---|---|
+| unresolvable cross-base foreign keys | 310 | **0** |
+| mapped tables no ORM write can reach | 76 | **0** |
+| duplicate table keys | 1 (`national_facilities`) | **0** |
+| `sorted_tables` on every registered metadata | raises | **succeeds** |
+| `alembic revision --autogenerate` | cannot start | **runs, then refuses to write** |
+| NR-080 destructive budget | 1367 | **1367 — unchanged** |
+| backend suite | — | 3321 passed; the only two failures were the designed signals |
+
+The `national_facilities` anchor NR-006 added is deleted: under one namespace it
+is redundant and illegal, and the two definitions were column-identical, so this
+is a deletion rather than a choice of owner.
+
+## What is still reserved for a human
+
+**NR-080.** Nothing about the drift changed, was lowered, or was worked around.
+Until it is reconciled — radiology (~231 columns) and NHDW (~111) first, both
+blocked on a domain owner, then the five SNDHS Phase 1 columns on `patients` and
+`lab_orders` — schema changes are hand-written with `alembic revision -m "..."`,
+and the gate in `backend/tests/test_autogenerate_is_safe.py` keeps the budget
+visible and ratcheted.
+
+Steps 3 to 5 of the original order of operations stand unchanged: when a diff is
+eventually classified, stop on the first unintended `drop_*` and explain it
+before continuing.

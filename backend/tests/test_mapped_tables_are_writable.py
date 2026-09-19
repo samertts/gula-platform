@@ -8,40 +8,47 @@ so the write raises before any SQL is emitted:
     NoReferencedTableError: Foreign key associated with column
     'trust_consent_records.guardian_id' could not find table 'lab_users'
 
-Reads are unaffected, which is exactly why this hides. `SELECT` never sorts
-tables, so the table looks healthy to `test_mapped_tables_are_readable.py`, to
-any migration check, and to a route that only lists. It fails the first time
-something tries to persist.
+Reads were unaffected, which is exactly why this hid. `SELECT` never sorts
+tables, so the table looked healthy to `test_mapped_tables_are_readable.py`, to
+every migration check, and to a route that only lists. It failed the first time
+something tried to persist.
 
-**This is the same defect NR-075 recorded on `niam_citizen_relationships`, and
-it is not one table.** Asking which mappers can resolve every foreign key target
-inside their own `MetaData` gives **76 tables carrying 310 unresolvable foreign
-keys** — independently equal to the cross-base foreign-key population NR-078
-measured by a different route. NR-078 recorded those 310 as a *topology*
-problem, something that stops `alembic autogenerate` from running. They are also
-76 tables that **no ORM write can reach**, and that consequence had not been
-stated.
+**It was not one table.** Asking which mappers could resolve every foreign key
+target inside their own `MetaData` gave **76 tables carrying 310 unresolvable
+foreign keys** — independently equal to the cross-base foreign-key population
+NR-078 measured by a different route. NR-078 recorded those 310 as a *topology*
+problem, something that stopped `alembic autogenerate` from running. They were
+also 76 tables that **no ORM write could reach**, and that consequence had not
+been stated.
 
-Found by running the proof this repository had never run: a real
-`Session`, a real model instance, a real `flush`. Every earlier NR-085 proof
-used Core `select()` and raw SQL, which never trigger table sorting — so the
-trust platform's write path had been described as working when it has never
-worked.
+Found by running the proof this repository had never run: a real `Session`, a
+real model instance, a real `flush`. Every earlier NR-085 proof used Core
+`select()` and raw SQL, which never trigger table sorting — so the trust
+platform's write path had been described as working when it had never worked.
 
-The live instance: `app/trust/routes.py` serves 13 registered paths, of which
+The live instance was `app/trust/routes.py`: 13 registered paths, of which
 **six are writes** (`POST /api/v1/trust/consent`, `/consent/{id}/withdraw`,
 `/sign`, `/timestamp`, `/compliance/check`, `/compliance/evidence`). All six
-land on the four trust tables that carry a cross-base foreign key, and all six
-fail. Consent capture and consent withdrawal are among them.
+landed on the four trust tables carrying a cross-base foreign key, and all six
+failed. Consent capture and consent withdrawal were among them.
+
+── The repair ───────────────────────────────────────────────────────────────
+
+`app/orm_topology.py` constructs one shared `MetaData` and the seven bases in
+the closure — the five that declare cross-base foreign keys plus the two that
+own their targets — are built against it. All 310 resolve. The population of
+unwritable tables is **zero** and `DECLARED_UNWRITABLE` is empty.
+
+The ledger stays, empty, because the ratchet is the point: the first mapper to
+declare a foreign key across a base boundary again fails
+`test_no_undeclared_table_is_unwritable` with the table named, and reads will
+still work, so nothing else in this suite would notice.
 
 **This guard is static and needs no database**, which is why it runs in the unit
-job: the question is whether a mapper's declared targets exist in its own
-metadata, and that is answerable from the registry alone.
-
-The ledger may shrink. It may never grow. It empties when the metadata topology
-is resolved (NR-078 Option A) or when the cross-base declarations are replaced
-with the plain columns they should be — and NR-078 has measured that not one of
-these 76 tables carries a `relationship()`, so nothing navigates them.
+job: whether a mapper's declared targets exist in its own metadata is answerable
+from the registry alone. `test_the_repaired_write_path_actually_writes` is the
+other half — the behavioural proof, on the exact model whose flush produced the
+traceback above.
 """
 
 from __future__ import annotations
@@ -49,99 +56,17 @@ from __future__ import annotations
 import pytest
 
 #: Mapped table -> number of foreign keys whose target table is absent from the
-#: mapper's own MetaData. Each of these tables raises NoReferencedTableError on
-#: any INSERT or UPDATE through the ORM.
-DECLARED_UNWRITABLE: dict[str, int] = {
-    # --- CareContinuumBase (45 tables) ---
-    "cc_antenatal_care_visits": 5,
-    "cc_breastfeeding_records": 4,
-    "cc_care_coordination": 4,
-    "cc_care_journeys": 5,
-    "cc_child_development_records": 5,
-    "cc_chronic_disease_registry": 6,
-    "cc_clinical_handovers": 6,
-    "cc_clinical_pathway_enrollments": 5,
-    "cc_cold_chain_monitors": 2,
-    "cc_community_care_records": 5,
-    "cc_community_clinic_records": 6,
-    "cc_community_visits": 3,
-    "cc_contraindications": 5,
-    "cc_cross_org_referrals": 8,
-    "cc_delivery_records": 6,
-    "cc_disease_management_plans": 4,
-    "cc_educational_material_assignments": 4,
-    "cc_family_medicine_records": 6,
-    "cc_follow_up_plans": 5,
-    "cc_growth_monitoring": 5,
-    "cc_health_assessments": 5,
-    "cc_health_programs": 3,
-    "cc_health_promotion_activities": 3,
-    "cc_home_care_plans": 5,
-    "cc_immunization_schedules": 6,
-    "cc_occupational_health_records": 5,
-    "cc_patient_tasks": 7,
-    "cc_postnatal_care_visits": 5,
-    "cc_pregnancy_records": 5,
-    "cc_preventive_care_records": 4,
-    "cc_primary_care_encounters": 7,
-    "cc_program_enrollments": 6,
-    "cc_referral_attachments": 1,
-    "cc_referral_requests": 10,
-    "cc_referral_responses": 3,
-    "cc_referral_timelines": 2,
-    "cc_reminder_schedules": 2,
-    "cc_risk_stratification": 4,
-    "cc_school_health_visits": 3,
-    "cc_screening_campaigns": 3,
-    "cc_self_follow_up_tasks": 5,
-    "cc_self_monitoring_records": 3,
-    "cc_transitions_of_care": 12,
-    "cc_vaccination_records": 5,
-    "cc_vaccine_inventory": 1,
-    # --- DataPlatformBase (9 tables) ---
-    "dp_consent_directives": 2,
-    "dp_device_registry": 2,
-    "dp_duplicate_records": 1,
-    "dp_golden_records": 1,
-    "dp_location_registry": 2,
-    "dp_provider_registry": 2,
-    "dw_fact_diagnoses": 1,
-    "dw_fact_lab_results": 1,
-    "dw_fact_patient_visits": 1,
-    # --- EHRBase (16 tables) ---
-    "ehr_allergies": 4,
-    "ehr_care_plan_activities": 1,
-    "ehr_care_plans": 4,
-    "ehr_clinical_attachments": 6,
-    "ehr_clinical_notes": 10,
-    "ehr_conditions": 4,
-    "ehr_diagnoses": 4,
-    "ehr_family_history": 3,
-    "ehr_immunizations": 6,
-    "ehr_medication_administrations": 4,
-    "ehr_medication_requests": 4,
-    "ehr_medication_statements": 4,
-    "ehr_patient_timeline": 5,
-    "ehr_problem_list_items": 3,
-    "ehr_risk_factors": 4,
-    "ehr_social_history": 4,
-    # --- IdentityBase (2 tables) ---
-    "niam_assignments": 2,
-    "niam_citizen_relationships": 3,
-    # --- TrustBase (4 tables) ---
-    "trust_compliance_checks": 1,
-    "trust_compliance_evidence": 1,
-    "trust_consent_records": 3,
-    "trust_service_logs": 3,
-}
+#: mapper's own MetaData. Each such table raises NoReferencedTableError on any
+#: INSERT or UPDATE through the ORM. Empty since NR-086; may never grow.
+DECLARED_UNWRITABLE: dict[str, int] = {}
 
-#: Measured: 640 of 716 mapped tables resolve every target. The floor sits just
-#: under it so the ledger cannot be emptied by deleting mappers or unregistering
-#: a base, and is not a round number chosen in advance.
-MINIMUM_WRITABLE = 630
+#: Measured: all 715 distinct mapped tables resolve every target. The floor sits
+#: just under it so the ledger cannot be kept empty by deleting mappers or
+#: unregistering a base, and is not a round number chosen in advance.
+MINIMUM_WRITABLE = 705
 
-#: Likewise for the instrument. 716 tables are registered today.
-MINIMUM_PROBED = 700
+#: Likewise for the instrument. 715 distinct tables are registered today.
+MINIMUM_PROBED = 705
 
 
 @pytest.fixture(scope="module")
@@ -192,7 +117,8 @@ def test_no_undeclared_table_is_unwritable(resolution):
         "these mapped tables declare a ForeignKey whose target is in a different "
         f"MetaData, so every ORM INSERT and UPDATE on them raises "
         f"NoReferencedTableError before emitting SQL: {unexpected}. Reads will "
-        "still work, so nothing else in this suite would notice."
+        "still work, so nothing else in this suite would notice. If the target "
+        "belongs to a base outside the shared namespace, see app/orm_topology.py."
     )
 
 
@@ -220,7 +146,7 @@ def test_the_recorded_counts_are_exact(resolution):
 def test_the_writable_population_never_shrinks(resolution):
     """The other half of the ratchet.
 
-    Deleting a mapper, or unregistering a declarative base, would shrink the
+    Deleting a mapper, or unregistering a declarative base, would empty the
     ledger above while making the platform strictly worse.
     """
     assert len(resolution["writable"]) >= MINIMUM_WRITABLE, (
@@ -228,3 +154,53 @@ def test_the_writable_population_never_shrinks(resolution):
         f"key, against a floor of {MINIMUM_WRITABLE}: mappers or a registered "
         "metadata object have been removed rather than reconciled"
     )
+
+
+def test_the_repaired_write_path_actually_writes(registry):
+    """The behavioural half, on the model whose flush produced the traceback.
+
+    Everything above is static: it asks the registry whether a target resolves.
+    That is the right question and it is not the whole question — the defect was
+    found by executing a flush, and a static ledger that agreed with a broken
+    runtime is how NR-085 described six failing endpoints as working.
+
+    So this does what NR-086 did: a real `Session`, a real `ConsentRecord`, a
+    real `flush`, then a real `UPDATE` — the path that raised
+    `NoReferencedTableError: ... could not find table 'lab_users'`.
+
+    Only the tables this write touches are built. `create_all` over the whole
+    shared namespace is a different assertion (and SQLite cannot render every
+    column type in it), and building 447 tables to insert one row would make the
+    failure mode of this test uninformative.
+    """
+    import sqlalchemy as sa
+    from app.orm_topology import SHARED_METADATA
+    from app.trust.models import ConsentRecord
+    from sqlalchemy.orm import Session
+
+    wanted = ["trust_consent_records", "patients", "lab_users", "labs"]
+    tables = [SHARED_METADATA.tables[name] for name in wanted]
+
+    engine = sa.create_engine("sqlite://")
+    try:
+        SHARED_METADATA.create_all(engine, tables=tables, checkfirst=True)
+        with Session(engine) as session:
+            record = ConsentRecord(
+                patient_id=1,
+                lab_id=1,
+                purpose="treatment",
+                status="granted",
+                consent_hash="c" * 64,
+                consent_version="1.0",
+            )
+            session.add(record)
+            session.flush()          # NR-086: this is the statement that raised
+            assert record.id is not None
+
+            record.status = "withdrawn"
+            session.flush()          # and the UPDATE path failed identically
+            session.commit()
+
+            assert session.query(ConsentRecord).count() == 1
+    finally:
+        engine.dispose()

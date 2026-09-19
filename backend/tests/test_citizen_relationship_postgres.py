@@ -68,10 +68,12 @@ def _real_application_wiring():
     """Build the app once, so the mappers resolve the way they do at runtime.
 
     `CitizenRelationship.legacy_user_id` carries `ForeignKey("users.id")`, and
-    `users` lives in `app.database.Base` while the identity models live in
-    `IdentityBase`. Importing a handful of models in isolation therefore raises
-    `NoReferencedTableError` -- which is an artefact of the partial import, not
-    a defect: the running application imports every model through the factory
+    `users` is declared by `app.database.Base` while this model is declared by
+    `IdentityBase`. Since NR-086 the two share one `MetaData`, but a shared
+    namespace is only as complete as the import graph: importing a handful of
+    models in isolation still raises `NoReferencedTableError`, because nothing
+    has put `users` in it yet. That is an artefact of the partial import, not a
+    defect -- the running application imports every model through the factory
     and the mappers configure cleanly. Verifying against anything less than the
     real wiring would be testing a different program.
     """
@@ -166,19 +168,6 @@ def _create(db, *, person_id: str, user_id: int, key: str, patient_id=None, scop
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=NoReferencedTableError,
-    reason=(
-        "NR-075: the create path still cannot write. `CitizenRelationship` is "
-        "mapped on `IdentityBase`, whose MetaData holds `niam_persons` but not "
-        "`users` or `lab_users`, so the ORM cannot resolve "
-        "ForeignKey('users.id') when it sorts tables for an INSERT. SELECT and "
-        "SELECT FOR UPDATE both succeed; only the flush fails. Remove this "
-        "xfail when NR-075 is repaired -- strict=True means it fails loudly "
-        "the moment the endpoint starts working."
-    ),
-)
 def test_a_create_actually_persists_against_postgresql(db) -> None:
     """The claim NR-064's repair rests on, executed rather than inferred.
 
@@ -295,7 +284,6 @@ def test_a_deceased_or_inactive_person_is_not_linkable(
         )
 
 
-@pytest.mark.xfail(strict=True, raises=NoReferencedTableError, reason="NR-075: INSERT cannot resolve users.id")
 def test_the_same_idempotency_key_returns_the_same_row(db) -> None:
     person_id = _person(db, "idem")
     user = _citizen_user(db, "idem")
@@ -312,7 +300,6 @@ def test_the_same_idempotency_key_returns_the_same_row(db) -> None:
     assert count == 1, f"expected exactly one row for the subject, found {count}"
 
 
-@pytest.mark.xfail(strict=True, raises=NoReferencedTableError, reason="NR-075: INSERT cannot resolve users.id")
 def test_a_reused_idempotency_key_with_a_different_request_is_refused(db) -> None:
     """The property that makes the key safe: it binds to the request, not just the caller."""
     person_id = _person(db, "reuse")
@@ -328,7 +315,6 @@ def test_a_reused_idempotency_key_with_a_different_request_is_refused(db) -> Non
         )
 
 
-@pytest.mark.xfail(strict=True, raises=NoReferencedTableError, reason="NR-075: INSERT cannot resolve users.id")
 def test_two_concurrent_connections_cannot_both_create(engine) -> None:
     """§20 concurrency, on two real connections rather than one session.
 

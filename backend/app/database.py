@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from .config import DATABASE_URL, READ_REPLICA_ENABLED, READ_REPLICA_URL
+from .orm_topology import SHARED_METADATA
 
 logger = logging.getLogger("gula.database")
 
@@ -271,7 +272,7 @@ if READ_REPLICA_ENABLED and READ_REPLICA_URL:
 
 ReadSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=read_engine or engine)
 
-Base = declarative_base()
+Base = declarative_base(metadata=SHARED_METADATA)
 
 # Block edge_* table access from API/test/CLI runtimes. No-op inside worker.
 try:

@@ -15,8 +15,9 @@ from app.models.base import (
     TenantMixin,
     TimestampMixin,
 )
+from app.orm_topology import SHARED_METADATA
 
-NationalBase = declarative_base()
+NationalBase = declarative_base(metadata=SHARED_METADATA)
 
 
 def _ulid() -> str:

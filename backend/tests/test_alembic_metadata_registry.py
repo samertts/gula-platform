@@ -15,7 +15,9 @@ These guards therefore assert the whole invariant, not the empty case:
   * no registered metadata is empty;
   * every physical table is mapped, except a pinned, named list;
   * every foreign key names a table that exists somewhere, except a pinned list;
-  * exactly one table name is claimed by two registered metadata.
+  * no table name is claimed by two registered metadata;
+  * every registered metadata can be sorted, so autogenerate can run at all;
+  * and, because it now can, a destructive diff is refused rather than written.
 
 Each pinned set is an assertion of a *known defect*. When one is fixed the guard
 fails, which is the signal to close the finding and tighten the pin — never to
@@ -100,8 +102,14 @@ PHANTOM_FK_TARGETS: frozenset[str] = frozenset()
 # Registered metadata holding zero tables (NR-024).
 EMPTY_REGISTERED_BASES = frozenset({"CitizenPlatformBase"})
 
-# One table name claimed by two registered metadata (NR-006).
-TABLE_NAME_COLLISIONS = frozenset({"national_facilities"})
+# One table name claimed by two *distinct* registered metadata. NR-006 declared
+# `national_facilities` a second time as a bare foreign-key anchor, because
+# seventeen `app/national` models had to resolve it inside `NationalBase`'s own
+# MetaData. NR-086 gave those bases one shared MetaData, so the anchor became
+# both redundant and illegal and was deleted: the set is empty, and it must stay
+# empty, because a second declaration under one namespace now raises
+# `InvalidRequestError` at import rather than being caught here.
+TABLE_NAME_COLLISIONS: frozenset[str] = frozenset()
 
 
 def _load_registry() -> list[tuple[str, object]]:
@@ -224,13 +232,20 @@ def test_every_foreign_key_names_a_table_that_exists(registry, mapped) -> None:
     )
 
 
-def test_exactly_one_table_name_is_claimed_by_two_registered_metadata(registry) -> None:
-    """NR-006, and the single blocker for a canonical shared MetaData."""
-    owners: dict[str, list[str]] = {}
-    for label, metadata in registry:
+def test_no_table_name_is_claimed_by_two_registered_metadata(registry) -> None:
+    """NR-006, closed by NR-086 — and the reason it has to be counted this way.
+
+    Seven of the labels in `target_metadata` now name the *same* MetaData object.
+    Counting labels per table would report all 447 of its tables as claimed seven
+    times over and turn this guard into noise, so the count is per distinct
+    metadata object. Two labels sharing one namespace is the topology; two
+    namespaces claiming one name is the defect.
+    """
+    owners: dict[str, set[int]] = {}
+    for _label, metadata in registry:
         for name in metadata.tables:
-            owners.setdefault(name, []).append(label)
-    collisions = {name for name, labels in owners.items() if len(labels) > 1}
+            owners.setdefault(name, set()).add(id(metadata))
+    collisions = {name for name, metas in owners.items() if len(metas) > 1}
     assert collisions == set(TABLE_NAME_COLLISIONS), (
         f"the set of table names blocking a shared MetaData changed: {sorted(collisions)}"
     )
@@ -318,9 +333,17 @@ def test_a_shared_metadata_would_not_drop_an_unlisted_table(registry, mapped) ->
 # table that exists, passes that guard, and still cannot resolve.
 #
 # Measured across the registry env.py actually hands Alembic: **310** foreign
-# keys are in that state, across five bases. NR-075 -- the five on
+# keys were in that state, across five bases. NR-075 -- the five on
 # `niam_citizen_relationships` that stop `POST /admin/citizen-relationships`
-# from inserting a row -- is 1.6% of the class.
+# from inserting a row -- was 1.6% of the class.
+#
+# **NR-086 closed it, and the ledger below is empty.** The five referring bases
+# and the two owning their targets -- a closure of seven, measured and at a fixed
+# point -- were constructed against one shared MetaData (`app.orm_topology`).
+# All 310 resolve; the 76 tables that no ORM write could reach are writable; the
+# eleven bases that declare nothing across a base boundary were left alone. The
+# ledger stays here, empty, as the ratchet: a base that appears in it has
+# reintroduced the class.
 #
 # The consequence is larger than any one endpoint, and it is a defect in the
 # measuring instrument rather than in the thing measured. Alembic's
@@ -337,18 +360,13 @@ def test_a_shared_metadata_would_not_drop_an_unlisted_table(registry, mapped) ->
 # every guard in this file reasons about what autogenerate *would* propose and
 # none of them has ever asked autogenerate to propose it.
 #
-# The ledger is per-base and may shrink. It may never grow, and no base may
-# appear. Closing it is a declarative-base topology decision (share MetaData, or
-# drop the ORM-level ForeignKey and keep the physical constraint) with a real
-# risk of autogenerate then proposing to DROP constraints PostgreSQL is
-# enforcing today, so it is measured here and decided by a human.
-UNRESOLVABLE_CROSS_BASE_FKS = {
-    "CareContinuumBase": 214,
-    "EHRBase": 70,
-    "DataPlatformBase": 13,
-    "TrustBase": 8,
-    "IdentityBase": 5,
-}
+# The risk that reserved this decision -- autogenerate then proposing to DROP
+# what PostgreSQL enforces today -- is real and is NR-080. It is not answered by
+# leaving the ORM unwritable: it is answered in `migrations/env.py`, which now
+# refuses to emit a revision containing an unreconciled destructive operation and
+# says which. An accidental block became a deliberate one, and the six live trust
+# write endpoints stopped failing.
+UNRESOLVABLE_CROSS_BASE_FKS: dict[str, int] = {}
 
 
 def _cross_base_foreign_keys(registry) -> list[tuple[str, str, str, str]]:
@@ -364,12 +382,25 @@ def _cross_base_foreign_keys(registry) -> list[tuple[str, str, str, str]]:
     return found
 
 
-def test_the_cross_base_foreign_key_scan_still_finds_the_surface(registry) -> None:
-    """Guard the guard: finding none would ratchet nothing."""
-    found = _cross_base_foreign_keys(registry)
-    assert len(found) >= 250, (
-        f"only {len(found)} cross-base foreign keys found; the scan has drifted "
-        "and every count below would be understated"
+def test_the_cross_base_foreign_key_scan_still_has_something_to_scan(registry) -> None:
+    """Guard the guard, rewritten for a ledger that is empty by repair.
+
+    This used to assert that the scan still found at least 250 unresolvable
+    foreign keys -- a sound instrument check while 310 existed, and a
+    contradiction now that the answer is zero. The instrument still has to be
+    provably alive, so it asserts what an alive instrument sees rather than what
+    a broken topology used to produce: a populated registry carrying a large
+    foreign-key surface. A scan that walks nothing agrees with every ledger.
+    """
+    surface = sum(
+        len(table.foreign_keys)
+        for _label, metadata in registry
+        for table in metadata.tables.values()
+    )
+    tables = sum(len(metadata.tables) for _label, metadata in registry)
+    assert tables >= 700 and surface >= 250, (
+        f"the scan walked {tables} tables and {surface} foreign keys; the "
+        "registry did not load, so the empty ledger below means nothing"
     )
 
 
@@ -410,25 +441,19 @@ def test_the_cross_base_foreign_key_ledger_does_not_rot(registry) -> None:
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "NR-078: `alembic revision --autogenerate` cannot run. Alembic sorts "
-        "every registered MetaData before emitting an operation, and 310 "
-        "cross-base foreign keys cannot resolve. Fixing it is a declarative-base "
-        "topology decision, so this is held as a strict xfail: it fails loudly "
-        "the moment autogenerate starts working, which is the signal to close "
-        "NR-078 and NR-075 rather than to delete this test."
-    ),
-)
 def test_alembic_can_sort_every_registered_metadata(registry) -> None:
-    """The capability every other guard in this file assumes and none exercises.
+    """The capability every other guard in this file assumes and none exercised.
 
     `alembic.autogenerate` reaches `MetaData.sorted_tables` on each registered
     metadata before it compares anything. This is that step, isolated: if it
     raises, no autogenerate diff exists to reason about, and a guard that asks
     "what would autogenerate propose?" is asking about something that never
     runs.
+
+    Held as a strict xfail while NR-078 stood, with the note that it would fail
+    the moment autogenerate started working and that this was the signal to close
+    the finding rather than delete the test. NR-086 made it pass, so the xfail is
+    gone and the assertion stands on its own.
     """
     for label, metadata in registry:
         try:
@@ -438,3 +463,77 @@ def test_alembic_can_sort_every_registered_metadata(registry) -> None:
                 f"{label}.metadata cannot be sorted, so autogenerate cannot "
                 f"produce a diff: {exc}"
             ) from exc
+
+
+# ── NR-086/NR-080 — the block on autogenerate is now deliberate ──────────────
+#
+# Making every metadata sortable (the test above) is what let `alembic revision
+# --autogenerate` run, and running is not the same as being safe: NR-080
+# measured 1367 destructive operations in the first complete diff, including
+# `DROP COLUMN patients.national_id`. The refusal that used to come from an
+# unresolvable foreign key now comes from a hook that says so.
+#
+# These three assert the hook exists, refuses, and does not over-refuse. It is
+# `app.orm_topology.refuse_unreconciled_destructive_autogenerate`, installed by
+# `migrations/env.py`, and it needs no database.
+
+def _directives_with(*ops):
+    """A minimal Alembic revision directive carrying the given operations."""
+    from alembic.operations import ops as alembic_ops
+
+    return [alembic_ops.MigrationScript(
+        rev_id="test",
+        upgrade_ops=alembic_ops.UpgradeOps(ops=list(ops)),
+        downgrade_ops=alembic_ops.DowngradeOps(ops=[]),
+    )]
+
+
+def test_autogenerate_refuses_a_destructive_diff() -> None:
+    """The refusal, on the operation NR-080 exists for."""
+    from alembic.operations import ops as alembic_ops
+    from app.orm_topology import refuse_unreconciled_destructive_autogenerate
+
+    directives = _directives_with(
+        alembic_ops.DropColumnOp("patients", "national_id"),
+    )
+    with pytest.raises(RuntimeError) as caught:
+        refuse_unreconciled_destructive_autogenerate(None, None, directives)
+
+    message = str(caught.value)
+    assert "patients.national_id" in message, (
+        "the refusal must name what it refused; a bare count is not reviewable"
+    )
+    assert "NR-080" in message
+
+
+def test_autogenerate_lets_an_additive_diff_through() -> None:
+    """And does not over-refuse, or it is just the old block with a new message.
+
+    This is the half that makes the guard lift on its own: as NR-080's drift is
+    reconciled the destructive count falls to zero and revisions start being
+    written again, with no change to the guard.
+    """
+    from alembic.operations import ops as alembic_ops
+    from app.orm_topology import refuse_unreconciled_destructive_autogenerate
+    from sqlalchemy import Column, Integer
+
+    directives = _directives_with(
+        alembic_ops.AddColumnOp("patients", Column("new_flag", Integer())),
+    )
+    assert refuse_unreconciled_destructive_autogenerate(None, None, directives) is None
+
+
+def test_env_py_installs_the_refusal_on_both_migration_paths() -> None:
+    """A hook nothing installs is a hook that refuses nothing.
+
+    Read from `env.py`'s source rather than by importing it — env.py runs the
+    migration at module scope — and asserted for both `context.configure` calls,
+    because offline mode generates SQL from the same diff.
+    """
+    source = ENV_PY.read_text(encoding="utf-8")
+    assert source.count(
+        "process_revision_directives=refuse_unreconciled_destructive_autogenerate",
+    ) == 2, (
+        "migrations/env.py must install the NR-080 refusal on both the offline "
+        "and online context.configure() calls"
+    )

@@ -28,6 +28,23 @@ These tests exercise the control at the service layer, where the defect was.
 Each denial is paired with a positive control, because a function that refused
 everything would satisfy the denials alone and look secure while being broken.
 
+PROVED BY EXECUTION SINCE NR-086
+--------------------------------
+The first version of this module could not run a behavioural test at all. Its
+tables' foreign keys pointed at `national_practitioners` and
+`national_departments`, which belonged to a different declarative base, so
+`create_all` raised `NoReferencedTableError` and the control was proved by
+reading the source. That limit was recorded here rather than hidden, as
+`test_y_behavioural_proof_is_blocked_by_the_cross_base_topology`, with the note
+that its failure would be the signal to come back.
+
+NR-086 gave the seven mutually-referencing bases one shared MetaData. The tables
+build, the rows insert, and the `test_y*` family below is the two-lab suite that
+test promised: two laboratories, real rows, real queries, in both directions.
+Negative-proved — neutering `_apply_lab_filter` fails `y1` and `y3`; restoring
+`PrimaryCareEncounter(**data)` so the body wins fails `y2`; the service was
+restored byte-identical after each.
+
 LATENT, NOT LIVE -- AND THE DIFFERENCE IS ASSERTED, NOT ASSUMED
 ---------------------------------------------------------------
 No migration creates `cc_primary_care_encounters`, `cc_referral_requests` or
@@ -38,11 +55,9 @@ because the repair uses a primitive the module already had -- not because
 anything was being exploited. `test_z_this_domain_is_still_unbuilt` pins that
 state so a later reader cannot mistake this suite for proof of a live fix.
 
-The tables also cannot be created by the shared `db` fixture: their foreign
-keys point at `national_practitioners` and `national_departments`, which belong
-to a different declarative base (NR-078/NR-086). This module therefore builds
-its own SQLite tables with the cross-base constraints stripped, which is enough
-to exercise a WHERE clause and is honest about why it is necessary.
+The tables are still not built by the shared `db` fixture, which is a different
+question from whether they *can* be: this module builds its own SQLite schema
+from the shared MetaData, with the cross-base constraints intact.
 """
 from __future__ import annotations
 
@@ -63,38 +78,139 @@ import pathlib
 import pytest
 from app.services import care_continuum_service as svc
 
-# ─── why there is no behavioural test below this line ───────────────────────
+# ─── the behavioural proof NR-086 was blocking ──────────────────────────────
+#
+# This module used to carry `test_y_behavioural_proof_is_blocked_by_the_cross_base_topology`,
+# which asserted `pytest.raises(NoReferencedTableError)` on `create_all` and said
+# in its docstring: "When NR-078 lands, this test fails, and that is the signal
+# to come back and write the two-lab behavioural suite this finding deserves."
+#
+# NR-086 landed. `cc_primary_care_encounters.practitioner_id` pointed at
+# `national_practitioners`, `department_id` at `national_departments`, and
+# neither was in `CareContinuumBase.metadata`; the seven bases now share one, so
+# both resolve and the tables build. What follows is that suite, and it replaces
+# a proof-by-source with a proof by execution.
 
-def test_y_behavioural_proof_is_blocked_by_the_cross_base_topology():
-    """These classes cannot be exercised through the ORM at all. Measured.
 
-    The first version of this module tried to prove the control the way NR-128
-    was proved -- two labs, real rows, a real query. It could not run:
-    `cc_primary_care_encounters.practitioner_id` and
-    `cc_care_journeys.care_coordinator_id` point at `national_practitioners`,
-    and `department_id` at `national_departments`, neither of which is in
-    `CareContinuumBase.metadata`. That is NR-086 ("76 mapped tables cannot be
-    written through the ORM at all: their foreign keys target another base"),
-    whose repair is NR-078's topology change.
+@pytest.fixture()
+def cc_db():
+    """Two laboratories, real rows, a real session.
 
-    So the control below is proved by source, not by execution, and this test
-    exists so that limit is stated rather than hidden. When NR-078 lands, this
-    test fails, and that is the signal to come back and write the two-lab
-    behavioural suite this finding deserves.
+    Only the care-continuum tables and the tables their foreign keys name are
+    built -- `create_all` over the whole shared namespace is a different
+    assertion, and SQLite cannot render every column type in it.
+
+    No request tenant is established, so NR-147's `TenantMixin` guard is inert
+    here by design (see shared/models/tenant_context.py). That is what makes it
+    possible to seed two laboratories in one session, and it is also why this
+    test proves the *service's* control rather than that guard's: the control
+    under test is `_apply_lab_filter`, not defence in depth.
     """
-    from app.care_continuum.base import CareContinuumBase
+    import sqlalchemy as sa
+    from app.care_continuum.models.care_journey import CareJourney
     from app.care_continuum.models.primary_care import PrimaryCareEncounter
-    from sqlalchemy import create_engine
-    from sqlalchemy.exc import NoReferencedTableError
+    from app.factory import import_all_models
+    from app.orm_topology import SHARED_METADATA
+    from sqlalchemy.orm import Session
 
-    engine = create_engine("sqlite://", future=True)
+    # One shared MetaData resolves a foreign key only once the target's module
+    # has been imported -- the namespace is as complete as the import graph, and
+    # this module imports one service. `import_all_models()` is what the
+    # application itself calls at startup for exactly this reason; using it here
+    # rather than a hand-listed set of imports is what keeps the two from
+    # drifting.
+    import_all_models()
+
+    wanted = [PrimaryCareEncounter.__table__, CareJourney.__table__]
+    for table in list(wanted):
+        for fk in table.foreign_keys:
+            target = SHARED_METADATA.tables.get(fk.target_fullname.split(".")[0])
+            if target is not None and target not in wanted:
+                wanted.append(target)
+
+    engine = sa.create_engine("sqlite://", future=True)
     try:
-        with pytest.raises(NoReferencedTableError):
-            CareContinuumBase.metadata.create_all(
-                engine, tables=[PrimaryCareEncounter.__table__],
-            )
+        SHARED_METADATA.create_all(engine, tables=wanted, checkfirst=True)
+        with Session(engine) as session:
+            yield session
     finally:
         engine.dispose()
+
+
+def _encounter(db, lab_id, patient_id="PAT-1"):
+    from datetime import datetime
+
+    from app.national.enums import EncounterType
+
+    return svc.create_primary_care_encounter(
+        db,
+        {
+            "patient_id": patient_id,
+            "encounter_type": EncounterType.CONSULTATION,
+            "encounter_date": datetime(2026, 9, 1, 10, 0),
+        },
+        lab_id=lab_id,
+    )
+
+
+def test_y1_an_encounter_is_invisible_to_the_other_laboratory(cc_db):
+    """The control, executed. NR-146 said this; nothing had ever run it."""
+    mine = _encounter(cc_db, lab_id=1)
+
+    assert svc.get_primary_care_encounter(cc_db, mine["id"], lab_id=1) is not None
+    assert svc.get_primary_care_encounter(cc_db, mine["id"], lab_id=2) is None, (
+        "laboratory 2 can read laboratory 1's primary-care encounter (NR-146)"
+    )
+
+
+def test_y2_the_body_cannot_choose_the_laboratory(cc_db):
+    """The half a read-side test cannot reach.
+
+    `create_primary_care_encounter` accepted `lab_id` and dropped it, so the
+    owner came from the request body. The server-derived value has to win over a
+    body that names a different one -- not merely be present.
+    """
+    from datetime import datetime
+
+    from app.national.enums import EncounterType
+
+    created = svc.create_primary_care_encounter(
+        cc_db,
+        {
+            "patient_id": "PAT-2",
+            "encounter_type": EncounterType.CONSULTATION,
+            "encounter_date": datetime(2026, 9, 1, 11, 0),
+            "lab_id": 999,          # a hostile body
+        },
+        lab_id=7,                    # the authenticated caller
+    )
+    assert created["lab_id"] == 7, (
+        "the request body chose the encounter's laboratory (NR-146/NR-107)"
+    )
+    assert svc.get_primary_care_encounter(cc_db, created["id"], lab_id=999) is None
+
+
+def test_y3_the_two_laboratories_do_not_see_each_others_rows(cc_db):
+    """Both directions, because one direction passing can be an accident."""
+    first = _encounter(cc_db, lab_id=1, patient_id="PAT-A")
+    second = _encounter(cc_db, lab_id=2, patient_id="PAT-B")
+
+    assert svc.get_primary_care_encounter(cc_db, first["id"], lab_id=2) is None
+    assert svc.get_primary_care_encounter(cc_db, second["id"], lab_id=1) is None
+    assert svc.get_primary_care_encounter(cc_db, first["id"], lab_id=1) is not None
+    assert svc.get_primary_care_encounter(cc_db, second["id"], lab_id=2) is not None
+
+
+def test_y4_a_null_tenant_is_unscoped_and_that_is_a_convention_not_an_accident(cc_db):
+    """`_apply_lab_filter` no-ops on None, so callers with no lab see everything.
+
+    That is the cross-tenant-role convention this module's functions follow, and
+    it is asserted here rather than left implicit: it is exactly the behaviour a
+    future change would break silently, and exactly the behaviour that makes the
+    service's `lab_id` parameter load-bearing at every call site.
+    """
+    mine = _encounter(cc_db, lab_id=1, patient_id="PAT-C")
+    assert svc.get_primary_care_encounter(cc_db, mine["id"], lab_id=None) is not None
 
 
 # ─── regression guards ──────────────────────────────────────────────────────

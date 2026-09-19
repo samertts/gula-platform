@@ -100,17 +100,37 @@ none of it is caused by the topology. Two samples decide the matter:
   requires to hold encrypted national identifiers. The ORM maps
   `national_id_hash` and none of the others.
 
-Applying Option A today would therefore replace a loud, honest failure
-("autogenerate cannot run") with a quiet and dangerous capability
-("autogenerate runs, and proposes dropping your encrypted national IDs"). That
-is the same trade NR-076 refuses, in the same direction, and it is refused here
-for the same reason.
+Applying Option A would therefore replace a loud, honest failure ("autogenerate
+cannot run") with a quiet and dangerous capability ("autogenerate runs, and
+proposes dropping your encrypted national IDs"). That is the same trade NR-076
+refuses, in the same direction, and it was refused here for the same reason.
 
-**What this file does instead.** It performs the merge itself, in the gate, so
-autogenerate executes without `migrations/env.py`, any declarative base or any
-model changing. Runtime risk: none. The destructive proposals are pinned with
-their explanations and ratcheted, so the drift is visible, bounded, and cannot
-grow unnoticed -- and the topology decision keeps its true cost attached to it.
+── UPDATE: Option A is applied, and the refusal is now explicit (NR-086) ────
+
+The reasoning above weighed a tooling risk against a tooling inconvenience and
+got the answer right for that pair. It was the wrong pair. NR-086 measured the
+other cost of leaving the topology unresolved: the same 310 declarations mean
+**76 mapped tables cannot be written through the ORM at all**, because a flush
+sorts the mapper's tables and sorting resolves every foreign key. Six live write
+endpoints were failing on it, consent capture and consent withdrawal included.
+
+The two halves were never actually coupled. Option A is applied in
+`app/orm_topology.py` -- seven bases, the measured closure, one shared MetaData
+-- so the ORM writes. What Option A *also* did, accidentally, was remove the
+block on autogenerate, and that block is now deliberate:
+`migrations/env.py` installs a `process_revision_directives` hook that refuses to
+write a revision containing an unreconciled destructive operation and names the
+first ten. An additive diff passes through. Nothing is ever silently filtered.
+
+So the drift below is unchanged and still governs. What changed is that the
+thing protecting you from it is a guard that explains itself, rather than a
+`NoReferencedTableError` on `ehr_allergies.citizen_id` that mentions none of it
+-- and 76 tables became writable on the way.
+
+**What this file does.** It merges the remaining eleven bases onto the shared
+one, in the gate, and runs autogenerate against a disposable PostgreSQL migrated
+to head. The destructive proposals are pinned with their explanations and
+ratcheted, so the drift is visible, bounded, and cannot grow unnoticed.
 
 The ledgers may shrink. They may never grow.
 """
@@ -132,11 +152,13 @@ DATABASE_URL = os.environ.get("GULA_SCHEMA_DATABASE_URL") or os.environ.get(
     "MIGRATION_DATABASE_URL",
 )
 
-#: The one duplicate table key across all registered metadata. NR-006 declares
-#: `national_facilities` a second time, as a bare `Table`, so that seventeen
-#: `app/national` models can resolve `ForeignKey("national_facilities.id")`
-#: inside their own MetaData. Both definitions are column-identical.
-DECLARED_DUPLICATE_TABLE_KEYS = frozenset({"national_facilities"})
+#: Duplicate table keys across all registered metadata. This held
+#: `national_facilities` -- NR-006 declared it a second time, as a bare `Table`,
+#: so that seventeen `app/national` models could resolve
+#: `ForeignKey("national_facilities.id")` inside their own MetaData. NR-086 gave
+#: those bases one MetaData, the anchor became illegal as well as redundant, and
+#: it is gone. Empty, and it may not grow.
+DECLARED_DUPLICATE_TABLE_KEYS: frozenset[str] = frozenset()
 
 #: Physical tables no ORM maps, which autogenerate therefore proposes to DROP.
 #: Identical to `UNMAPPED_PHYSICAL_TABLES` in
@@ -282,7 +304,15 @@ def merged(registry):
     target = MetaData()
     duplicates: list[str] = []
     seen: set[str] = set()
+    # NR-086 put seven of the registry's eighteen labels on one shared MetaData,
+    # so walking by label would visit those 447 tables seven times and report six
+    # spurious copies of each. Duplicate *table names* are the question; the same
+    # object arriving twice is the topology, not a collision.
+    visited: set[int] = set()
     for _label, metadata in registry:
+        if id(metadata) in visited:
+            continue
+        visited.add(id(metadata))
         for name, table in metadata.tables.items():
             if name in seen:
                 duplicates.append(name)
@@ -351,13 +381,15 @@ def test_every_cross_base_foreign_key_resolves_under_the_merge(merged) -> None:
     )
 
 
-def test_the_merge_has_exactly_one_duplicate_table_key(merged) -> None:
-    """The blocker Option B cannot clear, held at its known size.
+def test_the_merge_has_no_duplicate_table_key(merged) -> None:
+    """The blocker Option B could not clear, now cleared by Option A.
 
-    Alembic refuses a multi-metadata target claiming one table twice. Today that
-    is `national_facilities` alone, and both definitions are column-identical --
-    a foreign-key anchor, not a rival entity. A second duplicate would be a real
-    ownership conflict and would have to be decided before any topology change.
+    Alembic refuses a multi-metadata target claiming one table twice. That was
+    `national_facilities` alone -- NR-006's foreign-key anchor, column-identical
+    to `NationalFacility`, not a rival entity. NR-086 put both bases on one
+    MetaData, which made the anchor illegal as well as redundant, and deleted it.
+    A duplicate appearing here again is a real ownership conflict and has to be
+    decided before any topology change.
     """
     duplicates = set(merged.info.get("duplicates", []))
     assert duplicates == DECLARED_DUPLICATE_TABLE_KEYS, (

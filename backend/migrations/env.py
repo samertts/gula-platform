@@ -197,6 +197,31 @@ target_metadata = [
     DocIntelBase.metadata,
 ]
 
+# NR-086 gave seven of the bases above one shared MetaData (app/orm_topology.py),
+# because a ForeignKey resolves inside the MetaData that owns the *referring*
+# table and 310 of them pointed elsewhere — which is why 76 mapped tables could
+# not be written through the ORM at all. Seven entries in this list are now the
+# same object, and Alembic rejects a multi-metadata target that claims one table
+# twice, so the list is deduplicated by identity. Order is preserved, and the
+# eleven bases that declare nothing across a base boundary keep their own.
+_deduplicated = []
+_seen_metadata = set()
+for _md in target_metadata:
+    if id(_md) not in _seen_metadata:
+        _seen_metadata.add(id(_md))
+        _deduplicated.append(_md)
+target_metadata = _deduplicated
+
+
+# ── Autogenerate is deliberately refused while the drift is unreconciled ─────
+# The hook lives in app/orm_topology.py, beside the merge it makes safe: the
+# merge is what lets autogenerate run, and this is what keeps it from writing
+# a revision that drops columns nobody has classified. Importable from there,
+# so it can be tested without replaying this file.
+from app.orm_topology import (  # noqa: E402
+    refuse_unreconciled_destructive_autogenerate,
+)
+
 
 # ── Offline mode (generates a .sql script) ───────────────────────────────────
 def run_migrations_offline() -> None:
@@ -206,6 +231,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        process_revision_directives=refuse_unreconciled_destructive_autogenerate,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -223,6 +249,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            process_revision_directives=refuse_unreconciled_destructive_autogenerate,
         )
         with context.begin_transaction():
             context.run_migrations()

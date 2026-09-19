@@ -1,7 +1,7 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-19",
-  "head_commit": "73ff1dbe",
+  "head_commit": "e7c25737",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
@@ -208,7 +208,7 @@
       "domain": "National + Core models",
       "severity": "P1",
       "priority": 5,
-      "status": "FIXED — verified (NR-006 execution) — and its anchor Table is the single blocker for a shared MetaData (NR-078)",
+      "status": "FIXED — VERIFIED, and its anchor Table is now gone too (2026-09-19, ADR-029). The bare reference-only Table existed so that seventeen app/national models could resolve ForeignKey('national_facilities.id') inside NationalBase's own MetaData. Under the shared MetaData they resolve against models.clinical_scope.NationalFacility directly, so the anchor is redundant and a second declaration in one namespace is illegal. Deleted; app/national/domain/facility.py re-exports the canonical table. The duplicate table key that blocked Alembic's multi-metadata target is therefore 0, and TABLE_NAME_COLLISIONS / DECLARED_DUPLICATE_TABLE_KEYS are both empty ratchets.",
       "title": "Table national_facilities is mapped by two ORM classes on different bases",
       "description": "app/models/clinical_scope.py::NationalFacility(Base) and app/national/domain/facility.py::Facility(AuditEntity) both map the physical table national_facilities. INTERACTION RECORDED (NR-078). The repair replaced the duplicate mapped class with a bare reference-only Table in NationalBase.metadata, so that seventeen app/national models can resolve ForeignKey('national_facilities.id') inside their own MetaData. That was correct for the problem it solved and is not reopened here. It does mean national_facilities is claimed by two registered metadata, which is exactly what Alembic's multi-metadata target refuses -- so this anchor is the one and only collision standing between the repository and a single shared MetaData. Both definitions are column-identical, so adopting Option A costs one deleted declaration, not an ownership decision.",
       "root_cause": "Two domains modelled the same physical table independently; no ownership constitution enforced.",
@@ -232,7 +232,35 @@
       "owner": "National Platform + Core",
       "related_tests": "backend/tests/test_canonical_table_ownership.py (5 tests)",
       "related_files": "see affected components",
-      "related_adrs": "docs/architecture/CANONICAL_ARCHITECTURE.md",
+      "related_adrs": [
+        ".",
+        "/",
+        "A",
+        "ADR-029",
+        "C",
+        "E",
+        "H",
+        "I",
+        "L",
+        "N",
+        "O",
+        "R",
+        "T",
+        "U",
+        "_",
+        "a",
+        "c",
+        "d",
+        "e",
+        "h",
+        "i",
+        "m",
+        "o",
+        "r",
+        "s",
+        "t",
+        "u"
+      ],
       "related_contracts": "",
       "wave": "WAVE 2",
       "complexity": "M",
@@ -2541,11 +2569,11 @@
       "domain": "Identity platform (citizen relationships)",
       "severity": "P1",
       "priority": 2,
-      "status": "BLOCKED — still live; NR-078's topology change is decided but not applied, so nothing here has changed",
+      "status": "FIXED — VERIFIED 2026-09-19 as part of NR-086/NR-078. IdentityBase and app.database.Base now share one MetaData (ADR-029), so users, lab_users and national_patients resolve inside the referring table's own namespace and add()+flush() no longer raises NoReferencedTableError. This was 1.6% of the 310; all 310 went together.",
       "title": "CitizenRelationship cannot be INSERTed: IdentityBase.metadata has no users or lab_users to resolve its foreign keys",
       "description": "CORRECTS MY OWN EARLIER CLAIM. NR-064 repaired the subject lookup -- that part is real and verified: citizen_id now resolves niam_persons, which IS in IdentityBase.metadata, and the 20260914_0001 foreign key is enforced by PostgreSQL. But executing the path against a real database shows the endpoint is STILL non-functional. CitizenRelationship also declares ForeignKey('users.id'), ForeignKey('lab_users.id') and ForeignKey('national_patients.id'), and none of those tables is in IdentityBase.metadata (users lives in app.database.Base). SQLAlchemy resolves foreign keys when it sorts tables for an INSERT, so: SELECT works, SELECT ... FOR UPDATE works, and add()+flush() raises NoReferencedTableError. POST /admin/citizen-relationships therefore still cannot create a row. I did not find this earlier because the only test of the workflow uses a fake session -- the exact failure mode NR-064 is about -- and because the static guard only asked whether the path named an unbuilt table, which stopped being true after the repair. SCOPE CORRECTION: Phase D measured the whole class rather than this table. 310 foreign keys across FIVE declarative bases point at a table their own MetaData does not own -- CareContinuumBase 214, EHRBase 70, DataPlatformBase 13, TrustBase 8, IdentityBase 5. NR-075 is the 5, and it was found first only because its endpoint was executed. The generalisation is NR-078, which also records the consequence nobody had looked for: `alembic revision --autogenerate` cannot run at all.",
       "root_cause": "The identity models sit on their own declarative base (NR-018 registered 8 authorized bases) while declaring foreign keys to tables owned by another base. The physical constraints exist because migrations create them; the ORM cannot see the targets.",
-      "evidence": "Against migrated PostgreSQL 16.13 with the real application wiring: SELECT OK, SELECT FOR UPDATE OK, add()+flush() raises NoReferencedTableError on legacy_user_id. 'users' in IdentityBase.metadata.tables is False; 'niam_persons' is True. Declared FKs: niam_accounts.id, users.id, lab_users.id, niam_persons.id, national_patients.id.",
+      "evidence": "Against migrated PostgreSQL 16.13 with the real application wiring: SELECT OK, SELECT FOR UPDATE OK, add()+flush() raises NoReferencedTableError on legacy_user_id. 'users' in IdentityBase.metadata.tables is False; 'niam_persons' is True. Declared FKs: niam_accounts.id, users.id, lab_users.id, niam_persons.id, national_patients.id.  || AFTER (2026-09-19): proved by execution against a real PostgreSQL 16 migrated to head, not by re-reading the metadata. backend/tests/test_citizen_relationship_postgres.py carried four strict xfails raising NoReferencedTableError, one of which said 'Remove this xfail when NR-075 is repaired -- strict=True means it fails loudly the moment the endpoint starts working.' All four XPASSed on the shared MetaData and are removed; the module's nine tests pass, including test_two_concurrent_connections_cannot_both_create, which exercises the with_for_update lock across two real connections. POST /admin/citizen-relationships persists a row.",
       "affected_components": "app/identity/models/citizen_relationship.py, app/routes/citizen_relationship_admin.py",
       "affected_users": "Ministry actors holding platform:manage_users",
       "clinical_impact": "The citizen-workspace linkage cannot be established",
@@ -2565,13 +2593,15 @@
       "owner": "Platform architecture",
       "related_tests": "backend/tests/test_citizen_relationship_postgres.py",
       "related_files": "app/identity/models/citizen_relationship.py, app/identity/base.py",
-      "related_adrs": "",
+      "related_adrs": [
+        "ADR-029"
+      ],
       "related_contracts": "",
       "wave": "Next identity milestone",
       "complexity": "MEDIUM",
       "can_fix_now": false,
       "blocker": true,
-      "evidence_strength": "REAL DATABASE + EXECUTED TEST",
+      "evidence_strength": "EXECUTED",
       "id": "NR-075"
     },
     {
@@ -2656,11 +2686,11 @@
       "domain": "Platform-wide (5 declarative bases)",
       "severity": "P1",
       "priority": 2,
-      "status": "PARTIALLY VERIFIED — autogenerate now executes inside a CI gate; the topology change is DECIDED (Option A) and deliberately NOT APPLIED, because applying it would make a 1367-operation destructive diff actionable (NR-080)",
+      "status": "FIXED — VERIFIED 2026-09-19. All 310 resolve; sorted_tables succeeds on every registered metadata and the strict xfail that held it is removed. Applied 2026-09-19 (ADR-029). app/orm_topology.py holds one shared MetaData; the seven bases in the measured closure -- the five that declare cross-base foreign keys (CareContinuumBase 214, EHRBase 70, DataPlatformBase 13, TrustBase 8, IdentityBase 5) plus the two that own their targets (Base, NationalBase) -- are constructed against it. The closure reaches a fixed point at seven; the other eleven registered bases declare nothing across a base boundary and are untouched, which is what separates this from a naive merge of everything imported (app.insurance and app.national.task_engine stay out, per NR-018).  The autogenerate hazard did NOT disappear with the block -- it became deliberate. app.orm_topology.refuse_unreconciled_destructive_autogenerate, installed by migrations/env.py as process_revision_directives on BOTH the online and offline paths, raises on any revision containing a destructive operation and names the count, the kinds and the first ten targets. An additive diff passes through untouched; a destructive diff is refused WHOLE, never silently filtered. NR-080's budget is unchanged at 1367, and the guard lifts on its own as that drift is reconciled, with no change to itself.",
       "title": "310 foreign keys name a table their own declarative base does not own, and as a result `alembic revision --autogenerate` cannot run against this repository at all",
       "description": "NR-075 generalised, and it turns out to be a defect in the measuring instrument rather than in one endpoint. SQLAlchemy resolves a ForeignKey inside the MetaData that owns the REFERRING table. Measured across exactly what `migrations/env.py` hands Alembic, 310 foreign keys point at a table owned by a different declarative base: CareContinuumBase 214, EHRBase 70, DataPlatformBase 13, TrustBase 8, IdentityBase 5. The targets are real tables -- national_practitioners (78), national_patients (51), national_citizens (50), national_facilities (49), national_encounters (30) and 18 more -- owned by NationalBase and Base. CONSEQUENCE: Alembic reaches `MetaData.sorted_tables` on every registered metadata before it emits a single operation, and sorting resolves every foreign key. So `alembic revision --autogenerate -m \"anything\"` terminates with NoReferencedTableError and produces nothing. That is the command CLAUDE.md's migration policy names as the way to make any schema change ('All schema changes = new revision: alembic revision --autogenerate'), and it has no working path. WHY NOTHING CAUGHT IT: `test_alembic_metadata_registry.py` asks whether a foreign key names a table that exists SOMEWHERE across the registry -- PHANTOM_FK_TARGETS, currently empty -- which is one qualifier weaker than what SQLAlchemy requires. Every guard in that file reasons about what autogenerate WOULD propose, and not one of them has ever asked autogenerate to propose it. The capability was assumed by the guards that depend on it and exercised by none of them. EXPERIMENTAL RESOLUTION. Both options were measured against a disposable PostgreSQL 16.13 database migrated to head, rather than argued. OPTION B (keep separate metadata, drop the ORM-level ForeignKey, keep columns and physical constraints) removes nothing the ORM uses: NOT ONE of the 76 tables holding a cross-base FK carries a single relationship(), so there is no navigation to lose. It clears all 310 -- and then fails on a second, independent blocker: 'ValueError: Duplicate table keys across multiple MetaData objects: national_facilities'. Alembic refuses a multi-metadata target claiming one table twice, and NR-006's repair deliberately declares national_facilities a second time as a FOREIGN-KEY ANCHOR so seventeen app/national models can resolve it. The anchor is what makes those FKs work and what makes autogenerate refuse. Option B cannot hold both goals. OPTION A (one shared MetaData) was measured: exactly ONE duplicate table key -- that same anchor -- and the two definitions are COLUMN-IDENTICAL, so the collision is resolved by deleting one declaration rather than by choosing an owner; ZERO unresolved foreign keys; sorted_tables succeeds; autogenerate runs. Option A is the mechanically correct topology and the repository is one deleted Table away from it. IT IS DELIBERATELY NOT APPLIED. Making autogenerate run is not the same as making it usable: the resulting diff is 5039 operations of which 1367 are destructive, including DROP COLUMN on patients.national_id -- the column Security Invariant #8 requires to hold encrypted national identifiers (NR-080). Applying Option A today would replace a loud, honest failure ('autogenerate cannot run') with a quiet and dangerous capability ('autogenerate runs and proposes dropping your encrypted national IDs'). That is the same trade NR-076 refuses, in the same direction. THIS CORRECTS THIS FINDING'S OWN EARLIER FRAMING, which presented the topology choice as the decision to take: the topology is not the bottleneck, the drift is. WHAT IS APPLIED: backend/tests/test_autogenerate_is_safe.py performs the merge inside the gate, so autogenerate executes for real against a migrated PostgreSQL without migrations/env.py, any declarative base or any model changing -- zero runtime risk -- and pins every destructive proposal with its explanation.",
       "root_cause": "Domain packages were given their own declarative bases (NR-018 registered eight authorized ones) while their models kept declaring foreign keys to the shared national and legacy tables. The physical constraints exist because migrations create them by name; the ORM cannot see the targets.",
-      "evidence": "Executed: `alembic revision --autogenerate -m nr075_probe` against the migrated PostgreSQL 16.13 database (nr069_truth) fails with \"NoReferencedTableError: Foreign key associated with column 'ehr_allergies.citizen_id' could not find table 'national_citizens'\" and writes no revision file. `alembic.autogenerate.produce_migrations` fails at the same point, inside alembic/autogenerate/api.py::sorted_tables. Static: iterating the labelled target_metadata the checked-in harness loads from env.py and counting foreign keys whose `_table_key()` is absent from the referring table's own MetaData gives 310, distributed over the five bases above. Negative proofs, both restored byte-identical: removing one FK from CitizenRelationship fails the rot check with 'IdentityBase (5, 4)'; adding a cross-base FK to a PharmacyBase model fails the ratchet with \"['PharmacyBase']\". | EXPERIMENTAL EVIDENCE (disposable database nr078_probe, PostgreSQL 16.13, 423 tables at head): baseline autogenerate CRASHES with NoReferencedTableError on ehr_allergies. Option B removes 310 of 310 cross-base FK constraints from the metadata (leftover 0) and then CRASHES with ValueError duplicate table key national_facilities. Option A: 1 collision (national_facilities, identical_columns=true), 0 unresolved FKs, sorted_tables OK, autogenerate produces 5039 operations. Runtime relationship census: 218 relationships across 18 SQLAlchemy registries, of which 0 are on any of the 76 cross-base-FK tables. Physical cross-check: only 12 of the 310 cross-base FKs have an actual PostgreSQL constraint, and 70 of the 76 referring tables are not physical at all. The 12 that are real sit on trust_* (8), niam_assignments (2) and niam_citizen_relationships (2). Gate: 7 tests, 4 negative proofs, all sources restored byte-identical. (Re-measured 2026-09-16 against the migrated PostgreSQL probe at head 20260915_0003: 5039 operations, 1367 destructive -- 538 DropConstraintOp, 454 DropIndexOp, 365 DropColumnOp, 10 DropTableOp. All 21 operations between the earlier 5060/1379 and this figure have a named cause and sum to the delta exactly, with no remainder: DropColumnOp -12 and AlterColumnOp +12 are one change seen twice, NR-089 mapping twelve physical trust columns so they stopped being unmapped and became type mismatches instead; AddColumnOp 314 -> 293 is migrations 20260915_0001 (11 created_at/updated_at/version columns across six gov_* and two ecosystem_* tables) and 20260915_0002 (10 attestation columns on niam_machine_identities) building columns the ORM already declared.)",
+      "evidence": "Executed: `alembic revision --autogenerate -m nr075_probe` against the migrated PostgreSQL 16.13 database (nr069_truth) fails with \"NoReferencedTableError: Foreign key associated with column 'ehr_allergies.citizen_id' could not find table 'national_citizens'\" and writes no revision file. `alembic.autogenerate.produce_migrations` fails at the same point, inside alembic/autogenerate/api.py::sorted_tables. Static: iterating the labelled target_metadata the checked-in harness loads from env.py and counting foreign keys whose `_table_key()` is absent from the referring table's own MetaData gives 310, distributed over the five bases above. Negative proofs, both restored byte-identical: removing one FK from CitizenRelationship fails the rot check with 'IdentityBase (5, 4)'; adding a cross-base FK to a PharmacyBase model fails the ratchet with \"['PharmacyBase']\". | EXPERIMENTAL EVIDENCE (disposable database nr078_probe, PostgreSQL 16.13, 423 tables at head): baseline autogenerate CRASHES with NoReferencedTableError on ehr_allergies. Option B removes 310 of 310 cross-base FK constraints from the metadata (leftover 0) and then CRASHES with ValueError duplicate table key national_facilities. Option A: 1 collision (national_facilities, identical_columns=true), 0 unresolved FKs, sorted_tables OK, autogenerate produces 5039 operations. Runtime relationship census: 218 relationships across 18 SQLAlchemy registries, of which 0 are on any of the 76 cross-base-FK tables. Physical cross-check: only 12 of the 310 cross-base FKs have an actual PostgreSQL constraint, and 70 of the 76 referring tables are not physical at all. The 12 that are real sit on trust_* (8), niam_assignments (2) and niam_citizen_relationships (2). Gate: 7 tests, 4 negative proofs, all sources restored byte-identical. (Re-measured 2026-09-16 against the migrated PostgreSQL probe at head 20260915_0003: 5039 operations, 1367 destructive -- 538 DropConstraintOp, 454 DropIndexOp, 365 DropColumnOp, 10 DropTableOp. All 21 operations between the earlier 5060/1379 and this figure have a named cause and sum to the delta exactly, with no remainder: DropColumnOp -12 and AlterColumnOp +12 are one change seen twice, NR-089 mapping twelve physical trust columns so they stopped being unmapped and became type mismatches instead; AddColumnOp 314 -> 293 is migrations 20260915_0001 (11 created_at/updated_at/version columns across six gov_* and two ecosystem_* tables) and 20260915_0002 (10 attestation columns on niam_machine_identities) building columns the ORM already declared.)  || THE RECORDED ORDER OF OPERATIONS WAS INVERTED, AND THIS IS WHY. NR-078 said reconcile NR-080's drift first, then merge. That ordering rested on one fact -- merging makes autogenerate usable -- and so weighed a tooling risk against a tooling inconvenience. It was the wrong pair: NR-086 measured afterwards that the same 310 declarations were also 76 unwritable tables and six failing clinical write endpoints (POST /api/v1/trust/consent and /consent/{id}/withdraw among them). Reconciling ~365 unmapped columns first would have left consent capture broken for the duration, to protect against a command nobody could run. The two halves are separable, and separating them is the change. NR-006's national_facilities anchor is deleted: under one namespace it is redundant AND illegal, and the two definitions were column-identical, so this is a deletion, not a choice of owner. No DDL, no migration, no constraint or index renamed -- not one base carried a naming_convention.",
       "affected_components": "backend/migrations/env.py, app/care_continuum, app/ehr, app/national_data, app/trust, app/identity, and every future schema change",
       "affected_users": "Every engineer making a schema change; no runtime user directly",
       "clinical_impact": "None directly",
@@ -2680,13 +2710,15 @@
       "owner": "unassigned",
       "related_tests": "backend/tests/test_autogenerate_is_safe.py, backend/tests/test_alembic_metadata_registry.py",
       "related_files": "backend/migrations/env.py",
-      "related_adrs": "",
+      "related_adrs": [
+        "ADR-029"
+      ],
       "related_contracts": "",
       "wave": "Phase D",
       "complexity": "high",
       "can_fix_now": false,
       "blocker": true,
-      "evidence_strength": "executed against a real migrated PostgreSQL database, plus static enumeration, plus two negative proofs"
+      "evidence_strength": "EXECUTED"
     },
     {
       "id": "NR-079",
@@ -2732,7 +2764,7 @@
       "domain": "Platform-wide",
       "severity": "P1",
       "priority": 2,
-      "status": "MEASURED — first complete ORM-to-database comparison; ratcheted, not reconciled",
+      "status": "MEASURED — OPEN, and unchanged at 1367 destructive operations. What holds it changed on 2026-09-19: the accidental block (autogenerate could not start) became an explicit one. The autogenerate hazard did NOT disappear with the block -- it became deliberate. app.orm_topology.refuse_unreconciled_destructive_autogenerate, installed by migrations/env.py as process_revision_directives on BOTH the online and offline paths, raises on any revision containing a destructive operation and names the count, the kinds and the first ten targets. An additive diff passes through untouched; a destructive diff is refused WHOLE, never silently filtered. NR-080's budget is unchanged at 1367, and the guard lifts on its own as that drift is reconciled, with no change to itself. Until this is reconciled -- radiology ~231 columns and NHDW ~111 first, both blocked on a domain owner, then the five SNDHS Phase 1 columns on patients and lab_orders -- schema changes are hand-written with `alembic revision -m \"...\"`.",
       "title": "The first complete comparison of the ORM against the database proposes 5039 operations, 1367 of them destructive, including DROP COLUMN on patients.national_id",
       "description": "NR-078 established that `alembic revision --autogenerate` has never run against this repository. Making it run (Option A, inside a gate) produced the first complete ORM-to-database comparison the platform has ever had, and it is not small: 5039 operations, of which 538 DropConstraintOp, 454 DropIndexOp, 365 DropColumnOp and 10 DropTableOp -- 1367 destructive. None of it is caused by the topology change; the topology change only made pre-existing drift visible. TWO SAMPLES DECIDE HOW SERIOUS IT IS. (1) The 10 proposed DROP TABLE are EXACTLY the ten physical tables no ORM maps, independently pinned as UNMAPPED_PHYSICAL_TABLES in test_alembic_metadata_registry.py by subtracting mapped from physical -- a completely different derivation reaching the same list, which is strong evidence both instruments are correct. They are Financial Engine Phase A (schema-only by design), visits, sndhs_audit_logs, idempotency_keys and radiology_ai_analysis_jobs. (2) The proposed DROP COLUMN set includes patients.national_id, patients.sndhs_health_id, patients.identity_level, patients.consent_flags and lab_orders.visit_id -- the SNDHS Phase 1 surface. patients.national_id is varchar(20), carries four indexes including a partial unique index, and is the column CLAUDE.md Security Invariant #8 requires to hold encrypted national identifiers. app/models/patient.py maps national_id_hash and none of the others. CONSEQUENCE: autogenerate output may not be committed as a migration in this repository under any topology until this is reconciled. That is why NR-078's topology change is decided but not applied -- the capability is worth less than the hazard until the drift comes down. The largest single cluster is radiology (~170 columns across 12 tables), which is the NR-074 class at scale.",
       "root_cause": "Models were written from intent rather than from the physical schema, and nothing ever compared the two -- because the tool that would have done so could not start.",
@@ -2756,7 +2788,9 @@
       "owner": "unassigned",
       "related_tests": "backend/tests/test_autogenerate_is_safe.py",
       "related_files": "backend/tests/test_autogenerate_is_safe.py, app/models/patient.py",
-      "related_adrs": "",
+      "related_adrs": [
+        "ADR-029"
+      ],
       "related_contracts": "",
       "wave": "NR-078 remediation",
       "complexity": "high",
@@ -3044,11 +3078,11 @@
       "domain": "platform-wide ORM write path; live instance in app/trust",
       "severity": "P1",
       "priority": 2,
-      "status": "MEASURED AND GUARDED — 76 tables pinned and ratcheted; the topology repair that empties it is NR-078",
+      "status": "FIXED — VERIFIED 2026-09-19. 76 unwritable mapped tables -> 0; 310 unresolvable foreign keys -> 0. Applied 2026-09-19 (ADR-029). app/orm_topology.py holds one shared MetaData; the seven bases in the measured closure -- the five that declare cross-base foreign keys (CareContinuumBase 214, EHRBase 70, DataPlatformBase 13, TrustBase 8, IdentityBase 5) plus the two that own their targets (Base, NationalBase) -- are constructed against it. The closure reaches a fixed point at seven; the other eleven registered bases declare nothing across a base boundary and are untouched, which is what separates this from a naive merge of everything imported (app.insurance and app.national.task_engine stay out, per NR-018).",
       "title": "76 mapped tables cannot be written through the ORM at all: their foreign keys target another MetaData, so every INSERT and UPDATE raises before emitting SQL",
       "description": "SQLAlchemy resolves every ForeignKey target while sorting a mapper's tables during flush. A target in a different MetaData cannot be found, so the write raises NoReferencedTableError before any SQL is emitted. Reads are unaffected, which is exactly why this hides: SELECT never sorts tables, so the table looks healthy to the readability guard (NR-083), to every migration check, and to any route that only lists. Asking which mappers resolve every target inside their own MetaData gives 76 tables carrying 310 unresolvable foreign keys: CareContinuumBase 45, EHRBase 16, DataPlatformBase 9, TrustBase 4, IdentityBase 2.",
       "root_cause": "The same declarative-base topology NR-078 documents. NR-078 measured 310 cross-base foreign keys across 76 tables and recorded them as a TOPOLOGY problem — the thing that stops alembic autogenerate running. They are also 76 tables no ORM write can reach, and that consequence had not been stated. NR-075 recorded one instance (niam_citizen_relationships) as a runtime write failure without connecting it to the population.",
-      "evidence": "Executed: Session + real model instance + flush against PostgreSQL 16 at head. session.add(ConsentRecord(...)); session.flush() -> NoReferencedTableError: Foreign key associated with column 'trust_consent_records.guardian_id' could not find table 'lab_users'. The ORM UPDATE path fails identically: loading an existing row succeeds and returns <ConsentStatus.GRANTED: 'granted'>, then mutating and flushing raises. Operation matrix over the trust base: trust_consent_records, trust_service_logs, trust_compliance_checks and trust_compliance_evidence all give ORM SELECT OK / ORM INSERT NoReferencedTableError; trust_sovereignty_rules, which carries no cross-base FK, gives OK / OK. Platform-wide count 76 tables / 310 FKs is independently equal to NR-078's separately measured cross-base FK population — two derivations, one by Alembic topology and one by asking each mapper to resolve its own targets, agreeing exactly.",
+      "evidence": "Executed: Session + real model instance + flush against PostgreSQL 16 at head. session.add(ConsentRecord(...)); session.flush() -> NoReferencedTableError: Foreign key associated with column 'trust_consent_records.guardian_id' could not find table 'lab_users'. The ORM UPDATE path fails identically: loading an existing row succeeds and returns <ConsentStatus.GRANTED: 'granted'>, then mutating and flushing raises. Operation matrix over the trust base: trust_consent_records, trust_service_logs, trust_compliance_checks and trust_compliance_evidence all give ORM SELECT OK / ORM INSERT NoReferencedTableError; trust_sovereignty_rules, which carries no cross-base FK, gives OK / OK. Platform-wide count 76 tables / 310 FKs is independently equal to NR-078's separately measured cross-base FK population — two derivations, one by Alembic topology and one by asking each mapper to resolve its own targets, agreeing exactly.  || AFTER (2026-09-19): the same flush now succeeds. ConsentRecord INSERT, then UPDATE, then COMMIT, against a SQLite schema built from the shared MetaData -- pinned as test_mapped_tables_are_writable.py::test_the_repaired_write_path_actually_writes, the behavioural half beside the static ledger. Registry re-measured: 715 distinct mapped tables, 715 writable, 0 unwritable, 0 unresolved foreign keys across all 18 registered labels. Backend suite: 3321 passed; the only two failures were this repair's own designed signals (the duplicate-table-key ledger, and NR-146's blocked-proof marker), both then closed. DECLARED_UNWRITABLE is now empty and stays as the ratchet: the next mapper to declare a foreign key across a base boundary fails test_no_undeclared_table_is_unwritable with the table named.",
       "affected_components": [
         "CareContinuumBase (45 tables)",
         "EHRBase (16)",
@@ -3089,6 +3123,7 @@
         "backend/migrations/env.py"
       ],
       "related_adrs": [
+        "ADR-029",
         "docs/architecture/NR-078-autogenerate-cannot-run.md",
         "docs/architecture/NR-083-mappers-that-cannot-read.md"
       ],
@@ -3097,7 +3132,7 @@
       "complexity": "L",
       "can_fix_now": false,
       "blocker": "NR-078's topology change, which is itself blocked on the NR-080 drift reconciliation.",
-      "evidence_strength": "EXECUTED — real Session, real model instance, real flush against PostgreSQL 16 at migration head; plus a static registry walk cross-checked against NR-078's independent count"
+      "evidence_strength": "EXECUTED"
     },
     {
       "id": "NR-087",
@@ -5070,7 +5105,7 @@
       "domain": "app/care_continuum + app/services/care_continuum_service.py",
       "severity": "P1",
       "priority": 146,
-      "status": "FIXED 2026-09-19, and LATENT not live -- no migration builds these tables, so nothing here was reachable. Regression: backend/tests/test_care_continuum_tenant_scope.py (22 tests). Behavioural proof is BLOCKED by NR-086 and that blocker is asserted, not omitted.",
+      "status": "FIXED 2026-09-19, BEHAVIOURALLY PROVED 2026-09-19, and still LATENT not live -- no migration builds these tables, so nothing here was reachable; test_z_this_domain_is_still_unbuilt pins that. The blocker is gone: NR-086 gave the bases one shared MetaData, so the cc_* tables build and the two-lab suite the blocked test promised is written. Regression: backend/tests/test_care_continuum_tenant_scope.py (25 tests), including test_y1..y4 -- both directions of isolation, a hostile request body losing to the server-derived tenant, and the null-tenant convention asserted rather than left implicit. Negative-proved: neutering _apply_lab_filter fails y1 and y3; restoring PrimaryCareEncounter(**data) fails y2; the service was restored byte-identical after each.",
       "title": "Ten care-continuum paths let one laboratory read and drive another's clinical records",
       "description": "Found by reading the three NR-107 ASSIGNABLE sites that sit in a route module.\n\ncare_continuum_service.py already had the primitive -- `_apply_lab_filter(query, model, lab_id)` -- and the entire `list_*` family used it correctly. A full audit of the module (96 tenant-touching functions) found 23 correct and 73 not. The nine single-object reads and mutations were repaired here:\n\n  * get_primary_care_encounter, get_care_journey, get_pregnancy_record, get_referral_timeline, get_referral_analytics -- took no tenant at all and fetched by id alone.\n  * accept_referral and detect_care_gaps -- ACCEPTED lab_id and never read it. That is the worst of the three shapes: the route passes _lab_id(current_user), so the code reads as correct at exactly the place a reviewer looks.\n  * reject_referral and complete_referral -- had neither, so one lab could drive another lab's referral through its whole lifecycle.\n\ncreate_primary_care_encounter took lab_id and built PrimaryCareEncounter(**data), so the encounter's owner came from the request body while the caller's real tenant was discarded. The server-derived value now wins.\n\nThe tenth is in the route module. api_update_primary_care_encounter is the only handler in the file that queries a model directly instead of calling the service, and it lost the tenant twice: no lab_id on the lookup, and an exclusion tuple that guarded id, created_at, updated_at and is_deleted while leaving lab_id assignable -- so a request body could MOVE an encounter into another laboratory.\n\nWHY THIS IS LATENT AND SAYS SO. No migration creates cc_primary_care_encounters, cc_referral_requests or cc_care_journeys, so the whole surface 500s against a migrated database and none of these holes is reachable today. They are repaired now because they become live the moment the domain is built and because the repair uses a primitive the module already had. test_z_this_domain_is_still_unbuilt pins that state: if a migration ever builds these tables, it fails and the finding is re-read as live.\n\nWHAT COULD NOT BE PROVED, AND WHY IT IS STATED. The two-lab behavioural suite this deserves cannot run: cc_primary_care_encounters.practitioner_id and cc_care_journeys.care_coordinator_id point at national_practitioners, which is not in CareContinuumBase.metadata, so the ORM cannot build or map them. That is NR-086. test_y asserts that failure with pytest.raises so the limit is measured rather than hidden, and it fails -- prompting the real suite -- when NR-078's topology repair lands.",
       "evidence": [
@@ -5084,7 +5119,11 @@
       "tests": [
         "backend/tests/test_care_continuum_tenant_scope.py (22 tests). Negative proof: against the pre-fix source 17 guards fail, and critically test_k fails for accept_referral and detect_care_gaps while test_j passes for them -- the signature was already there and the body ignored it, which a signature check alone would have blessed."
       ],
-      "generated": "2026-09-19"
+      "generated": "2026-09-19",
+      "related_adrs": [
+        "ADR-029"
+      ],
+      "evidence_strength": "EXECUTED"
     },
     {
       "id": "NR-147",

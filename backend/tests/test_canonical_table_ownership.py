@@ -124,30 +124,32 @@ def test_national_facilities_has_exactly_one_orm_owner() -> None:
     )
 
 
-def test_the_national_facilities_anchor_mirrors_the_canonical_model() -> None:
-    """The half a static scan cannot check.
+def test_the_national_facilities_anchor_is_gone_and_its_dependents_still_resolve() -> None:
+    """The invariant that replaced the anchor, and the one it was standing in for.
 
-    `NationalBase.metadata` still has to carry `national_facilities`, because
-    fourteen tables in it hold a foreign key to that id and would not resolve
-    otherwise. Declaring it as a bare `Table` is what keeps them resolvable
-    without a second mapper -- but a bare table can drift from the canonical
-    model exactly as the old mapper had, and silently, since nothing imports it.
+    NR-006 gave `NationalBase.metadata` a bare `Table` copy of
+    `national_facilities`, because fourteen-plus tables in it hold a foreign key
+    to that id and SQLAlchemy resolves a foreign key inside the MetaData owning
+    the *referring* table. A bare copy could drift from the canonical model
+    silently, so this test used to compare them column for column.
 
-    So: same columns, same order, and `create_all` builds them. That last point
-    is what actually failed before -- three test modules build this metadata
-    directly, so the suite was creating a `national_facilities` shape that no
-    migration produces.
+    NR-086 removed the reason for the copy: `NationalBase` and `Base` share one
+    MetaData, so those foreign keys resolve against `NationalFacility` itself.
+    There is nothing left to drift *from*, and the assertion worth making is the
+    stronger one — one definition, and every dependent still finding it.
     """
-    import app.national.domain  # imported for its side effect: registers the anchor
+    import app.national.domain  # imported for its side effect: registers the models
     import sqlalchemy as sa
     from app.models.clinical_scope import NationalFacility
     from app.national.base import NationalBase
 
-    anchor = NationalBase.metadata.tables["national_facilities"]
-    canonical = [c.name for c in NationalFacility.__table__.columns]
-    assert [c.name for c in anchor.columns] == canonical, (
-        "the national_facilities foreign-key anchor has drifted from its "
-        "canonical model; queries through NationalFacility are what is real"
+    registered = NationalBase.metadata.tables["national_facilities"]
+    assert registered is NationalFacility.__table__, (
+        "national_facilities has two Table objects again; the NR-006 anchor or "
+        "another copy has come back, and the copy can drift from the model"
+    )
+    assert app.national.domain.national_facilities is NationalFacility.__table__, (
+        "app.national.domain re-exports a different table than the canonical model"
     )
 
     dependents = {
@@ -157,14 +159,18 @@ def test_the_national_facilities_anchor_mirrors_the_canonical_model() -> None:
         if fk.column.table.name == "national_facilities"
     }
     assert len(dependents) >= 14, (
-        "the anchor exists for these foreign keys; finding almost none means "
-        f"the package stopped registering, not that the need went away: {sorted(dependents)}"
+        "these foreign keys are why the anchor existed; finding almost none "
+        f"means the package stopped registering, not that they resolved: {sorted(dependents)}"
     )
 
+    canonical = [c.name for c in NationalFacility.__table__.columns]
     engine = sa.create_engine("sqlite://")
-    NationalBase.metadata.create_all(engine)
-    with engine.connect() as conn:
-        built = [r[1] for r in conn.exec_driver_sql("PRAGMA table_info(national_facilities)")]
+    try:
+        NationalBase.metadata.create_all(engine, tables=[registered], checkfirst=True)
+        with engine.connect() as conn:
+            built = [r[1] for r in conn.exec_driver_sql("PRAGMA table_info(national_facilities)")]
+    finally:
+        engine.dispose()
     assert built == canonical, (
         f"create_all built a table the migration does not produce: {built}"
     )
