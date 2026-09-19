@@ -55,7 +55,6 @@ from ...schemas.test_result import (
     TestResultRead,
     TestResultValidateRequest,
     TestResultValidateResponse,
-    TestResultVerifyRequest,
     TimelinePoint,
     TimelineSeries,
     ValidationWarning,
@@ -466,11 +465,19 @@ def get_test_result(
 @router.put("/{result_id}/verify", response_model=TestResultRead)
 def verify_test_result(
     result_id: UUID,
-    payload: TestResultVerifyRequest,
     request: Request,
     db: Session = Depends(get_db),
     role: str = Depends(_clinical_staff),
 ) -> TestResultRead:
+    """Mark a result verified. The verifier is the caller, not a field.
+
+    The request body used to name the verifying clinician (verified_by), so
+    the attestation recorded against a clinical result was a client-supplied
+    string — anyone permitted to call this endpoint at all could attribute
+    the verification to any name they typed. It is now taken from the
+    trusted context, exactly as create_test_result's lab scope is above: a
+    body sent by an old client is ignored rather than trusted.
+    """
     row = _require_result(db, result_id)
 
     if row.status == ResultStatus.verified:
@@ -485,7 +492,7 @@ def verify_test_result(
         )
 
     row.status = ResultStatus.verified
-    row.verified_by = payload.verified_by
+    row.verified_by = current_context(request).actor_id
     row.verified_at = datetime.now(UTC)
 
     log_action(
@@ -495,7 +502,7 @@ def verify_test_result(
         target_id=str(row.id),
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"verified_by": payload.verified_by, "role": role},
+        metadata={"verified_by": row.verified_by, "role": role},
     )
     db.commit()
     db.refresh(row)

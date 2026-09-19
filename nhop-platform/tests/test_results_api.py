@@ -174,8 +174,10 @@ def test_get_unknown_result_is_404(app_client, admin_headers):
 
 
 def test_verify_result_transitions_status_once(
-    app_client, make_citizen, make_lab, make_result, admin_headers
+    app_client, make_citizen, make_lab, make_result
 ):
+    """verified_by is server-derived from the trusted context (the actor id),
+    not a client-supplied field — the body carries nothing."""
     client, Session = app_client
     with Session() as s:
         citizen = make_citizen(s, health_id="HID-R4")
@@ -183,10 +185,11 @@ def test_verify_result_transitions_status_once(
         row = make_result(s, citizen_id=citizen.id, lab_id=lab.id)
         result_id = str(row.id)
 
+    verifier_headers = {"X-Role": "ADMIN", "X-Actor-Id": "dr-001"}
     resp = client.put(
         f"/v1/test-results/{result_id}/verify",
-        json={"verified_by": "dr-001"},
-        headers=admin_headers,
+        json={},
+        headers=verifier_headers,
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -195,8 +198,8 @@ def test_verify_result_transitions_status_once(
 
     again = client.put(
         f"/v1/test-results/{result_id}/verify",
-        json={"verified_by": "dr-002"},
-        headers=admin_headers,
+        json={},
+        headers={"X-Role": "ADMIN", "X-Actor-Id": "dr-002"},
     )
     assert again.status_code == 409
 
