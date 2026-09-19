@@ -718,3 +718,82 @@ class TestDeviceIngestionIdempotence:
             "receive_device_results no longer routes its sample.status "
             "mutation through the canonical domain/sample_state.py guard"
         )
+
+
+# ─── Phase 3.I — Device ingestion CAS (Imaging-slice prep: Sample.version) ──
+
+
+class TestDeviceIngestionRace:
+    """receive_device_results used to write `sample.status = "analyzed"`
+    and `order.status = "completed"` as plain ORM attribute assignments —
+    no CAS at all, unlike every other order/sample mutation in this
+    codebase. A concurrent cancel of the same (still-pending, not yet
+    locked) order racing between receive_device_results's sequential
+    enforce_transition check and its commit would have been silently
+    overwritten back to "completed" by the device submission. Fixed by
+    making both writes atomic, reusing LabOrder's existing locked_at/
+    version columns and Sample.status as its own CAS token — the same
+    investigation that resolved lab-slice-sample-version-column (see
+    MUSTAFA_ACTIVE_REPAIR_QUEUE.md): no new column was needed here either.
+    """
+
+    def test_device_submission_loses_race_to_concurrent_cancel(
+        self, client, db, lab_with_completed_order, monkeypatch,
+    ):
+        import app.domain.order_state as order_state_module
+
+        lab = lab_with_completed_order["lab"]
+        admin1 = lab_with_completed_order["admin1"]
+        admin2 = lab_with_completed_order["admin2"]
+        patient = lab_with_completed_order["patient"]
+
+        pending_order = LabOrder(lab_id=lab.id, patient_id=patient.id, status="pending")
+        db.add(pending_order)
+        db.flush()
+        sample = Sample(order_id=pending_order.id, sample_type="blood",
+                        barcode="BC-DEVICE-RACE-001", status="collected")
+        db.add(sample)
+        db.commit()
+
+        real_enforce_transition = order_state_module.enforce_transition
+        triggered = {"done": False}
+
+        def racing_enforce_transition(current, target):
+            if current == "pending" and target == "completed" and not triggered["done"]:
+                triggered["done"] = True
+                # A concurrent cancel wins the race in the gap between
+                # receive_device_results' sequential check and its commit.
+                won = client.post(
+                    f"/orders/{pending_order.id}/cancel",
+                    headers=_hdr(admin2.id, lab.id),
+                )
+                assert won.status_code == 200, "setup: concurrent cancel must win the race"
+            return real_enforce_transition(current, target)
+
+        monkeypatch.setattr(order_state_module, "enforce_transition", racing_enforce_transition)
+
+        from app.models.lab_result import LabResult
+
+        payload = {
+            "barcode": "BC-DEVICE-RACE-001",
+            "device_id": "ANALYZER-1",
+            "results": [{"test_name": "Sodium", "value": 140.0, "unit": "mmol/L"}],
+        }
+        res = client.post("/device/results", headers=_hdr(admin1.id, lab.id), json=payload)
+        assert res.status_code == 409, (
+            f"a device submission racing a concurrent cancel must be refused, "
+            f"got {res.status_code}: {res.text}"
+        )
+
+        db.expire_all()
+        order_db = db.query(LabOrder).filter(LabOrder.id == pending_order.id).first()
+        assert order_db.status == "cancelled", (
+            "the winning cancel must not be overwritten by the losing device submission"
+        )
+        sample_db = db.query(Sample).filter(Sample.barcode == "BC-DEVICE-RACE-001").first()
+        assert sample_db.status == "collected", (
+            "the losing device submission must not have applied its sample update"
+        )
+        assert db.query(LabResult).filter(LabResult.order_id == pending_order.id).count() == 0, (
+            "the losing device submission must not have created LabResult rows"
+        )
