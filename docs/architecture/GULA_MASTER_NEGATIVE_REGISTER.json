@@ -5,9 +5,9 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 134,
+    "total": 135,
     "P0": 21,
-    "P1": 66,
+    "P1": 67,
     "P2": 35,
     "P3": 12
   },
@@ -4866,6 +4866,19 @@
         "backend/tests/test_dev_origin_allowlist.py::test_the_fallback_is_development_only",
         "frontend-v3/e2e/live-backend.spec.ts (4 tests, GULA_LIVE_BACKEND=1)"
       ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-135",
+      "category": "Identity / Canonical token split",
+      "domain": "backend + frontend-v3",
+      "severity": "P1",
+      "priority": 135,
+      "status": "OPEN — STOP CONDITION. Registered 2026-09-19, deliberately NOT fixed: closing it changes canonical identity semantics, which is an explicit architectural decision. AUTH-002 already produced the Option A / Option B comparison and a migration strategy; this finding is the measured runtime consequence of the split, not a new proposal.",
+      "title": "No user who logs in through the frontend can read patients or orders through the frontend",
+      "description": "MEASURED end to end against a running backend and a real session.\\n\\nfrontend-v3 reads clinical data through exactly one sanctioned path. src/api/workspaceScopedReads.ts sets DIRECT_REST_SCOPED_READS_BLOCKED = true and states that the legacy /patients and /lims/orders surfaces are 'blocked forever for frontend-v3'; reads may use only /api/v1/clinical/patients and /api/v1/clinical/orders.\\n\\nThose two routes ARE served (confirmed in the OpenAPI document) and correctly answer 401 unauthenticated. But they are guarded by get_current_niam_actor_sync (app/clinical_gateway/routes.py:187,218), which requires a NIAM token: a payload carrying account_uuid and jti, matched against a niam_sessions row joined to niam_accounts (app/identity/api/workspaces.py:35-80).\\n\\nPOST /login mints a LEGACY token. Decoded, a real one carries exactly:\\n    act, exp, iat, jti, lab_id, perm_ver, role, type, user_id\\nIt fails the gateway on BOTH counts, independently:\\n  1. account_uuid is absent from the claims entirely.\\n  2. niam_sessions rows matching that token's jti: 0. Logging in does not      create a NIAM session row, so even a token carrying the claim would      find nothing to join to.\\nResult, reproduced with a freshly registered and activated tenant:\\n    GET /api/v1/clinical/patients -> 401 'Invalid NIAM access token'\\n    GET /api/v1/clinical/orders   -> 401 'Invalid NIAM access token'\\n\\nSo the platform's primary clinical read surface is unreachable by any session the platform's only login path can mint. The workspace cannot show a patient or an order to a real user, ever.\\n\\nWHY THIS LOOKS LIKE SOMETHING ELSE. workspaceScopedReads.ts maps 401 to the reason 'missing_workspace' and the message 'لا تملك جلسة أو صلاحية قراءة'. The page renders 'قراءة المرضى غير متاحة لهذه الجلسة' -- 'patient reading is not available for this session' -- and e2e/patients.spec.ts asserts that text under the name 'blocks direct patient reads until server enforcement is proven'. That reads as a deliberate governance gate awaiting a server-side control. It is not. The control exists and is sound; the session simply cannot authenticate to it. A capability gap is wearing the costume of a safety decision, which is why it has survived: every test that touches it asserts the blocked state is present.\\n\\nNOT A SECURITY DEFECT. It fails closed with 401 and no data is exposed. The gateway's envelope contract is well built -- it pins contract_version, requires a workspace context, and explicitly rejects phone, national_id and lab_id from patient records. Nothing here should be weakened to make the read work.\\n\\nWHY IT IS NOT FIXED HERE. Any repair picks a canonical identity: mint NIAM claims from /login, create a niam_sessions row at login, bridge legacy tokens to NIAM accounts, or move the gateway onto the legacy actor. Each is a different answer to 'which identity system is canonical', each has migration and audit consequences for existing sessions, and AUTH-002 already analysed the options. Choosing one autonomously is precisely the change this work is not authorised to make.",
+      "evidence": "app/clinical_gateway/routes.py:187,218 (get_current_niam_actor_sync); app/identity/api/workspaces.py:35-80 (account_uuid + jti + niam_sessions join); frontend-v3/src/api/workspaceScopedReads.ts (DIRECT_REST_SCOPED_READS_BLOCKED, SCOPED_READ_CONTRACTS, mapGatewayError 401 -> missing_workspace); frontend-v3/e2e/patients.spec.ts; decoded /login claims lack account_uuid; niam_sessions rows for that jti = 0",
+      "tests": [],
       "generated": "2026-09-19"
     }
   ]
