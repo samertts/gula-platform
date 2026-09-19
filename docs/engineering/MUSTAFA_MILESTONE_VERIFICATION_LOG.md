@@ -376,3 +376,38 @@ level — noted for later). Two pre-existing, low-severity, non-security
 completeness gaps (unregistered `doctor.py`/`outbreak.py`) surfaced
 during verification, unrelated to this milestone's own changes to those
 files.
+
+## F5: FIXED on `claude/mustafa-parallel-engineering` (explicitly authorized)
+
+A subsequent user directive explicitly superseded the earlier "do not
+fix F5 on this branch" instruction for this finding specifically ("F5 IS
+NOW AUTHORIZED FOR IMPLEMENTATION"). Before touching anything, re-checked
+Abu Ali's HEAD (still `eb01668b` — unmoved) and confirmed his
+`112b2821..eb01668b` diff never touched `backend/app/security/rbac.py`
+or `backend/app/routes/admin.py`, so the defect and proposed fix from
+the handoff addendum above still apply unchanged. Then read this
+branch's own (independently-forked) copy of both files directly —
+`can_manage_user()` had the identical fallthrough bug, and
+`require_own_lab()` existed in the same file as the canonical
+lab-scoping pattern to reuse.
+
+**Fix**: `can_manage_user()` in `backend/app/security/rbac.py` now
+checks `actor.lab_id == target_user.lab_id` for every role other than
+the three platform-wide roles (`master_admin`, `ministry_admin`) and
+`province_admin` (which keeps its pre-existing province check). This
+mirrors `require_own_lab()`'s existing platform-roles-bypass +
+lab_id-equality pattern rather than inventing a second mechanism; no new
+RBAC system, no new identity context, no per-route patching. Full
+detail, the property-by-property test list (A–J), and the
+negative-proof cycle are recorded in
+`docs/engineering/MUSTAFA_ACTIVE_REPAIR_QUEUE.md` (the queue tracking
+file this directive asked to be maintained) rather than duplicated here.
+
+**Verdict: VERIFIED** (self-verified, since I am both author and
+verifier for this fix — flagged as such, not claimed as independent
+verification). 8/8 new tests pass with the fix; the same 8 tests, run
+against the pre-fix code via a temporary `git stash`, fail exactly on
+the cross-lab properties (B, D/E/F, H, J) and pass on the same-lab/
+authenticated ones (A, C, G, I); 127 pre-existing tests in
+`test_abac.py`, `test_tenant_isolation_matrix.py`, `test_security.py`,
+and `test_feature_flags.py` are unaffected.
