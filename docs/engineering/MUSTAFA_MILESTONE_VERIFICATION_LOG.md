@@ -136,3 +136,137 @@ outside what this milestone set out to fix.
 
 **FAILED (partial)** — the milestone's own admin.py tenant-scope fix is
 incomplete (F5, new P0). Every other change in the range: **VERIFIED**.
+
+---
+
+## F5 handoff addendum: caller audit + canonical control proposal
+
+Scoped narrowly to reachable consumers of
+`backend/app/security/rbac.py::can_manage_user()` — not a repository
+scan. Method: `grep -rn "can_manage_user" backend/` in the same isolated,
+detached worktree at `112b2821` used for the original proof (removed
+after use, as before).
+
+### Affected callers (exhaustive for this function — confirmed, not assumed)
+
+```
+backend/app/routes/admin.py:33   import
+backend/app/routes/admin.py:860  if not can_manage_user(actor, target):   <- change_user_role
+backend/app/routes/admin.py:912  if not can_manage_user(actor, target):   <- toggle_user
+```
+
+No other call site exists anywhere in `backend/`: no attribute-style call
+(`rbac.can_manage_user(...)`), no re-export of `admin.py`'s import
+consumed elsewhere, no second module importing `can_manage_user`
+directly from `backend/app/security/rbac.py`. **The two routes already
+identified are the complete set of reachable consumers** — confirmed by
+grep, not assumed from the original two-route reading.
+
+### Exact authorization defect (unchanged from prior entry, restated for this handoff)
+
+```python
+def can_manage_user(actor, target_user) -> bool:
+    if not can_manage_role(actor.role, target_user.role):
+        return False
+    if actor.role == "province_admin":
+        return actor.province_id == target_user.province_id
+    return True   # tenant-level admin/lab_admin: no lab_id comparison at all
+```
+
+Role-hierarchy is checked (`can_manage_role`); object-level tenancy is
+checked for exactly one role (`province_admin`, by province); every other
+role that clears the hierarchy check — including the tenant-level
+`admin`/`lab_admin` both affected routes are reachable by — is granted
+authority with no comparison to the target's own lab/organization at all.
+
+### Runtime proof (re-run clean for this handoff, same result)
+
+```python
+from types import SimpleNamespace
+from backend.app.security.rbac import can_manage_user
+actor  = SimpleNamespace(role='admin', lab_id=1, province_id=5, id=100)
+target = SimpleNamespace(role='doctor', lab_id=2, province_id=9, id=200)
+can_manage_user(actor, target)  # -> True
+```
+No DB, no HTTP layer, no mocking of anything security-relevant — the
+actual committed function, called directly, on plain attribute-bearing
+objects, against `112b2821`.
+
+### Proposed canonical control boundary — reuse, not build
+
+`backend/app/security/rbac.py` already defines the primitive this needs,
+in the same file, already used elsewhere in the codebase:
+
+```python
+def require_own_lab(current_user, resource_lab_id: int) -> None:
+    platform_roles = {"master_admin", "ministry_admin", "province_admin"}
+    if current_user.role in platform_roles:
+        return
+    if getattr(current_user, "lab_id", None) != resource_lab_id:
+        raise HTTPException(403, {"error": "cross_lab_access_denied", ...})
+```
+
+Confirmed live callers of `require_own_lab` today:
+`backend/app/services/mpi/api.py`, `backend/app/security/consent_dep.py`
+— this is already the platform's established pattern for "does this actor
+have authority over this lab_id," not a proposal invented for this
+finding. The gap is that `can_manage_user`'s fallthrough branch (every
+role except `province_admin`) never calls it, or any equivalent.
+
+This satisfies the seven required properties without a second
+implementation:
+1. Actor identity — already trusted server-side context at the point
+   `can_manage_user` is called (`actor` is the `require_manage_users`
+   dependency's resolved `LabUser`, not request data).
+2. Actor lab membership — `actor.lab_id`, already on that same trusted
+   object.
+3. Target's lab — `target_user.lab_id`, loaded server-side by the route
+   before `can_manage_user` is called (not client-supplied — the request
+   only supplies `user_id`/`role`, never `lab_id`, for these two routes).
+4. Scope comparison — exactly `require_own_lab`'s existing equality
+   check.
+5. Explicit privilege ceiling — `can_manage_role` already provides this
+   for role hierarchy; extending the same fallthrough branch with
+   `require_own_lab`-equivalent logic adds the object-scope ceiling
+   alongside it, not instead of it.
+6. Denial before mutation — `can_manage_user` is already called before
+   any mutation in both routes; a corrected boolean/exception result
+   naturally denies before `target.is_active`/`target.role` is touched.
+7. No session invalidation on denial — both routes already call
+   `bump_perm_version` only after their `can_manage_user` check passes;
+   a stricter `can_manage_user` closes the gap without touching that
+   ordering.
+
+**Per the architectural rule given: this is not "add a lab_id check to
+each route."** Both call sites already funnel through the one shared
+function; the fix belongs entirely inside `can_manage_user` (or a
+canonical replacement it calls), so both routes — and any future
+consumer — inherit the correction from one place. No source change made
+here; this is the shape of the fix, not the fix.
+
+### Tests required for closure (proofs A–H, as specified)
+
+All eight need a caller with real `lab_id`/`province_id`/`role` values
+and a target with a different lab/province, exercised through the actual
+HTTP routes (not just the bare function) so the "denial before mutation"
+and "no session invalidation on denial" properties are checked at the
+system level, not just inferred from reading the function:
+
+| # | Proof | Setup | Assert |
+|---|---|---|---|
+| A | Lab A admin → Lab A user toggle | actor.lab_id == target.lab_id | `PUT .../toggle` succeeds; `target.is_active` flips |
+| B | Lab A admin → Lab B user toggle | actor.lab_id != target.lab_id | `403`; `target.is_active` unchanged (re-fetch and compare) |
+| C | Lab A admin → Lab A user role change | same lab, role below actor's level | `PATCH .../role` succeeds; `target.role` updated |
+| D | Lab A admin → Lab B user role change | different lab | `403`; `target.role` unchanged |
+| E | (D) target role unchanged | re-fetch target after the denied call | `target.role == old_role` exactly |
+| F | (D) target sessions unchanged | capture target's `perm_version` (or issue a real token) before the denied call | unchanged after; a token issued before the denied call is still valid after it |
+| G | province_admin → lab outside their province | actor.role == 'province_admin', target's lab has no `LabUser` row with matching `province_id` | `403`, matching the existing (already-correct) `province_admin` branch — regression guard that fixing the fallthrough branch doesn't loosen this one |
+| H | client-supplied lab/org id cannot expand authority | attempt to pass a `lab_id`/`org_id` field in the request body for either route (neither currently accepts one) | request is rejected or the field is ignored — the target's lab must always be loaded server-side from `target_user.lab_id`, never taken from the request |
+
+E and F are the two properties this finding's own evidence shows are
+currently unverified anywhere (no existing test exercises them for
+`toggle_user`/`change_user_role`) — they are the closure bar, not
+optional extras.
+
+**Scope held to:** confirmed callers of `can_manage_user` only (2, both
+in `admin.py`). No other file searched or modified.
