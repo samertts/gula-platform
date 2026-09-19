@@ -21,6 +21,7 @@ from sqlalchemy import and_, asc, desc
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
+from ...core.rbac import Role
 from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab import Lab
@@ -170,6 +171,38 @@ def validate_payload(payload: TestResultValidateRequest) -> TestResultValidateRe
 
 # ─── POST /test-results/ ────────────────────────────────────────────────────
 
+#: Roles whose authority is national rather than confined to one laboratory.
+#: They are the only callers that may file a result for a lab they are not.
+_CROSS_TENANT_ROLES = frozenset({Role.ADMIN.value, Role.MINISTRY.value})
+
+
+def _require_lab_scope(request: Request, lab_id: UUID) -> None:
+    """NR-092/F2. The caller must BE the laboratory it is filing a result for.
+
+    create_test_result took lab_id from the request BODY and checked only that
+    such a lab existed and was active. Nothing established that the caller was
+    that laboratory, so a result could be filed against any real lab, for any
+    citizen, and would be indistinguishable downstream from a genuine one.
+
+    The tenant comes from the server-established context and nothing else. A
+    client cannot present a lab_id, a role or an actor id and have any of them
+    widen its scope: the body's lab_id is the RESOURCE being claimed, and this
+    compares it against the caller's own tenant rather than trusting it.
+
+    National roles keep their existing reach. Every other caller must match
+    exactly, and a caller carrying no laboratory at all matches nothing --
+    `None == None` is not "the same lab".
+    """
+    context = current_context(request)
+    if context.role in _CROSS_TENANT_ROLES:
+        return
+    if context.lab_id is None or str(context.lab_id) != str(lab_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="لا يمكن تسجيل نتيجة باسم مختبر آخر.",
+        )
+
+
 @router.post(
     "/",
     response_model=TestResultRead,
@@ -180,6 +213,11 @@ def create_test_result(
     request: Request,
     db: Session = Depends(get_db),
 ) -> TestResultRead:
+    # Authorization BEFORE any lookup: a caller that may not act for this lab
+    # must not be able to probe which health_ids or lab_ids exist by reading
+    # the difference between 403, 404 and 400.
+    _require_lab_scope(request, payload.lab_id)
+
     citizen = _require_citizen(db, payload.health_id)
 
     lab = db.query(Lab).filter(Lab.id == payload.lab_id).first()
