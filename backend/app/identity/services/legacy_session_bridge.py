@@ -172,7 +172,48 @@ def establish_canonical_session(
     )
     db.add(session)
     db.flush()
+    bind_workspace_context(db, account=account, session=session)
     return session
+
+
+def bind_workspace_context(db: Session, *, account: Account, session: UserSession) -> None:
+    """NR-137: give the session the workspace it is unambiguously entitled to.
+
+    NR-135 produced a canonical NIAM session and stopped there, so the clinical
+    gateway's first link -- WorkspaceSessionContext -- was never created and
+    every clinical read blocked at reason_code=missing_workspace. The identity
+    was canonical; the organizational context behind it was absent.
+
+    The selection is delegated to WorkspaceService.bind_unambiguous_context,
+    which grants nothing: it chooses only among workspaces `list_eligible`
+    already allows, requires an active membership to stand behind the choice,
+    and binds nothing at all when the answer is not unique. A legacy record's
+    lab_id and role do not make a workspace on their own.
+
+    FAILS OPEN ON NOTHING, AND BREAKS LOGIN ON NOTHING. A database that has no
+    workspace tables -- or any other error here -- must not take authentication
+    down with it, which is the lesson NR-135 learned the hard way when wiring
+    the account lookup in naively turned 30 passing auth tests into 24 errors.
+    The SAVEPOINT keeps a failed statement from poisoning the transaction the
+    caller still has to commit, and a failure simply leaves the session without
+    a workspace, which the gateway already refuses correctly.
+    """
+    from app.identity.services.workspace_service import WorkspaceService
+
+    try:
+        with db.begin_nested():
+            WorkspaceService(db).bind_unambiguous_context(account, session.id)
+    except SQLAlchemyError:
+        logger.warning(
+            "workspace context unavailable for account %s -- the session stands "
+            "without one and the clinical gateway will refuse it",
+            account.id, exc_info=True,
+        )
+    except Exception:
+        logger.warning(
+            "workspace selection failed for account %s; session left unbound",
+            account.id, exc_info=True,
+        )
 
 
 def terminate_canonical_session(db: Session, *, access_jti: str, reason: str) -> int:

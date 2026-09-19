@@ -14,6 +14,7 @@ from app.identity.models.administrative_structure import (
     OwnershipStatus,
     RepresentativeStatus,
 )
+from app.identity.models.membership import Membership, MembershipStatus
 from app.identity.models.niam_organization import NIAMOrganization
 from app.identity.models.verification_record import (
     VerificationRecord,
@@ -44,6 +45,24 @@ LEGAL_WORKSPACE_TRANSITIONS: dict[str, frozenset[str]] = {
     WorkspaceStatus.archived.value: frozenset(),
     WorkspaceStatus.deactivated.value: frozenset(),
 }
+
+
+def _membership_covers(membership: Membership, workspace: Workspace) -> bool:
+    """True when this membership stands behind acting in this workspace.
+
+    Mirrors the conjunction ClinicalGatewayContextResolver applies at request
+    time, so a context bound here is one the gateway will accept rather than
+    reject a moment later: same organization, and a facility and workspace that
+    either match or are left unscoped by the membership.
+    """
+    if membership.organization_id != workspace.organization_id:
+        return False
+    if membership.workspace_id is not None and membership.workspace_id != workspace.id:
+        return False
+    return not (
+        membership.facility_id is not None
+        and membership.facility_id != workspace.facility_id
+    )
 
 
 class WorkspaceService:
@@ -189,6 +208,82 @@ class WorkspaceService:
             context.version += 1
         self.session.flush()
         return context
+
+    def bind_unambiguous_context(
+        self, account: Account, session_id: str,
+    ) -> WorkspaceSessionContext | None:
+        """NR-137: bind a workspace at login, but only when there is no choice.
+
+        The clinical gateway resolves every scope it needs from server state --
+        workspace, membership, legacy link, facility binding -- and refuses when
+        any link is unproven. It never got the chance: a legacy login produced a
+        canonical NIAM session (NR-135) and no WorkspaceSessionContext at all, so
+        the chain stopped at its first step with reason_code=missing_workspace.
+
+        WHAT THIS DOES NOT DO, AND WHY IT MATTERS
+        -----------------------------------------
+        It grants nothing. Every workspace it can select is one `list_eligible`
+        ALREADY considers eligible, under the AUTH-F5 conjunction above:
+        ownership or representation, a live organization, an available
+        workspace. Membership is applied here as a FURTHER restriction, never as
+        a source of eligibility -- which is precisely the line AUTH-F5 draws when
+        it says membership "is necessary context, not a grant, and wiring it here
+        would hand access to every member of every organization". So this is
+        auto-selection of a choice already available through `switch()`, not a
+        new grant, and `list_eligible` is untouched.
+
+        It also refuses to guess. Zero candidates, or more than one, binds
+        nothing and returns None; the gateway then keeps failing closed exactly
+        as it does today. Picking one of several would be inventing the answer to
+        "which workspace is this person acting in", which is the caller's to
+        state through `switch()`.
+        """
+        if account.status != AccountStatus.active.value or not account.is_active:
+            return None
+
+        eligible = [
+            workspace
+            for workspace in self.list_eligible(account)
+            if workspace.status == WorkspaceStatus.active.value
+            and workspace.organization_id
+            and workspace.facility_id
+        ]
+        if not eligible:
+            return None
+
+        memberships = self._active_memberships(account, datetime.now(UTC))
+        if not memberships:
+            return None
+
+        candidates = [
+            workspace
+            for workspace in eligible
+            if any(
+                _membership_covers(membership, workspace) for membership in memberships
+            )
+        ]
+        if len(candidates) != 1:
+            # Ambiguous, or nothing membership stands behind. Fail closed.
+            return None
+
+        return self.switch(account, session_id, candidates[0].id)
+
+    def _active_memberships(self, account: Account, now: datetime) -> list[Membership]:
+        """This account's memberships that are live right now.
+
+        A seam, so the selection rule above can be exercised without a database
+        and the freshness filter has one place to live.
+        """
+        return list(
+            self.session.execute(
+                select(Membership).where(
+                    Membership.account_id == account.id,
+                    Membership.status == MembershipStatus.active.value,
+                    Membership.is_active.is_(True),
+                    or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+                ),
+            ).scalars().all(),
+        )
 
     def _professional_eligible(self, account_id: str, professional_type: str) -> bool:
         result = self.session.execute(
