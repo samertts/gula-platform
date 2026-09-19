@@ -351,7 +351,55 @@ def gate4_and_5(alpha_token, beta_token, alpha_lab, beta_lab):
     st, _ = call("GET", "/patients", token=expired_token_like(alpha_token))
     record("4", "an expired token is DENIED a tenant read", denied(st), f"status {st}")
 
+    # ── P0 trust boundary: authority must come from the token, never the wire ──
+    #
+    # nhop-platform derives role and actor from X-Role / X-Actor-Id headers
+    # (NR-127). backend must not, and "must not" is worth proving rather than
+    # assuming, so each forged input is sent ALONGSIDE a valid Alpha token and
+    # the result compared against what Alpha alone is allowed.
+    forged_admin = {
+        "X-Role": "master_admin", "X-Actor-Role": "master_admin",
+        "X-Actor-Id": "1", "X-User-Id": "1", "X-Lab-Id": str(beta_lab),
+    }
+
+    st, _ = call("GET", "/admin/labs/pending", token=alpha_token, headers=forged_admin)
+    record("4", "a forged role header grants no authority",
+           denied(st), f"status {st} (Alpha + X-Role: master_admin)")
+
+    st, _ = call("PUT", f"/admin/labs/{beta_lab}/activate", token=alpha_token,
+                 headers=forged_admin)
+    record("4", "a forged actor header grants no authority",
+           denied(st), f"status {st} (Alpha + X-Actor-Id: 1)")
+
+    st, labs_forged = call("GET", "/admin/labs", token=alpha_token, headers=forged_admin)
+    names_forged = [x["name"] for x in labs_forged.get("labs", [])] if st == 200 else []
+    record("4", "a forged lab header does not widen what the actor sees",
+           names_forged == ["Lab Alpha"], f"sees {names_forged}")
+
+    # The same headers with NO token must still be refused: the header must not
+    # be an alternative credential either.
+    st, _ = call("GET", "/patients", headers=forged_admin)
+    record("4", "forged headers are not an alternative credential",
+           denied(st), f"status {st} (no token at all)")
+
     print("\nGATE 5 — TENANT ISOLATION")
+
+    # A client-supplied lab_id in the BODY must not place the row in another
+    # tenant. create_patient sends the honest body; this sends a forged one.
+    st_f, forged = call("POST", "/patients", {
+        "full_name": "Forged Tenant Subject", "phone": "07701000099",
+        "gender": "male", "lab_id": beta_lab, "id": 9999,
+    }, token=alpha_token)
+    if st_f in (200, 201):
+        fid = (forged.get("patient", forged) or {}).get("id")
+        st_b, _ = call("GET", f"/patients/{fid}", token=beta_token)
+        st_a, _ = call("GET", f"/patients/{fid}", token=alpha_token)
+        record("5", "a forged lab_id in the body does not move the row to another tenant",
+               st_a == 200 and denied(st_b),
+               f"owner {st_a}, other tenant {st_b}")
+    else:
+        record("5", "a forged lab_id in the body is refused outright", denied(st_f),
+               f"status {st_f}")
 
     st, created = create_patient(alpha_token, "Alpha Isolation Subject", "07701000001")
     if st not in (200, 201):
