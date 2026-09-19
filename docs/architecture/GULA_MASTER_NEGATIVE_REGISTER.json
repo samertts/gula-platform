@@ -6,8 +6,8 @@
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
     "total": 148,
-    "P0": 23,
-    "P1": 75,
+    "P0": 24,
+    "P1": 74,
     "P2": 38,
     "P3": 12
   },
@@ -5096,18 +5096,24 @@
       "id": "NR-148",
       "category": "Tenant isolation / Client-authored tenant on create",
       "domain": "app/routes/canonical_patient.py",
-      "severity": "P1",
+      "severity": "P0",
       "priority": 148,
-      "status": "OPEN — measured, not fixed. Unlike NR-146 this surface IS built, so it is live.",
-      "title": "POST /canonical-patients lets the request body choose the patient's laboratory",
-      "description": "The second of the three NR-107 route-module sites. `CanonicalPatientCreate` declares `lab_id: int | None = None` and the handler is `CanonicalPatient(**data.model_dump())`, with no re-assertion from current_user. So the caller names the tenant of a canonical patient record -- the Master Patient Index's own subject.\n\nRecorded rather than patched alongside NR-146 for one reason worth stating: this one is LIVE (models/canonical_patient.py is a built table, unlike the cc_* family), which makes it higher priority AND higher risk to change blind. The column is nullable with an ON DELETE SET NULL, so it may be carrying a deliberate cross-tenant case for the MPI -- exactly the kind of question NR-022 decided canonically. It needs the MPI's intent read before the field is removed, not a same-session guess.",
+      "status": "FIXED and VERIFIED 2026-09-19. The MPI is a controlled cross-organisation domain (NR-022) and now says so in code: provenance is server-derived and national actions require national scope. Regression: backend/tests/test_canonical_patient_scope.py (24 tests). Recurrence gate: scripts/tenant_mass_assignment_scan.py --gate.",
+      "title": "The Master Patient Index had no scope rule: any lab user could search the national index, merge identities, and forge a record's provenance",
+      "description": "The second of the three NR-107 route-module sites. `CanonicalPatientCreate` declares `lab_id: int | None = None` and the handler is `CanonicalPatient(**data.model_dump())`, with no re-assertion from current_user. So the caller names the tenant of a canonical patient record -- the Master Patient Index's own subject.\n\nRecorded rather than patched alongside NR-146 for one reason worth stating: this one is LIVE (models/canonical_patient.py is a built table, unlike the cc_* family), which makes it higher priority AND higher risk to change blind. The column is nullable with an ON DELETE SET NULL, so it may be carrying a deliberate cross-tenant case for the MPI -- exactly the kind of question NR-022 decided canonically. It needs the MPI's intent read before the field is removed, not a same-session guess.\n\nRESOLVED. The decision was made from existing evidence, not guessed.\n\nTHE MPI IS DELIBERATELY CROSS-TENANT; that was never the defect. NR-022 decided that Person/Identity is the canonical national subject and Patient and Citizen are contextual roles on it -- an index that stopped at a laboratory boundary could not do the one job it exists for. `lab_id` is PROVENANCE, and the schema says so: nullable, ON DELETE SET NULL (the canonical record outlives the laboratory), and no (lab_id, ...) composite index -- while `patients`, which IS tenant-owned, carries ix_patients_lab_id and ix_patients_lab_phone.\n\nThe defects were two, and reading the whole module found the second one to be much larger than the first:\n  1. The request body set lab_id, so a laboratory could file a canonical record under another laboratory's name. Provenance the client chooses is not provenance.\n  2. NOTHING separated national callers from laboratory ones. All seven handlers were authenticated and none referenced lab_id. Any authenticated user -- a technician at one private lab -- could search the ENTIRE national patient index by name, phone or national-id hash, read any canonical record, MERGE two people's identities, and attach another laboratory's patient to any canonical person. Severity raised P1 -> P0 on that reading.\n\nTHE RULE INVENTS NO PERMISSION. `platform:view_stats` is already held by exactly master_admin, ministry_admin and province_admin and by no lab-scoped role, so backend/app/services/mpi/scope.py reads it as the marker for national scope rather than adding a parallel vocabulary.\n  * National scope: search the index, merge identities, resolve or link a citizen.\n  * Lab scope: create (provenance = own lab), and read a record it is connected to -- one it contributed, or one linked to a patient of its own.\n  * Anything else reads as 404, not 403, so the index does not become an existence oracle over the national population.\n\nTWO EXISTING TESTS ASSERTED THE DEFECT. test_search_canonical_patients and test_merge_canonical_patients drove both operations with a role=\"admin\" token and asserted only that rows came back and that merge returned 200. They were not weakened to pass: the plumbing assertion was kept and moved to a caller entitled to make it, and the lab-scoped denial was added, so each now covers strictly more than before.",
       "evidence": [
-        "backend/app/routes/canonical_patient.py:26-27 CanonicalPatientCreate.lab_id",
-        "backend/app/routes/canonical_patient.py:120 CanonicalPatient(**data.model_dump())",
-        "backend/app/models/canonical_patient.py:30 lab_id Column(Integer, ForeignKey('labs.id', ondelete='SET NULL'), nullable=True)",
-        "registered: backend/app/factory.py:608-609"
+        "backend/app/services/mpi/scope.py (new) -- the policy, with its derivation",
+        "backend/app/routes/canonical_patient.py -- 8 handlers guarded; CanonicalPatientCreate.lab_id removed",
+        "NR-022: Person/Identity is the canonical national subject",
+        "canonical_patients.lab_id: nullable, ON DELETE SET NULL, no composite index; patients: ix_patients_lab_id, ix_patients_lab_phone",
+        "shared/rbac: platform:view_stats is held by master_admin, ministry_admin, province_admin only",
+        "scripts/tenant_mass_assignment_scan.py: create_canonical left the ASSIGNABLE class after the fix (71 -> 70, BLOCKED 17 -> 18) -- measured by a tool that knows nothing about NR-148"
       ],
-      "tests": [],
+      "tests": [
+        "backend/tests/test_canonical_patient_scope.py (24 tests). Negative proof: 9 fail against the pre-fix route module, including every handler guard by name.",
+        "backend/tests/test_auth_infrastructure.py: 30 passed, the two defect-asserting tests rewritten to assert the denial AND the national positive control.",
+        "scripts/tenant_mass_assignment_scan.py --gate: recurrence gate; proved to fire by emptying KNOWN_ROUTE_SITES."
+      ],
       "generated": "2026-09-19"
     }
   ]

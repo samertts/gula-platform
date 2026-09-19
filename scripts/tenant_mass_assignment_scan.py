@@ -18,6 +18,7 @@ re-asserted.
     python3 scripts/tenant_mass_assignment_scan.py            # summary
     python3 scripts/tenant_mass_assignment_scan.py --class D  # one class, listed
     python3 scripts/tenant_mass_assignment_scan.py --json     # machine-readable
+    python3 scripts/tenant_mass_assignment_scan.py --gate     # CI: fail on a NEW site
 
 A site is not a defect by itself. It is a candidate; each still has to be read.
 ASSIGNABLE is not "exploitable": it means lab_id can be copied onto the model
@@ -306,6 +307,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--class", dest="klass", help="print one class in full")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--gate", action="store_true",
+                    help="fail if an ASSIGNABLE site appears in a route module "
+                         "that the baseline does not already record")
     args = ap.parse_args()
 
     trees = list(modules())
@@ -345,6 +349,9 @@ def main() -> int:
     for v in ("ASSIGNABLE", "UNKNOWN", "BLOCKED"):
         print(f"  {len(verdicts[v]):3}  {v}")
 
+    if args.gate:
+        return run_gate(sites)
+
     if args.klass:
         want = args.klass.upper()
         print(f"\n─── {want} ───")
@@ -360,6 +367,73 @@ def main() -> int:
         for f in sorted(by_file, key=lambda k: -len(by_file[k])):
             print(f"  {len(by_file[f]):3}  {f}")
     return 0
+
+
+# ─── the gate (NR-148) ──────────────────────────────────────────────────────
+#
+# NR-146 and NR-148 were both found by hand, in the same week, by reading the
+# three ASSIGNABLE sites that sit in a module declaring routes. That is a
+# repeatable query, so it should not need a person next time. The gate pins the
+# three known sites and fails on a fourth.
+#
+# It deliberately watches only route modules. A service-layer helper is a
+# candidate; a handler is reachable, and reachable is what turns a candidate
+# into a defect.
+
+#: Sites already read and dispositioned. Each entry is "file:function".
+KNOWN_ROUTE_SITES = {
+    # NR-148 -- fixed: provenance is server-derived, scope is enforced.
+    "backend/app/routes/canonical_patient.py:create_canonical",
+    # NR-146 -- fixed: tenant filter on the lookup, lab_id excluded from the
+    # settable keys.
+    "backend/app/routes/care_continuum.py:api_update_primary_care_encounter",
+    # NR-107 -- NOT a tenant defect: RiskPolicy extends IdentityBaseEntity,
+    # which carries no lab_id. Kept here so the next reader does not re-open it.
+    "backend/app/identity/adaptive_auth/routes.py:update_risk_policy",
+}
+
+
+def declares_routes(rel_path: str) -> bool:
+    """True when this module mounts HTTP handlers of its own."""
+    try:
+        tree = ast.parse((ROOT / rel_path).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return False
+    return any(
+        isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Attribute)
+        and n.func.attr in {"get", "post", "put", "patch", "delete"}
+        and isinstance(n.func.value, ast.Name)
+        and n.func.value.id in {"router", "app"}
+        for n in ast.walk(tree)
+    )
+
+
+def run_gate(sites) -> int:
+    reachable = {
+        f"{s['file']}:{s['function']}"
+        for s in sites
+        if s["verdict"].startswith("ASSIGNABLE") and declares_routes(s["file"])
+    }
+    new = sorted(reachable - KNOWN_ROUTE_SITES)
+    gone = sorted(KNOWN_ROUTE_SITES - reachable)
+
+    for site in gone:
+        print(f"  RESOLVED (no longer assignable): {site}")
+
+    if not new:
+        print(f"\nGATE PASS: {len(reachable)} reachable site(s), all dispositioned.")
+        return 0
+
+    print("\nGATE FAIL: a client-authored tenant reached a route handler that "
+          "no one has read yet.")
+    for site in new:
+        print(f"  {site}")
+    print("\nRead each one. If it is a real defect, fix it and add a regression "
+          "test. If it is not (see RiskPolicy), add it to KNOWN_ROUTE_SITES with "
+          "the reason. Do not add it blind -- two of the three above were live "
+          "defects.")
+    return 1
 
 
 if __name__ == "__main__":
