@@ -13,7 +13,7 @@ from app.database import get_db
 from app.models.authorization import BreakGlassSession, Delegation
 from app.models.user import User
 from app.security.dependencies import get_current_user
-from app.security.rbac import get_permissions_for_role
+from app.security.rbac import can_manage_role, get_permissions_for_role
 from app.services.authorization_service import (
     AuthorizationAuditService,
     AuthorizationCheckService,
@@ -35,6 +35,34 @@ router = APIRouter(prefix="/authz", tags=["authorization"])
 
 def _is_platform_manager(current_user: User) -> bool:
     return "platform:manage_users" in get_permissions_for_role(current_user.role)
+
+
+#: Granting a role is a privilege-granting operation, so only platform-scoped
+#: roles may perform it — a lab-scoped admin/lab_admin holds
+#: "platform:manage_users" too (it gates admin.py's own lab-scoped staff
+#: management), but that permission was never meant to authorize assigning
+#: arbitrary system-wide roles through this surface.
+_ROLE_GRANTING_ROLES = ("master_admin", "ministry_admin", "province_admin")
+
+
+def _require_role_granting_authority(actor: User, target_role_id: str) -> None:
+    """Who may grant/revoke a role assignment, and which roles they may touch.
+
+    Two conditions, both required. The actor must be platform-scoped at all
+    (_is_platform_manager alone is not enough — admin/lab_admin have
+    platform:manage_users for lab-staff management, not for granting
+    system-wide roles), and the specific role being granted/revoked must be
+    one the actor can manage per the existing role hierarchy
+    (can_manage_role) — without this a province_admin could grant/revoke
+    master_admin.
+    """
+    if getattr(actor, "role", None) not in _ROLE_GRANTING_ROLES:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not can_manage_role(actor.role, target_role_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You may not grant or revoke a role at or above your own level",
+        )
 
 
 class PermissionCheckRequest(BaseModel):
@@ -587,11 +615,7 @@ def assign_role(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not _is_platform_manager(current_user):
-        raise HTTPException(
-            status_code=403,
-            detail="platform:manage_users permission required to assign roles",
-        )
+    _require_role_granting_authority(current_user, req.role_id)
     expires_at = None
     if req.expires_at:
         try:
@@ -617,11 +641,7 @@ def revoke_role_assignment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not _is_platform_manager(current_user):
-        raise HTTPException(
-            status_code=403,
-            detail="platform:manage_users permission required to revoke role assignments",
-        )
+    _require_role_granting_authority(current_user, role_id)
     svc = RoleAssignmentService(db)
     success = svc.revoke_role(user_id, role_id)
     if not success:

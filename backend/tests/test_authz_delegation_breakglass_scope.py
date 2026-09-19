@@ -225,6 +225,57 @@ def test_platform_manager_can_assign_a_role(client, db):
     assert resp.status_code == 201
 
 
+def test_lab_admin_with_manage_users_permission_cannot_grant_roles(client, db):
+    """admin/lab_admin hold platform:manage_users (it gates admin.py's own
+    lab-scoped staff management) but must NOT be able to grant arbitrary
+    system-wide roles through this surface — that permission was never a
+    role-granting authority."""
+    lab_admin = _make_user(db, role="admin")
+    target = _make_user(db, role="citizen")
+    db.commit()
+
+    resp = client.post(
+        "/authz/assignments",
+        json={"user_id": target.id, "role_id": "staff"},
+        headers=auth_headers(lab_admin.id, 0, role="admin"),
+    )
+    assert resp.status_code == 403
+
+    from app.models.authorization import RoleAssignment
+
+    assert (
+        db.query(RoleAssignment)
+        .filter(RoleAssignment.user_id == target.id, RoleAssignment.role_id == "staff")
+        .first()
+        is None
+    )
+
+
+def test_province_admin_cannot_grant_master_admin(client, db):
+    """A platform-scoped role must still be denied a role it cannot manage —
+    without the can_manage_role() check, a province_admin could grant
+    master_admin to itself or anyone else."""
+    province_admin = _make_user(db, role="province_admin")
+    target = _make_user(db, role="citizen")
+    db.commit()
+
+    resp = client.post(
+        "/authz/assignments",
+        json={"user_id": target.id, "role_id": "master_admin"},
+        headers=auth_headers(province_admin.id, 0, role="province_admin"),
+    )
+    assert resp.status_code == 403
+
+    from app.models.authorization import RoleAssignment
+
+    assert (
+        db.query(RoleAssignment)
+        .filter(RoleAssignment.user_id == target.id, RoleAssignment.role_id == "master_admin")
+        .first()
+        is None
+    )
+
+
 def test_ordinary_user_cannot_revoke_anothers_role_assignment(client, db):
     from app.models.authorization import RoleAssignment
 
