@@ -27,6 +27,30 @@ This is containment, not authorization. It narrows who can reach an
 unauthenticated clinical surface; it does not give that surface a caller.
 The control itself is the subject of
 ``docs/adr/ADR-028-services-tree-disposition.md``.
+
+NR-143 WIDENED IT
+-----------------
+The same file published the third-party stack the same way: ``vault`` on 8200,
+``keycloak`` on 8081, ``clickhouse``, ``kafka``, ``minio``, ``ollama``,
+``node-exporter``, and the whole observability group. That was not a judgement
+call either -- ``docker-compose.yml`` states the rule for the same services:
+
+    MONITORING (Prometheus + Alertmanager + Grafana)
+    Internal only -- no external port exposure. Access via SSH tunnel:
+      ssh -L 9090:localhost:9090 -L 9093:localhost:9093 -L 3000:localhost:3000 user@server
+
+and gives Prometheus ``expose: "9090"`` with no host publish. That tunnel
+forwards to localhost ON THE REMOTE HOST, which is exactly what a loopback
+binding serves, so ``full.yml`` was drifting from a rule the repository
+already had.
+
+NR-145 is the last one: HAProxy's stats page in ``docker-compose.scale.yml``
+was annotated "internal only in production" on the very line that published it
+on every interface, and the page behind it carries
+``stats auth admin:${HAPROXY_STATS_PASS:-gulaadmin}`` -- a default credential.
+Its binding now matches its comment. The default credential is recorded, not
+changed: removing the fallback yields an empty password rather than a closed
+door, and that needs a person.
 """
 from __future__ import annotations
 
@@ -125,3 +149,68 @@ def test_the_gateway_still_fronts_only_the_backend_and_frontend():
             f"{service} is now proxied by the gateway; loopback binding is no "
             f"longer the perimeter and NR-142 must be re-assessed"
         )
+
+
+# ─── NR-143 / NR-145: the rule beyond the services we build ─────────────────
+
+#: The one published port that is meant to face the world, and why.
+#: HAProxy is the load balancer; the listener it fronts is the whole point of
+#: the scale deployment, and LB_PORT is deliberately configurable. Every other
+#: published port in this repository is an internal surface.
+PUBLIC_BY_DESIGN = {("docker-compose.scale.yml", "haproxy", "${LB_PORT:-8080}:80")}
+
+
+@pytest.mark.parametrize("path", COMPOSE_FILES, ids=lambda p: p.name)
+def test_every_published_port_is_loopback_or_public_by_design(path: pathlib.Path):
+    """Not just the services we build -- vault and the stats page counted too."""
+    document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    offenders = [
+        (name, port)
+        for name, spec in (document.get("services") or {}).items()
+        if isinstance(spec, dict)
+        for port in _published(spec)
+        if not port.startswith(f"{LOOPBACK}:")
+        and (path.name, name, port) not in PUBLIC_BY_DESIGN
+    ]
+    assert not offenders, (
+        f"{path.name}: published on every interface of the host: {offenders}. "
+        f"Bind to {LOOPBACK}, or add to PUBLIC_BY_DESIGN with the reason "
+        f"(see NR-143)."
+    )
+
+
+def test_the_public_exception_is_still_the_only_one():
+    """An allow-list nobody checks is an allow-list that grows.
+
+    If HAProxy's front door is ever bound or removed, this fails rather than
+    letting a stale exemption sit there covering something else later.
+    """
+    found = {
+        (path.name, name, port)
+        for path in COMPOSE_FILES
+        for name, spec in ((yaml.safe_load(path.read_text(encoding="utf-8")) or {})
+                           .get("services") or {}).items()
+        if isinstance(spec, dict)
+        for port in _published(spec)
+        if not port.startswith(f"{LOOPBACK}:")
+    }
+    assert found == PUBLIC_BY_DESIGN, (
+        f"the set of world-facing published ports changed: "
+        f"added {sorted(found - PUBLIC_BY_DESIGN)}, "
+        f"removed {sorted(PUBLIC_BY_DESIGN - found)}"
+    )
+
+
+def test_the_haproxy_stats_page_stays_on_loopback():
+    """NR-145, named. It is an admin surface with a default credential."""
+    scale = REPO / "docker-compose.scale.yml"
+    if not scale.exists():                     # pragma: no cover - file is tracked
+        pytest.skip("docker-compose.scale.yml is not present")
+
+    document = yaml.safe_load(scale.read_text(encoding="utf-8")) or {}
+    haproxy = (document.get("services") or {}).get("haproxy")
+    assert haproxy is not None, "the haproxy service disappeared from the scale file"
+    assert "127.0.0.1:8404:8404" in _published(haproxy), (
+        "the HAProxy stats page is published off loopback; it is reachable with "
+        "`stats auth admin:${HAPROXY_STATS_PASS:-gulaadmin}` (NR-145)"
+    )

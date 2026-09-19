@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-19",
-  "head_commit": "ca207518",
+  "head_commit": "b800cf27",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 144,
+    "total": 145,
     "P0": 23,
     "P1": 72,
-    "P2": 37,
+    "P2": 38,
     "P3": 12
   },
   "findings": [
@@ -5002,13 +5002,18 @@
       "domain": "infra",
       "severity": "P2",
       "priority": 143,
-      "status": "OPEN. Recorded, not fixed -- a different class from NR-142 and not this sweep's finding.",
-      "title": "docker-compose.full.yml publishes vault, keycloak, clickhouse, kafka, minio and the observability stack on every interface",
-      "description": "Measured while fixing NR-142 and deliberately left alone. vault:8200, keycloak:8081, clickhouse:8123/9001, kafka:9092/9101, minio:9003/9002, prometheus:9090, grafana:3000, loki:3100, jaeger:16686/14268/4317/4318, ollama:11434, node-exporter:9100 and redis-sentinel:26379 all bind 0.0.0.0.\n\nIt is a separate class: none of it is code this repository writes, and several have documented access workflows -- CLAUDE.md describes reaching monitoring over an SSH tunnel, which a loopback binding would in fact serve correctly. The datastores in the same file (postgres-primary, postgres-replica, pgbouncer, redis, rabbitmq) publish nothing at all, so the discipline exists in the file; it was applied to the stores and not to these.",
+      "status": "FIXED 2026-09-19. All 18 bindings moved to 127.0.0.1. This was drift from a rule the repository already stated, not a judgement call. Guard: tests/integration/test_deployment_exposure.py.",
+      "title": "docker-compose.full.yml published vault, keycloak, clickhouse, kafka, minio and the observability stack on every interface",
+      "description": "Measured while fixing NR-142 and deliberately left alone. vault:8200, keycloak:8081, clickhouse:8123/9001, kafka:9092/9101, minio:9003/9002, prometheus:9090, grafana:3000, loki:3100, jaeger:16686/14268/4317/4318, ollama:11434, node-exporter:9100 and redis-sentinel:26379 all bind 0.0.0.0.\n\nIt is a separate class: none of it is code this repository writes, and several have documented access workflows -- CLAUDE.md describes reaching monitoring over an SSH tunnel, which a loopback binding would in fact serve correctly. The datastores in the same file (postgres-primary, postgres-replica, pgbouncer, redis, rabbitmq) publish nothing at all, so the discipline exists in the file; it was applied to the stores and not to these.\n\nRESOLVED. What settled it was not judgement but docker-compose.yml, which states the rule for the same services:\n\n    MONITORING (Prometheus + Alertmanager + Grafana)\n    Internal only -- no external port exposure. Access via SSH tunnel:\n      ssh -L 9090:localhost:9090 -L 9093:localhost:9093 -L 3000:localhost:3000 user@server\n\nand gives Prometheus `expose: \"9090\"` with no host publish at all. The tunnel that comment prescribes forwards to localhost ON THE REMOTE HOST, so a loopback binding is exactly what the documented workflow needs -- full.yml was drifting from the primary file, not expressing a different intent.\n\nNothing depended on the wildcard. Every scrape target in config/prometheus is an in-network service name (`gula-backend:8000`, `alertmanager:9093`; `localhost:9090` is Prometheus scraping itself inside its own container). Kafka advertises `PLAINTEXT://kafka:9092`, so a client reaching the published port from the host was redirected to the docker hostname and failed already. Every host-side consumer in the repository connects via `localhost`, which loopback still serves: scripts/setup-ollama.sh and scripts/pull-ollama-model.sh (11434), scripts/integration_test.sh (9003, 11434), config/quality-gates/performance-gate.py (9090).",
       "evidence": [
-        "docker-compose.full.yml ports: enumerated 2026-09-19; api-gateway and the eight built services are the only loopback-bound entries"
+        "docker-compose.full.yml: 18 bindings 0.0.0.0 -> 127.0.0.1 (redis-sentinel, clickhouse x2, kafka x2, ollama, minio x2, node-exporter, keycloak, vault, prometheus, grafana, loki, jaeger x4)",
+        "docker-compose.yml:305-307 states the internal-only rule and the ssh -L workflow",
+        "config/prometheus/prometheus-full.yml: every target is an in-network service name",
+        "docker-compose.full.yml kafka: KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092"
       ],
-      "tests": [],
+      "tests": [
+        "tests/integration/test_deployment_exposure.py (13 tests; negative proof: reverting vault to \"8200:8200\" fails 2 of them)"
+      ],
       "generated": "2026-09-19"
     },
     {
@@ -5027,6 +5032,25 @@
       ],
       "tests": [
         "nhop-platform/tests/test_result_verification_identity.py (7 tests: positive, body-ignored, forged headers, audit metadata, refused-second-verification, and the 503 asserted separately)"
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-145",
+      "category": "Deployment / Admin surface with a default credential",
+      "domain": "infra",
+      "severity": "P2",
+      "priority": 145,
+      "status": "CONTAINED 2026-09-19. The stats page is loopback-bound and guarded by a named test. The default credential is recorded, NOT changed -- see below.",
+      "title": "The HAProxy stats page was published on every interface behind a default password",
+      "description": "Found while closing NR-143. docker-compose.scale.yml published the page as\n\n    - \"8404:8404\"                  # HAProxy stats (internal only in production)\n\n-- a comment contradicted by the line it annotates. config/haproxy/haproxy.cfg:100 then guards it with `stats auth admin:${HAPROXY_STATS_PASS:-gulaadmin}`, so an unset environment variable leaves a known credential on an admin surface reachable from anywhere. Security invariant 7 says secrets have no hardcoded fallbacks; this is one, on the load balancer's control page.\n\nThe binding now matches what the comment always claimed. The LB's own front door (`${LB_PORT:-8080}:80`) is deliberately left public -- it is the listener the scale deployment exists to expose -- and is the single entry in the guard's PUBLIC_BY_DESIGN allow-list, which a second test pins so the exemption cannot silently grow.\n\nTHE CREDENTIAL IS NOT CHANGED, and the reason is not caution for its own sake: `stats auth admin:${HAPROXY_STATS_PASS}` with the fallback removed yields an EMPTY password rather than a closed door, which is worse than what is there now. Making it fail closed means changing how HAProxy is configured or started, and that is a person's call.",
+      "evidence": [
+        "docker-compose.scale.yml haproxy ports: \"8404:8404\" -> \"127.0.0.1:8404:8404\"",
+        "config/haproxy/haproxy.cfg:93-101 frontend stats, bind *:8404, stats auth admin:${HAPROXY_STATS_PASS:-gulaadmin}"
+      ],
+      "tests": [
+        "tests/integration/test_deployment_exposure.py::test_the_haproxy_stats_page_stays_on_loopback",
+        "tests/integration/test_deployment_exposure.py::test_the_public_exception_is_still_the_only_one"
       ],
       "generated": "2026-09-19"
     }
