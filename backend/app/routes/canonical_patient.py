@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models.canonical_patient import CanonicalPatient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..services.audit_service import log_action
 from ..services.mpi.canonical_service import (
     get_canonical_by_citizen,
     get_canonical_by_patient,
@@ -25,6 +26,46 @@ from ..services.mpi.scope import (
 )
 
 router = APIRouter(prefix="/api/v1/canonical-patients", tags=["canonical-patients"])
+
+
+def _client_ip(request: Request | None) -> str | None:
+    if request is None or request.client is None:
+        return None
+    return request.client.host
+
+
+def _audit(
+    db: Session,
+    request: Request | None,
+    actor: LabUser,
+    action: str,
+    resource_id: int | None,
+    **details: object,
+) -> None:
+    """NR-151: record a mutation of the national patient index.
+
+    CLAUDE.md security invariant 2 requires every mutation to be audited, and
+    this surface recorded nothing at all -- not a creation, not a link, and not
+    a merge. NR-148 hardened WHO may merge two people's identities and left
+    WHETHER IT IS WRITTEN DOWN untouched, so an abusive merge would have been
+    undetectable after the fact. The primitive was already in use one package
+    away, on a mere PIX read (national/api/routes/interop.py).
+
+    Written inside the caller's transaction, before its commit, so the audit row
+    and the mutation land together or not at all. An audit that can be committed
+    separately from the act it describes is not evidence.
+    """
+    log_action(
+        db,
+        action=action,
+        resource_type="canonical_patient",
+        resource_id=resource_id,
+        user_id=getattr(actor, "id", None),
+        user_role=getattr(actor, "role", None),
+        lab_id=getattr(actor, "lab_id", None),
+        details=details or None,
+        ip_address=_client_ip(request),
+    )
 
 
 # ── Schemas ──
@@ -129,6 +170,7 @@ class SearchResponse(BaseModel):
 @router.post("", response_model=CanonicalPatientResponse, status_code=201)
 def create_canonical(
     data: CanonicalPatientCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
@@ -137,6 +179,13 @@ def create_canonical(
         lab_id=provenance_lab_id(current_user),
     )
     db.add(canonical)
+    db.flush()
+    _audit(
+        db, request, current_user, "canonical_patient.create", canonical.id,
+        provenance_lab_id=canonical.lab_id,
+        has_national_id_hash=bool(canonical.national_id_hash),
+        has_health_id=bool(canonical.health_id),
+    )
     db.commit()
     db.refresh(canonical)
     return canonical
@@ -167,6 +216,7 @@ def get_canonical(
 @router.post("/merge", response_model=MergeResult)
 def merge(
     data: CanonicalPatientMerge,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MergeResult:
@@ -175,6 +225,14 @@ def merge(
     # by any authenticated user.
     require_national_scope(current_user, "merging canonical records")
     merge_canonicals(db, target_id=data.target_id, source_id=data.source_id)
+    # The most consequential operation on this surface: it declares that two
+    # records are the same person, and NR-153 records that it also blanks the
+    # source's provenance. Whatever that semantics settles as, it is now written
+    # down.
+    _audit(
+        db, request, current_user, "canonical_patient.merge", data.target_id,
+        source_id=data.source_id,
+    )
     db.commit()
     return MergeResult(
         target_id=data.target_id,
@@ -269,6 +327,7 @@ def search_canonical(
 @router.post("/link-patient", response_model=LinkResponse)
 def create_patient_link(
     data: LinkPatientRequest,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
@@ -283,6 +342,12 @@ def create_patient_link(
         patient_id=data.patient_id,
         canonical_id=data.canonical_id,
         method=data.method,
+        confidence=data.confidence,
+    )
+    db.flush()
+    _audit(
+        db, request, current_user, "canonical_patient.link_patient",
+        data.canonical_id, patient_id=data.patient_id, method=data.method,
         confidence=data.confidence,
     )
     db.commit()
@@ -303,6 +368,7 @@ def create_patient_link(
 @router.post("/link-citizen", response_model=LinkResponse)
 def create_citizen_link(
     data: LinkCitizenRequest,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
@@ -314,6 +380,12 @@ def create_citizen_link(
         citizen_id=data.citizen_id,
         canonical_id=data.canonical_id,
         method=data.method,
+        confidence=data.confidence,
+    )
+    db.flush()
+    _audit(
+        db, request, current_user, "canonical_patient.link_citizen",
+        data.canonical_id, citizen_id=data.citizen_id, method=data.method,
         confidence=data.confidence,
     )
     db.commit()

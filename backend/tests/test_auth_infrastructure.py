@@ -406,6 +406,93 @@ def test_merge_canonical_patients(client, token, national_token):
     assert resp.status_code == 200, resp.text
 
 
+def test_mpi_mutations_land_an_audit_row(client, token, national_token, db):
+    """NR-151, proved by execution rather than by reading the source.
+
+    The MPI mutation surface wrote nothing at all: not a creation, not a link,
+    not a merge. CLAUDE.md invariant 2 requires every mutation to be audited,
+    and NR-148 hardened who may merge two people's identities while leaving
+    whether it was written down untouched.
+    """
+    from app.models.audit_log import AuditLog
+
+    def _actions():
+        return {
+            row.action for row in db.query(AuditLog)
+            .filter(AuditLog.resource_type == "canonical_patient").all()
+        }
+
+    assert "canonical_patient.create" not in _actions()
+
+    created = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Audited Person", "gender": "F"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert created.status_code == 201, created.text
+    assert "canonical_patient.create" in _actions(), (
+        "creating a canonical patient left no audit row (NR-151)"
+    )
+
+    second = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Audited Person Two", "gender": "F"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert second.status_code == 201, second.text
+
+    merged = client.post(
+        "/api/v1/canonical-patients/merge",
+        json={"target_id": created.json()["id"], "source_id": second.json()["id"]},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(national_token)},
+    )
+    assert merged.status_code == 200, merged.text
+
+    rows = (
+        db.query(AuditLog)
+        .filter(AuditLog.action == "canonical_patient.merge")
+        .all()
+    )
+    assert len(rows) == 1, "a merge of two identities left no audit row (NR-151)"
+    row = rows[0]
+    assert row.resource_id == created.json()["id"]
+    assert row.user_role == "ministry_admin", (
+        "the audit records the wrong actor; it must be the authenticated caller"
+    )
+    assert str(second.json()["id"]) in (row.details or ""), (
+        "the merge audit does not record which record was absorbed (NR-151)"
+    )
+
+
+def test_a_denied_mutation_leaves_no_audit_row(client, token, db):
+    """A refusal must not look like an act in the trail.
+
+    The mirror of the test above: a lab-scoped caller's merge is refused by
+    NR-148, and no audit row may claim it happened.
+    """
+    from app.models.audit_log import AuditLog
+
+    a = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Refused Merge A", "gender": "M"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    b = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Refused Merge B", "gender": "M"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    denied = client.post(
+        "/api/v1/canonical-patients/merge",
+        json={"target_id": a.json()["id"], "source_id": b.json()["id"]},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert denied.status_code == 403, denied.text
+    assert not db.query(AuditLog).filter(
+        AuditLog.action == "canonical_patient.merge",
+    ).all(), "a refused merge wrote an audit row claiming it happened (NR-151)"
+
+
 # ── Auth required on protected endpoints ──
 
 

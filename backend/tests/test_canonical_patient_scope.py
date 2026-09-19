@@ -266,3 +266,62 @@ def test_o_every_handler_still_carries_its_guard(handler, must_contain):
     assert must_contain in source, (
         f"{handler}() no longer calls {must_contain} (NR-148)"
     )
+
+
+# ─── NR-151: every mutation is written down ─────────────────────────────────
+
+@pytest.mark.parametrize(("handler", "action"), [
+    ("create_canonical", "canonical_patient.create"),
+    ("merge", "canonical_patient.merge"),
+    ("create_patient_link", "canonical_patient.link_patient"),
+    ("create_citizen_link", "canonical_patient.link_citizen"),
+])
+def test_p_every_mutation_writes_an_audit_row(handler, action):
+    """CLAUDE.md invariant 2, on the surface that had none at all.
+
+    NR-148 hardened who may merge two people's identities; nothing recorded
+    that it happened. An abusive merge was undetectable after the fact.
+    """
+    import inspect
+
+    from app.routes import canonical_patient as routes
+
+    source = inspect.getsource(getattr(routes, handler))
+    assert "_audit(" in source, f"{handler}() no longer audits (NR-151)"
+    assert action in source, f"{handler}() audits under the wrong action name"
+
+
+def test_q_the_audit_is_written_inside_the_callers_transaction():
+    """Before the commit, not after.
+
+    An audit row that can be committed separately from the act it describes is
+    not evidence of it. Each handler flushes the mutation, audits, then commits
+    once.
+    """
+    import inspect
+
+    from app.routes import canonical_patient as routes
+
+    for handler in ("create_canonical", "create_patient_link", "create_citizen_link", "merge"):
+        source = inspect.getsource(getattr(routes, handler))
+        audit_at = source.index("_audit(")
+        commit_at = source.index("db.commit()")
+        assert audit_at < commit_at, (
+            f"{handler}() commits before auditing, so the mutation can land "
+            f"without its audit row (NR-151)"
+        )
+
+
+def test_r_the_audit_records_the_server_derived_actor_not_the_body():
+    """The actor on an audit row must be the authenticated caller."""
+    import inspect
+
+    from app.routes import canonical_patient as routes
+
+    source = inspect.getsource(routes._audit)
+    assert 'getattr(actor, "id", None)' in source
+    assert 'getattr(actor, "role", None)' in source
+    assert "data." not in source, (
+        "the audit helper reads from the request body; the recorded actor must "
+        "come from the authenticated user (NR-151)"
+    )

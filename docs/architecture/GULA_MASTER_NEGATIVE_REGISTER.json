@@ -5164,13 +5164,20 @@
       "domain": "app/services/mpi",
       "severity": "P1",
       "priority": 151,
-      "status": "OPEN — measured, not fixed. Violates CLAUDE.md security invariant 2.",
+      "status": "FIXED and VERIFIED 2026-09-19. All four MPI mutations write a hash-chain audit row inside the caller's transaction. Proved by execution, not by reading the source: backend/tests/test_auth_infrastructure.py.",
       "title": "The entire MPI mutation surface writes no audit log",
-      "description": "From the NR-148 adversarial review. routes/canonical_patient.py imports no log_action and contains no audit call: create, merge, link-patient and link-citizen all mutate national identity state with no audit trail. NR-148 hardened WHO may merge and left WHETHER IT IS RECORDED untouched -- an abusive merge would be undetectable after the fact. national/api/routes/interop.py logs a mere PIX read, so the primitive is right there. Recorded rather than fixed in the same commit because an audit write on the merge path needs the hash-chain service wired and tested on its own.",
+      "description": "From the NR-148 adversarial review. routes/canonical_patient.py imports no log_action and contains no audit call: create, merge, link-patient and link-citizen all mutate national identity state with no audit trail. NR-148 hardened WHO may merge and left WHETHER IT IS RECORDED untouched -- an abusive merge would be undetectable after the fact. national/api/routes/interop.py logs a mere PIX read, so the primitive is right there. Recorded rather than fixed in the same commit because an audit write on the merge path needs the hash-chain service wired and tested on its own.\n\nRESOLVED using the primitive that was already there -- services/audit_service.py::log_action, the SHA-256 hash-chain writer the rest of the platform uses, and the same one interop.py calls on a mere PIX read. No new mechanism.\n\nWRITTEN INSIDE THE CALLER'S TRANSACTION, before its commit: each handler now flushes the mutation, audits, then commits once. An audit row that can be committed separately from the act it describes is not evidence of it, and test_q pins the ordering.\n\nTHE ACTOR IS SERVER-DERIVED. The helper reads id, role and lab_id from the authenticated user and never from the request body; test_r asserts the body is not consulted at all.\n\nPROVED BY EXECUTION. An adversarial review had fairly criticised the NR-148 tests for leaning on inspect.getsource, so the evidence here is an HTTP call followed by a query of audit_logs: create lands a row, a national merge lands exactly one row naming the absorbed id and the ministry_admin actor, and -- the mirror that matters -- a merge REFUSED by NR-148 leaves no row claiming it happened.",
       "evidence": [
-        "independent adversarial verification of NR-148, 2026-09-19"
+        "backend/app/routes/canonical_patient.py: _audit helper + 4 call sites, each before db.commit()",
+        "reuses services/audit_service.py::log_action (hash chain), as interop.py:202 does",
+        "test_auth_infrastructure 30 -> 32 tests, count-guarded"
       ],
-      "tests": [],
+      "tests": [
+        "backend/tests/test_auth_infrastructure.py::test_mpi_mutations_land_an_audit_row (behavioural: HTTP call then audit_logs query)",
+        "backend/tests/test_auth_infrastructure.py::test_a_denied_mutation_leaves_no_audit_row (a refusal must not look like an act)",
+        "backend/tests/test_canonical_patient_scope.py::test_p/q/r (action names, transaction ordering, server-derived actor)",
+        "Negative proof: 7 tests fail against the pre-fix route module, including the behavioural one."
+      ],
       "generated": "2026-09-19"
     },
     {
