@@ -179,7 +179,23 @@ def test_h_a_national_role_sees_every_record(db, world):
 
 
 def test_i_absence_and_denial_are_indistinguishable(db, world):
-    """Neither leaks which canonical ids exist."""
+    """Neither leaks which canonical ids exist.
+
+    An adversarial review was right that the first version of this test was
+    TAUTOLOGICAL: `visible_canonical` returns None on both branches by
+    construction, so asserting both are None could not fail. The claim worth
+    testing is that the two are reached by DIFFERENT internal paths -- a real
+    record refused, and a record that is not there -- and still arrive at the
+    same answer. So the existence of the foreign record is asserted first.
+    """
+    present = db.query(CanonicalPatient).filter(
+        CanonicalPatient.id == world["foreign"].id,
+    ).one_or_none()
+    assert present is not None, "the denied record must actually exist"
+    assert db.query(CanonicalPatient).filter(
+        CanonicalPatient.id == 999_999_999,
+    ).one_or_none() is None
+
     denied = scope.visible_canonical(db, world["foreign"].id, world["staff_a"])
     missing = scope.visible_canonical(db, 999_999_999, world["staff_a"])
     assert denied is None and missing is None

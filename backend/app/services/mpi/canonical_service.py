@@ -101,8 +101,14 @@ def merge_canonicals(
     The source canonical's links are reassigned to the target.
     The source record is NOT deleted — it remains orphaned for audit trail.
     """
+    # NR-149. This import used to live inside the branch below, which always
+    # raises -- so the two `raise NotFoundError` after it referenced an unbound
+    # local and merge answered 500 (UnboundLocalError) instead of 404 for every
+    # id that does not exist. Both not-found branches were unreachable as
+    # written.
+    from app.domain.exceptions import ConflictError, NotFoundError
+
     if target_id == source_id:
-        from app.domain.exceptions import ConflictError, NotFoundError
         raise ConflictError("cannot merge a canonical into itself")
 
     target = db.query(CanonicalPatient).filter(CanonicalPatient.id == target_id).first()

@@ -20,7 +20,9 @@ logger = logging.getLogger("gula.database")
 _request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
 _endpoint_var: contextvars.ContextVar[str] = contextvars.ContextVar("endpoint", default="")
 _user_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("user_id", default=None)
-_lab_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("lab_id", default=None)
+# NR-147: this is the one tenant variable, and it lives in shared.models so the
+# TenantMixin guard and this correlation context cannot drift apart.
+from shared.models.tenant_context import current_lab_id as _lab_id_var  # noqa: E402
 
 # ── Sliding window event tracker ─────────────────────────────────────────────
 

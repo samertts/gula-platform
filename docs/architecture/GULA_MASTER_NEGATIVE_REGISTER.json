@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-19",
-  "head_commit": "8722e241",
+  "head_commit": "73ff1dbe",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 148,
-    "P0": 24,
-    "P1": 74,
-    "P2": 38,
+    "total": 155,
+    "P0": 25,
+    "P1": 77,
+    "P2": 41,
     "P3": 12
   },
   "findings": [
@@ -5091,12 +5091,15 @@
       "domain": "app/services/care_continuum_service.py",
       "severity": "P1",
       "priority": 147,
-      "status": "OPEN — measured, deliberately not rewritten. Needs an enforcement-point decision.",
+      "status": "FIXED 2026-09-19 at the base layer, as decided. TenantMixin now refuses a lab_id that contradicts the authenticated caller, with an explicit cross_tenant(reason) escape. Blast radius measured: full backend suite 3295 passed / 0 failed. Regression: backend/tests/test_tenant_guard_nr147.py.",
       "title": "Forty-one care-continuum create functions take the tenant from the caller's dictionary",
-      "description": "The residue of NR-146's audit. Forty-one functions have the shape `create_x(db, data) -> X(**data)`, where `data` is the request body and X carries lab_id.\n\nNOT FIXED HERE, and the reason is not caution. Repairing 41 call sites one at a time is the change most likely to be undone by the next person who adds a create_* function, because nothing would stop them. The question is WHERE the tenant should be enforced:\n  (a) 41 signatures, mirroring NR-146's per-function repair; or\n  (b) one guard on the tenant base itself -- CareContinuumTenantAuditEntity, or TenantMixin platform-wide -- so a construction that names a lab_id the caller does not own is refused wherever it is written.\n\n(b) is the smaller change and the durable one, but it is a behavioural change to a shared base class touching every tenant-scoped domain, not just this one. That is an architecture decision, not a patch.\n\nLatent on the same grounds as NR-146: no migration builds these tables.",
+      "description": "The residue of NR-146's audit. Forty-one functions have the shape `create_x(db, data) -> X(**data)`, where `data` is the request body and X carries lab_id.\n\nNOT FIXED HERE, and the reason is not caution. Repairing 41 call sites one at a time is the change most likely to be undone by the next person who adds a create_* function, because nothing would stop them. The question is WHERE the tenant should be enforced:\n  (a) 41 signatures, mirroring NR-146's per-function repair; or\n  (b) one guard on the tenant base itself -- CareContinuumTenantAuditEntity, or TenantMixin platform-wide -- so a construction that names a lab_id the caller does not own is refused wherever it is written.\n\n(b) is the smaller change and the durable one, but it is a behavioural change to a shared base class touching every tenant-scoped domain, not just this one. That is an architecture decision, not a patch.\n\nLatent on the same grounds as NR-146: no migration builds these tables.\n\nRESOLVED at the durable point rather than across 41 signatures. The enforcement lives on shared/models/base.py::TenantMixin -- one class, 12 models, 9 domain bases -- as a @validates('lab_id') calling shared/models/tenant_context.py::check_tenant_write.\n\nIT REUSES WHAT EXISTED. backend/app/database.py already maintained a request-scoped lab_id contextvar, set in exactly one place (security/dependencies.py:158, from the authenticated user's own row, never from anything the client sent). That variable MOVED into shared/models/tenant_context.py and database.py now imports it, so there is one variable rather than two that drift -- the NR-134 second-copy trap.\n\nIT IS DEFENCE IN DEPTH, NOT AUTHORIZATION, and the module says so at length. It answers one question -- is a request writing into a laboratory other than the caller's -- and is deliberately INERT outside a request (workers, migrations, CLI, tests), where there is no authenticated tenant to contradict. That is precisely why it must never be the only control.\n\nTHE ESCAPE IS EXPLICIT: `with cross_tenant('reason'):`, reason required and non-empty. An exception a reviewer can grep for beats a silent bypass.\n\nMEASURED, NOT ASSUMED: the full suite was run to find every legitimate flow the guard would break. 3295 passed, 0 failed -- no legitimate writer in the platform currently contradicts its own caller's tenant, so no escape site was needed. Note this also means the guard is not yet exercised by any production path; its own tests are what prove it fires.\n\nNOT COVERED, AND WORTH KNOWING: CanonicalPatient declares lab_id directly on Base rather than through TenantMixin, so the MPI inherits nothing from this. That is correct -- the MPI is a deliberately cross-tenant domain with its own rule (NR-148) -- but it means NR-147 adds no defence there.",
       "evidence": [
-        "scripts/tenant_mass_assignment_scan.py, plus the per-module audit in NR-146's evidence",
-        "41 functions, measured again after the NR-146 repair -- the count did not move, by design"
+        "shared/models/tenant_context.py (new): current_lab_id, cross_tenant(reason), check_tenant_write",
+        "shared/models/base.py: TenantMixin.@validates('lab_id')",
+        "backend/app/database.py: imports the one contextvar instead of declaring a second",
+        "backend/app/security/dependencies.py:158 is the sole setter, from the authenticated row",
+        "full backend suite with the guard active: 3295 passed, 0 failed (was 3255)"
       ],
       "tests": [],
       "generated": "2026-09-19"
@@ -5123,6 +5126,111 @@
         "backend/tests/test_auth_infrastructure.py: 30 passed, the two defect-asserting tests rewritten to assert the denial AND the national positive control.",
         "scripts/tenant_mass_assignment_scan.py --gate: recurrence gate; proved to fire by emptying KNOWN_ROUTE_SITES."
       ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-149",
+      "category": "Correctness / Unreachable error path",
+      "domain": "app/services/mpi",
+      "severity": "P2",
+      "priority": 149,
+      "status": "FIXED 2026-09-19. Import hoisted to function scope.",
+      "title": "merge_canonicals answered 500 instead of 404 for every id that does not exist",
+      "description": "Found by an independent adversarial review of NR-148, and confirmed by reading the source.\n\n`from app.domain.exceptions import ConflictError, NotFoundError` sat INSIDE `if target_id == source_id:` -- a branch that always raises. The two `raise NotFoundError` statements after it therefore referenced an unbound function-local, so both not-found branches of merge were unreachable as written and answered UnboundLocalError -> 500.\n\nWorth noting for the register's own sake: NR-148 hardened WHO may merge without ever exercising merge with a missing id, which is why a reviewer found this and the fix's own tests did not.",
+      "evidence": [
+        "backend/app/services/mpi/canonical_service.py:105 (import), :110 and :114 (unbound uses)"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-150",
+      "category": "Identity / Cross-tenant existence oracle",
+      "domain": "app/routes/identity.py",
+      "severity": "P0",
+      "priority": 150,
+      "status": "FIXED 2026-09-19. The duplicate check is scoped to the caller's laboratory.",
+      "title": "POST /identity/link was a national-ID existence oracle over the whole population",
+      "description": "Found by an independent adversarial review of NR-148, on the adjacent table, and confirmed by reading the source. It is the same class NR-148's 404-not-403 design was written to prevent -- one table over, and live.\n\nThe handler's FIRST query scopes correctly:\n    Patient.id == data.patient_id, Patient.lab_id == current_user.lab_id\nIts SECOND, two lines later, did not:\n    Patient.national_id_hash == nid_hash, Patient.id != patient.id\n\nExploit: any authenticated lab caller creates one throwaway patient in its own lab, then loops the endpoint over candidate national IDs. 409 means that ID is on a patient record SOMEWHERE IN THE COUNTRY; 200 means it is not -- and on 200 the hash is overwritten, so the same throwaway row probes again indefinitely. Iraqi national IDs are structured and enumerable. No rate limit on the path.\n\nFixed by scoping the duplicate check to the caller's own laboratory. Cross-laboratory identity resolution is not this endpoint's job: it is what the Master Patient Index exists for, where NR-148 now gates it behind national scope. Two queries in one handler, one tenant-scoped and one not -- the same sibling-path signature as NR-141 and NR-146.",
+      "evidence": [
+        "backend/app/routes/identity.py:43-55, contrasted with :29-37 in the same handler"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-151",
+      "category": "Identity / MPI",
+      "domain": "app/services/mpi",
+      "severity": "P1",
+      "priority": 151,
+      "status": "OPEN — measured, not fixed. Violates CLAUDE.md security invariant 2.",
+      "title": "The entire MPI mutation surface writes no audit log",
+      "description": "From the NR-148 adversarial review. routes/canonical_patient.py imports no log_action and contains no audit call: create, merge, link-patient and link-citizen all mutate national identity state with no audit trail. NR-148 hardened WHO may merge and left WHETHER IT IS RECORDED untouched -- an abusive merge would be undetectable after the fact. national/api/routes/interop.py logs a mere PIX read, so the primitive is right there. Recorded rather than fixed in the same commit because an audit write on the merge path needs the hash-chain service wired and tested on its own.",
+      "evidence": [
+        "independent adversarial verification of NR-148, 2026-09-19"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-152",
+      "category": "Identity / MPI",
+      "domain": "app/services/mpi",
+      "severity": "P1",
+      "priority": 152,
+      "status": "OPEN — measured, not fixed. Needs a decision on who may contribute to the MPI.",
+      "title": "Any verified citizen can write rows into the national patient index",
+      "description": "From the NR-148 adversarial review, proven by live probe. create_canonical is guarded by get_current_user alone; the NR-148 policy has no clause for a caller with no laboratory, so the code defaults to allow. A verified citizen account (role=citizen, lab_id NULL) can POST attacker-chosen national_id_hash and health_id, unlimited, with NULL provenance and no audit. The rows are invisible to every lab-scoped caller and appear in every national admin's search -- index poisoning aimed at the ministry console. require_institutional_user already exists in security/dependencies.py:163. Not fixed blind because 'who may contribute to the MPI' is a policy question, not a missing guard.",
+      "evidence": [
+        "independent adversarial verification of NR-148, 2026-09-19"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-153",
+      "category": "Identity / MPI",
+      "domain": "app/services/mpi",
+      "severity": "P1",
+      "priority": 153,
+      "status": "OPEN — measured, not fixed. The semantics need deciding, not patching.",
+      "title": "Merge destroys the source record's provenance, contradicting NR-148's own premise",
+      "description": "From the NR-148 adversarial review. canonical_service.py:123-125 nulls source.lab_id, national_id_hash and health_id on merge, while the docstring two lines above claims 'the source record is NOT deleted -- it remains orphaned for audit trail'. The audit value is exactly what gets blanked. Proven end to end: after a national merge, Lab A gains a record it could not see a moment earlier AND permanently loses access to the one it contributed, with provenance re-attributed purely by which id the caller named as target. Part of that is arguably correct MPI semantics; the provenance destruction is not, and it contradicts the premise NR-148's whole policy rests on.",
+      "evidence": [
+        "independent adversarial verification of NR-148, 2026-09-19"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-154",
+      "category": "Identity / MPI",
+      "domain": "app/services/mpi",
+      "severity": "P2",
+      "priority": 154,
+      "status": "OPEN — a deliberate decision is needed; the code currently says nothing.",
+      "title": "'National scope' gives a province admin the whole nation",
+      "description": "From the NR-148 adversarial review. scope.py grants province_admin unrestricted read, search and merge over the entire national index. CanonicalPatient.province exists and is never consulted; LabUser.province_id is never compared. A Basra province admin can search and merge Erbil identities. NR-148 justified the role set as 'the roles the platform already treats as seeing past a single laboratory' -- which is true, but 'past one laboratory' is not 'the whole nation'. Either scope province_admin to its province on search and refuse its merges, or state in the module that national scope is intended to be national for all three roles.",
+      "evidence": [
+        "independent adversarial verification of NR-148, 2026-09-19"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-155",
+      "category": "Identity / MPI",
+      "domain": "app/services/mpi",
+      "severity": "P2",
+      "priority": 155,
+      "status": "OPEN — measured. An environment fact with platform-wide consequences.",
+      "title": "The test suite exercises no foreign-key constraint at all",
+      "description": "From the NR-148 adversarial review. backend/tests/conftest.py never issues PRAGMA foreign_keys=ON, so SQLite enforces no foreign keys anywhere in the suite. A dangling PatientLink to a non-existent patient committed cleanly in test and would be a 500 on PostgreSQL. Every referential-integrity assumption the suite appears to cover is untested, which is a false-green class rather than a single defect.",
+      "evidence": [
+        "independent adversarial verification of NR-148, 2026-09-19"
+      ],
+      "tests": [],
       "generated": "2026-09-19"
     }
   ]

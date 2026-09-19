@@ -39,12 +39,23 @@ def link_national_id(
 
     nid_hash = hash_national_id(data.national_id)
 
-    # Check if another patient already has this national ID
+    # NR-150. This checked the WHOLE patients table with no lab_id filter, two
+    # lines below a query that scopes correctly to current_user.lab_id. Any lab
+    # could create one throwaway patient and loop this endpoint over candidate
+    # national IDs: 409 meant "that ID exists somewhere in the country", 200
+    # meant it did not, and the same throwaway row could be reused forever
+    # because the hash is overwritten on success. Iraqi national IDs are
+    # structured and enumerable, so that is an oracle over the population.
+    #
+    # Scoped to the caller's own laboratory. Cross-laboratory identity
+    # resolution is not this endpoint's job -- it is exactly what the Master
+    # Patient Index exists for, where it is gated by national scope (NR-148).
     existing = (
         db.query(Patient)
         .filter(
             Patient.national_id_hash == nid_hash,
             Patient.id != patient.id,
+            Patient.lab_id == current_user.lab_id,
         )
         .first()
     )
