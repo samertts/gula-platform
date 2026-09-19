@@ -274,6 +274,55 @@ def test_the_shadow_root_scan_covers_the_test_suite_too() -> None:
     assert len(scanned) > 500, f"only {len(scanned)} modules scanned"
 
 
+#: nhop-platform is a SEPARATE service: its own Dockerfile, requirements and
+#: database, deployed from its own tree. The Dockerfile copies app/, alembic/
+#: and alembic.ini into /app and runs `uvicorn app.main:app`, so there is no
+#: backend/ anywhere in that image. Fifteen of its modules nonetheless imported
+#: `backend.app._compat`, which resolved only because pytest runs from the
+#: monorepo root -- so `import app.main` raised ModuleNotFoundError in the
+#: container while the suite stayed green (NR-129). The scan follows the root's
+#: reachability, not the directory the defect was first found in.
+_NHOP = BACKEND.parent / "nhop-platform"
+_NHOP_TREES = ("app", "tests")
+
+
+def _every_nhop_module() -> list[Path]:
+    found: list[Path] = []
+    for tree in _NHOP_TREES:
+        root = _NHOP / tree
+        if not root.exists():
+            continue
+        found.extend(p for p in root.rglob("*.py") if "__pycache__" not in p.parts)
+    return sorted(found)
+
+
+def test_the_nhop_scan_reaches_that_tree() -> None:
+    """Positive control: an empty scan would make the guard below vacuous."""
+    scanned = _every_nhop_module()
+    assert len(scanned) > 30, (
+        f"only {len(scanned)} nhop-platform modules scanned; the guard below "
+        "is passing over an empty or near-empty list"
+    )
+    assert any("tests" in p.parts for p in scanned), "the scan no longer reaches nhop-platform/tests/"
+
+
+def test_nothing_under_nhop_imports_the_shadow_root() -> None:
+    """NR-129 — the same root cause as NR-124, in a service that ships alone."""
+    offenders = []
+    for path in _every_nhop_module():
+        try:
+            roots = _imported_roots(path)
+        except SyntaxError:
+            continue
+        if INVALID_ROOT in roots:
+            offenders.append(str(path.relative_to(_NHOP)))
+    assert offenders == [], (
+        f"these nhop-platform modules import through `{INVALID_ROOT}.`, which "
+        f"does not exist in the nhop container at all, so the service cannot "
+        f"import its own app: {offenders}"
+    )
+
+
 def test_nothing_under_backend_imports_the_shadow_root() -> None:
     """NR-056, NR-058, NR-124 — one root cause, three places it surfaced."""
     offenders = []

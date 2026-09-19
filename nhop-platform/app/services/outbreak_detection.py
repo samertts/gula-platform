@@ -23,12 +23,10 @@ a public-health signal.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
-
-from backend.app._compat import UTC
 
 from ..models.antibiotic_sensitivity import AntibioticSensitivity
 from ..models.disease_case import DiseaseCase

@@ -13,14 +13,12 @@ Route order matters: static segments (``/validate``) are declared before
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, asc, desc
 from sqlalchemy.orm import Session
-
-from backend.app._compat import UTC
 
 from ...core.database import get_db
 from ...core.trusted_context import current_context

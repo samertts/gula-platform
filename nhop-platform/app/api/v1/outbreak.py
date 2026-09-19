@@ -7,12 +7,10 @@ are safe to expose to dashboards and the hourly background task.
     GET /v1/outbreak/heatmap/{disease_code} - province-level case counts
     GET /v1/outbreak/resistance             - antibiotic resistance report
 """
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
-
-from backend.app._compat import UTC
 
 from ...core.database import get_db
 from ...core.rbac import Role, require_roles

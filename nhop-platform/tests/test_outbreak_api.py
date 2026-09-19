@@ -1,5 +1,5 @@
 """End-to-end tests for the outbreak API endpoints (RBAC + happy paths)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from app.api.v1.outbreak import router as outbreak_router
@@ -19,8 +19,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from backend.app._compat import UTC
 
 
 def _as(client, role: str, actor_id: str = "operator-1") -> None:

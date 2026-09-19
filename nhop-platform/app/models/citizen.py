@@ -4,7 +4,7 @@ One row per real person. Externally identified by `health_id` (never by
 primary key, never by raw national_id). `national_id` is unique when present
 but nullable for edge cases (e.g. newborns awaiting civil registration).
 """
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     JSON,
@@ -15,8 +15,6 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-
-from backend.app._compat import UTC
 
 from ..core.database import Base
 

@@ -1,9 +1,7 @@
 """Tests for the doctor-portal endpoints (CMD-017)."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-from backend.app._compat import UTC
+from datetime import UTC, datetime, timedelta, timezone
 
 
 def test_order_tests_requires_doctor_role(app_client, make_citizen):

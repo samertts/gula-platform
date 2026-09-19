@@ -3,12 +3,10 @@
 Each row represents a single bacterium/antibiotic pair tested in one lab.
 Aggregating across rows yields the national resistance report.
 """
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
-
-from backend.app._compat import UTC
 
 from ..core.database import Base
 

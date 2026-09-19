@@ -18,14 +18,12 @@ does not accidentally match ``overview`` or ``timeline`` as a path variable.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
-
-from backend.app._compat import UTC
 
 from ...core.database import get_db
 from ...core.trusted_context import current_context
