@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-19",
-  "head_commit": "24bc8da3",
+  "head_commit": "ca207518",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 141,
-    "P0": 22,
-    "P1": 71,
-    "P2": 36,
+    "total": 144,
+    "P0": 23,
+    "P1": 72,
+    "P2": 37,
     "P3": 12
   },
   "findings": [
@@ -4970,6 +4970,63 @@
       "evidence": "app/identity/api/memberships.py MembershipApplicationRequest.identity_id and `body.identity_id or actor.account.identity_id`; app/identity/services/membership_service.py:282 (client value) vs :382 (server value)",
       "tests": [
         "backend/tests/test_membership_identity_binding.py (5 tests)"
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-142",
+      "category": "Identity / Unauthenticated tenant-selectable clinical surface",
+      "domain": "services",
+      "severity": "P0",
+      "priority": 142,
+      "status": "CONTAINED 2026-09-19, NOT FIXED. The eight services are now bound to 127.0.0.1 in docker-compose.full.yml and a guard enforces it. The authorization control is still absent; the disposition decision is ADR-028 and belongs to a person.",
+      "title": "The services/ microservice tree reads and writes patient data with no authentication, on host-wide port bindings",
+      "description": "Found by extending the NR-139 sweep past backend/app, which was where it stopped.\n\nservices/lab, patient, order, result, sample, notification, ai and autonomous_manager perform no authentication and no authorization. The string 'Authorization' occurs in each exactly once, inside CORSMiddleware(allow_headers=[...]) -- granting a browser permission to send a header that nothing reads.\n\nThey are not inert. docker-compose.full.yml -- a deployment target CLAUDE.md documents -- builds all eight, points them at labdb through pgbouncer (the database the monolith serves) and published them on EVERY interface of the host: \"8001:8000\" .. \"8006:8000\", \"8010:8000\", \"9000:9000\". They are not behind the gateway; config/nginx/conf.d/api.conf proxies to gula_backend and gula_frontend and nothing else. The published port was the entire perimeter.\n\nThe sharpest instance is services/patient/main.py::list_patients: `lab_id` is an optional query parameter, and omitting it drops the WHERE clause rather than denying the request, so `GET /patients` returns every patient row across every tenant. That is both halves of the forbidden pattern in one signature -- a client-authored tenant treated as a security fact, and an object-level authorization gap behind it. It violates security invariant 1 (lab_id = current_user.lab_id) and invariant 2 (POST /patients publishes a RabbitMQ event and writes no audit row).\n\nStated precisely rather than dramatically: POST /restart/{service_name} on the autonomous manager allow-lists service_name, so there is no command injection, and the compose file removes the Docker socket, so the call returns {\"restarted\": false}. What an unauthenticated caller gets there is the service inventory and health map from GET /status.\n\nWHAT WAS DONE: the binding only. Every service this repository builds now publishes on 127.0.0.1, matching api-gateway in the same file and gula-demo-api in docker-compose.demo.yml. Nothing changes for a legitimate caller: inter-service traffic resolves over gula-net by service name, and tests/load/gula-load-test.js runs on the host, where loopback still answers.\n\nWHAT WAS NOT DONE, AND WHY: whether this tree should be authenticated or retired is a real architectural decision. CLAUDE.md says the monolith is the source of truth and services/ is not the primary deployment target; the tree has zero tests outside device_bridge; no workflow builds its images (CLAUDE.md describes a build-and-push job publishing 'backend + 7 microservices' to GHCR, and ci.yml has no such job, only the vestigial REGISTRY env var); and backend/gateway/api_gateway.py, the only other thing that knows these ports, is imported by nothing and maps patients->8001 and labs->8002 while the compose file assigns them the other way round. That is an argument for retiring it, not an authority to. Recorded as ADR-028.",
+      "evidence": [
+        "services/patient/main.py:133 list_patients(lab_id: int | None = None) -- no filter when absent",
+        "services/order/main.py:151 list_orders(lab_id: int | None = None) -- same shape",
+        "services/lab/main.py:82 create_laboratory, :107 get_laboratory -- no caller anywhere",
+        "docker-compose.full.yml: eight built services now 127.0.0.1-bound (was 0.0.0.0)",
+        "config/nginx/conf.d/api.conf: proxy_pass targets are gula_backend and gula_frontend only",
+        "grep 'Authorization' services/*/main.py -> CORSMiddleware allow_headers, nothing else",
+        "docs/adr/ADR-028-services-tree-disposition.md"
+      ],
+      "tests": [
+        "tests/integration/test_deployment_exposure.py (7 tests; negative proof: reverting patient-service to \"8002:8000\" fails 2 of them)"
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-143",
+      "category": "Deployment / Third-party service exposure",
+      "domain": "infra",
+      "severity": "P2",
+      "priority": 143,
+      "status": "OPEN. Recorded, not fixed -- a different class from NR-142 and not this sweep's finding.",
+      "title": "docker-compose.full.yml publishes vault, keycloak, clickhouse, kafka, minio and the observability stack on every interface",
+      "description": "Measured while fixing NR-142 and deliberately left alone. vault:8200, keycloak:8081, clickhouse:8123/9001, kafka:9092/9101, minio:9003/9002, prometheus:9090, grafana:3000, loki:3100, jaeger:16686/14268/4317/4318, ollama:11434, node-exporter:9100 and redis-sentinel:26379 all bind 0.0.0.0.\n\nIt is a separate class: none of it is code this repository writes, and several have documented access workflows -- CLAUDE.md describes reaching monitoring over an SSH tunnel, which a loopback binding would in fact serve correctly. The datastores in the same file (postgres-primary, postgres-replica, pgbouncer, redis, rabbitmq) publish nothing at all, so the discipline exists in the file; it was applied to the stores and not to these.",
+      "evidence": [
+        "docker-compose.full.yml ports: enumerated 2026-09-19; api-gateway and the eight built services are the only loopback-bound entries"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-144",
+      "category": "Identity / Client-authored clinical attestation",
+      "domain": "nhop-platform",
+      "severity": "P1",
+      "priority": 144,
+      "status": "FIXED 2026-09-19. verified_by is derived from the trusted context. Regression: nhop-platform/tests/test_result_verification_identity.py (7 tests); 6 of the 7 fail against the pre-fix source.",
+      "title": "The clinician recorded as verifying a lab result was a string in the request body",
+      "description": "PUT /v1/test-results/{id}/verify is the attestation step: it moves a result to `verified` and records who stood behind it. That name came from the request:\n\n    row.verified_by = payload.verified_by\n\nSo the record of who attested a clinical result was whatever the client chose to send, and the audit row repeated it. It is the same defect NR-128/F2 closed for lab_id a few lines above in the same module, and it survived that fix because F2 was scoped to the filing path.\n\nThe fix uses the primitive that was already there: current_context(request).actor_id, the same source _require_lab_scope reads. TestResultVerifyRequest now carries no fields -- the caller has nothing left to say -- and the route takes no body.\n\nReachability is stated honestly: every v1 route 503s today because require_trusted_context fails closed (NR-127), so this was a latent defect, not an exploited one. The test module asserts that 503 separately and never in place of the control, because an endpoint that is never reached proves nothing about its attestation.",
+      "evidence": [
+        "nhop-platform/app/api/v1/test_results.py:485 (was payload.verified_by, now current_context(request).actor_id)",
+        "nhop-platform/app/schemas/test_result.py:85 TestResultVerifyRequest -- field removed",
+        "nhop-platform suite 69 -> 76 passed, 0 failed"
+      ],
+      "tests": [
+        "nhop-platform/tests/test_result_verification_identity.py (7 tests: positive, body-ignored, forged headers, audit metadata, refused-second-verification, and the 503 asserted separately)"
       ],
       "generated": "2026-09-19"
     }

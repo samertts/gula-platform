@@ -312,6 +312,7 @@ services:
         reservations:
           memory: 1G
 
+  # NR-142: loopback-bound with the rest of the services tree; see lab-service.
   ai-service:
     build:
       context: ./services
@@ -326,7 +327,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
     ports:
-      - "9000:9000"
+      - "127.0.0.1:9000:9000"
     depends_on:
       - ollama
       - redis
@@ -545,6 +546,15 @@ services:
     networks:
       - gula-net
 
+  # NR-142. These eight services published their ports on every interface of
+  # the host while requiring no authentication at all: `GET /patients` with no
+  # lab_id returns every patient row in `labdb`, across every tenant. They sit
+  # outside the gateway -- config/nginx/conf.d/api.conf proxies only to
+  # gula_backend and gula_frontend -- so the published port WAS the perimeter.
+  # Binding them to loopback matches api-gateway above and the rule the
+  # platform already states: nothing reaches an application service except
+  # through the gateway. It is containment, not the control: the services still
+  # have no caller identity. See docs/adr/ADR-028-services-tree-disposition.md.
   lab-service:
     build:
       context: ./services
@@ -561,7 +571,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: lab-service
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -585,7 +595,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: patient-service
     ports:
-      - "8002:8000"
+      - "127.0.0.1:8002:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -609,7 +619,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: order-service
     ports:
-      - "8003:8000"
+      - "127.0.0.1:8003:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -635,7 +645,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: result-service
     ports:
-      - "8004:8000"
+      - "127.0.0.1:8004:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -657,7 +667,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: sample-service
     ports:
-      - "8005:8000"
+      - "127.0.0.1:8005:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -678,7 +688,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: notification-service
     ports:
-      - "8006:8000"
+      - "127.0.0.1:8006:8000"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -702,7 +712,7 @@ services:
     # volumes:
     #   - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "8010:8000"
+      - "127.0.0.1:8010:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
