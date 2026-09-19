@@ -36,7 +36,21 @@ class MembershipContextRequest(BaseModel):
 
 
 class MembershipApplicationRequest(MembershipContextRequest):
-    identity_id: str | None = Field(default=None, max_length=26)
+    """NR-141. There is deliberately no identity_id here.
+
+    This carried `identity_id: str | None`, and the route passed
+    `body.identity_id or actor.account.identity_id` straight through to
+    create_application, which never validated it. On approval the Membership
+    was created with `identity_id=application.identity_id` -- so an applicant
+    could have a membership, the thing that carries organizational scope, bound
+    to an identity that is not theirs.
+
+    The sibling path already did it correctly: accept_invitation builds its
+    Membership with `identity_id=account.identity_id`, server-derived. The same
+    column was populated from the server on one path and from the client on the
+    other. It is server-derived on both now, and the field is removed rather
+    than ignored so no client is left believing it still chooses anything.
+    """
 
 
 class MembershipInvitationRequest(MembershipContextRequest):
@@ -156,7 +170,7 @@ def submit_membership_application(
     try:
         application = MembershipService(db).create_application(
             account_id=actor.account.id,
-            identity_id=body.identity_id or actor.account.identity_id,
+            identity_id=actor.account.identity_id,
             organization_id=body.organization_id,
             relationship_type=body.relationship_type,
             scope_type=body.scope_type,

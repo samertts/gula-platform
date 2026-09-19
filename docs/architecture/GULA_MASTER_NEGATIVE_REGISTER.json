@@ -5,9 +5,9 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 140,
+    "total": 141,
     "P0": 22,
-    "P1": 70,
+    "P1": 71,
     "P2": 36,
     "P3": 12
   },
@@ -4935,7 +4935,7 @@
       "domain": "backend",
       "severity": "P2",
       "priority": 139,
-      "status": "MEASURED 2026-09-19 — no new P0/P1 on the reachable surface. ~30 body-field sites in four modules remain UNKNOWN and are listed as such. Re-runnable: scripts/identity_entrypoint_sweep.py.",
+      "status": "SUPERSEDED IN PART 2026-09-19 — two of its UNKNOWNs turned out to be real defects: NR-140 (P0, authorization.py) and NR-141 (P1, memberships.py). The remaining UNKNOWNs are identity/api/security.py and routes/ai_platform.py.",
       "title": "Identity and tenant entry points: classification of every client-authored surface in backend/app",
       "description": "Swept backend/app by AST for parameters and request-body fields named account_uuid, user_id, person_id, identity_id, lab_id, organization_id, role, permission or session_id, against the 2103 served operations enumerated from app.openapi(). scripts/identity_entrypoint_sweep.py reproduces it.\\n\\nREAD THE TWO CATEGORIES DIFFERENTLY -- getting this wrong would make the numbers alarming and meaningless:\\n  `param:` counts (lab_id 464, user_id 206, organization_id 59, person_id 55, session_id 30, identity_id 24, role 17, permission 16, account_uuid 2) walk EVERY function definition, not only route handlers. The overwhelming majority are ordinary internal signatures -- a service function taking a lab_id it was given by a caller that already validated it. They are NOT a client-authored surface and must not be reported as one.\\n  `body:` counts ARE client-authored: a field on a request payload. role 17, lab_id 14, organization_id 6, session_id 6, user_id 2, identity_id 1, permission 1.\\n\\nA client-authored value is still not a defect. The defect is one that becomes a SECURITY FACT. The highest-risk sites -- a client naming a tenant -- were read individually:\\n  app/routes/service_accounts.py:61 — SERVER-VALIDATED. master_admin may name a lab; every other admin must hold a lab_id, the requested one must equal it (403 otherwise), and the value is then OVERWRITTEN with the caller's own.\\n  app/routes/edge.py:778,790 — SERVER-VALIDATED. A body lab_id differing from the caller's requires master; a global assignment requires master; otherwise it falls back to the caller's own lab.\\n  app/routes/admin.py:784 and the role sites — SERVER-VALIDATED by _require_platform_scope / _require_province_scope (NR-116).\\n  app/identity/api/accounts.py — both account_uuid parameters are the lock and unlock routes, fail-closed at 410: BLOCKED-BY-DESIGN.\\n  nhop-platform test_results lab_id — the one real instance of a client-named tenant becoming authority, closed as F2 (NR-128).\\n\\nNO NEW P0/P1 on the reachable surface.\\n\\nUNKNOWN, and recorded as UNKNOWN rather than assumed safe: the body-field sites under app/identity/api/memberships.py, app/identity/api/security.py, app/routes/authorization.py and app/routes/ai_platform.py were not read individually. session_id under ai_platform appears to be an AI conversation identifier rather than an auth session, which should be confirmed before anyone reads it as an auth finding.",
       "evidence": "scripts/identity_entrypoint_sweep.py; counts and sites as listed",
@@ -4955,6 +4955,21 @@
       "tests": [
         "backend/tests/test_role_grant_authority.py (11 tests)",
         "scripts/nr140_role_grant_probe.py"
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-141",
+      "category": "Identity / Client-authored identity binding",
+      "domain": "backend",
+      "severity": "P1",
+      "priority": 141,
+      "status": "FIXED 2026-09-19. identity_id is server-derived on both membership paths. Regression: backend/tests/test_membership_identity_binding.py (5 tests).",
+      "title": "A membership application could name the identity its membership would bind to",
+      "description": "Second finding from the NR-139 UNKNOWNs, after NR-140.\\n\\nMembershipApplicationRequest carried `identity_id: str | None`, and app/identity/api/memberships.py passed `body.identity_id or actor.account.identity_id` to MembershipService.create_application, which never validated it against the applying account. On approval (membership_service.py:282) the Membership was built with `identity_id=application.identity_id` -- the client's value.\\n\\nSo an applicant could hold a membership -- the record that carries organizational scope, and the one the clinical gateway resolves context through -- bound to an identity that is not theirs. An approver reviewing the application would see a legitimate-looking identity.\\n\\nWHAT MADE IT UNAMBIGUOUS: the sibling path was already correct. accept_invitation (membership_service.py:382) builds its Membership with `identity_id=account.identity_id`, server-derived. The same column was populated from the server on one path and from the client on the other, in the same file, 100 lines apart.\\n\\nNote that create_application DOES check `actor_id != account_id`, so the account could not be forged -- only the identity bound to it. The check that existed and the check that was missing sat in the same function.\\n\\nFIX: the route derives identity_id from the authenticated account, matching the invitation path. The field is REMOVED from the request model rather than ignored, so no client is left believing it still chooses anything.\\n\\nMITIGATION THAT EXISTED: an application requires approval, so this was not immediate self-service escalation. It was a client-authored value becoming a persisted identity binding, which is the defect regardless of who approves it.\\n\\nRegression includes a class-level guard: no request model in the module may accept identity_id, account_id or person_id. recipient_account_id is excluded explicitly -- an invitation names its recipient by design, and accept_invitation still derives the membership's identity from the authenticated account.",
+      "evidence": "app/identity/api/memberships.py MembershipApplicationRequest.identity_id and `body.identity_id or actor.account.identity_id`; app/identity/services/membership_service.py:282 (client value) vs :382 (server value)",
+      "tests": [
+        "backend/tests/test_membership_identity_binding.py (5 tests)"
       ],
       "generated": "2026-09-19"
     }
