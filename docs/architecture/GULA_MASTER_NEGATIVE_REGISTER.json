@@ -5,9 +5,9 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 137,
+    "total": 138,
     "P0": 21,
-    "P1": 69,
+    "P1": 70,
     "P2": 35,
     "P3": 12
   },
@@ -4911,6 +4911,21 @@
       "description": "With NR-135 in place a legacy login now produces a real NIAM session and the clinical gateway authenticates it -- 401 became 403. Measured in-process, the gateway then blocks with reason_code `missing_workspace` (app/clinical_gateway/context.py:66).\\n\\nThe context resolver requires a chain this account does not have: workspace -> membership -> legacy identity resolution -> facility mapping, with `cross_tenant_scope` and `facility_mismatch` as its tenant-isolation controls. Those controls are already canonical and correct; nothing parallel should be built beside them.\\n\\nTWO THINGS ARE MISSING, and both are provisioning rather than code:\\n  1. Canonical ACCOUNTS for legacy users. LegacyMappingService 'never creates canonical accounts ... those actions require separate approved waves and an explicit feature-flagged cohort', and POST on the account-creation route is fail-closed at 410 behind a review-gated intake. The NR-135 runtime proof provisions one out of band, as a fixture, precisely because the product has no sanctioned path.\\n  2. Organizational CONTEXT for those accounts: workspace, membership and facility mapping.\\n\\nWHY NOT GUESSED. AuthenticationService._create_session calls WorkspaceService.ensure_citizen_workspace, so the NIAM-native login does create a workspace -- a CITIZEN one. Giving a laboratory administrator a citizen workspace to make the read succeed would be inventing identity semantics and could widen scope. The decision needed is which workspace and membership a bridged legacy lab_user is entitled to, and by whose approval.\\n\\nGULA_CLINICAL_GATEWAY_MODE also gates the surface (default off; the proof runs with it ON in the test environment only, production default untouched). That is a rollout control working as designed, not a defect.",
       "evidence": "app/clinical_gateway/context.py:66 missing_workspace, :108 membership_missing, :145 facility_mapping_unavailable, :209 cross_tenant_scope; in-process resolve() on the bridged account returns reason_code=missing_workspace; app/identity/services/legacy_mapping_service.py class docstring; app/identity/api/accounts.py 410",
       "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-138",
+      "category": "Authorization / Tenant isolation",
+      "domain": "backend",
+      "severity": "P1",
+      "priority": 138,
+      "status": "CLOSED — 2026-09-19. Mustafa's fix (c84171ea) ported unchanged and independently verified here, with one missing test added.",
+      "title": "F5: a lab-scoped admin could manage users in any other laboratory",
+      "description": "can_manage_user() in backend/app/security/rbac.py returned True for every actor role except province_admin, with no lab check at all. A lab-scoped admin or lab_admin could therefore toggle-activate or change the role of a user in ANY other laboratory, through PUT /admin/users/{id}/toggle and PATCH /admin/users/{id}/role -- the two reachable callers.\\n\\nFOUND AND FIXED BY MUSTAFA (c84171ea). The fix was assessed here before being taken: it is correct, ten lines, mirrors the platform-role bypass and lab_id equality that require_own_lab() in the same module already enforces -- so tenant scoping stays defined in one place rather than gaining a parallel mechanism -- and it preserves master_admin, ministry_admin and province_admin scope. It was ported unchanged rather than reimplemented.\\n\\nINDEPENDENT VERIFICATION ON THIS BRANCH found one gap. Reverting to the pre-fix `return True` fails 4 of the 8 ported tests, as expected. But removing only the `is not None` guard -- leaving `actor.lab_id == target.lab_id`, so None == None matches -- left ALL 8 passing. That guard is the difference between 'the same lab' and 'neither has a lab', and nothing tested it.\\n\\nFive tests were added for it: an actor with no lab cannot manage a user with no lab, nor one in a lab; an actor in a lab cannot manage a user with none; same-lab is still allowed (a positive control, without which the three denials could pass for the wrong reason); and master_admin/ministry_admin keep cross-lab reach, so the lab check cannot be found to have narrowed them. The same perturbation now fails 1 of 13.",
+      "evidence": "backend/app/security/rbac.py::can_manage_user; PUT /admin/users/{id}/toggle and PATCH /admin/users/{id}/role; pre-fix revert fails 4/8; `is not None` removal failed 0/8 before, 1/13 after",
+      "tests": [
+        "backend/tests/test_rbac_tenant_scope.py (13 tests)"
+      ],
       "generated": "2026-09-19"
     }
   ]
