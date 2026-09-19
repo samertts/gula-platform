@@ -26,7 +26,9 @@ def test_validate_payload_only_checks_plausibility(app_client, admin_headers):
 
 
 def test_create_result_requires_a_role(app_client, make_lab):
-    """No X-Role header at all -> 401, not a silent pass-through."""
+    """No identifying header at all -> 503 (no trusted caller identity can be
+    established), not a silent pass-through. See app/core/trusted_context.py:
+    a missing identity fails closed, it is never treated as anonymous/401."""
     client, Session = app_client
     with Session() as s:
         lab = make_lab(s)
@@ -42,7 +44,7 @@ def test_create_result_requires_a_role(app_client, make_lab):
             "value_numeric": 14.0,
         },
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 503
 
 
 def test_create_result_rejects_doctor_role(app_client, make_lab):

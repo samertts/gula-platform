@@ -13,25 +13,15 @@ Route order matters: the static ``/search`` path is declared before the
 ``/{health_id}`` dynamic path so FastAPI does not treat "search" as a
 health_id.
 
-Authorization: this file previously had no gate at all (unlike its
-siblings doctor.py and outbreak.py, which both use core.rbac.require_roles
-the same way this file now does). Writes (register/update) require LAB,
-DOCTOR, or ADMIN; reads add MINISTRY, matching outbreak.py's precedent.
-
-IMPORTANT — this is NOT real access control yet. core.rbac.require_roles
-reads the caller-supplied X-Role header verbatim with no verification
-against any session, token, or server-side identity (see that module's
-own docstring, and nhop-platform/tests/test_rbac_is_not_a_trust_boundary.py
-for a runtime proof). Any caller can send X-Role: ADMIN and pass every
-gate below. What this fix actually provides: it closes the "zero
-intent required" gap (previously nothing was needed at all) and matches
-this file to its siblings' existing pattern, but a deliberate caller is
-not stopped by it. Do not treat 401/403 here as evidence the endpoint is
-secured. Real authorization requires nhop-platform to verify a token
-against the GULA identity stack (backend/app/security/auth.py and the
-identity/authorization services under backend/app/identity/), which is
-out of scope for this fix — see the work map for why (that stack is
-under active development elsewhere).
+Authorization: writes (register/update) require LAB, DOCTOR, or ADMIN;
+reads add MINISTRY, matching outbreak.py's precedent. The role and actor
+identity both come from core.trusted_context, which fails closed (503)
+until a real GULA-federated identity provider exists — see that module's
+docstring. Previously core.rbac.require_roles read the caller-supplied
+X-Role header verbatim with no verification (see
+nhop-platform/tests/test_rbac_is_not_a_trust_boundary.py, which now
+documents that as historical, not current, behavior); that gap is closed
+by routing through the trusted context instead of the wire.
 
 A citizen reading only their own record (self-service) is also not
 modeled: nhop has no session/identity binding yet that could prove "this
@@ -45,6 +35,7 @@ from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.rbac import Role, require_roles
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab_test import LabTest
 from ...schemas.citizen import (
@@ -67,13 +58,12 @@ _clinical_staff_and_ministry = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN, 
 
 
 def _actor_id(request: Request) -> str | None:
-    """Best-effort actor identifier for audit log entries.
+    """Server-established actor identifier for audit log entries.
 
-    In the full integration this will read the authenticated user from the
-    request; for now we pass through an optional ``X-Actor-Id`` header so the
-    endpoints are testable standalone.
+    Read from the trusted context (never from a client-supplied header) —
+    see core/trusted_context.py.
     """
-    return request.headers.get("X-Actor-Id")
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:

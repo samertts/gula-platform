@@ -2,9 +2,11 @@
 
 The production auth stack (JWT-backed) lives in the GULA platform. Until
 NHOP shares that identity surface, routes that need authorisation read the
-caller's role from the ``X-Role`` request header — the same pattern the
-citizens API already uses for ``X-Actor-Id``. This keeps restricted
-endpoints testable without booting the full auth stack.
+caller's role from :mod:`app.core.trusted_context`, which fails closed
+(503) until a real identity provider is federated. This module previously
+read the role straight from a client-supplied ``X-Role`` header with no
+verification at all — any caller could send ``X-Role: MINISTRY`` and pass —
+that gap is closed by sourcing the role from the trusted context instead.
 
 Exposed:
     :class:`Role`           - enum of known roles
@@ -14,7 +16,9 @@ from __future__ import annotations
 
 import enum
 
-from fastapi import Header, HTTPException, status
+from fastapi import HTTPException, Request, status
+
+from .trusted_context import current_context
 
 
 class Role(enum.StrEnum):
@@ -27,16 +31,12 @@ class Role(enum.StrEnum):
 
 
 def require_roles(*allowed: Role | str):
-    """Return a FastAPI dependency that 403s unless ``X-Role`` is one of ``allowed``."""
+    """Return a FastAPI dependency that 403s unless the trusted context's
+    role is one of ``allowed``."""
     allowed_values = {r.value if isinstance(r, Role) else str(r) for r in allowed}
 
-    def _dep(x_role: str | None = Header(default=None, alias="X-Role")) -> str:
-        if x_role is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="missing X-Role header",
-            )
-        normalized = x_role.strip().upper()
+    def _dep(request: Request) -> str:
+        normalized = (current_context(request).role or "").strip().upper()
         if normalized not in allowed_values:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

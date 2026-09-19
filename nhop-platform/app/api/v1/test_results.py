@@ -13,14 +13,17 @@ Route order matters: static segments (``/validate``) are declared before
 
 Authorization: mirrors citizens.py — LAB/ADMIN produce and verify results
 (DOCTOR added on verify, since sign-off is a clinical responsibility),
-reads add MINISTRY for oversight, matching outbreak.py's precedent.
+reads add MINISTRY for oversight, matching outbreak.py's precedent. Role
+and actor identity come from core.trusted_context (fails closed until
+federation lands), not from client-supplied headers.
 
-IMPORTANT — as in citizens.py, this is a role gate, not real access
-control: X-Role is unverified, client-supplied input (see
-core/rbac.py and tests/test_rbac_is_not_a_trust_boundary.py). It closes
-the "no gate at all" gap but does not stop a deliberate caller. See
-citizens.py's module docstring for the full explanation and why CITIZEN
-self-access isn't modeled either.
+Tenant scope (F2): POST / previously used the client-supplied
+``payload.lab_id`` as the sole authority for which lab a result gets
+attributed to — a caller authenticated as LAB could file a result against
+any lab's id, not just their own. ``create_test_result`` now cross-checks
+``payload.lab_id`` against the trusted context's ``lab_id`` for the LAB
+role (ADMIN keeps platform-wide scope, matching backend/app's own
+platform-roles pattern in security/rbac.py).
 """
 from __future__ import annotations
 
@@ -35,6 +38,7 @@ from backend.app._compat import UTC
 
 from ...core.database import get_db
 from ...core.rbac import Role, require_roles
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab import Lab
 from ...models.notification import NotificationPriority, NotificationType
@@ -73,7 +77,7 @@ _clinical_staff_and_ministry = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN, 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
 def _actor_id(request: Request) -> str | None:
-    return request.headers.get("X-Actor-Id")
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:
@@ -206,6 +210,18 @@ def create_test_result(
         raise HTTPException(status_code=404, detail="lab not found")
     if not lab.is_active:
         raise HTTPException(status_code=400, detail="lab is not active")
+
+    # F2: payload.lab_id is client-supplied and must not be the sole
+    # authority for which lab this result is attributed to. A LAB-role
+    # caller may only file results for their own lab; ADMIN is a
+    # platform-wide role and is exempt, mirroring backend/app's
+    # platform_roles pattern (security/rbac.py::require_own_lab).
+    ctx = current_context(request)
+    if ctx.role == Role.LAB.value and ctx.lab_id != str(lab.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="cannot file a test result against another lab",
+        )
 
     vr = validate_result(
         test_code=payload.test_code,

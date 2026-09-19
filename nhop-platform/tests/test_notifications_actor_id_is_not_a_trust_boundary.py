@@ -1,36 +1,36 @@
-"""P0 characterization test — final cross-cutting forensic pass.
+"""F1 (notifications) closure proof.
 
-notifications.py has NO role gate at all (unlike citizens.py/test_results.py,
-which at least require an X-Role value post-batch-2). Every route trusts
-X-Actor-Id as a fully authenticated user_id with zero verification, and uses
-it directly as the row-scoping key (services/notification.py filters
-`Notification.recipient_id == user_id`). The SQL-level scoping is correct;
-the identity feeding it is not authenticated at all.
+notifications.py used to trust X-Actor-Id as a fully authenticated user_id
+with zero verification, and used it directly as the row-scoping key
+(services/notification.py filters `Notification.recipient_id == user_id`).
+The SQL-level scoping was correct; the identity feeding it was not
+authenticated at all — a citizen's health_id (non-secret, returned by
+citizens.py's own /search and /{health_id} endpoints) was a valid
+X-Actor-Id for reading, and silencing, that citizen's own critical-result
+alerts.
 
-Impact is not hypothetical: test_results.py's _fire_critical_alert() sends
-citizens their own critical-result notifications with
-`recipient_id=citizen.health_id` — i.e. a citizen's health_id (a
-non-secret, discoverable identifier: it's what citizens.py's own /search
-and /{health_id} endpoints return) IS a valid X-Actor-Id for reading that
-citizen's critical lab alerts. No password, token, or session — just
-knowing (or guessing, or having searched for) someone's health_id.
-
-This is the exact defect class flagged in the corrected security-review
-guidance: "user_id/account_id ... taken from request data instead of
-trusted session context." It shares X-Role's root cause (no real identity
-stack in nhop-platform yet) and shares its fix location and blocker (see
-docs/engineering/MUSTAFA_PARALLEL_WORK_MAP.md finding #11) — not
-re-designed or fixed here, only proven and documented, per this pass's
-explicit no-speculative-implementation, no-competing-auth-implementation
-instructions.
+Identity now comes exclusively from app.core.trusted_context, which fails
+closed (503) until a real identity provider is federated. These tests prove
+that against the production dependency directly — bypassing conftest's
+legacy-header compatibility shim on purpose, the same way
+test_rbac_is_not_a_trust_boundary.py does, since honoring X-Actor-Id there
+would reproduce exactly the vulnerability this file used to demonstrate.
 """
 from __future__ import annotations
 
 
-def test_any_caller_reads_another_users_notifications_by_declaring_their_id(app_client):
+def _drop_identity_shim(client):
+    """See test_rbac_is_not_a_trust_boundary.py's copy of this helper for why
+    the import happens here rather than at module level."""
+    from app.core.trusted_context import require_trusted_context
+
+    client.app.dependency_overrides.pop(require_trusted_context, None)
+
+
+def test_claiming_a_victims_id_no_longer_reads_their_notifications(app_client):
     client, Session = app_client
+    from app.models.notification import NotificationPriority, NotificationType
     from app.services.notification import send_notification
-    from app.models.notification import NotificationType, NotificationPriority
 
     with Session() as s:
         send_notification(
@@ -44,29 +44,18 @@ def test_any_caller_reads_another_users_notifications_by_declaring_their_id(app_
         )
         s.commit()
 
-    # No login, no token, no session — just a claimed identity.
+    _drop_identity_shim(client)
+
     resp = client.get("/v1/notifications/", headers={"X-Actor-Id": "HID-VICTIM"})
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["total"] == 1
-    assert "حرجة" in body["items"][0]["title"]
-    assert "6.2" in body["items"][0]["body"]
-
-    # A different claimed identity sees nothing — proving the isolation is
-    # real at the SQL layer, and therefore that the *only* thing standing
-    # between an attacker and this data is an unverified string they typed.
-    other = client.get("/v1/notifications/", headers={"X-Actor-Id": "HID-SOMEONE-ELSE"})
-    assert other.status_code == 200
-    assert other.json()["total"] == 0
+    assert resp.status_code == 503
 
 
-def test_any_caller_can_mark_another_users_critical_alert_as_read(app_client):
-    """Tampering, not just reading: an attacker who guesses/knows a
-    victim's id can also silently suppress their critical-result alert by
-    marking it read before the real recipient ever sees it."""
+def test_claiming_a_victims_id_no_longer_suppresses_their_alert(app_client):
+    """Tampering, not just reading: this used to let an attacker who
+    guessed/knew a victim's id silently mark their critical alert as read."""
     client, Session = app_client
+    from app.models.notification import NotificationPriority, NotificationType
     from app.services.notification import send_notification
-    from app.models.notification import NotificationType, NotificationPriority
 
     with Session() as s:
         row = send_notification(
@@ -79,19 +68,34 @@ def test_any_caller_can_mark_another_users_critical_alert_as_read(app_client):
             priority=NotificationPriority.urgent,
         )
         s.commit()
+        notification_uuid = row.id
         notification_id = str(row.id)
+        was_read_before = row.is_read
+
+    _drop_identity_shim(client)
 
     resp = client.put(
         f"/v1/notifications/{notification_id}/read",
         headers={"X-Actor-Id": "HID-VICTIM-2"},
     )
-    assert resp.status_code == 200
-    assert resp.json()["is_read"] is True
+    assert resp.status_code == 503
+
+    with Session() as s:
+        from app.models.notification import Notification
+
+        fresh = s.query(Notification).filter(Notification.id == notification_uuid).first()
+        assert fresh.is_read == was_read_before  # unchanged: denied before mutation
 
 
-def test_missing_x_actor_id_is_the_only_thing_actually_enforced(app_client):
-    """Confirms the finding isn't "no gate at all, anything goes" — there
-    IS a check. It just isn't authentication."""
+def test_missing_and_forged_x_actor_id_fail_identically(app_client):
+    """Before the fix, "missing header" (401) and "forged header" (200) were
+    distinguishable — that distinguishability is what made the header
+    guessable/attackable in the first place. Both must now 503 alike."""
     client, _ = app_client
-    resp = client.get("/v1/notifications/")
-    assert resp.status_code == 401
+    _drop_identity_shim(client)
+
+    missing = client.get("/v1/notifications/")
+    forged = client.get("/v1/notifications/", headers={"X-Actor-Id": "HID-ANYONE"})
+
+    assert missing.status_code == 503
+    assert forged.status_code == 503

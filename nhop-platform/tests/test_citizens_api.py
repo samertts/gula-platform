@@ -84,14 +84,15 @@ def test_register_rejects_invalid_national_id(app_client, admin_headers):
 
 
 def test_register_requires_a_role(app_client):
-    """No X-Role header at all -> 401, not a silent pass-through."""
+    """No identifying header at all -> 503 (no trusted caller identity can be
+    established). See app/core/trusted_context.py: fail closed, not 401."""
     client, _ = app_client
 
     resp = client.post(
         "/v1/citizens/register",
         json={"full_name": "بلا صلاحية"},
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 503
 
 
 def test_register_rejects_unpermitted_role(app_client):
