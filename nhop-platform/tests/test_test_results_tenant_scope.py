@@ -15,9 +15,6 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from fastapi import Depends, FastAPI, Request
-from fastapi.testclient import TestClient
-
 from app.api.v1.test_results import router as results_router
 from app.core.database import get_db
 from app.core.trusted_context import (
@@ -26,8 +23,11 @@ from app.core.trusted_context import (
     require_trusted_context,
 )
 from app.models.lab import Lab, LabType
+
 # Aliased: pytest tries to collect any imported name starting with "Test".
 from app.models.test_result import TestResult as TestResultRow
+from fastapi import Depends, FastAPI, Request
+from fastapi.testclient import TestClient
 
 OWN_LAB = uuid.uuid4()
 OTHER_LAB = uuid.uuid4()
