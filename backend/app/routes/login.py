@@ -15,6 +15,12 @@ from ..config import (
     USE_SECURE_COOKIES,
 )
 from ..database import get_db
+from ..identity.services.legacy_session_bridge import (
+    establish_canonical_session,
+    resolve_canonical_account,
+    session_expiry,
+    terminate_canonical_session,
+)
 from ..models.lab_user import LabUser
 from ..models.user import User
 from ..security.auth import (
@@ -199,8 +205,44 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         user_name = citizen.full_name
         lab_name = None
 
+    # ── NR-135: bind this login to its canonical NIAM session ────────────────
+    # NIAM is the canonical identity authority. The account is resolved from
+    # the ALREADY-AUTHENTICATED legacy row, never from the request: the client
+    # supplies a credential and cannot name an account_uuid, identity_id,
+    # lab_id or role and have it become a security fact.
+    #
+    # account_uuid has to be in the payload BEFORE minting, and the jti only
+    # exists AFTER minting (create_token generates its own), so the token is
+    # minted once and then read back to bind the session to that exact jti.
+    # One login, one jti, one session row.
+    #
+    # When no canonical account is linked, or it is not active, this is a
+    # no-op: the legacy token is minted exactly as before and the
+    # NIAM-protected surface keeps refusing it with 401. Nothing is widened by
+    # the absence of a link.
+    canonical_account = resolve_canonical_account(
+        db,
+        legacy_account_id=base_payload["user_id"],
+        account_kind=base_payload["act"],
+    )
+    if canonical_account is not None:
+        base_payload = {**base_payload, "account_uuid": canonical_account.uuid}
+
     token = create_token(base_payload)
     refresh_token = create_refresh_token(base_payload)
+
+    if canonical_account is not None:
+        access_claims = decode_token(token) or {}
+        refresh_claims = decode_refresh_token(refresh_token) or {}
+        establish_canonical_session(
+            db,
+            account=canonical_account,
+            access_jti=access_claims["jti"],
+            refresh_jti=refresh_claims.get("jti"),
+            expires_at=session_expiry(REFRESH_TOKEN_EXPIRE_DAYS),
+            ip_address=client_ip,
+            user_agent=request.headers.get("user-agent"),
+        )
 
     log_action(
         db,
@@ -298,6 +340,12 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                 remaining = int((payload["exp"] - _time.time()) + 1)
                 if remaining > 0:
                     blacklist_token(jti, remaining)
+                # NR-135. Revocation has to reach the canonical session too.
+                # The Redis blacklist stops the legacy path; the NIAM-protected
+                # surface authenticates against the niam_sessions row, so a
+                # session left is_active=True would keep opening it after
+                # logout for as long as the row lived.
+                terminate_canonical_session(db, access_jti=jti, reason="logout")
 
     # Layer 1b: blacklist refresh token JTI in Redis
     refresh_cookie = request.cookies.get("refresh_token") or _body_refresh_token(request)
