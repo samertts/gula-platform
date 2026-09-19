@@ -270,3 +270,109 @@ optional extras.
 
 **Scope held to:** confirmed callers of `can_manage_user` only (2, both
 in `admin.py`). No other file searched or modified.
+
+---
+
+## Milestone: `eb01668b` ("NR-131: the frontend could not reach the backend in development, and 117 green tests said otherwise")
+
+Range verified: `112b2821..eb01668b` (4 commits, 15 files, +654/-52).
+This range directly targets **F1 and the X-Role finding** — the two
+highest-priority open items from this verification effort. Verified in
+an isolated detached worktree at `eb01668b`, removed after use.
+
+### F1 and X-Role: VERIFIED CLOSED
+
+`nhop-platform/app/core/trusted_context.py` (new) is now the single
+source of caller identity for the service. `require_trusted_context`
+unconditionally raises `503` — no environment variable, no header, no
+bypass — because there is no real identity provider federated into
+nhop-platform yet, and (per its own docstring, echoing `rbac.py`'s
+original admission) inventing a second identity system here is not the
+fix. It is attached once, at the router
+(`api_router = APIRouter(prefix="/v1", dependencies=[Depends(require_trusted_context)])`),
+not per-handler — closing exactly the gap that made F1/F2 possible in
+the first place: `create_test_result` read no actor at all, so any
+per-handler-that-reads-an-actor wiring would have missed precisely the
+worst route.
+
+`core/rbac.py::require_roles` no longer reads `X-Role`
+(`Header(alias="X-Role")` removed entirely) — it reads
+`current_context(request).role`. `notifications.py`, `test_results.py`,
+`doctor.py`, `outbreak.py` all no longer read `X-Actor-Id`/`X-Actor-Role`
+— all five modules identified in the original F1/X-Role findings were
+touched, not just the two originally reported.
+
+**Runtime proof reviewed (not re-executed — read for correctness, matches
+this effort's own established methodology):**
+`nhop-platform/tests/test_trust_boundary.py` is unusually rigorous:
+- Enumerates the *actually served* surface via `app.openapi()["paths"]`
+  rather than walking router objects (`include_router` leaves
+  `path=None` wrapper entries that would make a broken enumeration look
+  like a passing one) — with its own floor check
+  (`_MINIMUM_V1_OPERATIONS = 14`) as a positive control, since a sweep
+  over zero routes is vacuously green.
+- Asserts every discovered `/v1` operation returns `503` with no
+  context, **and** that five forged headers
+  (`X-Role`, `X-Actor-Role`, `X-Actor-Id`, `X-User-Id`, `X-Lab-Id`)
+  produce the identical `503` — not just "still denied," byte-identical.
+- A static detector
+  (`test_no_module_derives_identity_from_the_request_headers`) scans
+  every file under `app/` for the header-read pattern itself (the defect
+  *class*, not the two instances), with its own positive control
+  (`test_the_header_scan_can_actually_find_a_header_read`) proving the
+  regex isn't matching nothing.
+- `backend/tests/test_security_regression.py`'s
+  `TestHeaderOverrideBypassResistance::test_x_role_header_does_not_elevate`
+  (confirmed present, read directly) independently corroborates the
+  commit's own claim that `backend/` never had this defect — the
+  investigation correctly relocated the problem to nhop-platform before
+  touching anything, rather than assuming.
+- `scripts/runtime_gates.py`'s new gate-4/5 checks send each forged
+  header **alongside a valid token** against the live backend, so a
+  refusal proves the forgery was ignored rather than that the request
+  was simply unauthenticated — including a body-supplied `lab_id` not
+  moving a created patient into another tenant. Reviewed for logical
+  soundness (sound); **not independently re-executed against a live
+  instance** — this environment has no running Postgres/Redis-backed
+  backend to replay it against. Disclosed as an evidence limit, not
+  claimed as verified.
+
+### Precise scope of what remains — not new findings, boundary conditions on this fix
+
+- **F2's specific object-level check is not yet code — currently moot,
+  not closed at the code level.** `create_test_result` still selects
+  `Lab` by `payload.lab_id` with no comparison to the caller's own lab.
+  `TrustedContext` already carries a `lab_id` field, so the natural
+  fix-on-federation is `payload.lab_id == context.lab_id`, but that
+  comparison isn't written yet — it's simply unreachable for now because
+  `require_trusted_context` 503s before any handler body runs. Worth
+  keeping visible for whoever replaces that function body: the 503 is
+  what's closing F2 today, not a lab-ownership check, and the module's
+  own migration note ("only that one function body changes") doesn't
+  automatically add one.
+- **`doctor.py`/`outbreak.py` were correctly migrated to
+  `current_context` but remain unregistered** — confirmed via
+  `nhop-platform/app/api/v1/__init__.py` (`api_router.include_router`
+  is called for `citizens`, `test_results`, `notifications` only) and a
+  grep for any import of `doctor`/`outbreak` elsewhere in `app/`
+  (none). This is the same shadow-route defect independently found and
+  fixed on `claude/mustafa-parallel-engineering` in an earlier batch —
+  the two branches never merged, so Abu Ali's branch never inherited
+  that fix. Not a security defect (unreachable code exposes nothing) —
+  a completeness gap: 2 of the 5 modules this milestone secured are not
+  actually part of the live `/v1` surface yet, so "covering every v1
+  route" is accurate for what's mounted, not for the full intended API.
+  Low-effort fix (two `include_router` lines), flagged for whoever next
+  touches `nhop-platform/app/api/v1/__init__.py`.
+
+### Verdict
+
+**VERIFIED** — F1 (P0) and the X-Role finding are closed by a
+fail-closed design that removes false authority rather than replacing
+it with another guessable one, applied uniformly rather than per-route,
+with rigorous positive/negative-controlled regression tests. F2 is
+currently non-exploitable as a side effect (not yet closed at the code
+level — noted for later). Two pre-existing, low-severity, non-security
+completeness gaps (unregistered `doctor.py`/`outbreak.py`) surfaced
+during verification, unrelated to this milestone's own changes to those
+files.
