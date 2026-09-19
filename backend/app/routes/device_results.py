@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..domain.sample_state import enforce_transition as enforce_sample_transition
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
@@ -64,8 +65,12 @@ def receive_device_results(
     if not sample:
         raise HTTPException(status_code=404, detail="Sample not found")
 
-    if sample.status == "rejected":
-        raise HTTPException(status_code=400, detail="Cannot add results to a rejected sample")
+    # Raises ConflictError (409) for any sample already in a terminal state
+    # (rejected, or already analyzed) — closes a duplicate-ingestion gap
+    # where a replayed/retried device submission could silently re-process
+    # an already-analyzed sample and create duplicate LabResult rows with
+    # no idempotency protection at all.
+    enforce_sample_transition(sample.status, "analyzed")
 
     order = db.query(LabOrder).filter(LabOrder.id == sample.order_id).first()
 

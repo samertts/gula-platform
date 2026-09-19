@@ -6,12 +6,19 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..domain.order_state import assert_not_locked
+from ..domain.sample_state import enforce_transition as enforce_sample_transition
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
 from ..models.sample import Sample
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
 from ..services.audit_service import log_action
+
+# Clinical-write roles for sample workflow mutations — the same set already
+# used for LabResult mutations (services/order_service.py::update_result).
+# A sample's status directly gates downstream result entry, so it gets the
+# same authorization tier, not a weaker one.
+_SAMPLE_WRITE_ROLES = {"admin", "master_admin", "doctor", "technician", "pathologist"}
 
 router = APIRouter(prefix="/samples", tags=["samples"])
 
@@ -53,6 +60,9 @@ def create_sample(
     db: Session = Depends(get_db),
 ):
     """Register a new sample for an order."""
+    if current_user.role not in _SAMPLE_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to register a sample")
+
     order = (
         db.query(LabOrder)
         .filter(
@@ -150,6 +160,9 @@ def update_sample(
     db: Session = Depends(get_db),
 ):
     """Update sample status (workflow tracking)."""
+    if current_user.role not in _SAMPLE_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to update a sample")
+
     sample = (
         db.query(Sample)
         .join(LabOrder)
@@ -162,11 +175,12 @@ def update_sample(
     if not sample:
         raise HTTPException(status_code=404, detail="Sample not found")
 
-    # Block status updates on locked orders
+    # Sequential guard: precise 423 for the common (non-racing) case.
     order = db.query(LabOrder).filter(LabOrder.id == sample.order_id).first()
     if order:
         assert_not_locked(order)
 
+    update_fields: dict[str, object] = {}
     if data.status:
         if data.status not in VALID_STATUSES:
             raise HTTPException(status_code=400, detail="Invalid status")
@@ -175,14 +189,50 @@ def update_sample(
                 raise HTTPException(
                     status_code=400, detail="Rejection reason required when rejecting a sample",
                 )
-        sample.status = data.status
+        if data.status != sample.status:
+            # Raises ConflictError (409) for an illegal transition, e.g. a
+            # rejected or already-analyzed sample cannot be resurrected
+            # through this generic update endpoint.
+            enforce_sample_transition(sample.status, data.status)
+        update_fields["status"] = data.status
 
     if data.rejection_reason is not None:
-        sample.rejection_reason = data.rejection_reason
+        update_fields["rejection_reason"] = data.rejection_reason
     if data.notes is not None:
-        sample.notes = data.notes
+        update_fields["notes"] = data.notes
     if data.storage_location is not None:
-        sample.storage_location = data.storage_location
+        update_fields["storage_location"] = data.storage_location
+
+    if update_fields:
+        from sqlalchemy import select
+
+        # Atomic backstop: re-check the order's lock state AND the sample's
+        # status at write time, not just at the sequential check above. This
+        # closes the same class of gap that services/order_service.py's
+        # update_result already closes for LabResult — a concurrent order
+        # validation (or a concurrent sample update) between the check above
+        # and this commit can no longer be silently overwritten. The sample's
+        # own `status` (read moments ago) doubles as the compare-and-swap
+        # token in place of a dedicated version column, which does not exist
+        # on this model yet (see MUSTAFA_ACTIVE_REPAIR_QUEUE.md).
+        open_order_ids = select(LabOrder.id).where(
+            LabOrder.id == sample.order_id,
+            LabOrder.locked_at.is_(None),
+        )
+        rows_updated = (
+            db.query(Sample)
+            .filter(
+                Sample.id == sample.id,
+                Sample.status == sample.status,
+                Sample.order_id.in_(open_order_ids),
+            )
+            .update(update_fields, synchronize_session="fetch")
+        )
+        if rows_updated == 0:
+            raise HTTPException(
+                status_code=423,
+                detail="Sample or its order changed concurrently; re-fetch and retry",
+            )
 
     log_action(
         db,
