@@ -1,13 +1,13 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-19",
-  "head_commit": "b800cf27",
+  "head_commit": "8722e241",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 145,
+    "total": 148,
     "P0": 23,
-    "P1": 72,
+    "P1": 75,
     "P2": 38,
     "P3": 12
   },
@@ -4357,11 +4357,11 @@
       "domain": "Platform-wide",
       "severity": "P1",
       "priority": 107,
-      "status": "OPEN — measured and classified. The 7 permission-less class-A sites are closed under NR-108; the 29 master-admin sites still need the ownership decision.",
+      "status": "RE-DERIVED 2026-09-19 and the class-D UNKNOWNs are resolved. The original 101 was an UNDERCOUNT (130 under a broader shape match) and the scan is now a committed script, not a hand snapshot. The 29 master-admin sites still need the ownership decision; the create-shape residue is NR-147.",
       "title": "101 write paths copy a request dict onto a tenant-scoped model without excluding lab_id",
-      "description": "Generalisation of NR-105, which was one instance of this in the blood bank. Two shapes recur across the platform: Model(**{k: v for k, v in data.items() if hasattr(Model, k)}) on create, and 'for k, v in data.items(): setattr(obj, k, v)' on update. Both copy a caller-supplied dictionary onto a model whose table carries lab_id, so lab_id is assignable from the request body unless something else re-asserts it.",
+      "description": "Generalisation of NR-105, which was one instance of this in the blood bank. Two shapes recur across the platform: Model(**{k: v for k, v in data.items() if hasattr(Model, k)}) on create, and 'for k, v in data.items(): setattr(obj, k, v)' on update. Both copy a caller-supplied dictionary onto a model whose table carries lab_id, so lab_id is assignable from the request body unless something else re-asserts it.\n\nRE-DERIVED (ADR-027: evidence comes from the authoritative source, never a hand snapshot -- NR-107 kept no script, so this one is committed as scripts/tenant_mass_assignment_scan.py).\n\nThe model denominator reproduces EXACTLY: 194 tenant-scoped models, once the detector requires a lab_id COLUMN rather than any attribute named lab_id (a Pydantic schema with `lab_id: UUID` is a request shape, not a table; counting it gave 250).\n\nThe site count does NOT reproduce, and the original was low: 130, not 101. The three shapes it missed are `Model(**payload.model_dump())`, a `setattr` nested under an `if` inside the loop body, and iteration over keys rather than items.\n\nThe 37 class-D sites were classified by ROUTE TRACING, which is why they came back UNKNOWN -- no route resolved, so nothing could be said. The question that actually decides the defect is narrower and needs no route: CAN lab_id be in that dict, and does anything put the real one back? On that axis the 130 split 71 ASSIGNABLE / 42 UNKNOWN / 17 BLOCKED. ASSIGNABLE is not 'exploitable' and the script says so: it means lab_id can be copied onto the model and nothing re-asserts it, which is a candidate, not a breach.\n\nOnly 3 of the 71 sit in a module that declares routes. Reading all three found two real defects and one false positive on the tenant axis:\n  * routes/care_continuum.py:169 -- opened NR-146 (ten defects, one module).\n  * routes/canonical_patient.py:120 -- NR-148.\n  * identity/adaptive_auth/routes.py:143 -- RiskPolicy extends IdentityBaseEntity, which carries no lab_id, so it is NOT a tenant defect. Its ungated mass-assignment of an authentication risk policy is already this finding's own '3 identity sites with no require_permission'.",
       "root_cause": "There is no shared server-owned-fields helper. app/blood_bank grew _owned() under NR-021 and now _SERVER_OWNED_FIELDS under NR-105, but every other package hand-rolls its filter, and the hand-rolled filters are about field EXISTENCE (hasattr) rather than field OWNERSHIP.",
-      "evidence": "AST scan of backend/app (194 model classes carrying lab_id, discovered from TenantEntity inheritance or a lab_id Column/Mapped declaration; the scan asserts the model count is non-trivial so it cannot report vacuously). 101 matching sites, classified four ways by tracing each site's enclosing function to the route handlers that pass a body parameter into it:\n  A. 36 -- reachable with a RAW dict body and no lab_id re-assertion.\n  B.  4 -- reachable, but the enclosing function re-asserts lab_id.\n  C. 24 -- reachable only through a Pydantic schema body, so lab_id reaches the service only if that schema declares it.\n  D. 37 -- no route path resolved. NOT proven safe; unclassified.\nOf the 36 in class A, the router permission was then resolved and mapped through shared/rbac/permissions.py: 29 sit behind require_permission('system:admin'), which only master_admin holds -- a legitimately cross-tenant role, so those are an under-specified ownership model rather than a tenant breach. The remaining 7 resolved to NO require_permission at all: 4 in app/pilot_platform and 3 in app/identity (adaptive_auth, federation, trust). The identity three are mounted with dependencies=[Depends(get_current_niam_actor)] by identity/api/router.py, which an AST scan of the route module cannot see, so they are authenticated but ungated by permission. app/pilot_platform is mounted by factory.py:811 with no dependencies and its route module contains zero references to get_current_user, require_permission or require_role.",
+      "evidence": "AST scan of backend/app (194 model classes carrying lab_id, discovered from TenantEntity inheritance or a lab_id Column/Mapped declaration; the scan asserts the model count is non-trivial so it cannot report vacuously). 101 matching sites, classified four ways by tracing each site's enclosing function to the route handlers that pass a body parameter into it:\n  A. 36 -- reachable with a RAW dict body and no lab_id re-assertion.\n  B.  4 -- reachable, but the enclosing function re-asserts lab_id.\n  C. 24 -- reachable only through a Pydantic schema body, so lab_id reaches the service only if that schema declares it.\n  D. 37 -- no route path resolved. NOT proven safe; unclassified.\nOf the 36 in class A, the router permission was then resolved and mapped through shared/rbac/permissions.py: 29 sit behind require_permission('system:admin'), which only master_admin holds -- a legitimately cross-tenant role, so those are an under-specified ownership model rather than a tenant breach. The remaining 7 resolved to NO require_permission at all: 4 in app/pilot_platform and 3 in app/identity (adaptive_auth, federation, trust). The identity three are mounted with dependencies=[Depends(get_current_niam_actor)] by identity/api/router.py, which an AST scan of the route module cannot see, so they are authenticated but ungated by permission. app/pilot_platform is mounted by factory.py:811 with no dependencies and its route module contains zero references to get_current_user, require_permission or require_role.\nRE-DERIVED 2026-09-19 by scripts/tenant_mass_assignment_scan.py (committed): 194 models reproduced exactly, 130 sites (not 101).",
       "affected_components": "backend/app/ems, critical_care, command_center, biomedical, pilot_platform, public_health, national/*, identity/{adaptive_auth,federation,trust}, services/ehr_service.py, services/clinical_service.py, nhdw, nursing, pharmacy, radiology, routes/hospital.py, routes/care_continuum.py",
       "affected_users": "Potentially every tenant, depending on which class a given site falls in",
       "clinical_impact": "UNKNOWN per site and deliberately not asserted. The class-A sites include EMS incidents, ICU beds, fluid balance, critical alerts and immunisation records -- all clinical -- but 29 of the 36 are master-admin-only, and whether a master admin writing an arbitrary lab_id is a defect or the intended behaviour is an ownership-model question, not a code question.",
@@ -5052,6 +5052,62 @@
         "tests/integration/test_deployment_exposure.py::test_the_haproxy_stats_page_stays_on_loopback",
         "tests/integration/test_deployment_exposure.py::test_the_public_exception_is_still_the_only_one"
       ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-146",
+      "category": "Tenant isolation / Object-level authorization",
+      "domain": "app/care_continuum + app/services/care_continuum_service.py",
+      "severity": "P1",
+      "priority": 146,
+      "status": "FIXED 2026-09-19, and LATENT not live -- no migration builds these tables, so nothing here was reachable. Regression: backend/tests/test_care_continuum_tenant_scope.py (22 tests). Behavioural proof is BLOCKED by NR-086 and that blocker is asserted, not omitted.",
+      "title": "Ten care-continuum paths let one laboratory read and drive another's clinical records",
+      "description": "Found by reading the three NR-107 ASSIGNABLE sites that sit in a route module.\n\ncare_continuum_service.py already had the primitive -- `_apply_lab_filter(query, model, lab_id)` -- and the entire `list_*` family used it correctly. A full audit of the module (96 tenant-touching functions) found 23 correct and 73 not. The nine single-object reads and mutations were repaired here:\n\n  * get_primary_care_encounter, get_care_journey, get_pregnancy_record, get_referral_timeline, get_referral_analytics -- took no tenant at all and fetched by id alone.\n  * accept_referral and detect_care_gaps -- ACCEPTED lab_id and never read it. That is the worst of the three shapes: the route passes _lab_id(current_user), so the code reads as correct at exactly the place a reviewer looks.\n  * reject_referral and complete_referral -- had neither, so one lab could drive another lab's referral through its whole lifecycle.\n\ncreate_primary_care_encounter took lab_id and built PrimaryCareEncounter(**data), so the encounter's owner came from the request body while the caller's real tenant was discarded. The server-derived value now wins.\n\nThe tenth is in the route module. api_update_primary_care_encounter is the only handler in the file that queries a model directly instead of calling the service, and it lost the tenant twice: no lab_id on the lookup, and an exclusion tuple that guarded id, created_at, updated_at and is_deleted while leaving lab_id assignable -- so a request body could MOVE an encounter into another laboratory.\n\nWHY THIS IS LATENT AND SAYS SO. No migration creates cc_primary_care_encounters, cc_referral_requests or cc_care_journeys, so the whole surface 500s against a migrated database and none of these holes is reachable today. They are repaired now because they become live the moment the domain is built and because the repair uses a primitive the module already had. test_z_this_domain_is_still_unbuilt pins that state: if a migration ever builds these tables, it fails and the finding is re-read as live.\n\nWHAT COULD NOT BE PROVED, AND WHY IT IS STATED. The two-lab behavioural suite this deserves cannot run: cc_primary_care_encounters.practitioner_id and cc_care_journeys.care_coordinator_id point at national_practitioners, which is not in CareContinuumBase.metadata, so the ORM cannot build or map them. That is NR-086. test_y asserts that failure with pytest.raises so the limit is measured rather than hidden, and it fails -- prompting the real suite -- when NR-078's topology repair lands.",
+      "evidence": [
+        "backend/app/services/care_continuum_service.py: 14 edits across 9 functions + the create",
+        "backend/app/routes/care_continuum.py: 7 call sites + api_update_primary_care_encounter",
+        "module audit before: 23 OK / 6 READS any tenant / 3 MUTATES any tenant / 41 CREATE from caller dict",
+        "module audit after:  32 OK / 0 READS / 0 MUTATES / 41 CREATE from caller dict (NR-147)",
+        "no migration in backend/migrations/versions matches cc_primary_care_encounters, cc_referral_requests or cc_care_journeys",
+        "backend suite 3233 -> 3255 passed, 0 failed"
+      ],
+      "tests": [
+        "backend/tests/test_care_continuum_tenant_scope.py (22 tests). Negative proof: against the pre-fix source 17 guards fail, and critically test_k fails for accept_referral and detect_care_gaps while test_j passes for them -- the signature was already there and the body ignored it, which a signature check alone would have blessed."
+      ],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-147",
+      "category": "Tenant isolation / Client-authored tenant on create",
+      "domain": "app/services/care_continuum_service.py",
+      "severity": "P1",
+      "priority": 147,
+      "status": "OPEN — measured, deliberately not rewritten. Needs an enforcement-point decision.",
+      "title": "Forty-one care-continuum create functions take the tenant from the caller's dictionary",
+      "description": "The residue of NR-146's audit. Forty-one functions have the shape `create_x(db, data) -> X(**data)`, where `data` is the request body and X carries lab_id.\n\nNOT FIXED HERE, and the reason is not caution. Repairing 41 call sites one at a time is the change most likely to be undone by the next person who adds a create_* function, because nothing would stop them. The question is WHERE the tenant should be enforced:\n  (a) 41 signatures, mirroring NR-146's per-function repair; or\n  (b) one guard on the tenant base itself -- CareContinuumTenantAuditEntity, or TenantMixin platform-wide -- so a construction that names a lab_id the caller does not own is refused wherever it is written.\n\n(b) is the smaller change and the durable one, but it is a behavioural change to a shared base class touching every tenant-scoped domain, not just this one. That is an architecture decision, not a patch.\n\nLatent on the same grounds as NR-146: no migration builds these tables.",
+      "evidence": [
+        "scripts/tenant_mass_assignment_scan.py, plus the per-module audit in NR-146's evidence",
+        "41 functions, measured again after the NR-146 repair -- the count did not move, by design"
+      ],
+      "tests": [],
+      "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-148",
+      "category": "Tenant isolation / Client-authored tenant on create",
+      "domain": "app/routes/canonical_patient.py",
+      "severity": "P1",
+      "priority": 148,
+      "status": "OPEN — measured, not fixed. Unlike NR-146 this surface IS built, so it is live.",
+      "title": "POST /canonical-patients lets the request body choose the patient's laboratory",
+      "description": "The second of the three NR-107 route-module sites. `CanonicalPatientCreate` declares `lab_id: int | None = None` and the handler is `CanonicalPatient(**data.model_dump())`, with no re-assertion from current_user. So the caller names the tenant of a canonical patient record -- the Master Patient Index's own subject.\n\nRecorded rather than patched alongside NR-146 for one reason worth stating: this one is LIVE (models/canonical_patient.py is a built table, unlike the cc_* family), which makes it higher priority AND higher risk to change blind. The column is nullable with an ON DELETE SET NULL, so it may be carrying a deliberate cross-tenant case for the MPI -- exactly the kind of question NR-022 decided canonically. It needs the MPI's intent read before the field is removed, not a same-session guess.",
+      "evidence": [
+        "backend/app/routes/canonical_patient.py:26-27 CanonicalPatientCreate.lab_id",
+        "backend/app/routes/canonical_patient.py:120 CanonicalPatient(**data.model_dump())",
+        "backend/app/models/canonical_patient.py:30 lab_id Column(Integer, ForeignKey('labs.id', ondelete='SET NULL'), nullable=True)",
+        "registered: backend/app/factory.py:608-609"
+      ],
+      "tests": [],
       "generated": "2026-09-19"
     }
   ]
