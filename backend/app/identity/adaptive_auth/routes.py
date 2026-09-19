@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -11,6 +11,37 @@ from .models import ImpossibleTravelEvent, RiskPolicy, SessionPolicy
 from .services import AdaptiveAuthService, SessionGovernanceService
 
 router = APIRouter(prefix="/niam/adaptive-auth", tags=["NIAM Adaptive Auth"])
+
+_POLICY_AUTHORITY_UNAVAILABLE = (
+    "Managing platform-wide risk/session policy requires an administrative "
+    "authorization decision that does not yet exist in NIAM. "
+    "app.identity.services.authorization_decision.AuthorizationDecisionService "
+    "is organization-scoped (it denies by design whenever organization_id is "
+    "absent and the resource type is not in its NON_ORGANIZATIONAL_READS "
+    "allowlist, which RiskPolicy/SessionPolicy are not) — it is the wrong "
+    "tool for a genuinely global resource, and widening that allowlist would "
+    "be a change to canonical NIAM authorization semantics this branch is not "
+    "authorized to make on its own. Until a real platform-admin concept is "
+    "decided, this fails closed rather than granting every authenticated "
+    "NIAM actor (this router's only existing gate) the ability to rewrite "
+    "global security policy."
+)
+
+
+def _require_policy_admin() -> None:
+    """Fails closed. See _POLICY_AUTHORITY_UNAVAILABLE.
+
+    Before this, create_risk_policy/update_risk_policy/create_session_policy/
+    update_session_policy required nothing beyond the router-level
+    Depends(get_current_niam_actor) (any authenticated account, any role) —
+    any logged-in user could rewrite platform-wide risk thresholds,
+    mitigation actions, MFA requirements, and session limits for every
+    tenant.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=_POLICY_AUTHORITY_UNAVAILABLE,
+    )
 
 
 @router.post("/evaluate")
@@ -100,6 +131,7 @@ async def create_risk_policy(
     scope: dict[str, Any] | None = None,
     enabled: bool = True,
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_policy_admin),
 ):
     entity = RiskPolicy(
         uuid=str(__import__("uuid").uuid4()),
@@ -125,6 +157,7 @@ async def update_risk_policy(
     policy_id: str,
     body: dict[str, Any],
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_policy_admin),
 ):
     from sqlalchemy import select
 
@@ -179,6 +212,7 @@ async def create_session_policy(
     enforce_ip_restriction: bool = False,
     allowed_ips: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_policy_admin),
 ):
     service = SessionGovernanceService(db)
     entity = await service.create_session_policy(
@@ -205,6 +239,7 @@ async def update_session_policy(
     policy_id: str,
     body: dict[str, Any],
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_policy_admin),
 ):
     service = SessionGovernanceService(db)
     entity = await service.update_session_policy(policy_id, **body)
