@@ -30,6 +30,7 @@ recheck CLAUDE.md's pool-budget formula if these defaults are ever raised.
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -105,6 +106,24 @@ async def get_niam_db():
     issued here on the success path either, matching ``get_db()``'s exact
     (non-committing) transaction semantics rather than silently changing
     them.
+    """
+    session = _niam_session_factory()()
+    try:
+        yield session
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
+@asynccontextmanager
+async def open_niam_session():
+    """Same session/rollback/close contract as ``get_niam_db``, for
+    non-request callers that have no FastAPI dependency injection to rely
+    on (e.g. a startup-time seeding step). No route uses this -- it exists
+    only for process-lifecycle code that needs a real NIAM async session
+    before or outside any HTTP request.
     """
     session = _niam_session_factory()()
     try:

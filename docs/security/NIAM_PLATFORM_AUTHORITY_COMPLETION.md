@@ -101,10 +101,113 @@ pass).
 **STATUS: VERIFIED** (5 of 6 named operations; the 6th is unreachable
 dead code, correctly not authorized because nothing calls it).
 
-## Files changed
+## Files changed (Workstream 1)
 
 `federation/services.py`, `federation/routes.py`, `trust/services.py`,
 `trust/routes.py`, `certificates/services.py`, `certificates/routes.py`,
 `governance/services.py`, `governance/routes.py`,
 `tests/identity/test_platform_authority_workstream1.py` (new).
 No migration. No schema change.
+
+---
+
+# Workstream 2 — Platform Authority Bootstrap
+
+Resolves `docs/security/NIAM_PLATFORM_AUTHORITY_BOOTSTRAP.md`'s one
+BLOCKED prerequisite (no async engine existed) — it does now
+(`app/identity/niam_async_db.py`, Phase 10.6.5) — and implements exactly
+the design that document already proposed, without redeciding anything it
+resolved.
+
+## What was built
+
+- `app/identity/platform_authority/bootstrap.py` —
+  `ensure_platform_authority_bootstrap(session)`. Reads two environment
+  variables (`PLATFORM_AUTHORITY_BOOTSTRAP_ACCOUNT_EMAIL`,
+  `PLATFORM_AUTHORITY_BOOTSTRAP_CAPABILITIES`); absence of either is a
+  silent, complete no-op — mirrors `ensure_master_admin`'s own
+  "absence of configuration means absence of bootstrap" doctrine exactly
+  (§5 resolved: email-based lookup, matching `GULA_ADMIN_EMAIL`'s
+  existing precedent). Resolves the email to a real, active `Account`;
+  fails closed (logs, grants nothing) if it doesn't resolve. For each
+  requested capability: rejects unknown ones individually (one typo never
+  blocks the others); checks whether **any** assignment — active or
+  historical/revoked — already exists for that (identity, capability)
+  pair (§7/§8/§10's exact idempotency shape) and skips if so; otherwise
+  calls the real, unmodified `PlatformAuthorityService.grant()`. Emits
+  `bootstrap_started`/`bootstrap_completed` audit events (§6 — the first
+  real use of these two `AuditAction` values anywhere in the codebase, as
+  anticipated) in addition to `grant()`'s own `PLATFORM_AUTHORITY_GRANTED`
+  entry — two different facts, not double-logging.
+- `app/identity/niam_async_db.py::open_niam_session()` — a small,
+  additional async-context-manager twin of `get_niam_db()`, for
+  non-request callers (startup code has no FastAPI dependency injection
+  to lean on). Same session/rollback/close contract; no route uses it.
+- `app/core/startup_guard.py` — one new, genuinely-async, independently
+  try/excepted, non-fatal step appended to the existing seeding sequence
+  (§4: deployment-time, infrastructure-controlled, never a migration,
+  never an in-app approval workflow). **Both env vars are unset on every
+  current deployment**, so this step is a complete no-op today, exactly
+  like `ensure_master_admin` was before `GULA_ADMIN_PASSWORD` was ever
+  set — implemented and provable, not executed against anything real.
+
+## Real, disposable-PostgreSQL proof (fresh -> repeat -> revoke -> repeat)
+
+```json
+"fresh_bootstrap_granted": ["platform.federation.manage", "platform.trust.manage"],
+"assignments_after_first_bootstrap": [
+  {"capability": "platform.federation.manage", "status": "active"},
+  {"capability": "platform.trust.manage", "status": "active"}
+],
+"bootstrap_audit_event_types_after_first_run": ["bootstrap_completed", "bootstrap_started"],
+"repeated_bootstrap_granted": [],
+"trust_manage_assignment_count_after_repeat": 1,
+"status_after_revoke": ["revoked"],
+"bootstrap_after_revocation_granted": [],
+"final_trust_manage_rows": [{"status": "revoked"}],
+"revocation_remains_effective": true
+```
+Fresh environment → both capabilities granted, active, audited. Simulated
+restart (a second, independent call) → grants nothing new, exactly one
+`trust.manage` row still exists. Revoke via the real, unmodified
+`PlatformAuthorityService.revoke()` → status becomes `revoked`. Bootstrap
+run again → still grants nothing (§7/§8's deliberate choice: bootstrap is
+one-time-per-capability, not a standing recovery mechanism — recovery
+from total lockout remains the explicitly-flagged open question in the
+design doc, §12, not resolved here either).
+
+## Focused tests
+
+`backend/tests/identity/test_platform_authority_bootstrap.py` (new, 6
+tests, same fake-session pattern): unconfigured is a no-op; unresolvable
+account grants nothing; an unknown capability is skipped without
+blocking valid ones; fresh bootstrap grants + audits; repeated bootstrap
+grants nothing new; a revoked capability is never re-bootstrapped. All
+pass. `tests/identity/`: 215 passed, 4 skipped (was 209 before this
+workstream).
+
+## Requirements checklist (from the operation's own list)
+
+| Requirement | Status |
+|---|---|
+| Deterministic | VERIFIED — same (identity, capability) input always produces the same outcome |
+| Auditable | VERIFIED — `bootstrap_started`/`bootstrap_completed` + `grant()`'s own entry |
+| Idempotent | VERIFIED — real-Postgres repeat proof above |
+| Never duplicates an active assignment | VERIFIED — real-Postgres proof + the pre-existing partial unique index (Phase 10) as a third, DB-level layer |
+| Never depends on an already-existing platform capability | VERIFIED — reads only environment config + an `Account` row; no authorization check anywhere in the path |
+| Fails closed on malformed configuration | VERIFIED — unresolvable email, unknown capability both tested |
+| Never exposes credentials | VERIFIED — no secret is generated or logged; the mechanism reads an email, not a password |
+| Never assigns generic/unrestricted authority | VERIFIED — `grant()`'s own `UnknownPlatformCapability` guard, unchanged, still the only way in |
+| Safe on restart | VERIFIED — real-Postgres repeat proof |
+
+**STATUS: VERIFIED** (mechanism implemented and proven; **not** executed
+against production — both env vars remain unset everywhere except this
+proof's disposable database).
+
+## Files changed (Workstream 2)
+
+`app/identity/platform_authority/bootstrap.py` (new),
+`app/identity/niam_async_db.py` (+`open_niam_session`),
+`app/core/startup_guard.py` (+1 non-fatal step),
+`tests/identity/test_platform_authority_bootstrap.py` (new). No
+migration. No schema change. No route added.
