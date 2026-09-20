@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 
 import asyncpg
+from fail_closed import FailClosedMiddleware
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
@@ -26,6 +27,10 @@ REQUEST_COUNT = Counter("order_requests_total", "Total requests", ["endpoint", "
 app = FastAPI(title="GULA Order Service", version="1.0.0")
 _cors_origins = os.getenv("CORS_ORIGINS", "https://gula-platform.org,http://gula-platform.org").split(",")
 app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in _cors_origins], allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
+# NR-142: refuse every request this service cannot attribute to a caller.
+# Added last, so Starlette runs it outermost -- before CORS and before any
+# handler touches labdb. See services/fail_closed.py.
+app.add_middleware(FailClosedMiddleware)
 
 _pool = None
 
