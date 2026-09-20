@@ -167,3 +167,99 @@ def test_impact_selector_reports_unknown_when_no_test_maps(tmp_path, monkeypatch
 
     assert confidence == "UNKNOWN"
     assert args == []
+
+
+def test_impact_selector_finds_import_matched_test_without_exact_name(tmp_path, monkeypatch):
+    """No tests/test_widget2.py exists, but some other test file imports
+    app.widget2 directly -- the reverse-dependency tier must find it and
+    report a weaker-but-still-deterministic confidence, not fall straight
+    to UNKNOWN/full-suite."""
+    backend = _make_fake_repo(tmp_path, monkeypatch)
+    (backend / "app" / "widget2.py").write_text("VALUE = 1\n")
+    other_test = backend / "tests" / "test_something_else.py"
+    other_test.write_text("from app.widget2 import VALUE\n\ndef test_x():\n    assert VALUE == 1\n")
+
+    args, confidence = saa._select_impact_aware_tests([backend / "app" / "widget2.py"])
+
+    assert confidence == "IMPORT_MATCHED"
+    assert args == ["tests/test_something_else.py"]
+
+
+# ─── Syntax verification targets the ACTUAL changed file ───────────────────
+
+
+def test_verify_catches_syntax_error_in_the_actual_changed_file(tmp_path, monkeypatch):
+    """A file broken by _apply_auto_fixes must be caught by its OWN syntax
+    check. There is deliberately no app/main.py anywhere in this fake
+    repo -- if the old hardcoded-app/main.py check were still in place,
+    this would either miss the real defect or fail for the wrong reason
+    (a missing file), not because THIS file is broken."""
+    backend = _make_fake_repo(tmp_path, monkeypatch)
+    target = backend / "app" / "widget.py"
+    target.write_text("import os\n")
+
+    result = saa._apply_auto_fixes([
+        {"file": "app/widget.py", "search": "import os", "replace": "import os (((broken", "reason": "demo"},
+    ])
+    assert result.applied
+
+    ok, confidence = saa._verify_after_fix(list(result.snapshots.keys()))
+
+    assert ok is False
+    assert confidence == "syntax_check_failed"
+
+
+def test_verify_checks_the_changed_file_directly_not_a_fixed_stand_in(tmp_path, monkeypatch):
+    """A valid change to a file, with no app/main.py present at all in
+    this fake repo, must NOT fail on a syntax check -- proving the
+    verification target is the changed file itself, not a fixed path
+    that happens not to exist here."""
+    backend = _make_fake_repo(tmp_path, monkeypatch)
+    target = backend / "app" / "widget.py"
+    target.write_text("VALUE = 1\n")
+    (backend / "tests" / "test_widget.py").write_text("def test_x(): pass\n")
+    assert not (backend / "app" / "main.py").exists()
+
+    result = saa._apply_auto_fixes([
+        {"file": "app/widget.py", "search": "VALUE = 1", "replace": "VALUE = 2", "reason": "demo"},
+    ])
+    assert result.applied
+
+    ok, confidence = saa._verify_after_fix(list(result.snapshots.keys()))
+
+    assert confidence != "syntax_check_failed"
+    assert ok is True
+    assert confidence == "TARGETED"
+
+
+# ─── Verification failure prevents commit ──────────────────────────────────
+
+
+def test_verification_failure_rolls_back_and_never_commits(tmp_path, monkeypatch):
+    """Mirrors run_audit()'s real control flow: apply -> verify -> commit
+    only on success, else rollback. A broken change must never reach
+    _commit_fixes."""
+    backend = _make_fake_repo(tmp_path, monkeypatch)
+    target = backend / "app" / "widget.py"
+    original = "import os\n"
+    target.write_text(original)
+
+    commit_calls: list[object] = []
+    monkeypatch.setattr(
+        saa, "_commit_fixes",
+        lambda *a, **k: commit_calls.append((a, k)) or True,
+    )
+
+    result = saa._apply_auto_fixes([
+        {"file": "app/widget.py", "search": "import os", "replace": "import os (((broken", "reason": "demo"},
+    ])
+    ok, _confidence = saa._verify_after_fix(list(result.snapshots.keys()))
+
+    if ok:
+        saa._commit_fixes(result.applied, list(result.snapshots.keys()))
+    else:
+        saa._rollback_exact(result.snapshots)
+
+    assert ok is False
+    assert commit_calls == []  # _commit_fixes was never invoked
+    assert target.read_text() == original  # exact rollback, not a partial/committed state

@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -330,40 +331,92 @@ def _rollback_exact(snapshots: dict[Path, str]) -> None:
         path.write_text(original_content)
 
 
+def _module_dotted_path(path: Path) -> str | None:
+    """Converts an absolute backend/app/... path to its dotted import form
+    (e.g. backend/app/core/hybrid_router.py -> app.core.hybrid_router), or
+    None if it isn't under backend/app at all."""
+    try:
+        rel = path.relative_to(BACKEND_DIR / "app")
+    except ValueError:
+        return None
+    parts = ("app", *rel.with_suffix("").parts)
+    return ".".join(parts)
+
+
+def _tests_importing(dotted: str) -> list[str]:
+    """Reverse-dependency search: every backend/tests/**/*.py file that
+    actually imports the given dotted module path (exact module, or a
+    package it lives in via `from app.core import hybrid_router` /
+    `import app.core.hybrid_router`). Deterministic (plain text search,
+    no execution) -- used as a second, narrower tier between an exact
+    test_<stem>.py match and the full-suite fallback."""
+    escaped = re.escape(dotted)
+    _, out = _run(
+        ["grep", "-rlE", rf"(from {escaped}(\.| )|from {escaped} import|import {escaped}\b)",
+         "--include=*.py", "tests"],
+        cwd=BACKEND_DIR,
+    )
+    if not out:
+        return []
+    return sorted(p for p in out.splitlines() if p)
+
+
 def _select_impact_aware_tests(applied_paths: list[Path]) -> tuple[list[str], str]:
-    """Maps changed backend/app files to a same-named backend/tests/test_*.py
-    file by naming convention. Returns (test_args, confidence) where
-    confidence is "TARGETED" (a specific test file was found for every
-    changed path) or "UNKNOWN" (at least one changed path has no
-    identifiable test -- caller must broaden verification, never skip
-    it)."""
-    test_args: list[str] = []
+    """Maps changed backend/app files to the narrowest test set the
+    evidence supports. Returns (test_args, confidence):
+
+    - "TARGETED"      -- every changed path has an exact test_<stem>.py.
+    - "IMPORT_MATCHED" -- no exact-name match for at least one path, but
+      every changed path is imported by at least one identifiable test
+      file (reverse-dependency search) -- still a deterministic, narrower
+      set than the full suite, just not the naming-convention shortcut.
+    - "UNKNOWN"       -- at least one changed path has no identifiable
+      test by either method -- caller must broaden verification, never
+      skip it.
+    """
+    targeted: list[str] = []
+    import_matched: set[str] = set()
     for path in applied_paths:
         try:
             rel = path.relative_to(BACKEND_DIR / "app")
         except ValueError:
             return [], "UNKNOWN"  # changed a file outside backend/app -- can't map it
         candidate = BACKEND_DIR / "tests" / f"test_{rel.stem}.py"
-        if not candidate.exists():
+        if candidate.exists():
+            targeted.append(str(candidate.relative_to(BACKEND_DIR)))
+            continue
+        dotted = _module_dotted_path(path)
+        matches = _tests_importing(dotted) if dotted else []
+        if not matches:
             return [], "UNKNOWN"
-        test_args.append(str(candidate.relative_to(BACKEND_DIR)))
-    return sorted(set(test_args)), "TARGETED"
+        import_matched.update(matches)
+
+    if import_matched:
+        # Mixed exact-match + import-match paths both resolved to *some*
+        # concrete test set -- run the union, but report the weaker tier
+        # honestly rather than claiming TARGETED for the whole batch.
+        return sorted(set(targeted) | import_matched), "IMPORT_MATCHED"
+    return sorted(set(targeted)), "TARGETED"
 
 
 def _verify_after_fix(applied_paths: list[Path]) -> tuple[bool, str]:
-    """Syntax-checks app/main.py, then runs the smallest test set the
-    evidence supports. TARGETED confidence runs only the tests mapped to
-    the changed files; UNKNOWN confidence (no mapping found for at least
-    one changed file) broadens to the full suite rather than guessing --
-    unknown impact is never treated as "safe to skip"."""
-    rc, _out = _run(["python", "-m", "py_compile", "app/main.py"], cwd=BACKEND_DIR)
-    if rc != 0:
-        return False, "syntax_check_failed"
+    """Syntax-checks every actually-changed file (never a fixed stand-in
+    like app/main.py -- a changed file that nothing imports would
+    otherwise never have its own syntax checked at all), then runs the
+    narrowest test set the evidence supports. TARGETED/IMPORT_MATCHED run
+    only the tests mapped to the changed files; UNKNOWN (no mapping found
+    for at least one changed file, by either method) broadens to the full
+    suite rather than guessing -- unknown impact is never treated as "safe
+    to skip", and the full-suite fallback itself is never removed."""
+    for path in applied_paths:
+        rc, _out = _run(["python", "-m", "py_compile", str(path)], cwd=BACKEND_DIR)
+        if rc != 0:
+            return False, "syntax_check_failed"
 
     test_args, confidence = _select_impact_aware_tests(applied_paths)
-    if confidence == "TARGETED":
+    if confidence in ("TARGETED", "IMPORT_MATCHED"):
         rc, _out = _run(["python", "-m", "pytest", *test_args, "-q", "--tb=short"], cwd=BACKEND_DIR, timeout=120)
-        return rc == 0, "TARGETED"
+        return rc == 0, confidence
 
     rc, _out = _run(["python", "-m", "pytest", "tests/", "-q", "--tb=short"], cwd=BACKEND_DIR, timeout=300)
     return rc == 0, "UNKNOWN_broadened_to_full_suite"
