@@ -12,6 +12,7 @@ from app.identity.federation.services import (
     FederationAgreementService,
     FederationService,
 )
+from app.identity.niam_async_db import get_niam_db
 from app.identity.platform_authority.authorization import require_platform_capability
 from app.identity.platform_authority.models import PlatformCapability
 
@@ -101,7 +102,7 @@ async def get_provider(
 async def update_provider(
     provider_id: str,
     body: dict[str, Any],
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
     actor: NiamActor = Depends(get_current_niam_actor),
 ):
     await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
