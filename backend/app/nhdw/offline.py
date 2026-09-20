@@ -210,9 +210,11 @@ class OfflineService:
             if change_in_db:
                 change_in_db.sync_status = SyncStatus.CONFLICT if conflicts > 0 else SyncStatus.SYNCED
         db.flush()
-        log_action(db, "nhdw.sync.apply_batch", 0, lab_id, user_id, {
-            "applied": applied, "conflicts": conflicts, "device_id": batch.device_id,
-        })
+        log_action(
+            db, "nhdw.sync.apply_batch", "sync_batch", None,
+            user_id=user_id, lab_id=lab_id,
+            details={"applied": applied, "conflicts": conflicts, "device_id": batch.device_id},
+        )
         return {"applied": applied, "conflicts": conflicts}
 
     @staticmethod
@@ -226,12 +228,16 @@ class OfflineService:
         local_ts = local_data.get("updated_at", "")
         remote_ts = remote_data.get("updated_at", "")
         winner = remote_data if remote_ts >= local_ts else local_data
-        log_action(db, "nhdw.sync.resolve_conflict", 0, lab_id, user_id, {
-            "strategy": "last_write_wins",
-            "local_timestamp": local_ts,
-            "remote_timestamp": remote_ts,
-            "winner": "remote" if remote_ts >= local_ts else "local",
-        })
+        log_action(
+            db, "nhdw.sync.resolve_conflict", "sync_conflict", None,
+            user_id=user_id, lab_id=lab_id,
+            details={
+                "strategy": "last_write_wins",
+                "local_timestamp": local_ts,
+                "remote_timestamp": remote_ts,
+                "winner": "remote" if remote_ts >= local_ts else "local",
+            },
+        )
         return winner
 
     @staticmethod

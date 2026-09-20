@@ -105,9 +105,11 @@ class NursingService:
         )
         db.add(assignment)
         db.flush()
-        log_action(db, f"{_NURSING_NS}.assign_patient", "patient_assignment", assignment.id, user_id, lab_id, {
-            "nurse_id": nurse_pk, "patient_id": patient_id, "type": assignment_type,
-        })
+        log_action(
+            db, f"{_NURSING_NS}.assign_patient", "patient_assignment", None,
+            user_id=user_id, lab_id=lab_id,
+            details={"resource_id": assignment.id, "nurse_id": nurse_pk, "patient_id": patient_id, "type": assignment_type},
+        )
         return assignment
 
     @staticmethod
@@ -126,9 +128,11 @@ class NursingService:
         assignment.end_date = datetime.now(UTC)
         assignment.updated_by = user_id
         db.flush()
-        log_action(db, f"{_NURSING_NS}.unassign_patient", "patient_assignment", assignment.id, user_id, lab_id, {
-            "nurse_id": nurse_id, "patient_id": patient_id,
-        })
+        log_action(
+            db, f"{_NURSING_NS}.unassign_patient", "patient_assignment", None,
+            user_id=user_id, lab_id=lab_id,
+            details={"resource_id": assignment.id, "nurse_id": nurse_id, "patient_id": patient_id},
+        )
 
     @staticmethod
     def get_assigned_patients(
@@ -192,7 +196,10 @@ class NursingService:
         task = NursingTask(lab_id=lab_id, created_by=user_id, **data)
         db.add(task)
         db.flush()
-        log_action(db, f"{_NURSING_NS}.create_task", "nursing_task", task.id, user_id, lab_id, data)
+        log_action(
+            db, f"{_NURSING_NS}.create_task", "nursing_task", None,
+            user_id=user_id, lab_id=lab_id, details={"resource_id": task.id, **data},
+        )
         return task
 
     @staticmethod
@@ -221,7 +228,10 @@ class NursingService:
         task.updated_by = user_id
         task.version += 1
         db.flush()
-        log_action(db, f"{_NURSING_NS}.update_task", "nursing_task", task.id, user_id, lab_id, data)
+        log_action(
+            db, f"{_NURSING_NS}.update_task", "nursing_task", None,
+            user_id=user_id, lab_id=lab_id, details={"resource_id": task.id, **data},
+        )
         return task
 
     @staticmethod
@@ -247,9 +257,11 @@ class NursingService:
         task.updated_by = user_id
         task.version += 1
         db.flush()
-        log_action(db, f"{_NURSING_NS}.complete_task", "nursing_task", task.id, user_id, lab_id, {
-            "state_before": state_before, "state_after": "completed", "version": task.version,
-        })
+        log_action(
+            db, f"{_NURSING_NS}.complete_task", "nursing_task", None,
+            user_id=user_id, lab_id=lab_id,
+            details={"resource_id": task.id, "state_before": state_before, "state_after": "completed", "version": task.version},
+        )
         return task
 
     @staticmethod
@@ -273,9 +285,11 @@ class NursingService:
         task.updated_by = user_id
         task.version += 1
         db.flush()
-        log_action(db, f"{_NURSING_NS}.defer_task", "nursing_task", task.id, user_id, lab_id, {
-            "state_before": state_before, "state_after": "deferred", "version": task.version,
-        })
+        log_action(
+            db, f"{_NURSING_NS}.defer_task", "nursing_task", None,
+            user_id=user_id, lab_id=lab_id,
+            details={"resource_id": task.id, "state_before": state_before, "state_after": "deferred", "version": task.version},
+        )
         return task
 
     @staticmethod
