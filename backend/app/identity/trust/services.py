@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 from .models import (
     AAL1,
@@ -28,11 +29,24 @@ from .models import (
     TrustFramework,
 )
 
+# SAFE_METADATA only (Phase 9/10 field classification -- see
+# docs/security/NIAM_PLATFORM_AUTHORITY_ARCHITECTURE.md Section 5/9).
+# status/supersedes_framework_id are SECURITY_SENSITIVE and already have
+# dedicated operations (activate_framework/supersede_framework below) --
+# deliberately not reachable through this generic path. assurance_policies/
+# scope/authority_id are also SECURITY_SENSITIVE and have no existing
+# dedicated-operation precedent to route them through; per Phase 10 Section 9
+# ("do not invent speculative operations... STOP and report rather than
+# inventing"), they are left unreachable via any path this phase, not routed
+# around the missing precedent.
+_TRUST_FRAMEWORK_UPDATABLE_FIELDS = frozenset({"name_en", "name_ar", "version", "effective_date"})
+
 
 class TrustFrameworkService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_framework(
         self,
@@ -104,15 +118,31 @@ class TrustFrameworkService:
         return list(result.scalars().all())
 
     async def update_framework(
-        self, framework_id: str, **kwargs: Any,
+        self, framework_id: str, data: dict[str, Any], actor_account_id: str | None = None,
     ) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
             return None
-        for key, value in kwargs.items():
-            if hasattr(entity, key) and value is not None:
+        applied: dict[str, Any] = {}
+        for key, value in data.items():
+            if key in _TRUST_FRAMEWORK_UPDATABLE_FIELDS and value is not None:
                 setattr(entity, key, value)
+                applied[key] = value
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_UPDATED",
+                category="TRUST",
+                action="trust.framework.update",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"fields": applied},
+            ),
+        )
         return entity
 
 

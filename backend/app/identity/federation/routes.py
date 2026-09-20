@@ -6,11 +6,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.federation.services import (
     CrossOrgTrustService,
     FederationAgreementService,
     FederationService,
 )
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 router = APIRouter(prefix="/federation", tags=["NIAM Federation"])
 
@@ -99,9 +102,13 @@ async def update_provider(
     provider_id: str,
     body: dict[str, Any],
     db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationService(db)
-    provider = await svc.update_provider(provider_id, **body)
+    provider = await svc.update_provider(
+        provider_id, body, actor_account_id=actor.account.id,
+    )
     if not provider:
         return {"error": "not_found"}
     return provider.to_dict()

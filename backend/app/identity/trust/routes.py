@@ -7,6 +7,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 from .services import (
     AssuranceService,
@@ -89,9 +92,13 @@ async def update_framework(
     framework_id: str,
     body: dict[str, Any],
     db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustFrameworkService(db)
-    entity = await service.update_framework(framework_id, **body)
+    entity = await service.update_framework(
+        framework_id, body, actor_account_id=actor.account.id,
+    )
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()

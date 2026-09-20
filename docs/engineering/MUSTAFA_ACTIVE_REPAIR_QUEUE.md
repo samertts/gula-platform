@@ -168,3 +168,78 @@ off rather than patched: **no changes were made to any of the 6 files in this ta
 STATUS: **6/6 Identity/Auth candidates triaged. 2 SAFE_BY_DESIGN (already fail-closed), 1 SAFE_SERVER_DERIVED (hardening opportunity only), 1 DEAD_OR_UNREACHABLE, 2 VERIFIED_VULNERABLE and BLOCKED-HANDOFF (missing authorization check on `federation/services.py::update_provider` and `trust/services.py::update_framework` — needs a real platform/organization-scoped permission decision from the identity-canonical owner, not a guess from this branch).**
 
 | Commit: `(pending)` | Owner: Mustafa (triage) / Abu Ali (fix, canonical identity/trust/federation authorization decision required) | Blocker: `federation/services.py::update_provider` and `trust/services.py::update_framework` need a real permission check (analogous to `_require_policy_admin`'s fail-closed pattern) before their mass-assignment loop is safe to leave open; both files are under active heavy rewrite on `origin/claude/p0-2-pharmacy-reconciliation` right now. | Next action: raise these two findings directly to Abu Ali (or to whoever merges his branch) — if his in-progress rewrite doesn't already close them, the minimal safe interim fix is the same fail-closed stub pattern already used at `adaptive_auth/routes.py:_require_policy_admin`, applied to both `PUT` routes, until a real permission model for platform-wide trust/federation config exists. |
+
+## Phase 10 — NIAM Platform Authority foundation implemented, federation/trust findings closed
+
+Following an explicit approved-architecture directive (Assignment-bound Platform
+Authority, keyed to the canonical NIAM identity — `niam_identities`, reached via
+`Account.identity_id` — never an organization account role, never
+`organization_id`), implemented the foundation this branch's own prior Phase 7-9
+investigation said was the blocking prerequisite, then closed the two named
+findings against it.
+
+**New**: `app/identity/platform_authority/` (`models.py`, `services.py`,
+`authorization.py`) — `PlatformAuthorityAssignment` (`niam_platform_authority_assignments`,
+migration `20260908_0003`), four capabilities (`platform.federation.manage`,
+`platform.trust.manage`, `platform.certificates.manage`,
+`platform.governance.manage`), `PlatformAuthorityService` (grant/revoke/
+has_capability, idempotent grant, terminal revoke — mirrors
+`niam_role_assignments`' `revoked -> {}` rule), `require_platform_capability`
+resolver (fail-closed, never consults `Membership`/`RoleAssignment`). At-most-
+one-active-assignment-per-(identity,capability) enforced by a **real, Postgres-
+verified partial unique index** (`postgresql_where=status='active'`), not just
+application logic — proven via a throwaway local Postgres: duplicate-active
+insert rejected, revoke-then-re-grant accepted, full upgrade/downgrade/re-upgrade
+round-trip clean.
+
+**Closed**: `federation/services.py::update_provider` and
+`trust/services.py::update_framework` now require `platform.federation.manage`/
+`platform.trust.manage` (route-level `require_platform_capability` call, actor
+resolved via the existing `get_current_niam_actor`) and an explicit field
+allow-list replacing the old `hasattr(...)`-guarded `setattr` loop — SAFE_METADATA
+only (`name_en`/`name_ar`/`version`/`effective_date` for TrustFramework;
+`name_en`/`name_ar`/`provider_type`/`client_id`/`scopes`/`metadata_url` for
+FederatedProvider). SECURITY_SENSITIVE fields (`status`, `assurance_policies`,
+`scope`, `authority_id`, `supersedes_framework_id`, `client_secret_encrypted`,
+`certificate`, `trust_anchor_id`, every OAuth endpoint/redirect field) are now
+unreachable via either generic-update path — deliberately not routed through any
+newly-invented operation, since no dedicated-operation precedent exists for them
+yet (unlike `activate_framework`/`supersede_framework`, which already existed and
+were left alone, or `certificates/services.py::rotate_certificate`) — recorded as
+DEFERRED, not silently dropped. Both mutations now emit real
+`CanonicalAuditService`/`AuditEventInput` audit entries (reusing the same
+mechanism `admin/services.py` already uses, not a second audit system).
+
+**Found and fixed mid-implementation** (caught by the new tests, not assumed
+away): the naive `service.update_x(id, actor_account_id=..., **body)` call shape
+crashes with `TypeError: got multiple values for argument` whenever `body`
+happens to contain a key matching the resource's own id parameter (e.g. a client
+sending `{"framework_id": "..."}`) — fixed by changing both service methods to
+take `data: dict` instead of `**kwargs`, matching the `HospitalService.update_hospital`
+precedent from Phase 5 exactly, which structurally can't collide this way.
+
+**Verification**: real Postgres migration round-trip (see above); repo-wide
+`setattr_mass_assignment_guard.py` re-run — both sites still flagged as candidates
+(correct, syntax-only detector) but now `guarded=True`; 24 new focused tests in
+`backend/tests/identity/test_platform_authority_phase10.py` (fail-closed matrix,
+grant/revoke/idempotency/audit, route-level negative proofs for both operations,
+field-boundary proofs, cross-boundary proof that an org-RBAC-shaped actor is still
+denied, and a `unittest.mock.patch`-based negative proof that removing the gate
+call is exactly what reopens each vulnerability); full existing
+`backend/tests/identity/` suite (195 tests) re-run unchanged, all passing —
+no regression.
+
+**Explicitly NOT done this phase** (matches the directive's own scope limits,
+not an oversight): no public grant/revoke route (bootstrap remains a documented,
+separate, not-yet-authorized step); `activate_framework`/`supersede_framework`/
+`register_provider`/`issue_certificate`/`revoke_certificate`/`create_authority`
+share the same missing-platform-authority gap but were out of this phase's named
+scope and are still open; no assurance/step-up requirement added (Phase 9 §8's
+open question, not resolved here); certificates/governance domains untouched.
+
+STATUS: **Platform Authority foundation Functional/Validated (not yet Operational/
+Production — no bootstrap path exists to grant a first real capability). Both
+Phase 6 findings closed at the code level and covered by negative proof; not yet
+exercised against production data or a real deployment.**
+
+| Commit: `(pending)` | Owner: Mustafa | Migration: `20260908_0003_platform_authority_foundation` | Next action: decide and implement the bootstrap path for the first real Platform Authority grant (Phase 9 §13 step 2 — deliberately not invented here), then extend capability-gating to the six other routes sharing this gap. |

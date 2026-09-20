@@ -15,12 +15,29 @@ from app.identity.federation.models import (
     FederatedSession,
     FederationAgreement,
 )
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
+
+# SAFE_METADATA / plausibly-safe-but-unproven fields only (Phase 9/10 field
+# classification -- see docs/security/NIAM_PLATFORM_AUTHORITY_ARCHITECTURE.md
+# Section 5/9). client_secret_encrypted, certificate, signature_algorithm,
+# trust_anchor_id, status, and every OAuth/OIDC endpoint/redirect field are
+# SECURITY_SENSITIVE and have no existing dedicated-operation precedent
+# (unlike TrustFramework's activate_framework/supersede_framework, or
+# certificates/services.py's rotate_certificate). Per Phase 10 Section 9
+# ("do not invent speculative operations... STOP and report rather than
+# inventing"), they are left unreachable via any path this phase, not routed
+# around the missing precedent -- provider credential/trust-anchor/lifecycle
+# management is deferred to a dedicated follow-up phase.
+_FEDERATED_PROVIDER_UPDATABLE_FIELDS = frozenset(
+    {"name_en", "name_ar", "provider_type", "client_id", "scopes", "metadata_url"},
+)
 
 
 class FederationService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def register_provider(
         self,
@@ -79,15 +96,32 @@ class FederationService:
     async def update_provider(
         self,
         provider_id: str,
-        **kwargs: Any,
+        data: dict[str, Any],
+        actor_account_id: str | None = None,
     ) -> FederatedProvider | None:
         provider = await self.get_provider(provider_id)
         if not provider:
             return None
-        for key, value in kwargs.items():
-            if hasattr(provider, key) and value is not None:
+        applied: dict[str, Any] = {}
+        for key, value in data.items():
+            if key in _FEDERATED_PROVIDER_UPDATABLE_FIELDS and value is not None:
                 setattr(provider, key, value)
+                applied[key] = value
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="FEDERATED_PROVIDER_UPDATED",
+                category="FEDERATION",
+                action="federation.provider.update",
+                actor_id=actor_account_id,
+                target_type="federated_provider",
+                target_id=provider.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_FEDERATION_MANAGE",
+                data_classification="INTERNAL",
+                changes={"fields": applied},
+            ),
+        )
         return provider
 
     async def list_providers(
