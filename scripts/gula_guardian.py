@@ -2,8 +2,18 @@
 """
 GULA Guardian - Advanced Self-Healing Orchestrator
 --------------------------------------------------
-Complements the internal auto_repair engine by handling infrastructure-level 
+Complements the internal auto_repair engine by handling infrastructure-level
 failures and performing deep clinical data reconciliation.
+
+NOT CURRENTLY ACTIVE (session forensic inventory, docs/engineering/
+MUSTAFA_ACTIVE_REPAIR_QUEUE.md, row "autonomous-repair-family-inventory"):
+not referenced by any cron entry, systemd unit, Makefile target, or CI
+workflow anywhere in this repo (exhaustively grepped). Its main() is
+also a standing `while True: ...; time.sleep(300)` loop -- if this is
+ever activated, convert it to a bounded, cron-triggered single-shot
+invocation first ("no permanent polling daemon" is a hard requirement
+this session's engineering directives establish); do not just add it to
+cron as-is with the infinite loop intact.
 """
 
 import os
