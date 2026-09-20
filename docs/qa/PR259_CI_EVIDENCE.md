@@ -246,3 +246,54 @@ stretched into a stronger claim.
 - No other file created or modified. No workflow file changed. No rerun
   triggered in producing this document (the one prior-turn rerun attempt,
   which failed with 403, is not repeated).
+
+---
+
+## Addendum (Phase 10.5) — re-checked against the Phase 10 commit, nothing new accessible
+
+Re-verified fresh for this phase, without triggering any rerun (per Part
+D's explicit instruction), against the current head at the time of
+writing, `725162db` (Phase 10's real implementation commit — 11 files,
+~1000 lines, not docs):
+
+- **VERIFIED**: the run for `Backend identity unit and compile gates` /
+  `PostgreSQL migration and schema gate` (`run_id 35529859501`, workflow
+  `IAM Hardening Gate`) shows `run_attempt: 1` and
+  `created_at`/`completed_at` = `18:41:13Z`/`18:41:16Z` — the same
+  3-second signature as every prior push, and **no rerun has occurred**
+  (attempt count unchanged since first observed).
+- **VERIFIED**: `get_job_logs` for this job still returns `HTTP 404`;
+  `pull_request_read(get_status)` for this commit still returns
+  `HTTP 403 Resource not accessible by integration`. Neither access path
+  has become available since the prior check — this session's GitHub
+  token permissions have not changed.
+- **New evidence this pass, not available in the original investigation**:
+  before pushing `725162db`, the exact commands
+  `Backend identity unit and compile gates` and
+  `PostgreSQL migration and schema gate` run were executed locally against
+  that exact commit's content: `pytest backend/tests/identity -m "not
+  integration"` (219 passed, 0 failed, Python 3.12 matching the pinned
+  `PYTHON_VERSION`), `ruff check --no-fix backend/app/identity
+  backend/app/clinical_gateway ...` (clean), `python -m compileall -q
+  backend/app backend/migrations` (clean), and a full real-Postgres
+  `alembic upgrade head` → `downgrade -1` → `upgrade head` round trip for
+  the one migration this commit adds (clean, re-verified a second time
+  independently in `docs/qa/PHASE10_MIGRATION_IDENTITY.md`). This is
+  **direct, reproducible, local evidence that this specific commit's
+  actual content does not fail these two jobs' documented commands** —
+  stronger than the prior pass's evidence (which only covered `Syntax
+  Gate`'s logic on a docs-only commit), but still not the same as a
+  green CI run, and still not proof of *where* the real CI job fails.
+
+### CI_STATUS (unchanged classification, now on stronger evidence)
+
+**UNKNOWN.** Per Part D's explicit bar: not `VERIFIED_FAILURE` (no
+reproducible command failure was found — the opposite was found, twice
+now, for different commits), not `VERIFIED_PASS` (no successful rerun
+exists to point to — none has been triggered, and this session cannot
+trigger one), not classified as infrastructure failure (still no log
+access, no step-level breakdown, no combined-status access to prove
+*where* any job fails). The evidence continues to accumulate toward "this
+PR/branch's CI execution has a problem independent of content" without
+crossing into the concrete proof this phase requires before naming that
+explicitly.
