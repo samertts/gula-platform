@@ -91,3 +91,30 @@ fork a new report document for the same defect.
 - **Caller audit**: `can_manage_user` has exactly two reachable callers in
   the entire repo (`backend/app/routes/admin.py:830,882`); both are covered
   by the new test file.
+
+## Systemic pattern: unguarded setattr-loop mass assignment
+
+PATTERN: `CLIENT_CONTROLLED_MASS_ASSIGNMENT` — `for k, v in data.items(): setattr(target, k, v)` (and the `key/value`, `field/value` spellings).
+
+ROOT CAUSE: a generic request payload dict reaches an ORM instance via a bare attribute-assignment loop with no explicit writable-field boundary at the ORM/service layer — whether this is exploitable depends entirely on whether the calling route's own request schema already narrows the payload, which varies call site to call site and is not visible from the loop's syntax alone.
+
+DETECTOR: `scripts/setattr_mass_assignment_guard.py` (new, this pass) — deterministic AST scan, self-tested (`--self-test`, 4/4: vulnerable shape, allow-listed shape, unrelated loop, alternate variable names), whole-repo scan in 0.28s. Flags every occurrence as a candidate requiring manual classification (SAFE_BY_DESIGN / SERVER_DERIVED / INTERNAL_ONLY / DEAD_OR_UNREACHABLE / VULNERABLE / NEEDS_REVIEW) and reports whether the loop body contains an inner `if` (a weak signal an allow-list may already be present — confirmed correctly `guarded=True` against this session's own just-fixed `hospital_service.py:102`, and correctly `guarded=False`/unguarded for `hospital_service.py`'s 2 still-open siblings, `update_campus`/`update_department`/`update_equipment` in `app/routes/hospital.py`).
+
+PROOF: fixed and verified this session in `app/nursing/services.py::update_task` (earlier pass) and `app/services/hospital_service.py::update_hospital` (this pass, `0ddf1a72`), both with real behavioral tests proving protected fields survive a hostile payload.
+
+AFFECTED DOMAINS (77 candidates across 41 files, repo-wide scan, NOT individually triaged this pass — each still needs the same manual classification Hospital's own investigation used before any fix):
+- **Identity/Auth (highest priority — P0 per this session's own domain ordering, NOT audited this pass):** `app/identity/adaptive_auth/routes.py:172`, `app/identity/adaptive_auth/services.py:656`, `app/identity/admin/services.py:351`, `app/identity/federation/services.py:87`, `app/identity/services/person_service.py:77`, `app/identity/trust/services.py:112`.
+- **EHR (17 sites, one file):** `app/services/ehr_service.py` — every clinical-note/care-plan/goal/activity update method.
+- **NHDW (6 remaining, beyond the already-fixed `update_admission`):** `app/nhdw/services.py:112,387,506,569,843,867`, `app/nhdw/offline.py:182,191`.
+- **Insurance (5, one per API file):** `app/insurance/api/{claims,coverages,network,policies,providers,referrals}.py`.
+- **National platform (~15 across background/document/observability/scheduling/task_engine/ecosystem/services + 3 route files):** `app/national/**`.
+- **Hospital (2 remaining, NOT fixed this pass — same file as the confirmed/closed finding but different routes):** `app/routes/hospital.py:456` (`update_campus`), `:552` (`update_department`), `:939` (`update_equipment`, has a weaker `if v is not None` null-check only, not a field allow-list) — none of these three routes has a role gate either, consistent with the "rest of hospital.py" note already recorded against `hospital-vertical-slice-remaining-scope`.
+- **Others (1 each, not audited):** `app/blood_bank/application/service.py:836`, `app/citizen_platform/emergency.py:149`, `app/core/bootstrap/subscriptions.py:134`, `app/document_intelligence/infrastructure/repository.py` (4 sites), `app/edge/policy.py:121`, `app/ems/application/service.py:447`, `app/kernel/runtime_digital_twin.py:32`, `app/nursing/services.py:519` (a second Nursing instance beyond the already-fixed `update_task`), `app/pharmacy/services.py:94`, `app/radiology/services.py:666`, `app/routes/care_continuum.py:182`, `app/routes/labs.py:208`, `app/services/clinical_service.py` (4 sites).
+
+FIX PATTERN: explicit allow-list of writable field names mirroring the actual request schema that reaches the method (not the ORM model's full column list — that couples the boundary to the wrong source of truth), checked inside the loop before `setattr`; add `.with_for_update()` + `version += 1` where the target model already has `OptimisticLockMixin` and doesn't yet use it.
+
+PREVENTION: `scripts/setattr_mass_assignment_guard.py` is the standing regression guard — re-run after any change to a `data.items()`/`setattr` update loop, or as a periodic check; a NEW unguarded site anywhere in the tree will show up as a fresh candidate.
+
+STATUS: **PATTERN REGISTERED, DETECTOR VERIFIED (self-tested 4/4), 2/77 candidates fixed this session (Nursing, Hospital) — the remaining 75 are explicitly NOT triaged, matching this session's "do not turn this into a full repository rewrite" boundary.** Given the volume and that several affected domains (Identity/Auth, EHR, National, Insurance) were never touched this session, classifying and fixing the remainder is sized as its own dedicated pass (or several, split by domain), starting with Identity/Auth per this session's own P0-first domain ordering — not attempted here.
+
+| Commit: `f3cad8d8` | Owner: Mustafa | Next action: a dedicated pass (or one per domain cluster above) reading each flagged call site's actual request-schema/ownership context before fixing, starting with the Identity/Auth cluster. |
