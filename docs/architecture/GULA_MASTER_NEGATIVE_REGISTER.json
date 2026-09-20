@@ -48,7 +48,11 @@
       "complexity": "M",
       "can_fix_now": true,
       "blocker": false,
-      "evidence_strength": "STRONG (executed)"
+      "evidence_strength": "STRONG (executed)",
+      "tests": [
+        "backend/tests/migrations/test_migration_graph_integrity.py::test_revision_identifiers_are_unique",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-002",
@@ -86,7 +90,11 @@
       "complexity": "S",
       "can_fix_now": true,
       "blocker": false,
-      "evidence_strength": "STRONG (executed, reproduced in CI)"
+      "evidence_strength": "STRONG (executed, reproduced in CI)",
+      "tests": [
+        "backend/tests/migrations/test_migration_graph_integrity.py::test_migration_graph_has_exactly_one_head",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-003",
@@ -200,7 +208,10 @@
       "complexity": "S",
       "can_fix_now": true,
       "blocker": false,
-      "evidence_strength": "STRONG (executed)"
+      "evidence_strength": "STRONG (executed)",
+      "tests": [
+        "no dedicated guard; covered by `alembic upgrade head` on a clean database (CI migration-check + backend/tests/test_migration_resilience.py), which is where the DuplicateTable would raise. Recorded rather than duplicated."
+      ]
     },
     {
       "id": "NR-006",
@@ -617,7 +628,7 @@
       "domain": "Platform CI",
       "severity": "P1",
       "priority": 15,
-      "status": "FIXED — VERIFIED",
+      "status": "FIXED — VERIFIED, and REGRESSION-GUARDED 2026-09-20. This was the only one of the eleven with no test of any kind, which matters more here than elsewhere: every other gate in the repository is protected by this gate, and this gate is the one thing that cannot protect itself. If it returns to counting empty output as clean, nothing downstream notices -- every check it guards keeps reporting PASS.",
       "title": "The changed-files quality gate reported PASS when MyPy had failed to execute",
       "description": "scripts/quality_changed_files_gate.py printed '0 diagnostics' and PASS while MyPy exited 2 without analysing anything. Two causes combined: run_mypy parsed diagnostics regardless of the exit code, so a failed run contributed an empty list that read as clean; and execution_error_regression only fired when the head's error DIFFERED from the baseline's, which is never the case when both sides run in the same environment. A tool that never ran was certifying the change.",
       "root_cause": "Zero diagnostics was treated as evidence of cleanliness without first establishing that the tool actually ran. The gate shelled out to a bare 'mypy' on PATH, which can resolve to an interpreter lacking the project dependencies MyPy must import to load its SQLAlchemy and Pydantic plugins.",
@@ -647,7 +658,11 @@
       "complexity": "S",
       "can_fix_now": true,
       "blocker": false,
-      "evidence_strength": "STRONG (reproduced before and after, with regression tests)"
+      "evidence_strength": "STRONG (reproduced before and after, with regression tests)",
+      "tests": [
+        "backend/tests/test_quality_gate_cannot_certify_an_unrun_tool.py (5 tests over ToolResult.measured, ToolResult.state and execution_blockers -- the three things NR-016 changed; pure functions, no subprocess or database)",
+        "negative proof: restoring the difference-only comparison (`if head.execution_error == baseline.execution_error: return blockers`) fails test_c alone; restored byte-identical, 5 pass"
+      ]
     },
     {
       "id": "NR-017",
@@ -1222,7 +1237,12 @@
       "related_contracts": "",
       "wave": "WAVE 2",
       "complexity": "S",
-      "evidence_strength": "STRONG (4 HTTP regressions against PostgreSQL)"
+      "evidence_strength": "STRONG (4 HTTP regressions against PostgreSQL)",
+      "tests": [
+        "backend/tests/blood_bank/test_sample_transition_idempotency.py",
+        "backend/tests/blood_bank/test_audit_chain_coverage.py",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-032",
@@ -1386,7 +1406,12 @@
       "fixed_by": "AUTH-004",
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/verification-architecture.md",
-      "next_batch": ""
+      "next_batch": "",
+      "tests": [
+        "backend/tests/identity/test_verification_phase3.py",
+        "backend/tests/identity/test_verification_hardening_phase3.py",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-038",
@@ -1774,7 +1799,11 @@
       "artifact": "docs/architecture/identity/nr-044-decision.md",
       "next_batch": "",
       "fixed_by": "NR-044.3",
-      "resolution": "The gate joins Assignment to IdentityRecord on person_id and matches the actor's identity_id, keeping the identity's own active standing in the conjunction rather than trusting the account alone. The predicate is at least as strict as the one that was intended, and it now evaluates."
+      "resolution": "The gate joins Assignment to IdentityRecord on person_id and matches the actor's identity_id, keeping the identity's own active standing in the conjunction rather than trusting the account alone. The predicate is at least as strict as the one that was intended, and it now evaluates.",
+      "tests": [
+        "backend/tests/test_identity_link_and_assurance.py (_require_assurance_administrator)",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-053",
@@ -3012,7 +3041,12 @@
       "complexity": "S",
       "can_fix_now": true,
       "blocker": "",
-      "evidence_strength": "EXECUTED — failing SELECT before, full write round trip after, both against PostgreSQL 16 at migration head"
+      "evidence_strength": "EXECUTED — failing SELECT before, full write round trip after, both against PostgreSQL 16 at migration head",
+      "tests": [
+        "backend/tests/test_niam_v2.py",
+        "backend/tests/test_autogenerate_is_safe.py",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-085",
@@ -3402,7 +3436,11 @@
         "backend/app/routes/compliance.py"
       ],
       "related_adrs": [],
-      "related_contracts": []
+      "related_contracts": [],
+      "tests": [
+        "backend/tests/test_compliance_reports_are_true.py",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-091",
@@ -3599,7 +3637,12 @@
         "backend/app/routes/ai_platform.py"
       ],
       "related_adrs": [],
-      "related_contracts": []
+      "related_contracts": [],
+      "tests": [
+        "backend/tests/test_ai_session_ownership.py",
+        "backend/tests/test_side_door_hardening.py",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-094",
@@ -4384,7 +4427,11 @@
       "complexity": "S",
       "can_fix_now": false,
       "blocker": false,
-      "evidence_strength": "STRONG (PostgreSQL execution, both failing and passing, + negative proof)"
+      "evidence_strength": "STRONG (PostgreSQL execution, both failing and passing, + negative proof)",
+      "tests": [
+        "backend/tests/test_blood_bank_mutations_are_audited.py (defer_donor)",
+        "linked 2026-09-20; guard pre-existed, the register did not name it"
+      ]
     },
     {
       "id": "NR-107",
