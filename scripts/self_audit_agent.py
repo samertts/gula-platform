@@ -249,21 +249,36 @@ class AuditResult:
     timestamp:        str = ""
 
     def print_report(self):
-        {"GREEN": "\033[32m", "YELLOW": "\033[33m", "RED": "\033[31m"}.get(self.grade, "")
+        """Prints the audit result to stdout. Was previously dead code --
+        computed a color per grade and discarded it, then iterated every
+        issue/fix list with a bare `pass`, so a real, API-billed audit run
+        produced zero console output (the JSON report file in logs/ was
+        the only surviving evidence). Restored to actually print, using
+        the exact color mapping the method already (uselessly) computed.
+        """
+        reset = "\033[0m"
+        color = {"GREEN": "\033[32m", "YELLOW": "\033[33m", "RED": "\033[31m"}.get(self.grade, "")
+        print(f"\n{color}[{self.grade}]{reset} {self.timestamp} — production_ready={self.production_ready}")
+        if self.summary:
+            print(f"  {self.summary}")
 
-        for _severity, issues in [
+        for severity, issues in [
             ("CRITICAL", self.critical_issues),
             ("HIGH", self.high_issues),
             ("MEDIUM", self.medium_issues),
         ]:
             if issues:
+                print(f"\n{severity} ({len(issues)}):")
                 for i in issues:
+                    loc = f"{i.get('file', '?')}:{i.get('line', '?')}"
+                    print(f"  - {loc}: {i.get('issue', '')}")
                     if i.get("fix"):
-                        pass
+                        print(f"    fix: {i['fix']}")
 
         if self.applied_fixes:
-            for _f in self.applied_fixes:
-                pass
+            print(f"\nAuto-applied fixes ({len(self.applied_fixes)}):")
+            for f in self.applied_fixes:
+                print(f"  - {f}")
 
 
 
