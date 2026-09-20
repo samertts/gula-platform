@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -53,15 +54,25 @@ _NHDW_ADMISSION_WRITE_ROLES = {"admin", "master_admin", "doctor", "nurse"}
 
 
 def _model_to_dict(model_instance) -> dict[str, Any]:
+    """Iterates mapped column *attributes* (mapper.column_attrs), not raw
+    __table__.columns: a Column's own .key defaults to its DB column name,
+    which for e.g. `metadata_ = Column("metadata", JSON, ...)` is
+    "metadata" -- getattr(instance, "metadata") then returns the
+    SQLAlchemy declarative class's own MetaData object (every mapped
+    class has one), not the JSON field's value, and that object isn't
+    JSON-serializable (FastAPI's jsonable_encoder recurses on it
+    indefinitely). Using the mapper's attribute key ("metadata_") gets
+    the real value and avoids the name collision entirely.
+    """
     exclude = {"lab_id", "is_deleted", "deleted_at", "version"}
     result = {}
-    for c in model_instance.__table__.columns:
-        if c.key in exclude:
+    for attr in sa_inspect(model_instance).mapper.column_attrs:
+        if attr.key in exclude:
             continue
-        val = getattr(model_instance, c.key)
+        val = getattr(model_instance, attr.key)
         if isinstance(val, datetime) or (isinstance(val, date) and not isinstance(val, datetime)):
             val = val.isoformat()
-        result[c.key] = val
+        result[attr.key] = val
     return result
 
 
@@ -1022,10 +1033,7 @@ def get_dashboard_config(
 ):
     config = NHDWService.get_dashboard_config(db, current_user.lab_id, role)
     if not config:
-        raise HTTPException(
-            status_code=404, detail="Dashboard configuration not found",
-            detail_ar="لم يتم العثور على تكوين لوحة المعلومات",
-        )
+        raise HTTPException(status_code=404, detail="Dashboard configuration not found")
     return _model_to_dict(config)
 
 
