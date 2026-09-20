@@ -1331,17 +1331,25 @@ def release_result(
         lims_models.Specimen.id == result.specimen_id,
         lims_models.Specimen.lab_id == lab_id,
     ).with_for_update().first()
-    if not specimen or specimen.status != "verified":
+    # The specimen must be VALIDATED, not merely verified. state_machine.py is
+    # the declared single source of truth and allows verified -> validated ->
+    # released; this precondition used to demand "verified" and then call
+    # SpecimenService.transition(..., "released"), which the same state machine
+    # refuses with 409. The two contradicted each other, so no release could
+    # ever complete. Requiring the validated state resolves it in the stricter
+    # direction -- one more control state before a result reaches a clinician,
+    # never one fewer.
+    if not specimen or specimen.status != "validated":
         guard.reject(
             operation="result.release",
             resource_type="lims_result",
             resource_id=result.id,
             state_before=state_before,
             version_before=version_before,
-            reason="verified_specimen_required",
+            reason="validated_specimen_required",
         )
         db.commit()
-        raise HTTPException(422, detail="A result can only be released from a verified specimen")
+        raise HTTPException(422, detail="A result can only be released from a validated specimen")
 
     remaining_unvalidated = db.query(lims_models.Result).filter(
         lims_models.Result.specimen_id == specimen.id,

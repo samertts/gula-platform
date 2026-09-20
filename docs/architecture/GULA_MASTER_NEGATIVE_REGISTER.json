@@ -5,7 +5,7 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 155,
+    "total": 157,
     "P0": 25,
     "P1": 77,
     "P2": 41,
@@ -5354,6 +5354,51 @@
       ],
       "tests": [],
       "generated": "2026-09-19"
+    },
+    {
+      "id": "NR-156",
+      "category": "Audit integrity / Clinical write surface",
+      "domain": "app/lims",
+      "severity": "P0",
+      "priority": 156,
+      "status": "FIXED AND PROVED 2026-09-20 against real PostgreSQL at head 20260916_0001.",
+      "title": "Every LIMS mutation returned 500: the audit call passed its description into `audit_logs.lab_id`",
+      "description": "`log_action(db, action, resource_type, resource_id, user_id, user_role, lab_id, details, ip_address)`. All four call sites in app/lims/services.py passed seven positional arguments where the seventh was the human-readable description, so it landed in `lab_id`.\n\n`audit_logs.lab_id` is an integer column, so PostgreSQL refused the INSERT:\n\n    invalid input syntax for type integer: \"LIMS order ACC-85c4dd63 created\"\n\nThe audit write happens inside the mutation's transaction, so the exception took the whole request with it. POST /lims/orders, POST /lims/specimens, every PUT /lims/specimens/{id}/status and POST /lims/results returned 500 on every call. The LIMS write surface -- 69 registered routes -- could not create anything.\n\nThe quieter half is worse than the crash. Had the column been permissive, the row would have been written with NO lab_id and NO details: an audit entry that cannot say which tenant acted or what happened. Security Invariant 2 requires the mutation to be audited, and that is not an audit row.\n\nWHY NOTHING CAUGHT IT. SQLite accepts a string into an INTEGER column, so the existing suite -- which runs on SQLite -- exercised these paths without ever raising. It is a PostgreSQL type-semantics defect and only a PostgreSQL run could see it. No static check could either: the call had the right arity and the right types for a positional signature that happened to mean something else.\n\nFIXED by passing `lab_id=` and `details=` as keyword arguments at all four sites, with `lab_id` taken from the entity being audited (specimen.lab_id, lims_order.lab_id, result.lab_id) -- server-derived, never client-supplied. Keywords rather than corrected positions so the same misalignment cannot silently recur.\n\nNOT FIXED, RECORDED SEPARATELY: all four sites also hard-code `user_role` as \"lab_tech\" regardless of the actor's real role, so the audit row misattributes the role while recording the correct user_id. Correcting it means threading the role through four service signatures and their callers, which is a wider change than this repair; it is registered rather than bundled.",
+      "evidence": [
+        "EXECUTED against PostgreSQL 16 at head: POST /lims/orders -> 500, psycopg2.errors.InvalidTextRepresentation, parameters showed 'lab_id': 'LIMS order ACC-85c4dd63 created'",
+        "app/lims/services.py:78, :123, :194, :275 -- four call sites, same misalignment",
+        "app/services/audit_service.py:210 -- log_action's seventh positional parameter is lab_id",
+        "AFTER: POST /lims/orders 201, POST /lims/specimens 201, seven specimen transitions 200, POST /lims/results 201",
+        "audit_logs rows for resource_type LIKE 'lims_%' now carry the correct lab_id and a populated details column"
+      ],
+      "tests": [
+        "backend/tests/test_lims_result_release_journey.py::test_a_the_write_surface_persists",
+        "backend/tests/test_lims_result_release_journey.py::test_c_the_audit_row_carries_the_tenant",
+        "negative proof: reverting app/lims/services.py to the positional form fails all 8 tests in the module; restored byte-identical, 8 pass"
+      ],
+      "generated": "2026-09-20"
+    },
+    {
+      "id": "NR-157",
+      "category": "Clinical state machine / Unreachable safety-critical path",
+      "domain": "app/lims",
+      "severity": "P1",
+      "priority": 157,
+      "status": "FIXED AND PROVED 2026-09-20 against real PostgreSQL; resolved in the stricter direction.",
+      "title": "POST /lims/results/{id}/release could never succeed: its precondition contradicted the state machine",
+      "description": "`release_result` required `specimen.status == \"verified\"` and then called `SpecimenService.transition(db, specimen, \"released\", ...)`.\n\napp/lims/state_machine.py calls itself \"single source of truth for lifecycle transitions\" and declares:\n\n    \"verified\":  [\"validated\"]\n    \"validated\": [\"released\"]\n\nSo a specimen in exactly the state the precondition demanded was the one state from which the transition it then attempted was forbidden. Every release that got past authorization died at 409 `Cannot move specimen from 'verified' to 'released'`. Releasing a result -- the moment a number leaves the laboratory and a clinician acts on it -- was unreachable.\n\nIt was invisible because NR-156 sat in front of it: nothing could create a specimen or a result at all, so no caller ever reached the contradiction.\n\nFIXED by requiring the specimen to be `validated`, which is what the declared lifecycle says sits between verified and released. This is the stricter direction on purpose -- one more control state before a result reaches a clinician, never one fewer. The alternative, transitioning verified -> validated -> released inside the handler, would have skipped a control state silently, which is the worse repair even though it touches less code.\n\nThe refusal message and the audit `reason` moved from verified_specimen_required to validated_specimen_required so the audit trail says what was actually required.",
+      "evidence": [
+        "app/lims/state_machine.py:38-39 -- verified -> validated -> released",
+        "EXECUTED before the fix: POST /lims/results/{id}/release -> 409 'Cannot move specimen from verified to released. Allowed: [validated]'",
+        "EXECUTED after the fix: 200, with the result readable as a FHIR Observation and the specimen at 'released'",
+        "the senior-authority check (403 for lab_technician) and the unvalidated-result refusal (422) both fire before this point and are unchanged"
+      ],
+      "tests": [
+        "backend/tests/test_lims_result_release_journey.py::test_f_a_senior_can_complete_the_release",
+        "backend/tests/test_lims_result_release_journey.py::test_d_an_unvalidated_result_cannot_be_released",
+        "negative proof: restoring the 'verified' precondition alone fails test_d and test_f and only those two; restored byte-identical, 8 pass"
+      ],
+      "generated": "2026-09-20"
     }
   ]
 }

@@ -75,7 +75,14 @@ class SpecimenService:
         )
         db.add(specimen)
         db.flush()
-        log_action(db, "create", "lims_specimen", specimen.id, user_id, "lab_tech", f"Specimen {barcode} registered")
+        # Keyword arguments deliberately: log_action's seventh positional
+        # parameter is `lab_id`, and every call here used to pass the
+        # description there. `audit_logs.lab_id` is an integer column, so the
+        # write raised InvalidTextRepresentation and took the whole mutation
+        # down with it -- and had it not, the row would have carried no tenant.
+        log_action(db, "create", "lims_specimen", specimen.id, user_id, "lab_tech",
+                   lab_id=specimen.lab_id,
+                   details=f"Specimen {barcode} registered")
         return specimen
 
     @staticmethod
@@ -121,7 +128,8 @@ class SpecimenService:
 
         db.flush()
         log_action(db, "transition", "lims_specimen", specimen.id, user_id, "lab_tech",
-                    f"Specimen {specimen.barcode}: {specimen.status} → {target_status}")
+                   lab_id=specimen.lab_id,
+                   details=f"Specimen {specimen.barcode}: {specimen.status} → {target_status}")
         return specimen
 
     @staticmethod
@@ -192,7 +200,8 @@ class OrderService:
         db.add(lims_order)
         db.flush()
         log_action(db, "create", "lims_order", lims_order.id, user_id, "lab_tech",
-                    f"LIMS order {accession_number} created")
+                   lab_id=lims_order.lab_id,
+                   details=f"LIMS order {accession_number} created")
         return lims_order
 
     @staticmethod
@@ -273,7 +282,8 @@ class ResultService:
 
         db.flush()
         log_action(db, "create", "lims_result", result.id, user_id, "lab_tech",
-                    f"Result {test_code}: {value_numeric} {unit or ''}".strip())
+                   lab_id=result.lab_id,
+                   details=f"Result {test_code}: {value_numeric} {unit or ''}".strip())
         return result
 
     @staticmethod
