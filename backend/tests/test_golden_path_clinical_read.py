@@ -101,10 +101,6 @@ pytestmark = pytest.mark.integration
 PASSWORD = "GoldenPath!Probe1"
 
 
-def _ulid() -> str:
-    return uuid.uuid4().hex.upper()[:26]
-
-
 @pytest.fixture(scope="module")
 def engine():
     from sqlalchemy import create_engine
