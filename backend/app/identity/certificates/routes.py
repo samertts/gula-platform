@@ -4,11 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.certificates.services import (
     APIKeyService,
     CertificateAuthorityService,
     CertificateService,
 )
+from app.identity.niam_async_db import get_niam_db
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 router = APIRouter(prefix="/certificates", tags=["NIAM Certificates"])
 
@@ -26,8 +30,10 @@ async def issue_certificate(
     validity_days: int = 365,
     rotation_period_days: int | None = None,
     issuer_ca_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = CertificateService(db)
     cert = await svc.issue_certificate(
         cert_type=cert_type,
@@ -41,7 +47,9 @@ async def issue_certificate(
         validity_days=validity_days,
         rotation_period_days=rotation_period_days,
         issuer_ca_id=issuer_ca_id,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return cert.to_dict()
 
 
@@ -49,12 +57,15 @@ async def issue_certificate(
 async def revoke_certificate(
     certificate_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = CertificateService(db)
-    cert = await svc.revoke_certificate(certificate_id, reason)
+    cert = await svc.revoke_certificate(certificate_id, reason, actor_account_id=actor.account.id)
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
+    await db.commit()
     return {"status": "revoked", "certificate_id": certificate_id}
 
 

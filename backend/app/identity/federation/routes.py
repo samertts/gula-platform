@@ -38,8 +38,10 @@ async def register_provider(
     signature_algorithm: str | None = None,
     trust_anchor_id: str | None = None,
     metadata_url: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationService(db)
     provider = await svc.register_provider(
         provider_id=provider_id,
@@ -59,7 +61,9 @@ async def register_provider(
         signature_algorithm=signature_algorithm,
         trust_anchor_id=trust_anchor_id,
         metadata_url=metadata_url,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {
         "uuid": provider.uuid,
         "provider_id": provider.provider_id,

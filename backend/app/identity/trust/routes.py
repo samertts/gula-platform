@@ -113,12 +113,15 @@ async def update_framework(
 @router.post("/frameworks/{framework_id}/activate")
 async def activate_framework(
     framework_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustFrameworkService(db)
-    entity = await service.activate_framework(framework_id)
+    entity = await service.activate_framework(framework_id, actor_account_id=actor.account.id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 

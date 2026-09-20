@@ -86,12 +86,27 @@ class TrustFrameworkService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def activate_framework(self, framework_id: str) -> TrustFramework | None:
+    async def activate_framework(
+        self, framework_id: str, actor_account_id: str | None = None,
+    ) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
             return None
         entity.status = "active"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_ACTIVATED",
+                category="TRUST",
+                action="trust.framework.activate",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def supersede_framework(

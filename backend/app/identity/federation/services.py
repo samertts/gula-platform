@@ -58,6 +58,7 @@ class FederationService:
         signature_algorithm: str | None = None,
         trust_anchor_id: str | None = None,
         metadata_url: str | None = None,
+        actor_account_id: str | None = None,
     ) -> FederatedProvider:
         provider = FederatedProvider(
             uuid=str(uuid.uuid4()),
@@ -83,6 +84,19 @@ class FederationService:
         )
         self.session.add(provider)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="FEDERATED_PROVIDER_REGISTERED",
+                category="FEDERATION",
+                action="federation.provider.register",
+                actor_id=actor_account_id,
+                target_type="federated_provider",
+                target_id=provider.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_FEDERATION_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return provider
 
     async def get_provider(self, provider_id: str) -> FederatedProvider | None:

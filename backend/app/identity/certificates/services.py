@@ -17,6 +17,7 @@ from app.identity.certificates.models import (
     CertificateRevocationList,
     DigitalCertificate,
 )
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 
 def _generate_key_pair() -> tuple[str, str]:
@@ -59,6 +60,7 @@ class CertificateService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def issue_certificate(
         self,
@@ -73,6 +75,7 @@ class CertificateService:
         validity_days: int = 365,
         rotation_period_days: int | None = None,
         issuer_ca_id: str | None = None,
+        actor_account_id: str | None = None,
     ) -> DigitalCertificate:
         priv_pem, pub_pem = _generate_key_pair()
 
@@ -109,9 +112,24 @@ class CertificateService:
         )
         self.session.add(cert)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="CERTIFICATE_ISSUED",
+                category="CERTIFICATES",
+                action="certificates.certificate.issue",
+                actor_id=actor_account_id,
+                target_type="digital_certificate",
+                target_id=cert.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return cert
 
-    async def revoke_certificate(self, certificate_id: str, reason: str) -> DigitalCertificate | None:
+    async def revoke_certificate(
+        self, certificate_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
             DigitalCertificate.is_active.is_(True),
@@ -127,6 +145,20 @@ class CertificateService:
         cert.revocation_date = now
         cert.is_active = False
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="CERTIFICATE_REVOKED",
+                category="CERTIFICATES",
+                action="certificates.certificate.revoke",
+                actor_id=actor_account_id,
+                target_type="digital_certificate",
+                target_id=cert.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+                changes={"reason": reason},
+            ),
+        )
         return cert
 
     async def rotate_certificate(self, certificate_id: str) -> DigitalCertificate | None:

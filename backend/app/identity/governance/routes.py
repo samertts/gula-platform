@@ -7,6 +7,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.niam_async_db import get_niam_db
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 from .services import (
     AppealService,
@@ -34,8 +38,10 @@ async def create_authority(
     established_date: datetime | None = None,
     accredited_by: str | None = None,
     accreditation_expires: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.create_authority(
         authority_id=authority_id,
@@ -48,7 +54,9 @@ async def create_authority(
         established_date=established_date,
         accredited_by=accredited_by,
         accreditation_expires=accreditation_expires,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "id": entity.id,
