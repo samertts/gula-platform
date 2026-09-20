@@ -118,3 +118,53 @@ PREVENTION: `scripts/setattr_mass_assignment_guard.py` is the standing regressio
 STATUS: **PATTERN REGISTERED, DETECTOR VERIFIED (self-tested 4/4), 2/77 candidates fixed this session (Nursing, Hospital) — the remaining 75 are explicitly NOT triaged, matching this session's "do not turn this into a full repository rewrite" boundary.** Given the volume and that several affected domains (Identity/Auth, EHR, National, Insurance) were never touched this session, classifying and fixing the remainder is sized as its own dedicated pass (or several, split by domain), starting with Identity/Auth per this session's own P0-first domain ordering — not attempted here.
 
 | Commit: `f3cad8d8` | Owner: Mustafa | Next action: a dedicated pass (or one per domain cluster above) reading each flagged call site's actual request-schema/ownership context before fixing, starting with the Identity/Auth cluster. |
+
+## Identity/Auth mass-assignment triage (the 6 candidates above) — TRIAGED, 0 FIXED, 2 BLOCKED-HANDOFF
+
+Per this session's own domain ordering (IDENTITY > AUTHORIZATION > TRUST > TENANT > CLINICAL > OTHER)
+and the explicit instruction that these 6 are NOT automatically vulnerabilities — each was traced
+caller → route → auth dependency → request schema → service loop, on **this branch's own current
+file versions** (not Abu Ali's). Prior-session finding IDs cited for this domain (AUTH-002 through
+AUTH-005, NR-035/037/045-058, etc.) were checked against `git log --all`: all are real commits, but
+every one exists **only** on `origin/claude/p0-2-pharmacy-reconciliation` and is confirmed
+(`git merge-base --is-ancestor`) **not an ancestor of this branch** — none of that identity/auth work
+has landed here, so this triage starts from this branch's pre-existing state, not from any of it.
+
+| # | Site | Classification | Reasoning |
+|---|------|-----------------|-----------|
+| 1 | `adaptive_auth/routes.py:172` `update_risk_policy` | **SAFE_BY_DESIGN** | Route requires `Depends(_require_policy_admin)`, which unconditionally raises `403` (see `_POLICY_AUTHORITY_UNAVAILABLE` docstring at `routes.py:15-28`: a real platform-admin permission concept doesn't exist yet in NIAM, so this fails closed rather than guess one). The `setattr` loop is never reached by any caller. Already fixed in an earlier pass of this branch, not this one — confirmed by reading, not assumed. |
+| 2 | `adaptive_auth/services.py:656` `update_session_policy` | **SAFE_BY_DESIGN** | Same as #1: its only caller, `routes.py:238`'s `update_session_policy` route, has the identical `Depends(_require_policy_admin)` gate. Unreachable. |
+| 3 | `admin/services.py:351` `update_subscription` | **SAFE_SERVER_DERIVED** | Caller (`admin/routes.py:240-264`) is a narrow, explicitly-named/typed FastAPI signature (`plan_type: str = ""`, `billing_cycle: str = ""`, `billing_amount: int = 0`, `auto_renew: bool = False`) — never a raw dict. It builds `kwargs` from only those four names, gated by `_require_permission(actor, db, ..., permission_key="subscription.manage")`. The `**kwargs` loop is syntactically identical to the vulnerable shape but the reachable field set is bounded by the route signature today, matching Hospital's own "not independently exploitable through the current API surface, but no boundary of its own" finding — a hardening opportunity (explicit allow-list at the service layer), not an open vulnerability. Not fixed this pass; lower priority than #4/#6 since it already has a permission check and a narrow caller. |
+| 4 | `federation/services.py:87` `update_provider` | **VERIFIED_VULNERABLE** | `PUT /niam/federation/providers/{id}` (`federation/routes.py:97-107`) takes `body: dict[str, Any]` — a raw client-controlled payload — and calls `svc.update_provider(provider_id, **body)`. `federation_routes.router` is registered in `identity/api/router.py:49` with only `dependencies=_AUTH_REQUIRED` (`[Depends(get_current_niam_actor)]` — any authenticated NIAM actor of any role, no permission check). The route itself adds no further gate. The service loop guards only `hasattr(provider, key) and value is not None` — not an allow-list. `FederatedProvider` (`federation/models.py`) includes `client_secret_encrypted`, `certificate`, `trust_anchor_id`, `issuer_url`, `status`, `is_active`, `jwks_uri`, `redirect_uris`. **Any authenticated user, regardless of role, can currently rewrite a federated identity provider's trust configuration and secrets via this endpoint.** |
+| 5 | `services/person_service.py:77` `update_person` | **DEAD_OR_UNREACHABLE** | `app/identity/api/persons.py` — the only route file that constructs `PersonService` — wires exactly `create_person` and `get_person`; no route anywhere in the tree calls `.update_person(`. Confirmed by repo-wide grep, not by absence-of-evidence alone. |
+| 6 | `trust/services.py:112` `update_framework` | **VERIFIED_VULNERABLE** | Same shape and same root cause as #4: `PUT /niam/trust/frameworks/{id}` (`trust/routes.py:87-97`) takes a raw `body: dict[str, Any]`, `trust_routes.router` is registered with only `dependencies=_AUTH_REQUIRED` (`identity/api/router.py:47`), no per-route permission check, `hasattr`-only guard in the service loop. `TrustFramework` includes `status`, `assurance_policies`, `scope`, `authority_id`, `supersedes_framework_id`. **Any authenticated user can currently rewrite a canonical trust framework's status/assurance/scope/lineage.** |
+
+### Why #4 and #6 are BLOCKED-HANDOFF, not fixed here
+
+Both are genuine, currently-live authorization gaps (missing permission check, not just missing
+field allow-list) on the platform's federation and trust-framework configuration — squarely
+"Identity/Trust/Federation" territory, which this branch's own division of labor (Mustafa/Abu Ali)
+has treated as Abu Ali's canonical-decision domain all session, and which Section 33 of the active
+directive explicitly requires stopping for ("changes... to canonical identity/ownership/federation
+semantics", "weakening assurance/authorization").
+
+Checked whether this conflicts with Abu Ali's active work before deciding:
+`git diff --stat HEAD origin/claude/p0-2-pharmacy-reconciliation -- backend/app/identity/{trust,federation}/{routes,services,models}.py backend/app/identity/api/router.py`
+shows **every** file in this feature area under heavy concurrent rewrite on his branch right now —
+`trust/routes.py` (289 lines), `trust/services.py` (260 lines), `federation/routes.py` (104 lines),
+`federation/services.py` (100 lines), even the shared `identity/api/router.py` (38 lines, i.e. the
+very file that declares the `_AUTH_REQUIRED` gate these findings are missing a level beyond). There
+is no untouched corner of this feature to patch around him. His commit history for this exact area
+(AUTH-002 "identity bridge decision", AUTH-004 "score identity assurance per purpose", AUTH-005
+"identity evidence gates health-data linkage") reads as an active authorization/assurance-model
+redesign — exactly the kind of decision a fail-closed permission stub (the precedent already set in
+this very codebase at `adaptive_auth/routes.py:_require_policy_admin`) would need to be built on top
+of, not ahead of. Writing an independent fix now risks being silently discarded or textually
+conflicting with a much larger in-flight redesign of the same authorization surface. Per this
+branch's own conflict-avoidance rule ("check whether Abu Ali is actively changing the same area; if
+yes, choose another domain unless P0") and Section 33's explicit BLOCKED boundary, this is handed
+off rather than patched: **no changes were made to any of the 6 files in this table.**
+
+STATUS: **6/6 Identity/Auth candidates triaged. 2 SAFE_BY_DESIGN (already fail-closed), 1 SAFE_SERVER_DERIVED (hardening opportunity only), 1 DEAD_OR_UNREACHABLE, 2 VERIFIED_VULNERABLE and BLOCKED-HANDOFF (missing authorization check on `federation/services.py::update_provider` and `trust/services.py::update_framework` — needs a real platform/organization-scoped permission decision from the identity-canonical owner, not a guess from this branch).**
+
+| Commit: `(pending)` | Owner: Mustafa (triage) / Abu Ali (fix, canonical identity/trust/federation authorization decision required) | Blocker: `federation/services.py::update_provider` and `trust/services.py::update_framework` need a real permission check (analogous to `_require_policy_admin`'s fail-closed pattern) before their mass-assignment loop is safe to leave open; both files are under active heavy rewrite on `origin/claude/p0-2-pharmacy-reconciliation` right now. | Next action: raise these two findings directly to Abu Ali (or to whoever merges his branch) — if his in-progress rewrite doesn't already close them, the minimal safe interim fix is the same fail-closed stub pattern already used at `adaptive_auth/routes.py:_require_policy_admin`, applied to both `PUT` routes, until a real permission model for platform-wide trust/federation config exists. |
