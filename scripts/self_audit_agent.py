@@ -8,8 +8,15 @@ generate fixes, run tests, and commit improvements autonomously.
 This script implements the "self-building / self-improving" loop:
   1. Collect context: git diff, test results, pyflakes output, metrics
   2. Ask Claude to audit and suggest fixes
-  3. Apply safe auto-fixes
-  4. Run tests — if pass, commit; if fail, revert and log
+  3. Apply safe auto-fixes, bounded by a path allow-list and a per-run
+     change budget (see PROTECTED_PATH_PREFIXES / MAX_FILES_PER_RUN below)
+  4. Run impact-aware tests for the changed files (falling back to the
+     full suite when no targeted test can be identified — unknown impact
+     always broadens verification, it never skips it); if all pass,
+     commit only the exact files this run touched; if not, restore the
+     exact pre-fix content of exactly those files (never `git checkout --
+     .`, which would also discard any unrelated uncommitted work sitting
+     in the tree)
   5. Schedule the next cycle
 
 Usage:
@@ -59,6 +66,73 @@ if _ENV == "production" and AUTO_FIX:
 _MAX_DIFF_CHARS   = 8_000
 _MAX_LINT_CHARS   = 3_000
 _MAX_TEST_CHARS   = 4_000
+
+# ─── Autonomous-mutation safety policy ────────────────────────────────────────
+# A path is REJECTED if it starts with any of these (relative to REPO_ROOT),
+# or contains any of the substrings below, regardless of case. Deterministic,
+# no LLM/network involved -- this check runs before a single byte is written.
+# Mirrors the "Requires human approval" / "Never autonomously" boundaries this
+# repo's own CLAUDE.md already states for schema, auth, and CI changes.
+PROTECTED_PATH_PREFIXES: tuple[str, ...] = (
+    "backend/migrations/",
+    "backend/app/security/",
+    "backend/app/config.py",
+    "backend/app/models/audit_log.py",
+    "backend/app/services/audit_service.py",
+    ".github/workflows/",
+    "cloudflare/",
+    "terraform/",
+    "k8s/",
+    "digitalocean/",
+)
+PROTECTED_PATH_SUBSTRINGS: tuple[str, ...] = (
+    "secret", "credential", "password", ".env", "private_key", "id_rsa",
+)
+
+# Per-run bounds. Deliberately small and conservative: this agent is meant
+# to apply narrow, mechanical corrections (a lint fix, a one-line contract
+# repair), never a multi-file change -- if a genuine fix needs more than
+# this, it needs a human, not a wider budget.
+MAX_FILES_PER_RUN = 5
+MAX_CHARS_CHANGED_PER_FILE = 400
+
+
+def _is_protected_path(repo_relative_path: str) -> bool:
+    """`repo_relative_path` must already be relative to REPO_ROOT (not
+    BACKEND_DIR) -- fixes are declared relative to BACKEND_DIR, so
+    callers should check this against the RESOLVED path (see
+    `_resolve_target_path`), never the raw fix['file'] string, which may
+    be missing the leading 'backend/' the prefixes below assume."""
+    normalized = repo_relative_path.replace("\\", "/").lstrip("/")
+    if normalized.startswith(PROTECTED_PATH_PREFIXES):
+        return True
+    lowered = normalized.lower()
+    return any(s in lowered for s in PROTECTED_PATH_SUBSTRINGS)
+
+
+def _resolve_target_path(rel_path: str) -> Path | None:
+    """Resolves a fix's declared path (relative to BACKEND_DIR, per this
+    file's existing convention) to an absolute Path strictly inside
+    REPO_ROOT, or None if it's protected, escapes the repo (path
+    traversal), or doesn't exist. Every autonomous write goes through
+    this single choke point, and the protected-path check runs against
+    the RESOLVED path relative to REPO_ROOT -- never the raw input
+    string -- so it applies correctly regardless of which base
+    (BACKEND_DIR or REPO_ROOT) the fix actually resolves against."""
+    if not rel_path or rel_path.startswith("/"):
+        return None
+    repo_root = REPO_ROOT.resolve()
+    for base in (BACKEND_DIR, REPO_ROOT):
+        candidate = (base / rel_path).resolve()
+        try:
+            candidate_rel = candidate.relative_to(repo_root)
+        except ValueError:
+            continue  # escapes the repo -- never follow it
+        if _is_protected_path(str(candidate_rel)):
+            return None
+        if candidate.exists():
+            return candidate
+    return None
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -186,51 +260,124 @@ Rules:
 """
 
 
-def _apply_auto_fixes(fixes: list[dict]) -> list[str]:
-    """Apply auto-fixable patches. Returns list of applied fix descriptions."""
-    applied = []
+@dataclass
+class ApplyResult:
+    applied:   list[str] = field(default_factory=list)
+    rejected:  list[str] = field(default_factory=list)   # human-readable reasons
+    snapshots: dict[Path, str] = field(default_factory=dict)  # for exact rollback
+
+
+def _apply_auto_fixes(fixes: list[dict]) -> ApplyResult:
+    """Applies auto-fixable patches, bounded by the path allow-list and the
+    per-run change budget. Every accepted fix's pre-change content is
+    captured in `snapshots` before it is written, so a verification
+    failure can restore exactly those files (see `_rollback_exact`) --
+    nothing else in the working tree is ever touched by that rollback."""
+    result = ApplyResult()
     for fix in fixes:
         rel_path = fix.get("file", "")
         search   = fix.get("search", "")
         replace  = fix.get("replace", "")
         reason   = fix.get("reason", "")
 
-        if not all([rel_path, search, replace]):
+        if len(result.applied) >= MAX_FILES_PER_RUN:
+            result.rejected.append(f"{rel_path}: budget exceeded (MAX_FILES_PER_RUN={MAX_FILES_PER_RUN})")
             continue
 
-        target = BACKEND_DIR / rel_path if not rel_path.startswith("/") else Path(rel_path)
-        if not target.exists():
-            target = REPO_ROOT / rel_path
-        if not target.exists():
+        if not all([rel_path, search, replace]):
+            result.rejected.append(f"{rel_path}: missing file/search/replace")
+            continue
+
+        if abs(len(replace) - len(search)) > MAX_CHARS_CHANGED_PER_FILE:
+            result.rejected.append(f"{rel_path}: change exceeds MAX_CHARS_CHANGED_PER_FILE={MAX_CHARS_CHANGED_PER_FILE}")
+            continue
+
+        target = _resolve_target_path(rel_path)
+        if target is None:
+            # _resolve_target_path folds "protected", "path traversal", and
+            # "doesn't exist" into one None -- re-derive which one for a
+            # readable reason without duplicating its resolution logic.
+            probe = (BACKEND_DIR / rel_path).resolve()
+            try:
+                probe_rel = str(probe.relative_to(REPO_ROOT.resolve()))
+            except ValueError:
+                probe_rel = rel_path
+            if _is_protected_path(probe_rel):
+                result.rejected.append(f"{rel_path}: protected path, autonomous mutation forbidden")
+            else:
+                result.rejected.append(f"{rel_path}: does not resolve to an existing in-repo file")
             continue
 
         content = target.read_text()
         if search not in content:
+            result.rejected.append(f"{rel_path}: search text not found (stale fix)")
             continue
 
+        result.snapshots[target] = content  # snapshot BEFORE mutating
         new_content = content.replace(search, replace, 1)
         target.write_text(new_content)
-        applied.append(f"{rel_path}: {reason}")
+        result.applied.append(f"{rel_path}: {reason}")
 
-    return applied
+    return result
 
 
-def _verify_after_fix() -> bool:
-    """Run syntax check and tests after applying fixes. Return True if all pass."""
-    rc, out = _run(["python", "-m", "py_compile", "app/main.py"], cwd=BACKEND_DIR)
+def _rollback_exact(snapshots: dict[Path, str]) -> None:
+    """Restores exactly the files this run snapshotted, to exactly their
+    pre-fix content. No git command is used and no other path is ever
+    touched -- unrelated uncommitted work elsewhere in the tree, or
+    another agent's concurrent changes, survive untouched."""
+    for path, original_content in snapshots.items():
+        path.write_text(original_content)
+
+
+def _select_impact_aware_tests(applied_paths: list[Path]) -> tuple[list[str], str]:
+    """Maps changed backend/app files to a same-named backend/tests/test_*.py
+    file by naming convention. Returns (test_args, confidence) where
+    confidence is "TARGETED" (a specific test file was found for every
+    changed path) or "UNKNOWN" (at least one changed path has no
+    identifiable test -- caller must broaden verification, never skip
+    it)."""
+    test_args: list[str] = []
+    for path in applied_paths:
+        try:
+            rel = path.relative_to(BACKEND_DIR / "app")
+        except ValueError:
+            return [], "UNKNOWN"  # changed a file outside backend/app -- can't map it
+        candidate = BACKEND_DIR / "tests" / f"test_{rel.stem}.py"
+        if not candidate.exists():
+            return [], "UNKNOWN"
+        test_args.append(str(candidate.relative_to(BACKEND_DIR)))
+    return sorted(set(test_args)), "TARGETED"
+
+
+def _verify_after_fix(applied_paths: list[Path]) -> tuple[bool, str]:
+    """Syntax-checks app/main.py, then runs the smallest test set the
+    evidence supports. TARGETED confidence runs only the tests mapped to
+    the changed files; UNKNOWN confidence (no mapping found for at least
+    one changed file) broadens to the full suite rather than guessing --
+    unknown impact is never treated as "safe to skip"."""
+    rc, _out = _run(["python", "-m", "py_compile", "app/main.py"], cwd=BACKEND_DIR)
     if rc != 0:
-        return False
-    rc, _out = _run(["python", "-m", "pytest", "tests/test_domain.py", "-q", "--tb=short"], cwd=BACKEND_DIR, timeout=60)
-    return rc == 0
+        return False, "syntax_check_failed"
+
+    test_args, confidence = _select_impact_aware_tests(applied_paths)
+    if confidence == "TARGETED":
+        rc, _out = _run(["python", "-m", "pytest", *test_args, "-q", "--tb=short"], cwd=BACKEND_DIR, timeout=120)
+        return rc == 0, "TARGETED"
+
+    rc, _out = _run(["python", "-m", "pytest", "tests/", "-q", "--tb=short"], cwd=BACKEND_DIR, timeout=300)
+    return rc == 0, "UNKNOWN_broadened_to_full_suite"
 
 
-def _commit_fixes(applied: list[str]) -> bool:
-    """Stage and commit auto-applied fixes."""
-    if not applied:
+def _commit_fixes(applied: list[str], applied_paths: list[Path]) -> bool:
+    """Stage and commit ONLY the files this run touched -- never `git add
+    -A`, which would also stage any unrelated uncommitted work sitting in
+    the tree at the time this runs."""
+    if not applied or not applied_paths:
         return False
-    _run(["git", "add", "-A"])
+    _run(["git", "add", "--", *[str(p) for p in applied_paths]])
     msg = "fix: self-audit agent auto-fixes\n\n" + "\n".join(f"- {a}" for a in applied)
-    msg += "\n\nhttps://claude.ai/code/session_017XFDSYkLAT5uno4BMDf285"
+    msg += "\n\nhttps://claude.ai/code/session_019jkuFtbcJ1mDeZqhAUT69x"
     rc, _out = _run(["git", "commit", "-m", msg])
     return rc == 0
 
@@ -334,15 +481,18 @@ def run_audit(auto_fix: bool = False) -> AuditResult:
         auto_fix = False
 
     if auto_fix and result.auto_fixable:
-        applied = _apply_auto_fixes(result.auto_fixable)
-        if applied:
-            if _verify_after_fix():
-                committed = _commit_fixes(applied)
-                result.applied_fixes = applied
-                if committed:
-                    pass
+        apply_result = _apply_auto_fixes(result.auto_fixable)
+        if apply_result.rejected:
+            result.summary += "\n\nRejected by mutation policy:\n" + "\n".join(f"- {r}" for r in apply_result.rejected)
+        if apply_result.applied:
+            applied_paths = list(apply_result.snapshots.keys())
+            verified, confidence = _verify_after_fix(applied_paths)
+            if verified:
+                _commit_fixes(apply_result.applied, applied_paths)
+                result.applied_fixes = [f"{a} [{confidence}]" for a in apply_result.applied]
             else:
-                _run(["git", "checkout", "--", "."])
+                _rollback_exact(apply_result.snapshots)
+                result.summary += f"\n\nVerification failed ({confidence}) — exact rollback applied to {len(apply_result.snapshots)} file(s)."
 
     # Save report
     report_path = REPO_ROOT / "logs" / f"audit_{result.timestamp.replace(' ', '_').replace(':', '').replace('-', '')}.json"
