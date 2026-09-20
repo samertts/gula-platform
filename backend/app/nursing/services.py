@@ -9,6 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.models.lab_user import LabUser
 from app.nursing.enums import DelegationStatus
 from app.nursing.models import (
     ClinicalChecklist,
@@ -33,6 +34,32 @@ logger = logging.getLogger("gula.nursing.services")
 
 _NURSING_NS = "nursing"
 
+# NursingTask.status is a plain string column with no formal enum. Only two
+# code paths ever write a specific target ("completed" via complete_task,
+# "deferred" via defer_task); "pending" is the create-time default. This is
+# the smallest transition graph the evidence supports -- it does not invent
+# intermediate states ("in_progress") no code path currently writes.
+_TASK_TRANSITIONS: dict[str, set[str]] = {
+    "pending": {"completed", "deferred"},
+    "deferred": {"completed", "deferred"},
+    "completed": set(),
+}
+
+# Fields a generic task update must never touch, regardless of what the
+# caller's request body happens to include.
+_PROTECTED_TASK_FIELDS = {
+    "id", "lab_id", "version", "created_by", "created_at",
+    "completed_at", "completed_by",
+}
+
+
+def _validate_task_transition(current: str, target: str) -> None:
+    if target not in _TASK_TRANSITIONS.get(current, set()):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot move task from '{current}' to '{target}'",
+        )
+
 
 class NursingService:
 
@@ -44,8 +71,25 @@ class NursingService:
         assignment_type: str, department_id: int | None = None,
         encounter_id: str | None = None, notes: str | None = None,
     ) -> PatientAssignment:
+        # nurse_id previously flowed straight into PatientAssignment/NursingTask
+        # with no check it referenced a real nurse in this lab -- only an FK
+        # to lab_users.id, which any account id in any lab would satisfy. The
+        # same validated-ownership pattern already used for
+        # services/order_service.py::create_order's doctor_user_id and
+        # radiology's radiologist_id, not a new mechanism.
+        try:
+            nurse_pk = int(nurse_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="nurse_id must be a valid user id") from None
+        nurse = db.query(LabUser).filter(
+            LabUser.id == nurse_pk,
+            LabUser.lab_id == lab_id,
+            LabUser.role == "nurse",
+        ).first()
+        if not nurse:
+            raise HTTPException(status_code=400, detail="nurse_id must reference a nurse in this lab")
         existing = db.query(PatientAssignment).filter(
-            PatientAssignment.nurse_id == nurse_id,
+            PatientAssignment.nurse_id == nurse_pk,
             PatientAssignment.patient_id == patient_id,
             PatientAssignment.is_active,
             PatientAssignment.lab_id == lab_id,
@@ -54,7 +98,7 @@ class NursingService:
             raise HTTPException(status_code=409, detail="Patient already assigned to this nurse")
         assignment = PatientAssignment(
             lab_id=lab_id, created_by=user_id,
-            nurse_id=nurse_id, patient_id=patient_id,
+            nurse_id=nurse_pk, patient_id=patient_id,
             assignment_type=assignment_type,
             department_id=department_id, encounter_id=encounter_id,
             notes=notes,
@@ -62,7 +106,7 @@ class NursingService:
         db.add(assignment)
         db.flush()
         log_action(db, f"{_NURSING_NS}.assign_patient", "patient_assignment", assignment.id, user_id, lab_id, {
-            "nurse_id": nurse_id, "patient_id": patient_id, "type": assignment_type,
+            "nurse_id": nurse_pk, "patient_id": patient_id, "type": assignment_type,
         })
         return assignment
 
@@ -153,16 +197,31 @@ class NursingService:
 
     @staticmethod
     def update_task(db: Session, lab_id: int, user_id: int, task_id: str, data: dict) -> NursingTask:
+        """Generic field update. Previously did a raw `setattr` loop over
+        every key in the request body with no exclusion list at all -- a
+        client could silently rewrite `status` to any string (bypassing
+        complete_task/defer_task's own, now-enforced, transition guard) or
+        overwrite protected bookkeeping fields (id, lab_id, version,
+        created_by/at, completed_at/by). `.with_for_update()` closes the
+        same class of lost-update race complete_task/defer_task now also
+        close.
+        """
         task = db.query(NursingTask).filter(
             NursingTask.id == task_id, NursingTask.lab_id == lab_id,
             ~NursingTask.is_deleted,
-        ).first()
+        ).with_for_update().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
+        if "status" in data:
+            _validate_task_transition(task.status, data["status"])
         for k, v in data.items():
+            if k in _PROTECTED_TASK_FIELDS:
+                continue
             setattr(task, k, v)
         task.updated_by = user_id
+        task.version += 1
         db.flush()
+        log_action(db, f"{_NURSING_NS}.update_task", "nursing_task", task.id, user_id, lab_id, data)
         return task
 
     @staticmethod
@@ -173,9 +232,11 @@ class NursingService:
         task = db.query(NursingTask).filter(
             NursingTask.id == task_id, NursingTask.lab_id == lab_id,
             ~NursingTask.is_deleted,
-        ).first()
+        ).with_for_update().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
+        _validate_task_transition(task.status, "completed")
+        state_before = task.status
         task.status = "completed"
         task.completed_at = datetime.now(UTC)
         task.completed_by = user_id
@@ -184,7 +245,11 @@ class NursingService:
         if notes is not None:
             task.notes = notes
         task.updated_by = user_id
+        task.version += 1
         db.flush()
+        log_action(db, f"{_NURSING_NS}.complete_task", "nursing_task", task.id, user_id, lab_id, {
+            "state_before": state_before, "state_after": "completed", "version": task.version,
+        })
         return task
 
     @staticmethod
@@ -195,16 +260,22 @@ class NursingService:
         task = db.query(NursingTask).filter(
             NursingTask.id == task_id, NursingTask.lab_id == lab_id,
             ~NursingTask.is_deleted,
-        ).first()
+        ).with_for_update().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
+        _validate_task_transition(task.status, "deferred")
+        state_before = task.status
         task.status = "deferred"
         if new_due_time:
             task.due_time = new_due_time
         if reason:
             task.notes = (task.notes or "") + f"\n[Deferred: {reason}]"
         task.updated_by = user_id
+        task.version += 1
         db.flush()
+        log_action(db, f"{_NURSING_NS}.defer_task", "nursing_task", task.id, user_id, lab_id, {
+            "state_before": state_before, "state_after": "deferred", "version": task.version,
+        })
         return task
 
     @staticmethod
