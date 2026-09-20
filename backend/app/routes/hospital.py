@@ -23,6 +23,14 @@ from ..services.hospital_service import HospitalService
 
 router = APIRouter(prefix="/hospital", tags=["hospital"])
 
+# create/update/deactivate hospital and create_campus had zero role check
+# at all -- any authenticated LabUser of any role could create, edit, or
+# deactivate a facility. This is facility/administrative master data
+# (distinct from the clinical write roles used for NHDW/Nursing), so it
+# is gated to admin/master_admin, matching this platform's canonical
+# extended-role catalog.
+_HOSPITAL_ADMIN_ROLES = {"admin", "master_admin"}
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 
@@ -370,6 +378,8 @@ def create_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create a hospital")
     hospital = HospitalService.create_hospital(
         db, current_user.lab_id, current_user.id, body.model_dump(),
     )
@@ -383,6 +393,8 @@ def update_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to update a hospital")
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -398,6 +410,8 @@ def deactivate_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to deactivate a hospital")
     HospitalService.deactivate_hospital(db, hospital_id, current_user.lab_id, current_user.id)
     return {"detail": "Hospital deactivated", "detail_ar": "تم إلغاء تنشيط المستشفى"}
 
@@ -422,6 +436,8 @@ def create_campus(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create a campus")
     campus = HospitalService.create_campus(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
     )

@@ -48,6 +48,20 @@ _THEATER_TRANSITIONS: dict[str, set[str]] = {
 class HospitalService:
     """Encapsulates all hospital-domain business logic."""
 
+    # update_hospital previously did `for k, v in data.items(): setattr(hospital, k, v)`
+    # over the full request dict -- schema-bounded today (routes.HospitalUpdate
+    # declares a fixed field set), but with no independent server-side
+    # boundary: any field later added to that schema would become
+    # immediately ORM-writable with no additional review. Mirrors this
+    # exact field set (routes.py::HospitalUpdate) deliberately, not the
+    # ORM model's full column list, so this stays in sync with the one
+    # schema that actually reaches this method.
+    _HOSPITAL_UPDATABLE_FIELDS = frozenset({
+        "name", "name_ar", "hospital_type", "license_number", "phone",
+        "email", "website", "address", "city", "province", "country",
+        "is_active",
+    })
+
     # ── Hospital CRUD ──────────────────────────────────────────────────────────
 
     @staticmethod
@@ -82,12 +96,14 @@ class HospitalService:
             HospitalMaster.id == hospital_id,
             HospitalMaster.lab_id == lab_id,
             ~HospitalMaster.is_deleted,
-        ).first()
+        ).with_for_update().first()
         if not hospital:
             raise NotFoundError("Hospital not found")
         for k, v in data.items():
-            setattr(hospital, k, v)
+            if k in HospitalService._HOSPITAL_UPDATABLE_FIELDS:
+                setattr(hospital, k, v)
         hospital.updated_by = user_id
+        hospital.version += 1
         db.flush()
         log_action(db, "hospital.update", "hospital", hospital_id, user_id=user_id, lab_id=lab_id, details=data)
         return hospital
@@ -100,11 +116,12 @@ class HospitalService:
             HospitalMaster.id == hospital_id,
             HospitalMaster.lab_id == lab_id,
             ~HospitalMaster.is_deleted,
-        ).first()
+        ).with_for_update().first()
         if not hospital:
             raise NotFoundError("Hospital not found")
         hospital.is_active = False
         hospital.updated_by = user_id
+        hospital.version += 1
         db.flush()
         log_action(db, "hospital.deactivate", "hospital", hospital_id, user_id=user_id, lab_id=lab_id)
 
