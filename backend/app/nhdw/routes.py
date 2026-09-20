@@ -46,6 +46,11 @@ from .services import NHDWService
 
 router = APIRouter(prefix="/nhdw", tags=["nhdw"])
 
+# Admission/discharge/transfer determine bed occupancy and clinical custody
+# of a patient; reuses the canonical clinical-write role set established for
+# Nursing/Radiology (app/nursing/routes.py, app/radiology/routes.py).
+_NHDW_ADMISSION_WRITE_ROLES = {"admin", "master_admin", "doctor", "nurse"}
+
 
 def _model_to_dict(model_instance) -> dict[str, Any]:
     exclude = {"lab_id", "is_deleted", "deleted_at", "version"}
@@ -355,6 +360,8 @@ def create_admission(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _NHDW_ADMISSION_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to admit a patient")
     data = body.model_dump()
     if "metadata" in data:
         data["metadata_"] = data.pop("metadata")
@@ -378,6 +385,8 @@ def update_admission(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _NHDW_ADMISSION_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to update an admission")
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     if "metadata" in data:
         data["metadata_"] = data.pop("metadata")
@@ -392,6 +401,8 @@ def discharge_admission(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _NHDW_ADMISSION_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to discharge a patient")
     data = body.model_dump(exclude_none=True)
     if "medications_at_discharge" in data and isinstance(data["medications_at_discharge"], list):
         data["medications_at_discharge"] = data["medications_at_discharge"]
@@ -408,6 +419,8 @@ def transfer_admission(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _NHDW_ADMISSION_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to transfer a patient")
     transfer = NHDWService.transfer_patient(
         db, current_user.lab_id, current_user.id, admission_id, body.model_dump(exclude_none=True),
     )

@@ -57,7 +57,7 @@ class NHDWService:
         if bed_id:
             bed = db.query(Bed).filter(
                 Bed.id == bed_id, Bed.lab_id == lab_id, ~Bed.is_deleted,
-            ).first()
+            ).with_for_update().first()
             if not bed:
                 raise HTTPException(
                     status_code=404, detail="Bed not found",
@@ -97,14 +97,29 @@ class NHDWService:
         return admission
 
     @staticmethod
+    def _get_admission_locked(db: Session, lab_id: int, admission_id: str) -> Admission:
+        """Same lookup as get_admission, but row-locked for a mutation. Used
+        by update/discharge/transfer so two concurrent requests against the
+        same admission serialize instead of racing on a stale read."""
+        admission = db.query(Admission).filter(
+            Admission.id == admission_id,
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+        ).with_for_update().first()
+        if not admission:
+            raise HTTPException(status_code=404, detail="Admission not found")
+        return admission
+
+    @staticmethod
     def update_admission(db: Session, lab_id: int, user_id: int, admission_id: str, data: dict) -> Admission:
-        admission = NHDWService.get_admission(db, admission_id, lab_id)
+        admission = NHDWService._get_admission_locked(db, lab_id, admission_id)
         for k, v in data.items():
             if k == "metadata":
                 k = "metadata_"
             if hasattr(admission, k):
                 setattr(admission, k, v)
         admission.updated_by = user_id
+        admission.version += 1
         db.flush()
         log_action(db, "nhdw.admission.update", admission_id, lab_id, user_id, data)
         return admission
@@ -146,7 +161,7 @@ class NHDWService:
     def discharge_patient(
         db: Session, lab_id: int, user_id: int, admission_id: str, data: dict,
     ) -> Discharge:
-        admission = NHDWService.get_admission(db, admission_id, lab_id)
+        admission = NHDWService._get_admission_locked(db, lab_id, admission_id)
         if admission.discharge_date is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -156,11 +171,12 @@ class NHDWService:
         if admission.bed_id:
             bed = db.query(Bed).filter(
                 Bed.id == admission.bed_id, Bed.lab_id == lab_id,
-            ).first()
+            ).with_for_update().first()
             if bed:
                 bed.status = "cleaning"
                 bed.current_patient_id = None
         admission.discharge_date = data.get("discharge_date", datetime.now(UTC))
+        admission.version += 1
         discharge = Discharge(
             lab_id=lab_id, created_by=user_id,
             admission_id=admission_id, patient_id=admission.patient_id,
@@ -175,7 +191,7 @@ class NHDWService:
     def transfer_patient(
         db: Session, lab_id: int, user_id: int, admission_id: str, data: dict,
     ) -> Transfer:
-        admission = NHDWService.get_admission(db, admission_id, lab_id)
+        admission = NHDWService._get_admission_locked(db, lab_id, admission_id)
         if admission.discharge_date is not None:
             raise HTTPException(status_code=409, detail="Admission already discharged")
         to_dept = db.query(Department).filter(
@@ -188,10 +204,19 @@ class NHDWService:
         from_room_id = admission.room_id
         from_bed_id = admission.bed_id
         if data.get("to_bed_id"):
-            new_bed = db.query(Bed).filter(Bed.id == data["to_bed_id"]).first()
-            if new_bed and new_bed.status == "available":
+            # `to_bed_id` is client-supplied: without the lab_id filter this
+            # let a caller transfer a patient into another tenant's bed,
+            # occupying it and overwriting its current_patient_id cross-tenant.
+            new_bed = db.query(Bed).filter(
+                Bed.id == data["to_bed_id"], Bed.lab_id == lab_id,
+            ).with_for_update().first()
+            if not new_bed:
+                raise HTTPException(status_code=404, detail="Target bed not found")
+            if new_bed.status == "available":
                 if from_bed_id:
-                    old_bed = db.query(Bed).filter(Bed.id == from_bed_id).first()
+                    old_bed = db.query(Bed).filter(
+                        Bed.id == from_bed_id, Bed.lab_id == lab_id,
+                    ).with_for_update().first()
                     if old_bed:
                         old_bed.status = "available"
                         old_bed.current_patient_id = None
@@ -200,6 +225,7 @@ class NHDWService:
                 admission.bed_id = data["to_bed_id"]
         admission.department_id = data["to_department_id"]
         admission.room_id = data.get("to_room_id", from_room_id)
+        admission.version += 1
         transfer = Transfer(
             lab_id=lab_id, created_by=user_id,
             patient_id=admission.patient_id,
