@@ -68,6 +68,7 @@ class _FakeDb:
         self.entity = entity
         self.added: list = []
         self.flush_count = 0
+        self.commit_count = 0
 
     def add(self, obj):
         self.added.append(obj)
@@ -77,6 +78,9 @@ class _FakeDb:
         for obj in self.added:
             if getattr(obj, "id", None) is None:
                 obj.id = f"GENERATED-{len(self.added)}"
+
+    async def commit(self):
+        self.commit_count += 1
 
     async def execute(self, stmt):
         table = stmt.get_final_froms()[0].name
@@ -408,6 +412,41 @@ async def test_update_framework_succeeds_for_authorized_platform_actor_and_enfor
     assert framework.assurance_policies is None  # protected: unchanged
     assert framework.framework_id == "fw-1"  # protected: unchanged
     assert any(type(o).__name__ == "IdentityAuditEntry" for o in db.added)
+    assert db.commit_count == 1  # route owns the transaction boundary, exactly once
+
+
+@pytest.mark.asyncio
+async def test_update_framework_not_found_never_commits():
+    """No entity found -> no mutation staged -> no commit. Proves the route
+    doesn't unconditionally commit regardless of whether anything changed."""
+    db = _FakeDb(
+        active_assignment=_assignment(capability=PlatformCapability.trust_manage.value),
+        entity=None,
+    )
+    result = await trust_routes.update_framework(
+        framework_id="does-not-exist",
+        body={"name_en": "New Name"},
+        db=db,
+        actor=_actor(),
+    )
+    assert result == {"error": "not_found"}
+    assert db.commit_count == 0
+
+
+@pytest.mark.asyncio
+async def test_update_provider_not_found_never_commits():
+    db = _FakeDb(
+        active_assignment=_assignment(capability=PlatformCapability.federation_manage.value),
+        entity=None,
+    )
+    result = await federation_routes.update_provider(
+        provider_id="does-not-exist",
+        body={"name_en": "New Name"},
+        db=db,
+        actor=_actor(),
+    )
+    assert result == {"error": "not_found"}
+    assert db.commit_count == 0
 
 
 @pytest.mark.asyncio
@@ -462,6 +501,7 @@ async def test_update_provider_succeeds_for_authorized_platform_actor_and_enforc
     assert provider.status == "active"  # protected: unchanged
     assert provider.provider_id == "prov-1"  # protected: unchanged
     assert any(type(o).__name__ == "IdentityAuditEntry" for o in db.added)
+    assert db.commit_count == 1  # route owns the transaction boundary, exactly once
 
 
 # ── I: audit ─────────────────────────────────────────────────────────────────

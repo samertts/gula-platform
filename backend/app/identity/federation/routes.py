@@ -112,6 +112,11 @@ async def update_provider(
     )
     if not provider:
         return {"error": "not_found"}
+    # Route owns the transaction boundary here, matching the existing
+    # canonical GULA pattern (e.g. app/routes/admin.py): the service
+    # stages the mutation and its audit entry via flush(); the route
+    # commits once, atomically, only after both succeeded.
+    await db.commit()
     return provider.to_dict()
 
 

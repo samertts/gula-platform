@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -94,6 +95,26 @@ async def test_canonical_audit_chain_is_linked_and_verifiable():
     result = await service.verify()
     assert result["status"] == IntegrityStatus.valid.value
     assert result["entries_checked"] == 2
+
+
+@pytest.mark.asyncio
+async def test_canonical_audit_record_assigns_a_real_uuid():
+    """CanonicalAuditService.record() must assign IdentityAuditEntry.uuid
+    itself -- the column is NOT NULL with no ORM/DB default, and every
+    sibling *Service call site in this codebase (PlatformAuthorityService,
+    FederationService, TrustFrameworkService) sets uuid=str(uuid.uuid4())
+    explicitly. Without it, the entry is only ever valid in a fake test
+    session that doesn't enforce NOT NULL -- a real database rejects the
+    INSERT outright (see docs/qa/NIAM_LIVE_PATH_PROOF_2.md)."""
+    session = _AuditSession()
+    service = CanonicalAuditService(session)
+    entry = await service.record(
+        AuditEventInput(event_type="LOGIN", category="AUTHENTICATION", action="login", actor_id="a1"),
+    )
+    assert entry.uuid is not None
+    assert isinstance(entry.uuid, str)
+    assert len(entry.uuid) == 36  # standard UUID4 string form, matching every sibling call site
+    uuid.UUID(entry.uuid)  # raises ValueError if not a real UUID
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid as uuid_module
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -143,6 +144,7 @@ class CanonicalAuditService:
     async def record(self, event: AuditEventInput) -> IdentityAuditEntry:
         occurred_at = datetime.now(UTC)
         entry = IdentityAuditEntry(
+            uuid=str(uuid_module.uuid4()),
             event_type=event.event_type,
             event_version="2",
             category=event.category,
