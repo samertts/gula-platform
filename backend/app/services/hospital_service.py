@@ -67,7 +67,7 @@ class HospitalService:
         hospital = HospitalMaster(lab_id=lab_id, created_by=user_id, **data)
         db.add(hospital)
         db.flush()
-        log_action(db, "hospital.create", hospital.id, lab_id, user_id, data)
+        log_action(db, "hospital.create", "hospital", hospital.id, user_id=user_id, lab_id=lab_id, details=data)
         return hospital
 
     @staticmethod
@@ -89,7 +89,7 @@ class HospitalService:
             setattr(hospital, k, v)
         hospital.updated_by = user_id
         db.flush()
-        log_action(db, "hospital.update", hospital_id, lab_id, user_id, data)
+        log_action(db, "hospital.update", "hospital", hospital_id, user_id=user_id, lab_id=lab_id, details=data)
         return hospital
 
     @staticmethod
@@ -106,7 +106,7 @@ class HospitalService:
         hospital.is_active = False
         hospital.updated_by = user_id
         db.flush()
-        log_action(db, "hospital.deactivate", hospital_id, lab_id, user_id)
+        log_action(db, "hospital.deactivate", "hospital", hospital_id, user_id=user_id, lab_id=lab_id)
 
     @staticmethod
     def get_hospital(db: Session, hospital_id: int, lab_id: int) -> HospitalMaster:
@@ -148,7 +148,7 @@ class HospitalService:
         campus = Campus(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(campus)
         db.flush()
-        log_action(db, "campus.create", campus.id, lab_id, user_id, data)
+        log_action(db, "campus.create", "campus", campus.id, user_id=user_id, lab_id=lab_id, details=data)
         return campus
 
     @staticmethod
@@ -777,5 +777,5 @@ class HospitalService:
         apt = Appointment(lab_id=lab_id, **data)
         db.add(apt)
         db.flush()
-        log_action(db, "appointment.create", apt.id, lab_id, user_id, data)
+        log_action(db, "appointment.create", "appointment", apt.id, user_id=user_id, lab_id=lab_id, details=data)
         return apt

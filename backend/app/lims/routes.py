@@ -341,7 +341,11 @@ def create_department(
     )
     db.add(dept)
     db.flush()
-    log_action(db, "create", "lims_department", dept.id, current_user.id, current_user.role, f"Department {dept.code} created")
+    log_action(
+        db, "create", "lims_department", dept.id,
+        user_id=current_user.id, user_role=current_user.role, lab_id=_lab_id(current_user),
+        details={"message": f"Department {dept.code} created"},
+    )
     db.commit()
     db.refresh(dept)
     return dept

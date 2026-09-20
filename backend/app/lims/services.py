@@ -75,7 +75,11 @@ class SpecimenService:
         )
         db.add(specimen)
         db.flush()
-        log_action(db, "create", "lims_specimen", specimen.id, user_id, "lab_tech", f"Specimen {barcode} registered")
+        log_action(
+            db, "create", "lims_specimen", specimen.id,
+            user_id=user_id, user_role="lab_tech", lab_id=lab_id,
+            details={"message": f"Specimen {barcode} registered"},
+        )
         return specimen
 
     @staticmethod
@@ -120,8 +124,11 @@ class SpecimenService:
             specimen.released_by = user_id
 
         db.flush()
-        log_action(db, "transition", "lims_specimen", specimen.id, user_id, "lab_tech",
-                    f"Specimen {specimen.barcode}: {specimen.status} → {target_status}")
+        log_action(
+            db, "transition", "lims_specimen", specimen.id,
+            user_id=user_id, user_role="lab_tech", lab_id=specimen.lab_id,
+            details={"message": f"Specimen {specimen.barcode}: {specimen.status} → {target_status}"},
+        )
         return specimen
 
     @staticmethod
@@ -191,8 +198,11 @@ class OrderService:
         )
         db.add(lims_order)
         db.flush()
-        log_action(db, "create", "lims_order", lims_order.id, user_id, "lab_tech",
-                    f"LIMS order {accession_number} created")
+        log_action(
+            db, "create", "lims_order", lims_order.id,
+            user_id=user_id, user_role="lab_tech", lab_id=lab_id,
+            details={"message": f"LIMS order {accession_number} created"},
+        )
         return lims_order
 
     @staticmethod
@@ -272,8 +282,11 @@ class ResultService:
             result.flag = validation["flags"][0] if validation["flags"] else None
 
         db.flush()
-        log_action(db, "create", "lims_result", result.id, user_id, "lab_tech",
-                    f"Result {test_code}: {value_numeric} {unit or ''}".strip())
+        log_action(
+            db, "create", "lims_result", result.id,
+            user_id=user_id, user_role="lab_tech", lab_id=lab_id,
+            details={"message": f"Result {test_code}: {value_numeric} {unit or ''}".strip()},
+        )
         return result
 
     @staticmethod
