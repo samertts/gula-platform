@@ -121,6 +121,22 @@ suite (236 tests) re-run clean, zero regressions.
 - Successful persistence proven: **yes**.
 - Negative proofs pass: **yes**.
 
+## Addendum — `issuer_ca_id` FK drift closed
+
+The "P1 DATA-INTEGRITY + IDEMPOTENCY CLOSURE" workstream closed a
+schema-drift finding on `DigitalCertificate.issuer_ca_id` discovered
+during this document's original proof run (the FK targeted
+`niam_cert_certificates.id` instead of `niam_cert_authorities.id`).
+Migration `20260908_0004` corrects the constraint target; full detail,
+data-safety assessment, and UP/DOWN/re-UP proof are in
+`docs/security/NEXT_P0_P1_SECURITY_STATUS.md`. Post-fix regression: the
+full six-operation matrix in this document was re-run unchanged
+(identical 401/403/422/200 results, identical audit/persistence/rollback
+behavior), plus a new proof that `issue_certificate` with a **real**
+`issuer_ca_id` now succeeds (previously a guaranteed `ForeignKeyViolation`)
+and that `generate_crl`'s pre-existing query correctly finds the
+certificate under its real issuing CA.
+
 ## RESULT
 
 **VERIFIED.**

@@ -39,14 +39,19 @@ correctly left **BLOCKED** (needs a migration + human approval) rather
 than declared fixed — see `IDEMPOTENCY_CONTRACT_AND_GAP_REPORT.md` for
 the full classification and reasoning.
 
+## Closed — "P1 DATA-INTEGRITY + IDEMPOTENCY CLOSURE" workstream
+
+| ID | Severity | Finding | Fix | Evidence |
+|---|---|---|---|---|
+| niam-cert-issuer-ca-fk-drift | **P1** (schema/ORM drift) | `DigitalCertificate.issuer_ca_id`'s FK constraint targeted `niam_cert_certificates.id` (itself) instead of `niam_cert_authorities.id` | Migration `20260908_0004`: drops the incorrect constraint, adds an explicitly-named correct one against `niam_cert_authorities.id`. Data-safety check (real disposable Postgres): 0 existing rows, 0 non-null `issuer_ca_id` values — the bug made it structurally impossible for any real deployment to have written a valid reference, so no data reconciliation was needed | UP → DOWN → re-UP proven against a fresh database seeded through the real (unmodified) migration chain; single migration head confirmed; full certificate regression matrix re-run identical; new end-to-end proof that `issue_certificate` with a real `issuer_ca_id` now succeeds and `generate_crl` correctly finds it |
+
 ## Open — discovered this session, not fixed, documented rather than hidden
 
 | ID | Severity | Finding | Why not fixed this pass | Recommended next action |
 |---|---|---|---|---|
-| niam-cert-issuer-ca-fk-drift | **P1** (schema/ORM drift, newly discovered) | `DigitalCertificate.issuer_ca_id`'s FK constraint targets `niam_cert_certificates.id` (itself) instead of `niam_cert_authorities.id` (the actual CA table) — confirmed via a real `ForeignKeyViolation` when a genuine CA id was passed as `issuer_ca_id` to `issue_certificate` | A live-table FK-target correction is a schema change (`ALTER TABLE ... DROP/ADD CONSTRAINT`), which this operation's own rules place in "Requires human approval" (`CLAUDE.md`) — not something to migrate unilaterally | A new migration correcting the FK target, reviewed and approved before applying to any real database |
-| niam-broad-sync-db-mismatch | **P1** (correctness, newly discovered, large surface) | Quantified via `grep -c "Depends(get_db)"`: `governance` (24), `federation` (15), `lifecycle` (42), `workflows` (8), `notifications` (11), `adaptive_auth` (16), `admin` (12), `compliance` (8), and the remaining ~20 non-`TrustFramework` endpoints in `trust` (26 total, 3 fixed this pass) — 162+ occurrences of the identical broken sync/async engine mismatch already proven and fixed for `certificates` and `TrustFramework` | Fixing 162+ occurrences across 8 route modules is a "generic repository rewrite," explicitly out of this operation's bounded scope (it named the certificate cluster and the TrustFramework state machine specifically) | A dedicated future workstream applying the exact same proven pattern (capability check + audit + `get_niam_db` + commit) module by module, prioritized by which routes are actually reachable/used |
+| niam-broad-sync-db-mismatch | **P1** (correctness, now fully classified) | 162 total `Depends(get_db)` occurrences across 8 modules (`certificates` and `TrustFramework`'s own 3 routes already fixed). Classified in `docs/security/NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md`: **120 are category A** (`governance` 24, `federation` 15, `workflows` 8, `notifications` 11, `adaptive_auth` 16, `admin` 12, `compliance` 8, `trust`'s remaining 23/26) — the identical, already-proven mechanical fix pattern. **42 (100% of `lifecycle`) are category F** — a materially deeper defect: the service layer has no `__init__`, uses plain synchronous methods taking `db` as an explicit parameter, and every route both mis-constructs the service AND awaits a non-async method — not fixable by a dependency swap | Fixing 162 occurrences across 9 route modules (8 mechanical + 1 needing a design decision) is a "generic repository rewrite," explicitly out of this and the prior operation's bounded scope | Two separate future workstreams: (1) the 120 category-A occurrences, mechanical, same pattern as `certificates`/`TrustFramework`; (2) the 42 category-F `lifecycle` occurrences, needs a design decision (rewrite the service layer async, or fix the routes to call the sync services correctly) before any code changes |
 | niam-identitybase-metadata-gap | P3 (test infrastructure) | `IdentityBase` is not part of `tests/conftest.py`'s merged-metadata SQLite fixture (`_all_metas`), and `niam_assignments` itself has cross-`Base` FK dependencies (`clinical_organization_resource_id`→`organizations`, `clinical_facility_resource_id`→`facilities`) that block creating `IdentityBase`'s tables in isolation even outside that fixture | A real architectural/test-infra decision (merge metadata? which owns the cross-reference?), not a quick fix | Workstream 7 (architecture regression sweep) — flagged there too |
-| niam-idempotency-gap-4-ops | P2 (reliability, reclassified from P3) | `generate_api_key`/`issue_certificate`/`rotate_certificate`/`rotate_api_key` retried after a successful-but-unacknowledged commit can duplicate real effects (orphaned API key; double-rotation invalidating a client's just-issued credential) | Needs a new `idempotency_key_hash`/`request_fingerprint` column pair (reusing `CitizenRelationshipWorkflow`'s existing, correct pattern) — a schema change, "Requires human approval" | `IDEMPOTENCY_CONTRACT_AND_GAP_REPORT.md` |
+| niam-idempotency-gap-4-ops | P2 (reliability) | `generate_api_key`/`issue_certificate`/`rotate_certificate`/`rotate_api_key` retried after a successful-but-unacknowledged commit can duplicate real effects (orphaned API key; double-rotation invalidating a client's just-issued credential) | A full schema design now exists and its semantics are proven (`docs/security/IDEMPOTENCY_SCHEMA_PROPOSAL.md`, `IDEMPOTENCY_CONTRACT_AND_GAP_REPORT.md`) — a shared `niam_idempotency_keys` table, reusing `CitizenRelationshipWorkflow`'s HMAC pattern. No migration was written; that decision requires human approval per `CLAUDE.md`, and this workstream stopped before creating one | A human maintainer approves (or amends) the schema in `IDEMPOTENCY_SCHEMA_PROPOSAL.md`, then a migration + route wiring follows as its own bounded change |
 
 ## GATE 2 — repository-wide claim discipline
 
@@ -67,11 +72,12 @@ mean the rest of NIAM is clean.
 
 ## Status
 
-**PARTIALLY VERIFIED** — nine real P0/P1 findings now closed with
-evidence across this session and its follow-on operation (six from the
-original pass, three more this pass: the certificate/CA/API-key cluster,
-the TrustFramework state machine, and `create_framework`'s own
-authorization gap); four more discovered and honestly left open with
-reasons and recommended next actions (one schema-drift FK fix, one large
-same-shape sweep, one test-infrastructure gap, one idempotency
-mechanism), none silently dropped or fabricated as fixed.
+**PARTIALLY VERIFIED** — ten real P0/P1 findings now closed with
+evidence across this session and its two follow-on operations (six from
+the original pass, three from the certificate/TrustFramework operation,
+one more this pass: the `issuer_ca_id` FK drift); three more discovered
+and honestly left open with reasons and recommended next actions (one
+now-fully-classified large sync/async sweep split into a mechanical part
+and an architectural-decision part, one test-infrastructure gap, one
+idempotency mechanism with a complete, proven design awaiting human
+approval), none silently dropped or fabricated as fixed.

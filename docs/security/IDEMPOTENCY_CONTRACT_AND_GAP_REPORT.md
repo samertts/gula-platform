@@ -87,12 +87,41 @@ Not declaring a universal idempotency solution — none exists to declare.
 | `create_framework` | OPTIONAL | unique constraint (accidental) | low, but a rough retry UX | could return the existing row instead of erroring | not attempted (would itself be a schema-adjacent behavior change) | **PARTIALLY VERIFIED** (fails closed, not fixed) |
 | `activate_framework` / `supersede_framework` | NOT_APPLICABLE | state-machine no-op (this session) | none | none needed | real HTTP proof (`TRUSTFRAMEWORK_STATE_MACHINE_STATUS.md`) | **VERIFIED** |
 
+## Update — schema designed and proven, migration still pending approval
+
+The follow-on "P1 DATA-INTEGRITY + IDEMPOTENCY CLOSURE" workstream
+produced a full, concrete schema design
+(`docs/security/IDEMPOTENCY_SCHEMA_PROPOSAL.md`): one shared
+`niam_idempotency_keys` table (not four separate ones, not embedded
+columns on `APIKey`/`DigitalCertificate`) covering all four
+`REQUIRES_IDEMPOTENCY` operations, reusing
+`CitizenRelationshipWorkflow`'s exact HMAC-SHA256 key/fingerprint
+algorithm, scoped by `(operation, actor_account_id, key_hash)` since
+Platform Authority has no tenant dimension to scope by instead.
+
+**All 8 required scenarios were proven against a real, ephemeral
+PostgreSQL table (never a migration, never the production schema):**
+same-key/same-request replay, same-key/different-request conflict,
+same-key/different-actor independence, same-key/different-operation
+independence, concurrent-identical-requests (exactly one business
+effect — proven via two real threads + a real unique-index race, not
+simulated), failure-before-commit safe retry, failure-after-commit
+replay-not-duplicate, and fresh-connection ("restart") replay from
+durable state.
+
+**No migration was created.** Per this repository's own Autonomous Task
+Boundaries (`CLAUDE.md`: schema changes require human approval) and
+this workstream's explicit stop condition, `IDEMPOTENCY_SCHEMA_PROPOSAL.md`
+**is** the approval request — a human maintainer must approve the exact
+schema, the uniqueness scope, the expiry windows, and the HMAC key
+source before any migration is written.
+
 ## RESULT
 
 **PARTIALLY VERIFIED.** Two operations classified `NOT_APPLICABLE` are
 genuinely, provenly safe already (revoke's natural precondition; the
 state machine's own idempotent no-op). Four operations are correctly
-classified `REQUIRES_IDEMPOTENCY` with a concrete, cited, reusable
-pattern (not invented) — and correctly left **BLOCKED** rather than
-faked, since closing them needs a migration outside this operation's
-unilateral authority.
+classified `REQUIRES_IDEMPOTENCY`, now with a concrete schema design AND
+a real proof that the design's semantics are sound — but still
+correctly left **BLOCKED** in production, not faked as closed, since no
+migration exists and none was created without approval.
