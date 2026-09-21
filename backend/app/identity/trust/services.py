@@ -240,6 +240,7 @@ class AssuranceService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def assign_profile(
         self,
@@ -250,6 +251,7 @@ class AssuranceService:
         fal: str = FAL1,
         assessed_by: str | None = None,
         evidence: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> IdentityAssuranceProfile:
         overall = self._calculate_overall(ial, aal, fal)
         entity = IdentityAssuranceProfile(
@@ -269,6 +271,19 @@ class AssuranceService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ASSURANCE_PROFILE_ASSIGNED",
+                category="TRUST",
+                action="trust.assurance_profile.assign",
+                actor_id=actor_account_id,
+                target_type="assurance_profile",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     def _calculate_overall(self, ial: str, aal: str, fal: str) -> str:
@@ -311,12 +326,27 @@ class AssuranceService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def revoke_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
+    async def revoke_profile(
+        self, profile_id: str, actor_account_id: str | None = None,
+    ) -> IdentityAssuranceProfile | None:
         entity = await self.get_profile(profile_id)
         if not entity:
             return None
         entity.status = "revoked"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ASSURANCE_PROFILE_REVOKED",
+                category="TRUST",
+                action="trust.assurance_profile.revoke",
+                actor_id=actor_account_id,
+                target_type="assurance_profile",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def list_profiles(
@@ -336,6 +366,7 @@ class TrustAnchorService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_anchor(
         self,
@@ -349,6 +380,7 @@ class TrustAnchorService:
         valid_from: datetime | None = None,
         valid_to: datetime | None = None,
         signed_by: str | None = None,
+        actor_account_id: str | None = None,
     ) -> TrustAnchor:
         entity = TrustAnchor(
             uuid=str(uuid.uuid4()),
@@ -367,6 +399,19 @@ class TrustAnchorService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ANCHOR_CREATED",
+                category="TRUST",
+                action="trust.anchor.create",
+                actor_id=actor_account_id,
+                target_type="trust_anchor",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_anchor(self, anchor_id: str) -> TrustAnchor | None:
@@ -378,7 +423,7 @@ class TrustAnchorService:
         return result.scalar_one_or_none()
 
     async def revoke_anchor(
-        self, anchor_id: str, reason: str,
+        self, anchor_id: str, reason: str, actor_account_id: str | None = None,
     ) -> TrustAnchor | None:
         entity = await self.get_anchor(anchor_id)
         if not entity:
@@ -387,6 +432,20 @@ class TrustAnchorService:
         entity.revoked_at = datetime.now(UTC)
         entity.revocation_reason = reason
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ANCHOR_REVOKED",
+                category="TRUST",
+                action="trust.anchor.revoke",
+                actor_id=actor_account_id,
+                target_type="trust_anchor",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"reason": reason},
+            ),
+        )
         return entity
 
     async def list_anchors(
@@ -422,6 +481,7 @@ class FederationTrustService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_trust(
         self,
@@ -435,6 +495,7 @@ class FederationTrustService:
         established_at: datetime | None = None,
         expires_at: datetime | None = None,
         terms: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> FederationTrust:
         entity = FederationTrust(
             uuid=str(uuid.uuid4()),
@@ -453,6 +514,19 @@ class FederationTrustService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FEDERATION_CREATED",
+                category="TRUST",
+                action="trust.federation.create",
+                actor_id=actor_account_id,
+                target_type="federation_trust",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_trust(self, trust_id: str) -> FederationTrust | None:
@@ -463,20 +537,50 @@ class FederationTrustService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def suspend_trust(self, trust_id: str) -> FederationTrust | None:
+    async def suspend_trust(
+        self, trust_id: str, actor_account_id: str | None = None,
+    ) -> FederationTrust | None:
         entity = await self.get_trust(trust_id)
         if not entity:
             return None
         entity.status = "suspended"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FEDERATION_SUSPENDED",
+                category="TRUST",
+                action="trust.federation.suspend",
+                actor_id=actor_account_id,
+                target_type="federation_trust",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
-    async def terminate_trust(self, trust_id: str) -> FederationTrust | None:
+    async def terminate_trust(
+        self, trust_id: str, actor_account_id: str | None = None,
+    ) -> FederationTrust | None:
         entity = await self.get_trust(trust_id)
         if not entity:
             return None
         entity.status = "terminated"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FEDERATION_TERMINATED",
+                category="TRUST",
+                action="trust.federation.terminate",
+                actor_id=actor_account_id,
+                target_type="federation_trust",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def list_for_org(self, org_id: str) -> list[FederationTrust]:
@@ -509,6 +613,7 @@ class IdentityProofingService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_proofing(
         self,
@@ -520,6 +625,7 @@ class IdentityProofingService:
         evidence_type: dict | None = None,
         evidence_documents: dict | None = None,
         authority_id: str | None = None,
+        actor_account_id: str | None = None,
     ) -> IdentityProofing:
         entity = IdentityProofing(
             uuid=str(uuid.uuid4()),
@@ -536,10 +642,23 @@ class IdentityProofingService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_PROOFING_CREATED",
+                category="TRUST",
+                action="trust.proofing.create",
+                actor_id=actor_account_id,
+                target_type="identity_proofing",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def verify_proofing(
-        self, proofing_id: str, verified_by: str,
+        self, proofing_id: str, verified_by: str, actor_account_id: str | None = None,
     ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
@@ -549,10 +668,23 @@ class IdentityProofingService:
         entity.verified_at = datetime.now(UTC)
         entity.valid_from = datetime.now(UTC)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_PROOFING_VERIFIED",
+                category="TRUST",
+                action="trust.proofing.verify",
+                actor_id=actor_account_id,
+                target_type="identity_proofing",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def reject_proofing(
-        self, proofing_id: str, reason: str,
+        self, proofing_id: str, reason: str, actor_account_id: str | None = None,
     ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
@@ -560,6 +692,20 @@ class IdentityProofingService:
         entity.status = "rejected"
         entity.rejection_reason = reason
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_PROOFING_REJECTED",
+                category="TRUST",
+                action="trust.proofing.reject",
+                actor_id=actor_account_id,
+                target_type="identity_proofing",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"reason": reason},
+            ),
+        )
         return entity
 
     async def get_proofing(self, proofing_id: str) -> IdentityProofing | None:
@@ -601,6 +747,7 @@ class TrustEvaluationService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_evaluation(
         self,
@@ -614,6 +761,7 @@ class TrustEvaluationService:
         evaluation_method: str | None = None,
         findings: dict | None = None,
         recommendations: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> TrustEvaluation:
         entity = TrustEvaluation(
             uuid=str(uuid.uuid4()),
@@ -633,6 +781,19 @@ class TrustEvaluationService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_EVALUATION_CREATED",
+                category="TRUST",
+                action="trust.evaluation.create",
+                actor_id=actor_account_id,
+                target_type="trust_evaluation",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_evaluation(self, evaluation_id: str) -> TrustEvaluation | None:
