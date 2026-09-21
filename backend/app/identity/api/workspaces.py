@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
@@ -55,6 +57,7 @@ def get_current_niam_actor_sync(
             Account.is_locked.is_(False),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
+            UserSession.expires_at > datetime.now(UTC),
         )
         .first()
     )
@@ -82,6 +85,7 @@ async def get_current_niam_actor(
             Account.is_active.is_(True),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
+            UserSession.expires_at > datetime.now(UTC),
         ),
     )
     actor = result.first()
