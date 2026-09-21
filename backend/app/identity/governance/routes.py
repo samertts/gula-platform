@@ -68,7 +68,7 @@ async def create_authority(
 @router.get("/authorities")
 async def list_authorities(
     authority_type: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     authorities = await service.list_authorities(authority_type=authority_type)
@@ -89,7 +89,7 @@ async def list_authorities(
 @router.get("/authorities/{authority_id}")
 async def get_authority(
     authority_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     entity = await service.get_authority(authority_id)
@@ -101,24 +101,30 @@ async def get_authority(
 @router.post("/authorities/{authority_id}/suspend")
 async def suspend_authority(
     authority_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.suspend_authority(authority_id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "authority_id": entity.authority_id, "status": entity.status}
 
 
 @router.post("/authorities/{authority_id}/activate")
 async def activate_authority(
     authority_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.activate_authority(authority_id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "authority_id": entity.authority_id, "status": entity.status}
 
 
@@ -137,8 +143,10 @@ async def create_council(
     meeting_frequency: str | None = None,
     last_meeting: datetime | None = None,
     next_meeting: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.create_council(
         council_id=council_id,
@@ -152,6 +160,7 @@ async def create_council(
         last_meeting=last_meeting,
         next_meeting=next_meeting,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "id": entity.id,
@@ -163,7 +172,7 @@ async def create_council(
 @router.get("/councils")
 async def list_councils(
     authority_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     councils = await service.list_councils(authority_id=authority_id)
@@ -183,7 +192,7 @@ async def list_councils(
 @router.get("/councils/{council_id}")
 async def get_council(
     council_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     entity = await service.get_council(council_id)
@@ -206,8 +215,10 @@ async def create_review_board(
     members: list[Any] | None = None,
     quorum_size: int = 3,
     meeting_schedule: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.create_review_board(
         board_id=board_id,
@@ -220,6 +231,7 @@ async def create_review_board(
         quorum_size=quorum_size,
         meeting_schedule=meeting_schedule,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "id": entity.id,
