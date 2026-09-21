@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -16,11 +17,30 @@ from app.identity.lifecycle.models import (
     GuardianAccount,
     WorkforceRequest,
 )
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 
 class EnterpriseRegistrationService:
+    """`start_registration` is converted to the async
+    session-stored convention (`__init__(self, session)`,
+    `await self.session.execute(...)`), matching every other NIAM
+    service in this codebase -- proven as the one representative
+    Category-F repair (docs/security/NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md).
+    The rest of this class's methods (validate_license,
+    submit_inspection, assess_risk, approve_registration,
+    reject_registration, get_registration_status) are NOT yet
+    converted -- deliberately left as the pre-existing (broken) sync
+    shape until the proven pattern is propagated, per this repair's own
+    bounded scope (repair one representative route first, then decide
+    whether to propagate)."""
 
-    def start_registration(self, db: Session, org_id: str, submitted_by: str) -> EnterpriseRegistration:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def start_registration(
+        self, org_id: str, submitted_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
         reg = EnterpriseRegistration(
             uuid=org_id,
             reg_id=org_id,
@@ -31,10 +51,42 @@ class EnterpriseRegistrationService:
             current_step="license_validation",
             is_active=True,
         )
-        db.add(reg)
-        self._add_step(db, reg.id, "license_validation", performed_by=submitted_by)
-        db.flush()
+        self.session.add(reg)
+        await self.session.flush()
+        await self._add_step(reg.id, "license_validation", performed_by=submitted_by)
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="ENTERPRISE_REGISTRATION_STARTED",
+                category="LIFECYCLE",
+                action="lifecycle.enterprise_registration.start",
+                actor_id=actor_account_id,
+                target_type="enterprise_registration",
+                target_id=reg.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return reg
+
+    async def _add_step(
+        self, reg_pk: str, step_name: str,
+        performed_by: str | None = None, output: dict[str, Any] | None = None,
+    ) -> EnterpriseRegistrationStep:
+        step = EnterpriseRegistrationStep(
+            uuid=step_name,
+            step_id=f"{reg_pk}-{step_name}",
+            reg_id=reg_pk,
+            step_name=step_name,
+            status="in_progress",
+            started_at=datetime.now(UTC),
+            performed_by=performed_by,
+            output=output,
+            is_active=True,
+        )
+        self.session.add(step)
+        return step
 
     def validate_license(self, db: Session, reg_id: str, license_document: str, validated_by: str) -> EnterpriseRegistration:
         reg = self._get_registration(db, reg_id)
@@ -110,24 +162,6 @@ class EnterpriseRegistrationService:
         if not reg:
             raise ValueError(f"EnterpriseRegistration not found: reg_id={reg_id}")
         return reg
-
-    def _add_step(
-        self, db: Session, reg_pk: str, step_name: str,
-        performed_by: str | None = None, output: dict[str, Any] | None = None,
-    ) -> EnterpriseRegistrationStep:
-        step = EnterpriseRegistrationStep(
-            uuid=step_name,
-            step_id=f"{reg_pk}-{step_name}",
-            reg_id=reg_pk,
-            step_name=step_name,
-            status="in_progress",
-            started_at=datetime.now(UTC),
-            performed_by=performed_by,
-            output=output,
-            is_active=True,
-        )
-        db.add(step)
-        return step
 
     def _complete_step(
         self, db: Session, reg_pk: str, step_name: str,

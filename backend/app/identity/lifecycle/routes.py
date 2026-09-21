@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.lifecycle.services import (
     CitizenService,
     EnterpriseRegistrationService,
@@ -14,6 +15,9 @@ from app.identity.lifecycle.services import (
     GuardianService,
     WorkforceService,
 )
+from app.identity.niam_async_db import get_niam_db
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 router = APIRouter(prefix="/lifecycle", tags=["NIAM Lifecycle"])
 
@@ -21,14 +25,24 @@ router = APIRouter(prefix="/lifecycle", tags=["NIAM Lifecycle"])
 #  Enterprise Registration
 # ──────────────────────────────────────────────
 
+# start_enterprise_registration is the one representative Category-F
+# repair (docs/security/NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md): the
+# service is converted to the async session-stored convention and this
+# route now uses get_niam_db + a platform-capability check, matching
+# every other NIAM route already fixed. The rest of this file's routes
+# are NOT yet converted -- deliberately left as-is pending a decision to
+# propagate this pattern to the remaining 41 lifecycle occurrences.
 @router.post("/enterprise/register")
 async def start_enterprise_registration(
     organization_id: str,
     submitted_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.start_registration(organization_id, submitted_by)
+    reg = await svc.start_registration(organization_id, submitted_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "uuid": reg.uuid}
 
 
