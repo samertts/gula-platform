@@ -6,7 +6,6 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.niam_async_db import get_niam_db
 from app.identity.platform_authority.authorization import require_platform_capability
@@ -427,8 +426,10 @@ async def suspend_identity(
     severity: str = "medium",
     suspended_by: str | None = None,
     duration_hours: int | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = SuspensionService(db)
     entity = await service.suspend_identity(
         person_id=person_id,
@@ -438,6 +439,7 @@ async def suspend_identity(
         suspended_by=suspended_by,
         duration_hours=duration_hours,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "suspension_id": entity.suspension_id,
@@ -451,18 +453,21 @@ async def lift_suspension(
     suspension_id: str,
     lifted_by: str,
     reason: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = SuspensionService(db)
     entity = await service.lift_suspension(suspension_id, lifted_by, reason)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"suspension_id": entity.suspension_id, "status": entity.status, "lifted_by": entity.lifted_by}
 
 
 @router.get("/suspensions/active")
 async def list_active_suspensions(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = SuspensionService(db)
     suspensions = await service.get_active_suspensions()
@@ -483,7 +488,7 @@ async def list_active_suspensions(
 @router.get("/suspensions/history/{person_id}")
 async def get_suspension_history(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = SuspensionService(db)
     history = await service.get_suspension_history(person_id)
@@ -510,8 +515,10 @@ async def register_identity(
     identity_id: str,
     registry_type: str = "citizen",
     registered_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = RegistryService(db)
     entity = await service.register_identity(
         person_id=person_id,
@@ -519,6 +526,7 @@ async def register_identity(
         registry_type=registry_type,
         registered_by=registered_by,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "registry_id": entity.registry_id,
@@ -530,7 +538,7 @@ async def register_identity(
 @router.get("/registry/{person_id}")
 async def get_registration(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = RegistryService(db)
     entity = await service.get_registration(person_id)
@@ -552,8 +560,10 @@ async def certify_identity(
     verified_by: str | None = None,
     verification_method: str | None = None,
     digital_signature: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = RegistryService(db)
     entity = await service.certify_identity(
         certification_id=certification_id,
@@ -568,6 +578,7 @@ async def certify_identity(
         verification_method=verification_method,
         digital_signature=digital_signature,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "certification_id": entity.certification_id,
@@ -580,10 +591,13 @@ async def certify_identity(
 async def revoke_certification(
     certification_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = RegistryService(db)
     entity = await service.revoke_certification(certification_id, reason)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"certification_id": entity.certification_id, "status": entity.status}
