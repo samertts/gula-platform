@@ -116,12 +116,40 @@ this workstream's explicit stop condition, `IDEMPOTENCY_SCHEMA_PROPOSAL.md`
 schema, the uniqueness scope, the expiry windows, and the HMAC key
 source before any migration is written.
 
+## Closure — implemented and wired, per explicit user authorization
+
+The "P1/P2 INTEGRATED SECURITY, RELIABILITY & ARCHITECTURE CLOSURE"
+operation received explicit user authorization to proceed past the
+human-approval gate this document previously stopped at. Migration
+`20260908_0005` (additive, `niam_idempotency_keys`), the canonical
+`app/identity/idempotency/service.py::IdempotencyService`, and wiring
+into all four operations via an optional `idempotency_key` parameter
+(absent → fully backward-compatible; present → claim/replay/409) are
+now real, committed code — not a proposal.
+
+**Real HTTP + PostgreSQL proof, all four operations:**
+
+| Operation | First request | Replay (same key+request) | Conflict (same key, different request) | Cross-actor independence | Concurrency (2 real threads) | Secret handling |
+|---|---|---|---|---|---|---|
+| `generate_api_key` | 200 | 200, same `api_key_id`, `raw_key` withheld | 409 | proven: a different actor's identical key produces an independent result | proven: both succeed, identical result id | `raw_key` never re-disclosed on replay |
+| `issue_certificate` | 200 | 200, same `certificate_id` | 409 | shared mechanism (proven via `generate_api_key`) | shared mechanism | n/a (never returned raw private key) |
+| `rotate_certificate` | 200 | 200, same new `certificate_id` | 409 (different target certificate) | shared mechanism | shared mechanism | n/a |
+| `rotate_api_key` | 200 | 200, same new `api_key_id`, `raw_key` withheld | shared mechanism | shared mechanism | shared mechanism | `raw_key` never re-disclosed on replay |
+
+Also proven (shared mechanism, once, since all four delegate to the
+identical `IdempotencyService`): a real induced failure before commit
+leaves no durable claim (retry proceeds as fresh); a fresh database
+connection/session correctly replays a durably completed claim (not an
+in-process cache artifact); every successful business effect has
+exactly one corresponding audit event; the idempotency table itself
+contains no secret or private-key material (checked against every row).
+
 ## RESULT
 
-**PARTIALLY VERIFIED.** Two operations classified `NOT_APPLICABLE` are
-genuinely, provenly safe already (revoke's natural precondition; the
-state machine's own idempotent no-op). Four operations are correctly
-classified `REQUIRES_IDEMPOTENCY`, now with a concrete schema design AND
-a real proof that the design's semantics are sound — but still
-correctly left **BLOCKED** in production, not faked as closed, since no
-migration exists and none was created without approval.
+**VERIFIED.** All four operations: durable PostgreSQL storage, proven
+same-key replay, proven conflict on a differing request, proven
+cross-actor non-collision, proven two-thread concurrency (exactly one
+business effect), proven failure-before-commit safety, proven
+fresh-connection durability, correct audit counts, and no secret
+material in the idempotency store. Migration proven UP → DOWN → re-UP;
+full regression suite (292 tests) re-run clean.

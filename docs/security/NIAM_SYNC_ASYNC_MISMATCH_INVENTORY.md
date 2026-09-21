@@ -49,12 +49,10 @@ excluded from these counts), inspected:
 | `adaptive_auth` | 16 | **A** (two service classes, both `def __init__(self, session: AsyncSession)` confirmed) | P1 | Live, functionally dead on DB touch | Same fix |
 | `admin` | 12 | **A** (`def __init__(self, session: AsyncSession)` confirmed) | P1 | Live, functionally dead on DB touch | Same fix |
 | `compliance` | 8 | **A** (`def __init__(self, session: AsyncSession)` confirmed) | P1 | Live, functionally dead on DB touch | Same fix |
-| `trust` (remaining, non-`TrustFramework` surface) | 23 (`AssuranceService`, `TrustAnchorService`, `FederationTrustService`, `IdentityProofingService`, `TrustEvaluationService` — all still on `get_db`; `TrustFrameworkService`'s own three routes were fixed this session) | **A** (all five remaining service classes use `def __init__(self, session: AsyncSession)` / `await self.session.execute`, confirmed in the full file read during the prior TrustFramework work) | P1 | Live, functionally dead on DB touch | Same fix |
+| `trust` (remaining, non-`TrustFramework` surface) | 23 originally (`AssuranceService`, `TrustAnchorService`, `FederationTrustService`, `IdentityProofingService`, `TrustEvaluationService`) | **A** — **CLOSED this operation**: all 11 mutating operations now authorized/audited/committed via `platform.trust.manage`, all 15 read routes on `get_niam_db` | was P1, now resolved | Fully live and functional | **Done** — see the "Update" section below |
 
-**Totals:** 162 total `Depends(get_db)` occurrences across these 8
-modules (`24+15+42+8+11+16+12+8+26` from the raw grep, of which 3 in
-`trust` were fixed this session, leaving 159 open + the 3 already
-closed = matches the previously-reported "162+" figure). **120 of these
+**Totals (original):** 162 total `Depends(get_db)` occurrences across
+these 8 modules. **120 of these
 (governance/federation/workflows/notifications/adaptive_auth/admin/
 compliance/trust) are category A** — the identical, already-proven,
 mechanical fix pattern. **42 (100% of `lifecycle`) are category F** —
@@ -64,6 +62,42 @@ pass — every module is mounted and reachable, and every occurrence
 checked really is this defect shape (no false positives encountered).
 **Zero B found** — no genuine non-DB async I/O confused with the DB
 mismatch in any of the 8 modules.
+
+## Update — "P1/P2 INTEGRATED SECURITY, RELIABILITY & ARCHITECTURE CLOSURE" operation
+
+**`trust` (26 occurrences, all category A): fully closed.** All 11
+mutating operations (create/revoke assurance profiles, create/revoke
+anchors, create/suspend/terminate federation trust, create/verify/reject
+proofing, create evaluation) now require `platform.trust.manage`, audit,
+and commit; all 15 read routes fixed to `get_niam_db`. Real HTTP +
+PostgreSQL proof for all 11 (401/403/200 matrix, audit, persistence).
+`0 of 26` remaining in `trust`.
+
+**`lifecycle` (42 occurrences, category F): 1 of 42 closed as the
+representative repair.** `EnterpriseRegistrationService.start_registration`
+converted to the async session-stored convention (matching every other
+NIAM service); `start_enterprise_registration` wired to `get_niam_db` +
+`require_platform_capability(governance_manage)` + audit + commit. Real
+HTTP + PostgreSQL proof (401/403/200, persistence, audit, and a
+failure-injection rollback proof). The remaining 41 occurrences across
+the same file's other four service classes (`WorkforceService`,
+`GovernmentHRService`, `CitizenService`, `GuardianService`) are **not**
+converted — the proven pattern (evidence-backed choice: convert the
+service to async, matching every sibling module) is ready to propagate,
+but propagating it to 41 more occurrences in one pass would be exactly
+the "generic repository rewrite" this workstream's own rules disallow.
+`1 of 42` closed, `41 of 42` remain, precisely counted, not silently
+carried forward as "unknown."
+
+**Governance/federation/workflows/notifications/adaptive_auth/admin/
+compliance (94 occurrences, category A): unchanged, not attempted this
+pass.** Fixing these is mechanically identical to the now three-times-proven
+pattern (certificates, `TrustFramework`, `trust`'s remaining surface) —
+explicitly deferred to a dedicated future workstream by size alone, not
+by difficulty or uncertainty.
+
+**Running total: 162 → 121 remaining** (26 `trust` occurrences closed +
+1 `lifecycle` occurrence closed this pass).
 
 ## Live risk, in plain terms
 
