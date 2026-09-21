@@ -247,13 +247,16 @@ async def create_review_board(
 async def submit_policy_approval(
     policy_id: str,
     submitted_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = PolicyApprovalService(db)
     entity = await service.submit_policy(
         policy_id=policy_id,
         submitted_by=submitted_by,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "workflow_id": entity.workflow_id,
@@ -265,7 +268,7 @@ async def submit_policy_approval(
 @router.get("/policy-approvals/pending/{reviewer_id}")
 async def get_pending_policy_approvals(
     reviewer_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = PolicyApprovalService(db)
     pending = await service.get_pending_approvals(reviewer_id)
@@ -287,12 +290,15 @@ async def get_pending_policy_approvals(
 async def approve_policy(
     workflow_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = PolicyApprovalService(db)
     entity = await service.approve_policy(workflow_id, approved_by)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"workflow_id": entity.workflow_id, "status": entity.status, "approved_by": entity.approved_by}
 
 
@@ -301,12 +307,15 @@ async def reject_policy(
     workflow_id: str,
     rejected_by: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = PolicyApprovalService(db)
     entity = await service.reject_policy(workflow_id, rejected_by, reason)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"workflow_id": entity.workflow_id, "status": entity.status, "rejected_by": entity.rejected_by}
 
 
@@ -321,8 +330,20 @@ async def submit_appeal(
     appeal_type: str = "suspension",
     reason: str | None = None,
     supporting_documents: list[Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Conservative choice, documented rather than guessed: appellant_person_id
+    # has no established self-service mapping to actor.account (unlike
+    # adaptive_auth's account_id, which IS actor.account.id) -- this module
+    # has no citizen-self-service concept wired up anywhere else, so this is
+    # gated the same as every other mutation here (matching federation's
+    # identical treatment of link_identity, which also operates on a
+    # specific person_id with no self-service check). If citizen
+    # self-submission of one's own appeal is the intended product behavior,
+    # that requires a real self-service authorization design, not a
+    # sync/async batch's guess.
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = AppealService(db)
     entity = await service.submit_appeal(
         appeal_id=appeal_id,
@@ -332,6 +353,7 @@ async def submit_appeal(
         reason=reason,
         supporting_documents=supporting_documents,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "appeal_id": entity.appeal_id,
@@ -343,7 +365,7 @@ async def submit_appeal(
 async def list_appeals(
     status: str | None = None,
     person_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = AppealService(db)
     appeals = await service.get_appeals(status=status, person_id=person_id)
@@ -364,12 +386,15 @@ async def list_appeals(
 async def assign_appeal_to_council(
     appeal_id: str,
     council_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = AppealService(db)
     entity = await service.assign_to_council(appeal_id, council_id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"appeal_id": entity.appeal_id, "council_id": entity.council_id, "status": entity.status}
 
 
@@ -379,12 +404,15 @@ async def decide_appeal(
     decision: str,
     decided_by: str,
     notes: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = AppealService(db)
     entity = await service.make_decision(appeal_id, decision, decided_by, notes)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"appeal_id": entity.appeal_id, "decision": entity.decision, "status": entity.status}
 
 
