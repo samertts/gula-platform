@@ -3,7 +3,6 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.certificates.services import (
     APIKeyService,
@@ -72,19 +71,22 @@ async def revoke_certificate(
 @router.post("/{certificate_id}/rotate")
 async def rotate_certificate(
     certificate_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = CertificateService(db)
-    cert = await svc.rotate_certificate(certificate_id)
+    cert = await svc.rotate_certificate(certificate_id, actor_account_id=actor.account.id)
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
+    await db.commit()
     return cert.to_dict()
 
 
 @router.get("/{thumbprint}")
 async def get_certificate(
     thumbprint: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = CertificateService(db)
     cert = await svc.get_certificate(thumbprint)
@@ -96,7 +98,7 @@ async def get_certificate(
 @router.get("/organization/{org_id}")
 async def list_org_certificates(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = CertificateService(db)
     certs = await svc.list_for_organization(org_id)
@@ -106,7 +108,7 @@ async def list_org_certificates(
 @router.get("/expiring")
 async def list_expiring_certificates(
     days: int = 30,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = CertificateService(db)
     certs = await svc.list_expiring(days)
@@ -123,8 +125,10 @@ async def register_ca(
     validity_days: int = 3650,
     path_length_constraint: int | None = None,
     parent_ca_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = CertificateAuthorityService(db)
     ca = await svc.register_ca(
         name=name,
@@ -135,13 +139,15 @@ async def register_ca(
         validity_days=validity_days,
         path_length_constraint=path_length_constraint,
         parent_ca_id=parent_ca_id,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return ca.to_dict()
 
 
 @router.get("/authorities")
 async def list_cas(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = CertificateAuthorityService(db)
     cas = await svc.list_cas()
@@ -151,12 +157,15 @@ async def list_cas(
 @router.post("/authorities/{ca_id}/crl")
 async def generate_crl(
     ca_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = CertificateAuthorityService(db)
-    crl = await svc.generate_crl(ca_id)
+    crl = await svc.generate_crl(ca_id, actor_account_id=actor.account.id)
     if not crl:
         raise HTTPException(status_code=404, detail="CA not found")
+    await db.commit()
     return crl.to_dict()
 
 
@@ -173,26 +182,33 @@ async def generate_api_key(
     rate_limit: int | None = None,
     created_by: str | None = None,
     expires_at: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = APIKeyService(db)
     expires = None
     if expires_at:
         from datetime import datetime
         expires = datetime.fromisoformat(expires_at)
-    ak, raw_key = await svc.generate_key(
-        name=name,
-        organization_id=organization_id,
-        enterprise_account_id=enterprise_account_id,
-        person_id=person_id,
-        scopes=scopes,
-        permissions=permissions,
-        allowed_ips=allowed_ips,
-        allowed_referrers=allowed_referrers,
-        rate_limit=rate_limit,
-        created_by=created_by,
-        expires_at=expires,
-    )
+    try:
+        ak, raw_key = await svc.generate_key(
+            name=name,
+            organization_id=organization_id,
+            enterprise_account_id=enterprise_account_id,
+            person_id=person_id,
+            scopes=scopes,
+            permissions=permissions,
+            allowed_ips=allowed_ips,
+            allowed_referrers=allowed_referrers,
+            rate_limit=rate_limit,
+            created_by=created_by,
+            expires_at=expires,
+            actor_account_id=actor.account.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await db.commit()
     result = ak.to_dict()
     result["raw_key"] = raw_key
     return result
@@ -201,7 +217,7 @@ async def generate_api_key(
 @router.get("/api-keys/organization/{org_id}")
 async def list_org_api_keys(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = APIKeyService(db)
     keys = await svc.list_for_organization(org_id)
@@ -211,25 +227,34 @@ async def list_org_api_keys(
 @router.post("/api-keys/{api_key_id}/revoke")
 async def revoke_api_key(
     api_key_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = APIKeyService(db)
-    ak = await svc.revoke_key(api_key_id)
+    ak = await svc.revoke_key(api_key_id, actor_account_id=actor.account.id)
     if not ak:
         raise HTTPException(status_code=404, detail="API key not found")
+    await db.commit()
     return {"status": "revoked", "api_key_id": api_key_id}
 
 
 @router.post("/api-keys/{api_key_id}/rotate")
 async def rotate_api_key(
     api_key_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = APIKeyService(db)
-    result = await svc.rotate_key(api_key_id)
+    try:
+        result = await svc.rotate_key(api_key_id, actor_account_id=actor.account.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not result:
         raise HTTPException(status_code=404, detail="API key not found")
     new_ak, raw_key = result
+    await db.commit()
     resp = new_ak.to_dict()
     resp["raw_key"] = raw_key
     return resp
