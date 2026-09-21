@@ -31,7 +31,6 @@ class WorkflowEngine:
         notification_triggers: dict[str, Any] | None = None,
     ) -> WorkflowDefinition:
         definition = WorkflowDefinition(
-            id=...,
             uuid=str(uuid.uuid4()),
             def_id=def_id,
             name=name,
@@ -86,7 +85,6 @@ class WorkflowEngine:
         instance_id = str(uuid.uuid4()).replace("-", "").upper()[:26]
 
         instance = WorkflowInstance(
-            id=...,
             uuid=str(uuid.uuid4()),
             instance_id=instance_id,
             def_id=def_id,
@@ -134,7 +132,6 @@ class WorkflowEngine:
         now = datetime.now(UTC)
 
         approval = WorkflowApproval(
-            id=...,
             uuid=str(uuid.uuid4()),
             approval_id=approval_id,
             instance_id=instance_id,
