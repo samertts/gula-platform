@@ -9,11 +9,36 @@ from app.identity.certificates.services import (
     CertificateAuthorityService,
     CertificateService,
 )
+from app.identity.idempotency.service import (
+    IdempotencyConflict,
+    IdempotencyKeyInvalid,
+    IdempotencyService,
+)
 from app.identity.niam_async_db import get_niam_db
 from app.identity.platform_authority.authorization import require_platform_capability
 from app.identity.platform_authority.models import PlatformCapability
 
 router = APIRouter(prefix="/certificates", tags=["NIAM Certificates"])
+
+
+async def _idempotency_begin(
+    db: AsyncSession, operation: str, actor: NiamActor, idempotency_key: str | None,
+    payload: dict, ttl_hours: int,
+):
+    """Shared helper for the four idempotency-eligible operations. Returns
+    None if no Idempotency-Key was supplied (fully backward-compatible --
+    the operation runs unconditionally, exactly as before this feature
+    existed). Raises HTTPException(422) on a malformed key, 409 on a
+    same-key-different-request conflict -- never silently proceeds."""
+    if idempotency_key is None:
+        return None
+    idem = IdempotencyService(db)
+    try:
+        return await idem.begin_or_replay(operation, actor.account.id, idempotency_key, payload, ttl_hours=ttl_hours)
+    except IdempotencyKeyInvalid as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except IdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.post("/issue")
@@ -29,11 +54,27 @@ async def issue_certificate(
     validity_days: int = 365,
     rotation_period_days: int | None = None,
     issuer_ca_id: str | None = None,
+    idempotency_key: str | None = None,
     db: AsyncSession = Depends(get_niam_db),
     actor: NiamActor = Depends(get_current_niam_actor),
 ):
     await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = CertificateService(db)
+    outcome = await _idempotency_begin(
+        db, "issue_certificate", actor, idempotency_key,
+        {
+            "cert_type": cert_type, "subject": subject, "issuer": issuer,
+            "organization_id": organization_id, "person_id": person_id, "machine_id": machine_id,
+            "signature_algorithm": signature_algorithm, "key_size": key_size,
+            "validity_days": validity_days, "rotation_period_days": rotation_period_days,
+            "issuer_ca_id": issuer_ca_id,
+        },
+        ttl_hours=24 * 7,
+    )
+    if outcome is not None and outcome.replay:
+        replayed = await svc.get_by_internal_id(outcome.row.result_id)
+        return replayed.to_dict()
+
     cert = await svc.issue_certificate(
         cert_type=cert_type,
         subject=subject,
@@ -48,6 +89,9 @@ async def issue_certificate(
         issuer_ca_id=issuer_ca_id,
         actor_account_id=actor.account.id,
     )
+    if outcome is not None:
+        idem = IdempotencyService(db)
+        await idem.complete(outcome.row, "certificate", cert.id)
     await db.commit()
     return cert.to_dict()
 
@@ -71,14 +115,26 @@ async def revoke_certificate(
 @router.post("/{certificate_id}/rotate")
 async def rotate_certificate(
     certificate_id: str,
+    idempotency_key: str | None = None,
     db: AsyncSession = Depends(get_niam_db),
     actor: NiamActor = Depends(get_current_niam_actor),
 ):
     await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = CertificateService(db)
+    outcome = await _idempotency_begin(
+        db, "rotate_certificate", actor, idempotency_key,
+        {"certificate_id": certificate_id}, ttl_hours=24,
+    )
+    if outcome is not None and outcome.replay:
+        replayed = await svc.get_by_internal_id(outcome.row.result_id)
+        return replayed.to_dict()
+
     cert = await svc.rotate_certificate(certificate_id, actor_account_id=actor.account.id)
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
+    if outcome is not None:
+        idem = IdempotencyService(db)
+        await idem.complete(outcome.row, "certificate", cert.id)
     await db.commit()
     return cert.to_dict()
 
@@ -182,6 +238,7 @@ async def generate_api_key(
     rate_limit: int | None = None,
     created_by: str | None = None,
     expires_at: str | None = None,
+    idempotency_key: str | None = None,
     db: AsyncSession = Depends(get_niam_db),
     actor: NiamActor = Depends(get_current_niam_actor),
 ):
@@ -191,6 +248,25 @@ async def generate_api_key(
     if expires_at:
         from datetime import datetime
         expires = datetime.fromisoformat(expires_at)
+
+    outcome = await _idempotency_begin(
+        db, "generate_api_key", actor, idempotency_key,
+        {
+            "organization_id": organization_id, "name": name,
+            "enterprise_account_id": enterprise_account_id, "person_id": person_id,
+            "scopes": scopes, "permissions": permissions, "allowed_ips": allowed_ips,
+            "allowed_referrers": allowed_referrers, "rate_limit": rate_limit,
+            "expires_at": expires_at,
+        },
+        ttl_hours=24 * 7,
+    )
+    if outcome is not None and outcome.replay:
+        replayed = await svc.get_by_internal_id(outcome.row.result_id)
+        # A secret must never be re-disclosed on replay -- raw_key is
+        # deliberately absent from this response, unlike the first-time
+        # response below (it was never persisted in the first place).
+        return replayed.to_dict()
+
     try:
         ak, raw_key = await svc.generate_key(
             name=name,
@@ -208,6 +284,9 @@ async def generate_api_key(
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if outcome is not None:
+        idem = IdempotencyService(db)
+        await idem.complete(outcome.row, "api_key", ak.id)
     await db.commit()
     result = ak.to_dict()
     result["raw_key"] = raw_key
@@ -242,11 +321,21 @@ async def revoke_api_key(
 @router.post("/api-keys/{api_key_id}/rotate")
 async def rotate_api_key(
     api_key_id: str,
+    idempotency_key: str | None = None,
     db: AsyncSession = Depends(get_niam_db),
     actor: NiamActor = Depends(get_current_niam_actor),
 ):
     await require_platform_capability(actor, db, PlatformCapability.certificates_manage.value)
     svc = APIKeyService(db)
+
+    outcome = await _idempotency_begin(
+        db, "rotate_api_key", actor, idempotency_key, {"api_key_id": api_key_id}, ttl_hours=24,
+    )
+    if outcome is not None and outcome.replay:
+        replayed = await svc.get_by_internal_id(outcome.row.result_id)
+        # raw_key deliberately withheld on replay -- see generate_api_key.
+        return replayed.to_dict()
+
     try:
         result = await svc.rotate_key(api_key_id, actor_account_id=actor.account.id)
     except ValueError as exc:
@@ -254,6 +343,9 @@ async def rotate_api_key(
     if not result:
         raise HTTPException(status_code=404, detail="API key not found")
     new_ak, raw_key = result
+    if outcome is not None:
+        idem = IdempotencyService(db)
+        await idem.complete(outcome.row, "api_key", new_ak.id)
     await db.commit()
     resp = new_ak.to_dict()
     resp["raw_key"] = raw_key

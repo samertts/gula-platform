@@ -233,6 +233,11 @@ class CertificateService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_internal_id(self, internal_id: str) -> DigitalCertificate | None:
+        stmt = select(DigitalCertificate).where(DigitalCertificate.id == internal_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def list_for_organization(self, org_id: str) -> list[DigitalCertificate]:
         stmt = (
             select(DigitalCertificate)
@@ -612,6 +617,11 @@ class APIKeyService:
 
     async def get_by_id(self, api_key_id: str) -> APIKey | None:
         stmt = select(APIKey).where(APIKey.api_key_id == api_key_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_internal_id(self, internal_id: str) -> APIKey | None:
+        stmt = select(APIKey).where(APIKey.id == internal_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
