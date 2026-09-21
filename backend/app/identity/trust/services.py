@@ -41,6 +41,22 @@ from .models import (
 # around the missing precedent.
 _TRUST_FRAMEWORK_UPDATABLE_FIELDS = frozenset({"name_en", "name_ar", "version", "effective_date"})
 
+# TrustFramework state machine (built from the behavior the code already
+# encoded, not invented -- see docs/security/TRUSTFRAMEWORK_STATE_MACHINE_STATUS.md
+# for the full transition matrix). "superseded" is terminal: nothing may
+# transition out of it. "active" is idempotent under activate (a repeated
+# activate() on an already-active framework is a no-op, not an error --
+# matches the pre-existing behavior of every other idempotent status-set
+# call in this codebase, e.g. revoke_certificate/revoke_key).
+_TERMINAL_STATUSES = frozenset({"superseded"})
+
+
+class TrustFrameworkInvalidTransition(Exception):
+    def __init__(self, current_status: str, requested: str) -> None:
+        self.current_status = current_status
+        self.requested = requested
+        super().__init__(f"cannot transition TrustFramework from {current_status!r} to {requested!r}")
+
 
 class TrustFrameworkService:
 
@@ -59,6 +75,7 @@ class TrustFrameworkService:
         authority_id: str | None = None,
         scope: dict | None = None,
         assurance_policies: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> TrustFramework:
         entity = TrustFramework(
             uuid=str(uuid.uuid4()),
@@ -76,6 +93,19 @@ class TrustFrameworkService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_CREATED",
+                category="TRUST",
+                action="trust.framework.create",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_framework(self, framework_id: str) -> TrustFramework | None:
@@ -86,12 +116,36 @@ class TrustFrameworkService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def _get_framework_for_update(self, framework_id: str) -> TrustFramework | None:
+        """Same lookup as get_framework, but with a row-level PostgreSQL
+        lock (`SELECT ... FOR UPDATE`) held for the rest of the
+        transaction -- a second concurrent state-transition call on the
+        same framework blocks until this one commits or rolls back, then
+        re-reads the now-current status rather than racing it. No schema
+        change needed (no optimistic-lock `version` column exists on
+        IdentityBaseEntity) -- this is the smallest concurrency guard the
+        existing architecture already supports."""
+        stmt = (
+            select(TrustFramework)
+            .where(
+                TrustFramework.framework_id == framework_id,
+                TrustFramework.is_active.is_(True),
+            )
+            .with_for_update()
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def activate_framework(
         self, framework_id: str, actor_account_id: str | None = None,
     ) -> TrustFramework | None:
-        entity = await self.get_framework(framework_id)
+        entity = await self._get_framework_for_update(framework_id)
         if not entity:
             return None
+        if entity.status == "active":
+            return entity  # idempotent no-op -- already in the requested state
+        if entity.status in _TERMINAL_STATUSES:
+            raise TrustFrameworkInvalidTransition(entity.status, "active")
         entity.status = "active"
         await self.session.flush()
         await self.audit.record(
@@ -110,14 +164,35 @@ class TrustFrameworkService:
         return entity
 
     async def supersede_framework(
-        self, framework_id: str, superseded_by_id: str,
+        self, framework_id: str, superseded_by_id: str, actor_account_id: str | None = None,
     ) -> TrustFramework | None:
-        entity = await self.get_framework(framework_id)
+        """Service-only -- no route exists (undiscussed precedent from
+        Workstream 1: not fabricated a route for an operation with no
+        prior HTTP entry point). Hardened here anyway so the state
+        machine is safe the moment a route is added, and so direct
+        service callers get the same guarantees as activate_framework."""
+        entity = await self._get_framework_for_update(framework_id)
         if not entity:
             return None
+        if entity.status in _TERMINAL_STATUSES:
+            raise TrustFrameworkInvalidTransition(entity.status, "superseded")
         entity.status = "superseded"
         entity.supersedes_framework_id = superseded_by_id
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_SUPERSEDED",
+                category="TRUST",
+                action="trust.framework.supersede",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"superseded_by_id": superseded_by_id},
+            ),
+        )
         return entity
 
     async def list_frameworks(

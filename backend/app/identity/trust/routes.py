@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -18,6 +18,7 @@ from .services import (
     IdentityProofingService,
     TrustAnchorService,
     TrustEvaluationService,
+    TrustFrameworkInvalidTransition,
     TrustFrameworkService,
 )
 
@@ -38,8 +39,10 @@ async def create_framework(
     authority_id: str | None = None,
     scope: dict | None = None,
     assurance_policies: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustFrameworkService(db)
     entity = await service.create_framework(
         framework_id=framework_id,
@@ -51,7 +54,9 @@ async def create_framework(
         authority_id=authority_id,
         scope=scope,
         assurance_policies=assurance_policies,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"uuid": entity.uuid, "id": entity.id, "framework_id": entity.framework_id}
 
 
@@ -59,7 +64,7 @@ async def create_framework(
 async def list_frameworks(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustFrameworkService(db)
     frameworks = await service.list_frameworks(skip=skip, limit=limit)
@@ -79,7 +84,7 @@ async def list_frameworks(
 @router.get("/frameworks/{framework_id}")
 async def get_framework(
     framework_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustFrameworkService(db)
     entity = await service.get_framework(framework_id)
@@ -118,7 +123,13 @@ async def activate_framework(
 ):
     await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustFrameworkService(db)
-    entity = await service.activate_framework(framework_id, actor_account_id=actor.account.id)
+    try:
+        entity = await service.activate_framework(framework_id, actor_account_id=actor.account.id)
+    except TrustFrameworkInvalidTransition as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"invalid_transition: cannot activate a framework in status {exc.current_status!r}",
+        ) from exc
     if not entity:
         return {"error": "not_found"}
     await db.commit()
