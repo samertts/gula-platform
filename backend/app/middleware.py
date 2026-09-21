@@ -6,7 +6,6 @@ All middleware class definitions live here; they are registered by the factory.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
