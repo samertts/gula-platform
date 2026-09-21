@@ -18,6 +18,7 @@ from app.identity.certificates.models import (
     DigitalCertificate,
 )
 from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
+from app.security.encryption import encrypt
 
 
 def _generate_key_pair() -> tuple[str, str]:
@@ -98,7 +99,7 @@ class CertificateService:
             person_id=person_id,
             machine_id=machine_id,
             public_key=pub_pem,
-            private_key_encrypted=priv_pem,
+            private_key_encrypted=encrypt(priv_pem),
             certificate_pem=cert_pem,
             signature_algorithm=signature_algorithm,
             key_size=key_size,
@@ -276,7 +277,7 @@ class CertificateAuthorityService:
             ca_type=ca_type,
             organization_id=organization_id,
             certificate=cert_pem,
-            private_key_encrypted=priv_pem,
+            private_key_encrypted=encrypt(priv_pem),
             public_key=pub_pem,
             serial_number=serial_number,
             thumbprint=thumbprint,

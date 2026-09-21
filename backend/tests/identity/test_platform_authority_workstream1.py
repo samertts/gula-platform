@@ -205,6 +205,21 @@ async def test_issue_certificate_succeeds_and_commits_with_audit():
 
 
 @pytest.mark.asyncio
+async def test_issue_certificate_never_stores_the_raw_private_key():
+    """Real, previously-undiscovered P0: private_key_encrypted was the
+    literal PKCS8 PEM private key with NoEncryption(), stored verbatim --
+    not encrypted despite the column name. Fixed to call the existing
+    canonical app.security.encryption.encrypt(). This proves the stored
+    value is no longer a raw PEM block."""
+    db = _FakeDb(active_assignment=_assignment(capability=PlatformCapability.certificates_manage.value))
+    await certificates_routes.issue_certificate(
+        cert_type="tls", subject="cn=test", db=db, actor=_actor(),
+    )
+    stored_cert = next(o for o in db.added if type(o).__name__ == "DigitalCertificate")
+    assert not stored_cert.private_key_encrypted.startswith("-----BEGIN")
+
+
+@pytest.mark.asyncio
 async def test_revoke_certificate_denies_actor_without_capability():
     from app.identity.certificates.models import DigitalCertificate
 
