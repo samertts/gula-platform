@@ -88,3 +88,47 @@ Two candidates, evidence-ranked:
 Neither was started this pass beyond the groundwork above, to keep this
 continuation's change set matched to what was actually verified, per
 this directive's own success condition.
+
+---
+
+## Addendum — Authorization Coverage Batch 2 (reconciling §11 above, not overwriting it)
+
+§11 above ("Authorization coverage — NOT STARTED this pass") is a
+historical snapshot from the pass that wrote it, predating the
+Authorization Expansion / Capability Inventory work that followed.
+Reconciling forward: the capability inventory has since progressed
+through several bounded batches (`docs/security/
+AUTHORIZATION_COVERAGE_MATRIX.md`, `docs/security/
+AUTHORIZATION_GAP_REGISTER.md`), most recently "Batch 2" (this pass):
+
+- **5 domains traced**: billing, lifecycle_platform, pilot_platform,
+  `services/mpi`, `capabilities/fhir_interoperability` — 23 mutating
+  routes.
+- **1 P0 found and CLOSED**: `lifecycle-platform-no-auth` — zero
+  authentication on all 19 routes of `app/lifecycle_platform/api/routes.py`,
+  proven live (unauthenticated `POST /lifecycle/components` → 201),
+  fixed with a router-level `require_permission("system:admin")` gate,
+  proven post-fix (401/403/201 matrix), negative-proofed via
+  `git stash`/`git stash pop` with md5-verified byte-identical
+  restoration, covered by a new permanent regression test
+  (`backend/tests/test_lifecycle_platform_auth.py`, 3/3 passing), zero
+  collateral regressions across a 178-test focused sweep
+  (identity/tenant-isolation/feature-flags/blood_bank/biomedical/
+  command_center/device-outbox/payments/public_health).
+- **2 non-authorization concurrency findings documented, not fixed**
+  (P2/P3, in scope only to record per this batch's own disposition
+  rule): billing's `simulate_settlement`/`advance_claim` share the
+  session's registered systemic concurrency pattern (no row lock);
+  `create_invoice` doesn't catch `IntegrityError` on its idempotency-key
+  race.
+- **3 domains re-verified/confirmed clean**: `pilot_platform` (a prior
+  session's P0 fix, still in place), `services/mpi/api.py`,
+  `capabilities/fhir_interoperability/routes.py`.
+
+Cumulative coverage-matrix totals after Batch 2: ~395 live mutating
+routes now have route-level authorization evidence (up from ~372); the
+UNKNOWN bucket is ~73 of 89 mounted routers (down from ~78). **This is
+still not "authorization complete" or "all routes protected."** ~73
+routers remain untraced. See the coverage matrix's own "Scope and
+honesty note" for the full remainder and the explicit do-not-repeat
+list for the next bounded batch.

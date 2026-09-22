@@ -72,16 +72,158 @@ instruction not to fabricate a route that doesn't exist, and not to
 treat "operation doesn't exist" as equivalent to "operation exists but
 is unguarded."
 
+## Batch 2 — 5 domains traced (`billing`, `lifecycle_platform`, `pilot_platform`, `services/mpi`, `capabilities/fhir_interoperability`)
+
+### GAP-2 (found and CLOSED this pass) — `lifecycle-platform-no-auth`
+
+- **Severity**: P0 (was — now CLOSED)
+- **Route**: all 14 routes in `app/lifecycle_platform/api/routes.py`
+  (component registry, releases, compatibility matrix, upgrade paths,
+  deprecation notices — `register_component`, `create_release`,
+  `approve_release`, `record_compatibility`, `create_upgrade_path`,
+  `issue_deprecation`, plus 8 read routes)
+- **Current mechanism (pre-fix)**: none whatsoever — `grep -c
+  "Depends(get_current_user)\|Depends(require_permission...\|
+  Depends(require_platform_capability...\|dependencies=\["` on the file
+  returned 0
+- **Missing control**: any auth dependency at all
+- **Tenant impact**: none (platform-global resource registry, not
+  per-lab — `ComponentRegistryModel` correctly has no `TenantMixin`),
+  but that makes an open write surface a platform-wide integrity risk,
+  not merely a single tenant's
+- **Exploitability**: real, proven live — `POST /lifecycle/components`
+  with zero `Authorization` header returned `201 Created` with a real
+  generated `id` and persisted row
+- **Evidence (pre-fix reproduction)**: real `TestClient` HTTP request,
+  no auth header, anonymous → `201`
+- **Fix applied**: router-level
+  `dependencies=[Depends(require_permission("system:admin"))]`, the
+  same convention already used by every sibling "National X Platform"
+  domain (biomedical/command_center/public_health/critical_care/pilot_platform)
+- **Evidence (post-fix)**: same request → `401
+  {"code":"AUTHENTICATION_REQUIRED",...}`; full matrix proven via
+  `app.dependency_overrides[get_current_user]`: no override → 401,
+  `role="lab_tech"` → 403, `role="master_admin"` → 201
+- **Negative-proofed**: `git stash push -- routes.py` (md5
+  `28ecbe8b965596acccbfdd6b6272566c`) → re-ran proof → 201 reproduced →
+  `git stash pop` (md5 `a209bdd042a1c2e819c22f527be89cf3`, byte-identical
+  to fixed copy) → re-ran proof → 401 confirmed
+- **Regression test**: `backend/tests/test_lifecycle_platform_auth.py`
+  (3 tests: unauthenticated → 401, wrong role → 403, `master_admin` →
+  201) — all 3 pass
+- **Regression sweep**: `test_security.py`, `test_feature_flags.py`,
+  `test_tenant_isolation_matrix.py`, `tests/blood_bank/`,
+  `test_biomedical_work_order_cas.py`, `test_command_center_emergency_cas.py`,
+  `test_device_outbox.py`, `test_outbox_service.py`,
+  `test_payment_orchestration.py`, `test_payments_foundation.py`,
+  `test_payments_route_registration.py`, `test_public_health_outbreak_cas.py`
+  — 178 passed, 23 skipped (pre-existing Postgres-fixture skips,
+  unrelated to this change), 0 failed
+- **Status**: **CLOSED.**
+
+### GAP-3 (found, NOT fixed — documented per P2/P3 disposition) — `billing-settlement-no-lock`
+
+- **Severity**: P2
+- **Routes**: `POST /billing/claims/{id}/advance`,
+  `POST /billing/settlements/simulate` (via
+  `app/billing/service.py::BillingService.simulate_settlement` and
+  `advance_claim`)
+- **Same systemic pattern** as previously fixed in
+  payments/devices/biomedical/command_center/public_health (see
+  `docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md`): unlocked
+  `SELECT` + status-transition check + write, no `.with_for_update()`,
+  and `BillingInvoice`/`Claim`/`InsuranceCoverage` use plain `Base` (no
+  `OptimisticLockMixin`/version column)
+- **Why P2, not P0/P1**: `app/billing/` is explicitly a demo-safe
+  projection layer (module docstring: "Business rules for the
+  demo-safe billing and insurance projection"), distinct from the real
+  financial infrastructure in `app/payments/` (already hardened). A
+  duplicate-write race here produces at worst a duplicate
+  `BillingPayment` audit row or a redundant claim-status write — both
+  racers compute the same next status from the same state-transition
+  map (`draft→validated→submitted→accepted→paid`,
+  `rejected→submitted`), so the final persisted state is still correct;
+  it is not a silent-corruption or double-charge class of bug
+- **Tenant impact**: none — all queries correctly filter
+  `lab_id=current_user.lab_id`
+- **Recommended fix** (not applied — out of this batch's bounded
+  scope): add `.with_for_update()` to the invoice/claim SELECT and a
+  terminal-state guard, matching the pattern already applied elsewhere
+- **Status**: **DOCUMENTED, not fixed** (per this directive's P2/P3
+  disposition: record and continue, do not stop the inventory to fix).
+
+### GAP-4 (found, NOT fixed — P3) — `billing-idempotency-key-unhandled-race`
+
+- **Severity**: P3
+- **Route**: `POST /billing/invoices` (`create_invoice`)
+- **Finding**: `create_invoice` checks for an existing
+  `idempotency_key` via an unlocked `SELECT` before inserting. The
+  table has a real `UniqueConstraint("lab_id", "idempotency_key")`, so
+  a concurrent duplicate-key race cannot silently double-create a
+  row — but the route only catches `ValueError`, not `IntegrityError`,
+  so a genuine race produces an unhandled `500`, not a clean `409`
+- **Contrast with the DORMANT `app/core/idempotency.py` module**: that
+  module's identical-shaped `INSERT ... ON CONFLICT DO NOTHING` race
+  has zero live callers anywhere in the repo (previously documented as
+  P3/no-live-exploit); this billing route IS live and reachable, so the
+  race is reachable, just not silently corrupting — the failure mode is
+  an ugly error response, not a data-integrity break
+- **Recommended fix** (not applied): catch `IntegrityError` in
+  `create_invoice` and return `409` with the existing invoice, mirroring
+  the atomic-claim pattern already used by `ClinicalCommandGuard`
+- **Status**: **DOCUMENTED, not fixed** (P3, out of bounded scope).
+
+### Re-verified this pass — `pilot_platform` (prior P0 fix, CONFIRMED STILL IN PLACE)
+
+`app/pilot_platform/api/routes.py` — router-level
+`dependencies=[Depends(require_permission("system:admin"))]`,
+fixed in an earlier session (in-code comment documents the original
+finding and fix). Re-read in full this pass rather than assumed safe.
+**VERIFIED, no regression, no new gap.**
+
+### Checked and confirmed NOT a gap this pass — `services/mpi/api.py`
+
+3 mutating routes (`resolve`, `manual_merge`,
+`decide_pending_review`). `resolve` uses `get_current_user` +
+`require_own_lab` (ABAC — a user may only resolve patients in their
+own lab; platform admins may cross labs). `manual_merge` and
+`decide_pending_review` use `require_role(master_admin,
+ministry_admin[, province_admin])` — correct for a cross-lab national
+identity-adjudication function. **VERIFIED, not a gap.**
+
+### Checked and confirmed NOT a gap this pass — `capabilities/fhir_interoperability/routes.py`
+
+The one LIVE sub-router of the otherwise-dead `app/capabilities/`
+package (mounted in `app/factory.py`; the other 9 sub-packages have
+zero references anywhere and are not routable). 2 mutating routes:
+`convert_hl7_to_fhir` (stateless conversion, no DB write) and
+`create_fhir_resource` (real DB write). Both gated via
+`require_institutional_permission("lab:manage")`, which chains through
+`require_institutional_user` (rejects non-`LabUser`/no-`lab_id`
+accounts) → role-permission check. `create_fhir_resource` scopes by
+`actor.lab_id` and catches `IntegrityError` on the real
+`(id, version, institution)` unique constraint, returning a clean
+`409` — the same atomic-claim-via-DB-constraint pattern as
+`ClinicalCommandGuard`, not a check-then-insert race. **VERIFIED, not
+a gap.**
+
 ## Summary
 
 | ID | Severity | Status |
 |---|---|---|
 | `adaptive-auth-account-id-idor` | P1 | BLOCKED — NEEDS_DECISION (carried forward) |
-| federation self-service session routes | — | VERIFIED (checked this pass, not a gap) |
+| federation self-service session routes | — | VERIFIED (checked prior pass, not a gap) |
 | Platform Authority grant/revoke | — | NOT IMPLEMENTED (by design, not a gap) |
+| `lifecycle-platform-no-auth` | P0 | **CLOSED this pass** (fixed, proven, tested) |
+| `billing-settlement-no-lock` | P2 | DOCUMENTED this pass, not fixed |
+| `billing-idempotency-key-unhandled-race` | P3 | DOCUMENTED this pass, not fixed |
+| `pilot_platform` router auth | — | RE-VERIFIED this pass, still in place |
+| `services/mpi/api.py` | — | VERIFIED this pass, not a gap |
+| `capabilities/fhir_interoperability` | — | VERIFIED this pass, not a gap |
 
-**Zero new P0/P1 authorization gaps found in this bounded pass.** This
-reflects the narrow scope checked (4 Platform Authority domains, ~100
-routes, cross-referenced mechanically) rather than a claim that the
-remaining ~78 unaudited routers are gap-free — see the UNKNOWN bucket
-in `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`.
+**One P0 found and closed in this bounded pass** (lifecycle_platform).
+Two lower-severity concurrency findings in billing documented, not
+fixed, per this directive's own P0/P1-fix / P2/P3-document disposition
+rule. This reflects the 5 domains actually traced in this batch (23
+routes total), not a claim that the remaining UNKNOWN-bucket routers
+(see `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`) are gap-free.

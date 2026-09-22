@@ -59,6 +59,21 @@ session: ~186** (6+24+14+38+30+34+15+11+6+8, Blood Bank/Critical Care
 routes not separately counted here since their evidence is
 suite-level, not route-enumerated).
 
+### Batch 2 additions (this pass — 5 domains, 23 mutating routes traced)
+
+| Domain | Live mutating routes | Mechanism | Tenant scope | Ownership | Audit | Status |
+|---|---|---|---|---|---|---|
+| Billing (`app/billing/routes.py`) | 5 (`create_invoice`, `simulate_settlement`, `advance_claim`, `create_coverage`, `verify_coverage_local`) | `require_permission("payments:write"/"payments:read")` | `lab_id=current_user.lab_id` on every query | — | none observed beyond service logs | **VERIFIED** (authorization); P2/P3 concurrency findings documented, not authorization gaps — see gap register |
+| Lifecycle Platform (`app/lifecycle_platform/api/routes.py`) | 7 (`register_component`, `update_component_stage`, `create_release`, `approve_release`, `record_compatibility`, `create_upgrade_path`, `issue_deprecation`) | `require_permission("system:admin")` (router-level) — **P0 fixed this pass, was previously zero auth** | none needed — SYSTEM_CONTROLLED, platform-global registry, admin-only by design | N/A | none observed | **FULLY VERIFIED** (`register_component`: full FIND→TRACE→PROVE→FIX→NEGATIVE PROOF→REGRESSION cycle); other 6 routes **VERIFIED** (same router-level gate, not individually re-proven) |
+| Pilot Platform (`app/pilot_platform/api/routes.py`) | 6 (`create_pilot`, `advance_phase`, `enroll_facility`, `assess_readiness`, `decide_gate`, `record_deployment`) | `require_permission("system:admin")` (router-level) — fixed in a prior session, **re-verified still in place this pass** | same (SYSTEM_CONTROLLED) | N/A | none observed | **VERIFIED** (re-confirmed, not re-proven from scratch) |
+| `services/mpi/api.py` | 3 (`resolve`, `manual_merge`, `decide_pending_review`) | `get_current_user`+`require_own_lab` (resolve); `require_role(master_admin, ministry_admin[, province_admin])` (the other two) | `resolve`: `lab_id` via ABAC; merge/decide: intentionally cross-lab (national identity adjudication) | N/A | `MergeAudit`/hash-chained `mpi_merge_audit` | **VERIFIED** |
+| `capabilities/fhir_interoperability/routes.py` (the one LIVE sub-router of `app/capabilities/`) | 2 (`convert_hl7_to_fhir`, `create_fhir_resource`) | `require_institutional_permission("lab:manage")` | `actor.lab_id` | `IntegrityError`→409 on `(id,version,institution)` unique constraint (atomic-claim pattern) | via service | **VERIFIED** |
+
+**Batch 2 subtotal: 23 routes**, all with explicit authorization
+confirmed; 1 P0 found and closed (lifecycle_platform); 2 concurrency
+findings documented (billing, P2/P3, not authorization gaps — see
+`docs/security/AUTHORIZATION_GAP_REGISTER.md`).
+
 ## Axis 3 — NIAM Organization RBAC (`AuthorizationDecisionService`)
 
 Closed this session, prior continuation (NIAM sync/async closure,
@@ -87,22 +102,28 @@ existing evidence.
 ## Phase 8 — Live mutation coverage summary
 
 ```
-TOTAL LIVE MUTATING ROUTES WITH INDIVIDUALLY-VERIFIED EVIDENCE THIS SESSION
+TOTAL LIVE MUTATING ROUTES WITH INDIVIDUALLY-VERIFIED EVIDENCE (cumulative through Batch 2)
 ----------------------------------------------------------------------------
 ~186 (legacy axis) + 51 (Platform Authority call sites, 4 domains) + 135
-(NIAM organization RBAC, prior continuation) = ~372
+(NIAM organization RBAC, prior continuation) + 23 (Batch 2: billing,
+lifecycle_platform, pilot_platform, mpi, fhir_interoperability) = ~395
 
 WITH EXPLICIT AUTHORIZATION
 ---------------------------
-~372 (all of the above — none of these routes were found unguarded;
-this is a description of what was already audited, not a repo-wide total)
+~395 (all of the above — none of these routes were found unguarded at
+the end of their respective passes; lifecycle_platform's 7 routes had
+ZERO authorization until this pass's fix — see gap register GAP-2 —
+and are counted here only post-fix)
 
 WITH TENANT ISOLATION
 ---------------------
-~321 (legacy axis's tenant-scoped rows + NIAM organization-scoped rows;
-excludes the SYSTEM_CONTROLLED admin-only domains where tenant scope is
-deliberately not applicable — biomedical/command_center/public_health/
-blood_bank/critical_care, 11+6+8 routes plus 2 suite-level domains)
+~329 (legacy axis's tenant-scoped rows + NIAM organization-scoped rows +
+Batch 2's tenant-scoped additions: billing 5, fhir_interoperability 2,
+mpi's `resolve` 1; excludes the SYSTEM_CONTROLLED admin-only domains
+where tenant scope is deliberately not applicable —
+biomedical/command_center/public_health/blood_bank/critical_care/
+pilot_platform/lifecycle_platform, and mpi's cross-lab admin
+adjudication routes `manual_merge`/`decide_pending_review`)
 
 WITH OBJECT OWNERSHIP CHECK
 ---------------------------
@@ -116,49 +137,67 @@ creates)
 
 WITH AUDIT
 ----------
-~372 minus the 3 SYSTEM_CONTROLLED domains where no dedicated audit
-table was observed (biomedical/command_center/public_health -- they log
-via standard application logs, not a dedicated AuditLog/PaymentAuditEvent
-row; not verified as a gap, just not confirmed present)
+~395 minus the SYSTEM_CONTROLLED domains where no dedicated audit
+table was observed (biomedical/command_center/public_health/
+pilot_platform/lifecycle_platform -- they log via standard application
+logs, not a dedicated AuditLog/PaymentAuditEvent row; not verified as a
+gap, just not confirmed present)
 
 WITH IDEMPOTENCY WHERE REQUIRED
 -------------------------------
 Clinical commands (Laboratory/Imaging/EMS/Blood Bank via
 ClinicalCommandGuard): confirmed. Payments (PaymentIntent): confirmed.
-Devices (DeviceOutboxMessage): confirmed. Everything else: NOT
-INDIVIDUALLY VERIFIED this pass -- most of the ~372 routes above are not
-inherently idempotency-sensitive (reads, or creates where a duplicate
-POST is an acceptable user-facing retry, not a clinical/financial
-duplicate-effect risk).
+Devices (DeviceOutboxMessage): confirmed. FHIR resource creation
+(`create_fhir_resource`): confirmed — real `(id,version,institution)`
+unique constraint + `IntegrityError`→409, atomic-claim pattern.
+Billing `create_invoice`: partially confirmed — backed by a real
+unique constraint (no silent double-create possible) but the route
+does not catch `IntegrityError`, so a race produces an unhandled 500
+rather than a clean 409 (documented as GAP-4, P3, not fixed). Everything
+else: NOT INDIVIDUALLY VERIFIED this pass -- most of the ~395 routes
+above are not inherently idempotency-sensitive (reads, or creates where
+a duplicate POST is an acceptable user-facing retry, not a
+clinical/financial duplicate-effect risk).
 
 WITH EXPLICIT TRANSACTION CONTRACT
 -----------------------------------
 ClinicalCommandGuard's claim/complete contract is explicit and
 documented at the source. Payments/Devices/Biomedical/Command
 Center/Public Health CAS fixes each individually proved commit/rollback
-correctness as part of their own real-Postgres proof. Not
-independently re-verified as a standalone Phase-3-style trace in this
+correctness as part of their own real-Postgres proof. Billing's
+`simulate_settlement`/`advance_claim` lack row locking (documented as
+GAP-3, P2, not fixed — both racers converge on the same correct final
+status per the state-transition map, so no incorrect end state results,
+only a possible duplicate audit write). Not independently re-verified
+as a standalone Phase-3-style trace for the remaining routes in this
 pass.
 
 FULLY VERIFIED
 ---------------
 Platform Authority certificates cluster (8 routes, 64 tests, re-run
 green this pass) + the 6 CAS-fixed domains' specific fixed routes (6
-routes) = 14 routes with the complete FIND→TRACE→PROVE→FIX→NEGATIVE
-PROOF→REGRESSION lifecycle demonstrably closed.
+routes) + lifecycle_platform's `register_component` (this pass's P0
+fix, full cycle) = 15 routes with the complete FIND→TRACE→PROVE→FIX→
+NEGATIVE PROOF→REGRESSION lifecycle demonstrably closed.
 
 PARTIALLY VERIFIED
 ------------------
-~358 (everything else counted above — real evidence exists, from this
+~380 (everything else counted above — real evidence exists, from this
 session or a prior one, but was not independently re-proven inside
-*this specific bounded pass*)
+*this specific bounded pass* with the full negative-proof cycle;
+includes lifecycle_platform's other 6 routes, all of billing/
+pilot_platform/mpi/fhir_interoperability's routes)
 
 AUTHORIZATION GAP
 -----------------
-0 newly found this pass (this was a discovery pass; see
-docs/security/AUTHORIZATION_GAP_REGISTER.md for the one item carried
-forward from a prior pass — `adaptive-auth-account-id-idor`, still
-NEEDS_DECISION, not newly discovered)
+0 remaining open authorization gaps found this pass. One P0 was found
+(`lifecycle-platform-no-auth`, zero auth on 7 mutating routes) and
+CLOSED within this same pass (fixed, proven, negative-proofed, tested,
+zero regressions). See docs/security/AUTHORIZATION_GAP_REGISTER.md for
+full evidence, plus the one item carried forward from a prior pass —
+`adaptive-auth-account-id-idor`, still NEEDS_DECISION, not newly
+discovered — and two new non-authorization concurrency findings in
+billing (P2/P3, documented not fixed, out of this pass's bounded scope).
 
 BLOCKED
 -------
@@ -169,21 +208,31 @@ authorize)
 
 UNKNOWN
 -------
-The remaining ~78 of the 89 mounted routers not named above (the
+The remaining ~73 of the 89 mounted routers not named above (the
 schema-latent 7, the `NO-OWNED-MODELS` ~11 packages, `national`'s 11
-routers, `governance`'s 1 router, and every router this session has not
-yet vertical-slice-audited) — their route-level authorization mechanism
-was NOT traced in this pass. Recorded as UNKNOWN, not silently assumed
-either safe or unsafe.
+routers, `governance`'s 1 router, and every router neither this pass
+nor a prior one has vertical-slice-audited) — their route-level
+authorization mechanism was NOT traced. Recorded as UNKNOWN, not
+silently assumed either safe or unsafe. (Was ~78 before this pass;
+reduced by the 5 domains traced in Batch 2.)
 ```
 
 ## Scope and honesty note
 
-This matrix consolidates **real, already-gathered evidence** from this
-session and re-confirms a subset of it (the certificates cluster, 64
-tests, re-run green this pass; the platform-authority-grant-has-no-route
-finding, independently re-derived this pass via grep). It is not a
-fresh route-by-route trace of all 89 mounted routers — that would be a
-multi-day undertaking on its own, explicitly out of scope for this
-"discovery + proof only, minimum resources" bounded pass. The ~78
-routers marked UNKNOWN above are the honest remainder.
+This matrix consolidates **real, already-gathered evidence** across
+multiple bounded passes, most recently Batch 2 (billing,
+lifecycle_platform, pilot_platform, `services/mpi`,
+`capabilities/fhir_interoperability` — 5 domains, 23 mutating routes,
+1 P0 found and closed with full proof rigor). It is not a fresh
+route-by-route trace of all 89 mounted routers — that would be a
+multi-day undertaking on its own, explicitly out of scope for any of
+these "discovery + proof only, minimum resources" bounded passes. The
+~73 routers marked UNKNOWN above are the honest remainder as of Batch 2
+(down from ~78 before it). **Already-audited domains — do not repeat in
+the next bounded batch**: Platform Authority (certificates/federation/
+trust/governance), Laboratory, Imaging/Radiology, EMS, Nursing, NHDW,
+Payments, Devices, Biomedical, Command Center, Public Health, Blood
+Bank, Critical Care, the 12 NIAM-axis domains (workflows/notifications/
+compliance/admin/adaptive_auth/federation/governance/lifecycle
+sub-services), billing, lifecycle_platform, pilot_platform,
+`services/mpi`, `capabilities/fhir_interoperability`.

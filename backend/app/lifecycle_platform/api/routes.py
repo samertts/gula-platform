@@ -20,8 +20,13 @@ from app.lifecycle_platform.exceptions import (
     UpgradePathNotFoundError,
     VersionConflictError,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/lifecycle", tags=["National Platform Lifecycle & Governance"])
+router = APIRouter(
+    prefix="/lifecycle",
+    tags=["National Platform Lifecycle & Governance"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> LifecycleService:

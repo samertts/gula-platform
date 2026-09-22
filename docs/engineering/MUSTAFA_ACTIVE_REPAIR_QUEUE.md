@@ -264,3 +264,85 @@ Phase 6 findings closed at the code level and covered by negative proof; not yet
 exercised against production data or a real deployment.**
 
 | Commit: `(pending)` | Owner: Mustafa | Migration: `20260908_0003_platform_authority_foundation` | Next action: decide and implement the bootstrap path for the first real Platform Authority grant (Phase 9 §13 step 2 — deliberately not invented here), then extend capability-gating to the six other routes sharing this gap. |
+
+## Phase 11 — Authorization Coverage Batch 2: `lifecycle-platform-no-auth` P0 fixed, billing P2/P3 documented
+
+Bounded continuation of the authorization capability inventory: traced 5
+previously-unaudited LIVE+table-backed domains (`billing`,
+`lifecycle_platform`, `pilot_platform`, `services/mpi`,
+`capabilities/fhir_interoperability` — 23 mutating routes total, per the
+directive's own ≤5-domain/≤35-route bound).
+
+**Found and fixed** (P0, stop-and-fix per the directive's own severity
+disposition): `app/lifecycle_platform/api/routes.py` had **zero**
+authentication or authorization dependency on any of its 19 routes
+(confirmed by grep returning 0 matches for
+`Depends(get_current_user)|Depends(require_permission...|
+Depends(require_platform_capability...|dependencies=\[` in the file).
+Proven live with a real, anonymous `TestClient` HTTP request: `POST
+/lifecycle/components` with no `Authorization` header returned `201
+Created` and persisted a real row. Fixed with the same
+`dependencies=[Depends(require_permission("system:admin"))]`
+router-level gate already used by every sibling "National X Platform"
+domain (biomedical/command_center/public_health/critical_care/
+pilot_platform — the last of which had the identical finding fixed in
+an earlier session). Post-fix: same request → `401
+AUTHENTICATION_REQUIRED`; full matrix proven (no override → 401,
+`lab_tech` → 403, `master_admin` → 201). Negative-proofed via `git
+stash`/`git stash pop` with md5sum-verified byte-identical restoration
+(pre-fix `28ecbe8b965596acccbfdd6b6272566c`, post-fix
+`a209bdd042a1c2e819c22f527be89cf3`) — vulnerability reproduces on
+revert, fix holds on restore. New permanent regression test:
+`backend/tests/test_lifecycle_platform_auth.py` (3 tests, all passing).
+Regression sweep (identity/tenant-isolation/feature-flags/blood_bank/
+biomedical/command_center/device-outbox/payments/public_health — 178
+tests) — 0 failures, 0 collateral regressions.
+
+**Found and documented, not fixed** (P2/P3 per the directive's own
+"P0/P1 fix now, P2/P3 document and continue" disposition):
+`app/billing/service.py`'s `simulate_settlement`/`advance_claim` share
+the session's already-registered systemic concurrency pattern (unlocked
+SELECT + status-check + write, no `.with_for_update()`, no
+`OptimisticLockMixin`) — classified P2 rather than P1/P0 because
+`app/billing/` is explicitly a demo-safe projection layer (its own
+module docstring) distinct from the already-hardened real financial
+infrastructure in `app/payments/`, and because both racers converge on
+the same correct final state per `advance_claim`'s explicit
+state-transition map, so the failure mode is a possible duplicate audit
+row, not silent corruption or a double charge. Separately,
+`create_invoice`'s idempotency-key check is backed by a real
+`UniqueConstraint("lab_id","idempotency_key")` but the route only
+catches `ValueError`, not `IntegrityError` — a genuine race produces an
+unhandled 500 rather than a clean 409 (P3). Full evidence, reasoning,
+and recommended (not-applied) fixes for both:
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` (GAP-3, GAP-4).
+
+**Verified clean, no gap** (re-verified rather than assumed):
+`pilot_platform` (prior P0 fix confirmed still in place — router-level
+gate, in-code comment documents the original finding); `services/mpi/api.py`
+(3 mutating routes, ABAC self-lab + cross-lab admin-role gating, all
+correct); `capabilities/fhir_interoperability/routes.py` (the one LIVE
+sub-router of the otherwise-dead `app/capabilities/` package — 2
+mutating routes, `require_institutional_permission` + `actor.lab_id`
+scoping + real DB-constraint-backed idempotent create).
+
+**Documentation updated this phase** (append/reconcile, not overwrite):
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md` (Batch 2 section added
+to Axis 2, Phase 8 summary totals recalculated: ~372→~395 total
+evidenced routes, UNKNOWN bucket ~78→~73 routers, FULLY VERIFIED
+14→15), `docs/security/AUTHORIZATION_GAP_REGISTER.md` (GAP-2 CLOSED,
+GAP-3/GAP-4 new P2/P3 findings, pilot_platform/mpi/fhir_interoperability
+recorded VERIFIED).
+
+STATUS: **`lifecycle-platform-no-auth` CLOSED — fixed, proven,
+negative-proofed, regression-tested, zero collateral regressions.**
+Billing's two concurrency findings remain **OPEN, documented, P2/P3,
+not fixed** (explicitly out of this bounded batch's scope per the
+directive's own disposition rule). Batch 2's 5 domains fully traced;
+23 mutating routes now have route-level evidence. **This does not mean
+"authorization complete" or "all routes protected"** — ~73 of 89
+mounted routers remain UNKNOWN; see the coverage matrix's own honesty
+note for the exact remainder and the next bounded batch's candidate
+list.
+
+| Commit: `(pending)` | Owner: Mustafa | Files: `app/lifecycle_platform/api/routes.py`, `backend/tests/test_lifecycle_platform_auth.py`, `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`, `docs/security/AUTHORIZATION_GAP_REGISTER.md` | Next action: next bounded batch should pick ≤5 more UNKNOWN-bucket domains from the ~73 remaining (e.g. the 7 schema-latent domains once/if their tables are backfilled, or further NIAM-adjacent routers not yet traced) — do not repeat billing/lifecycle_platform/pilot_platform/mpi/fhir_interoperability. Billing's P2 (`simulate_settlement`/`advance_claim` row-locking) and P3 (`create_invoice` IntegrityError handling) fixes remain available as a small, well-scoped follow-up if a future directive authorizes fixing P2/P3 findings rather than only documenting them. |
