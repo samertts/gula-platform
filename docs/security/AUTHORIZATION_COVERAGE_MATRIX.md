@@ -74,6 +74,28 @@ confirmed; 1 P0 found and closed (lifecycle_platform); 2 concurrency
 findings documented (billing, P2/P3, not authorization gaps — see
 `docs/security/AUTHORIZATION_GAP_REGISTER.md`).
 
+### Batch 3 additions (this pass — 5 domains, 17 mutating routes traced, 0 findings)
+
+Selected from the `LIVE / NO-OWNED-MODELS` bucket in
+`docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md` (routers mounted, real
+persistence via shared models, not yet individually confirmed). All 5
+resolved to **VERIFIED** — zero P0/P1/P2/P3 findings this batch, a
+genuine result of the domains selected, not evidence that the whole
+UNKNOWN bucket is clean.
+
+| Domain | Live mutating routes | Mechanism | Tenant scope | Ownership | Audit | Evidence |
+|---|---|---|---|---|---|---|
+| Healthcare Consent (`app/routes/consent.py`) | 2 (`grant`, `revoke`) | `get_current_user` + self-or-admin ownership (`_user_owns_gpid`: caller must be the citizen subject, or `master_admin`/`ministry_admin`) | subject-scoped (`gpid` = citizen_ulid) | explicit ownership check, not role-only | via `consent_service` audit trail | `tests/test_consent.py` (9 tests, re-run green) |
+| Patient Card (`app/routes/patient_card.py`) | 1 (`/scan`; reads also HMAC-verified) | `get_current_user` + `lab_id` tenant filter + HMAC token verify + cross-lab token rejection | `current_user.lab_id`, token bound to issuing lab | N/A (token-based, not account-based) | every view/scan/history/print writes `log_action` | `tests/test_patient_card.py` (15 tests, re-run green) — matches CLAUDE.md's own Patient Card invariant |
+| Canonical Patient / MPI (`app/routes/canonical_patient.py`) | 4 (create, `/merge`, `/link-patient`, `/link-citizen`) | `require_national_scope`/`require_own_patient`/`provenance_lab_id` (`app/services/mpi/scope.py`) — **a prior fix, "NR-148", already closed before this session**; re-verified, not assumed | national-scope permission (`platform:view_stats`) for cross-lab ops; server-derived provenance for lab-scoped create | `visible_canonical` returns 404 (not 403) to avoid an existence oracle | via MPI link/merge services | `tests/test_canonical_patient_scope.py` (24 tests) + `tests/test_canonical_patient_lab_id_authority.py` (2 tests) + `tests/test_auth_infrastructure.py` cross-tenant merge proof (403 same-lab, 200 national), all re-run green |
+| Service Accounts (`app/routes/service_accounts.py`) | 3 (create, `DELETE /{id}`, `/{id}/rotate`) | role check (`master_admin`/`admin`) + `lab_id` scope enforced inside `revoke_service_account`/`rotate_api_key` (query filters by `lab_id` unless caller is `master_admin`) | `current_user.lab_id`, real DB-level filter (confirmed by code read, not assumed) | N/A | — | **New test file this pass**: `tests/test_service_accounts_authz.py` (6 tests — non-admin role denied, foreign `lab_id` in body denied, cross-lab rotate/revoke denied 404, master_admin cross-lab success, unauthenticated 401) — closes a real evidence gap (prior test coverage only exercised the single-lab admin happy path) |
+| MFA (`app/routes/mfa.py`) | 7 (TOTP setup/verify, WebAuthn register/authenticate begin+complete, device delete) | `get_current_user`; every mutation scoped to `current_user.id` server-side — **no client-supplied account/session identifier anywhere in this router**, unlike the carried-forward `adaptive-auth-account-id-idor` P1 | self only (device ownership: `remove_device` filters `MFADevice.id == device_id AND user_id == user_id`) | N/A | — | `tests/test_auth_infrastructure.py` MFA section (401 unauthenticated for 4 endpoints, own-device add/remove/404-for-others-device roundtrip), re-run green |
+
+**Batch 3 subtotal: 17 routes**, all VERIFIED, 0 findings. **Zero
+production code changed this batch** — one new test file
+(`backend/tests/test_service_accounts_authz.py`) closing an evidence
+gap identified during tracing.
+
 ## Axis 3 — NIAM Organization RBAC (`AuthorizationDecisionService`)
 
 Closed this session, prior continuation (NIAM sync/async closure,
@@ -102,46 +124,56 @@ existing evidence.
 ## Phase 8 — Live mutation coverage summary
 
 ```
-TOTAL LIVE MUTATING ROUTES WITH INDIVIDUALLY-VERIFIED EVIDENCE (cumulative through Batch 2)
+TOTAL LIVE MUTATING ROUTES WITH INDIVIDUALLY-VERIFIED EVIDENCE (cumulative through Batch 3)
 ----------------------------------------------------------------------------
 ~186 (legacy axis) + 51 (Platform Authority call sites, 4 domains) + 135
 (NIAM organization RBAC, prior continuation) + 23 (Batch 2: billing,
-lifecycle_platform, pilot_platform, mpi, fhir_interoperability) = ~395
+lifecycle_platform, pilot_platform, mpi, fhir_interoperability) + 17
+(Batch 3: consent, patient_card, canonical_patient, service_accounts,
+mfa) = ~412
 
 WITH EXPLICIT AUTHORIZATION
 ---------------------------
-~395 (all of the above — none of these routes were found unguarded at
+~412 (all of the above — none of these routes were found unguarded at
 the end of their respective passes; lifecycle_platform's 7 routes had
-ZERO authorization until this pass's fix — see gap register GAP-2 —
-and are counted here only post-fix)
+ZERO authorization until Batch 2's fix — see gap register GAP-2 — and
+are counted here only post-fix)
 
 WITH TENANT ISOLATION
 ---------------------
-~329 (legacy axis's tenant-scoped rows + NIAM organization-scoped rows +
+~333 (legacy axis's tenant-scoped rows + NIAM organization-scoped rows +
 Batch 2's tenant-scoped additions: billing 5, fhir_interoperability 2,
-mpi's `resolve` 1; excludes the SYSTEM_CONTROLLED admin-only domains
-where tenant scope is deliberately not applicable —
-biomedical/command_center/public_health/blood_bank/critical_care/
-pilot_platform/lifecycle_platform, and mpi's cross-lab admin
-adjudication routes `manual_merge`/`decide_pending_review`)
+mpi's `resolve` 1 + Batch 3's tenant/subject-scoped additions:
+patient_card 1, service_accounts 3, consent's subject-ownership model 2
+(not lab-scoped, but an equivalent per-subject boundary); excludes the
+SYSTEM_CONTROLLED admin-only domains where tenant scope is deliberately
+not applicable — biomedical/command_center/public_health/blood_bank/
+critical_care/pilot_platform/lifecycle_platform, mpi's cross-lab admin
+adjudication routes `manual_merge`/`decide_pending_review`, canonical_patient's
+national-scope operations by design, and mfa's account-scoped-not-tenant-scoped
+routes)
 
 WITH OBJECT OWNERSHIP CHECK
 ---------------------------
-~9 individually-documented ownership validations (radiologist_id,
+~13 individually-documented ownership validations (radiologist_id,
 nurse_id, device/connector resolution, facility-scoped reservation
-IDOR test, certificate api-key spoofed-created_by rejection) — this is
-a count of *documented instances*, not a claim that every route needing
-one has it; most routes in the matrix do not require object-ownership
-validation by their nature (platform-wide admin operations, INSERT-only
-creates)
+IDOR test, certificate api-key spoofed-created_by rejection, Batch 3's
+consent subject-ownership check, patient-card HMAC-token-to-lab
+binding, MFA device-to-user ownership filter, service-account
+lab-scope filter) — this is a count of *documented instances*, not a
+claim that every route needing one has it; most routes in the matrix
+do not require object-ownership validation by their nature
+(platform-wide admin operations, INSERT-only creates)
 
 WITH AUDIT
 ----------
-~395 minus the SYSTEM_CONTROLLED domains where no dedicated audit
+~412 minus the SYSTEM_CONTROLLED domains where no dedicated audit
 table was observed (biomedical/command_center/public_health/
 pilot_platform/lifecycle_platform -- they log via standard application
 logs, not a dedicated AuditLog/PaymentAuditEvent row; not verified as a
-gap, just not confirmed present)
+gap, just not confirmed present) minus service_accounts/mfa (no
+dedicated audit trail observed for these two specifically; not
+verified as a gap, just not confirmed present)
 
 WITH IDEMPOTENCY WHERE REQUIRED
 -------------------------------
@@ -154,7 +186,7 @@ Billing `create_invoice`: partially confirmed — backed by a real
 unique constraint (no silent double-create possible) but the route
 does not catch `IntegrityError`, so a race produces an unhandled 500
 rather than a clean 409 (documented as GAP-4, P3, not fixed). Everything
-else: NOT INDIVIDUALLY VERIFIED this pass -- most of the ~395 routes
+else: NOT INDIVIDUALLY VERIFIED this pass -- most of the ~412 routes
 above are not inherently idempotency-sensitive (reads, or creates where
 a duplicate POST is an acceptable user-facing retry, not a
 clinical/financial duplicate-effect risk).
@@ -176,28 +208,31 @@ FULLY VERIFIED
 ---------------
 Platform Authority certificates cluster (8 routes, 64 tests, re-run
 green this pass) + the 6 CAS-fixed domains' specific fixed routes (6
-routes) + lifecycle_platform's `register_component` (this pass's P0
-fix, full cycle) = 15 routes with the complete FIND→TRACE→PROVE→FIX→
+routes) + lifecycle_platform's `register_component` (Batch 2's P0 fix,
+full cycle) = 15 routes with the complete FIND→TRACE→PROVE→FIX→
 NEGATIVE PROOF→REGRESSION lifecycle demonstrably closed.
 
 PARTIALLY VERIFIED
 ------------------
-~380 (everything else counted above — real evidence exists, from this
+~397 (everything else counted above — real evidence exists, from this
 session or a prior one, but was not independently re-proven inside
-*this specific bounded pass* with the full negative-proof cycle;
+*that specific bounded pass* with the full negative-proof cycle;
 includes lifecycle_platform's other 6 routes, all of billing/
-pilot_platform/mpi/fhir_interoperability's routes)
+pilot_platform/mpi/fhir_interoperability's routes, and Batch 3's 17
+routes — VERIFIED via direct code read + existing/new test evidence,
+not a from-scratch negative-proof cycle per route)
 
 AUTHORIZATION GAP
 -----------------
-0 remaining open authorization gaps found this pass. One P0 was found
-(`lifecycle-platform-no-auth`, zero auth on 7 mutating routes) and
-CLOSED within this same pass (fixed, proven, negative-proofed, tested,
-zero regressions). See docs/security/AUTHORIZATION_GAP_REGISTER.md for
-full evidence, plus the one item carried forward from a prior pass —
-`adaptive-auth-account-id-idor`, still NEEDS_DECISION, not newly
-discovered — and two new non-authorization concurrency findings in
-billing (P2/P3, documented not fixed, out of this pass's bounded scope).
+0 remaining open authorization gaps found through Batch 3. One P0 was
+found (`lifecycle-platform-no-auth`, Batch 2, zero auth on 7 mutating
+routes) and CLOSED within that same batch (fixed, proven,
+negative-proofed, tested, zero regressions). Batch 3 found 0 new
+findings of any severity. See docs/security/AUTHORIZATION_GAP_REGISTER.md
+for full evidence, plus the one item carried forward from a prior
+pass — `adaptive-auth-account-id-idor`, still NEEDS_DECISION, not
+newly discovered — and two non-authorization concurrency findings in
+billing (P2/P3, documented not fixed, Batch 2, out of bounded scope).
 
 BLOCKED
 -------
@@ -208,31 +243,51 @@ authorize)
 
 UNKNOWN
 -------
-The remaining ~73 of the 89 mounted routers not named above (the
-schema-latent 7, the `NO-OWNED-MODELS` ~11 packages, `national`'s 11
-routers, `governance`'s 1 router, and every router neither this pass
-nor a prior one has vertical-slice-audited) — their route-level
+The remaining ~68 of the 89 mounted routers not named above (the
+schema-latent 7, the `NO-OWNED-MODELS` bucket minus Batch 3's 5 newly
+resolved routers, `national`'s 11 routers, `governance`'s 1 router, and
+every router no pass has vertical-slice-audited) — their route-level
 authorization mechanism was NOT traced. Recorded as UNKNOWN, not
-silently assumed either safe or unsafe. (Was ~78 before this pass;
-reduced by the 5 domains traced in Batch 2.)
+silently assumed either safe or unsafe. (Was ~78 before Batch 2, ~73
+before Batch 3, now ~68 — derived from the actual mounted router graph
+in `app/factory.py`, re-confirmed at 89 routers this pass, not by
+blindly subtracting 5.)
 ```
 
 ## Scope and honesty note
 
 This matrix consolidates **real, already-gathered evidence** across
-multiple bounded passes, most recently Batch 2 (billing,
-lifecycle_platform, pilot_platform, `services/mpi`,
-`capabilities/fhir_interoperability` — 5 domains, 23 mutating routes,
-1 P0 found and closed with full proof rigor). It is not a fresh
-route-by-route trace of all 89 mounted routers — that would be a
-multi-day undertaking on its own, explicitly out of scope for any of
-these "discovery + proof only, minimum resources" bounded passes. The
-~73 routers marked UNKNOWN above are the honest remainder as of Batch 2
-(down from ~78 before it). **Already-audited domains — do not repeat in
-the next bounded batch**: Platform Authority (certificates/federation/
+multiple bounded passes, most recently Batch 3 (consent, patient_card,
+canonical_patient, service_accounts, mfa — 5 domains, 17 mutating
+routes, 0 new findings) following Batch 2 (billing, lifecycle_platform,
+pilot_platform, `services/mpi`, `capabilities/fhir_interoperability` —
+5 domains, 23 mutating routes, 1 P0 found and closed with full proof
+rigor). It is not a fresh route-by-route trace of all 89 mounted
+routers — that would be a multi-day undertaking on its own, explicitly
+out of scope for any of these "discovery + proof only, minimum
+resources" bounded passes. The ~68 routers marked UNKNOWN above are the
+honest remainder as of Batch 3 (down from ~78 before Batch 2, ~73
+before Batch 3). **Already-audited domains — do not repeat in the next
+bounded batch**: Platform Authority (certificates/federation/
 trust/governance), Laboratory, Imaging/Radiology, EMS, Nursing, NHDW,
 Payments, Devices, Biomedical, Command Center, Public Health, Blood
 Bank, Critical Care, the 12 NIAM-axis domains (workflows/notifications/
 compliance/admin/adaptive_auth/federation/governance/lifecycle
 sub-services), billing, lifecycle_platform, pilot_platform,
-`services/mpi`, `capabilities/fhir_interoperability`.
+`services/mpi`, `capabilities/fhir_interoperability`, consent,
+patient_card, canonical_patient, service_accounts, mfa.
+
+**Next bounded batch candidates (from the `LIVE / NO-OWNED-MODELS`
+bucket in `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`, still
+UNKNOWN after Batch 3)**: `password_reset`, `oauth2`, `saml`
+(authentication-adjacent, similar risk class to `mfa`), `hospital`
+(23 mutating routes — largest single remaining candidate), `edge`
+(14 mutating routes), `ai_fabric` (23 mutating routes), `control_plane`
+(10 mutating routes), `integrations`/`advanced_integrations`,
+`chronic_care`, `certification`, `citizen_platform`, `contracts`,
+`ai_telemetry`, `hospital`/`kernel`/`clinical_gateway`, and the generic
+`routes/` package's remaining untraced files (`claims`, `ai`,
+`optimizer`, `stats`, `user_preferences`, `national_data`,
+`national_streaming`, `care_continuum`, `clinical*`). Each still needs
+its own "what does this router actually persist, and where" check
+before being called LIVE with confidence.

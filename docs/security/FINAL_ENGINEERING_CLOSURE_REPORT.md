@@ -132,3 +132,39 @@ still not "authorization complete" or "all routes protected."** ~73
 routers remain untraced. See the coverage matrix's own "Scope and
 honesty note" for the full remainder and the explicit do-not-repeat
 list for the next bounded batch.
+
+---
+
+## Addendum 2 — Authorization Coverage Batch 3 (reconciling §11/Addendum 1)
+
+Continuing forward from Addendum 1 (Batch 2): **Batch 3** traced 5 more
+domains from the `LIVE / NO-OWNED-MODELS` bucket —
+`consent`, `patient_card`, `canonical_patient`, `service_accounts`,
+`mfa` — 17 mutating routes total.
+
+- **0 P0/P1/P2/P3 findings.** All 5 domains read as correctly
+  authorized: `consent` (self-or-admin ownership check),
+  `patient_card` (lab-scoped + HMAC token binding + audit-logged, per
+  its own CLAUDE.md invariant), `canonical_patient` (a pre-existing
+  fix, "NR-148", re-verified rather than assumed), `service_accounts`
+  (role check + real DB-level `lab_id` scoping), `mfa` (every mutation
+  self-scoped to `current_user.id`, no client-supplied account
+  identifier anywhere — the opposite shape of the still-open
+  `adaptive-auth-account-id-idor` P1).
+- **1 test-evidence gap closed, 0 production code changed**: no prior
+  test proved `service_accounts`' cross-lab-denial or
+  non-admin-denial cases. New file `backend/tests/
+  test_service_accounts_authz.py` (6 tests) closes it.
+- **88 tests re-run green** (82 pre-existing + 6 new), reusing
+  substantial existing evidence rather than reinventing proofs
+  already on file.
+
+Cumulative coverage-matrix totals after Batch 3: ~412 live mutating
+routes now have route-level authorization evidence (up from ~395 after
+Batch 2, ~372 before Batch 2). The UNKNOWN bucket is ~68 of 89 mounted
+routers (down from ~73 after Batch 2, ~78 originally). **Still not
+"authorization complete" or "all routes protected."** ~68 routers
+remain untraced. Next bounded-batch candidates named in the coverage
+matrix's honesty note: the authentication-adjacent trio
+(`password_reset`/`oauth2`/`saml`) and `hospital` (23 mutating routes,
+would need its own batch given the 35-route cap).

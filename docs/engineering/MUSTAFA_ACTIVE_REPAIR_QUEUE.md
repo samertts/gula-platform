@@ -346,3 +346,89 @@ note for the exact remainder and the next bounded batch's candidate
 list.
 
 | Commit: `(pending)` | Owner: Mustafa | Files: `app/lifecycle_platform/api/routes.py`, `backend/tests/test_lifecycle_platform_auth.py`, `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`, `docs/security/AUTHORIZATION_GAP_REGISTER.md` | Next action: next bounded batch should pick ≤5 more UNKNOWN-bucket domains from the ~73 remaining (e.g. the 7 schema-latent domains once/if their tables are backfilled, or further NIAM-adjacent routers not yet traced) — do not repeat billing/lifecycle_platform/pilot_platform/mpi/fhir_interoperability. Billing's P2 (`simulate_settlement`/`advance_claim` row-locking) and P3 (`create_invoice` IntegrityError handling) fixes remain available as a small, well-scoped follow-up if a future directive authorizes fixing P2/P3 findings rather than only documenting them. |
+
+## Phase 12 — Authorization Coverage Batch 3: 5 domains traced, 0 findings, 1 test-evidence gap closed
+
+Bounded continuation of the authorization capability inventory (third
+batch). Re-baselined first per the directive's own Phase 0: `git
+rev-parse HEAD` = `4d7c11f0`, clean tree, 89 mounted routers
+re-confirmed by direct grep of `app/factory.py` (not trusted blindly
+from the prior pass's count).
+
+**Selected 5 domains** from the `LIVE / NO-OWNED-MODELS` bucket in
+`docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md` (routers mounted, real
+persistence via shared models, not yet individually confirmed),
+prioritizing identity/patient-data/security-configuration relevance
+per the directive's own Phase 1 ranking: `app/routes/consent.py` (2
+mutating routes), `app/routes/patient_card.py` (1), `app/routes/
+canonical_patient.py` (4), `app/routes/service_accounts.py` (3),
+`app/routes/mfa.py` (7) — **17 mutating routes total**, well under the
+35-route/5-domain bound.
+
+**Result: zero P0/P1/P2/P3 findings.** All 5 domains read as correctly
+authorized on direct trace:
+
+- `consent`: self-or-admin ownership check (`_user_owns_gpid` — caller
+  must be the citizen subject, or `master_admin`/`ministry_admin`),
+  not a role-only gate.
+- `patient_card`: `lab_id` tenant filter + HMAC token verification +
+  explicit cross-lab token rejection + audit log on every action —
+  matches CLAUDE.md's own stated invariant for this exact file.
+- `canonical_patient`: gated by `app/services/mpi/scope.py`'s
+  `require_national_scope`/`require_own_patient`/`provenance_lab_id` —
+  a **pre-existing fix ("NR-148") closed before this session**,
+  re-verified this pass rather than assumed still correct; a
+  well-designed cross-tenant-by-design domain (the MPI is
+  deliberately national in scope), not an authorization gap.
+- `service_accounts`: role check + real DB-level `lab_id` scoping
+  inside the service layer (confirmed by reading the query
+  construction, not assumed). **One evidence gap found and closed**:
+  no prior test proved the cross-lab-denial or non-admin-denial cases
+  (existing coverage only exercised a single-lab admin happy path).
+  New test file `backend/tests/test_service_accounts_authz.py` (6
+  tests, all passing) closes it: non-admin role → 403, foreign
+  `lab_id` in creation body → 403, Lab A admin rotating/revoking Lab
+  B's service account → 404, master_admin cross-lab rotate → 200,
+  unauthenticated → 401.
+- `mfa`: every mutation scoped to `current_user.id` server-side, no
+  client-supplied account/session identifier anywhere in the router —
+  the opposite shape from the still-carried-forward
+  `adaptive-auth-account-id-idor` P1. `remove_device` filters by
+  `device_id AND user_id` before deleting (no cross-account IDOR).
+
+**Zero production code changed this batch** (Phase 11's preferred
+outcome, achieved because no P0/P1 was found). The only change is the
+one new test file above.
+
+**Verification**: reused substantial existing test evidence
+(`tests/test_consent.py` 9 tests, `tests/test_patient_card.py` 15
+tests, `tests/test_canonical_patient_scope.py` 24 tests, `tests/
+test_canonical_patient_lab_id_authority.py` 2 tests, `tests/
+test_auth_infrastructure.py` 30 tests including MFA/service-account/
+canonical-patient route-level checks) rather than reinventing proofs
+already on file, per the directive's own Phase 8 instruction. All 82
+re-run green, plus the 6 new service-account tests — 88 tests total,
+0 failures. No broader regression sweep run (Phase 12: "if ZERO code
+changes, run only the focused tests/proofs required for evidence" —
+no app code changed, so the 320-test baseline was not re-run).
+
+**Documentation updated** (append/reconcile, not overwrite):
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md` (Batch 3 section
+added, Phase 8 totals recalculated: ~395→~412 evidenced routes,
+UNKNOWN bucket ~73→~68 routers, next-batch candidate list named),
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` (5 new VERIFIED
+entries, summary table updated), `docs/architecture/
+LIVE_RUNTIME_SURFACE_MAP.md` (5 routers moved out of the
+`NO-OWNED-MODELS`/"not yet confirmed" list into a new "resolved this
+pass" note), `docs/security/FINAL_ENGINEERING_CLOSURE_REPORT.md`
+(addendum appended).
+
+STATUS: **Batch 3 CLOSED — 5 domains traced, 0 authorization findings,
+1 test-evidence gap closed (service_accounts), zero production code
+changed.** This does not mean "authorization complete" or "all routes
+protected" — ~68 of 89 mounted routers remain UNKNOWN; see the
+coverage matrix's own honesty note for the exact remainder and named
+next-batch candidates (`password_reset`, `oauth2`, `saml`, `hospital`,
+`edge`, `ai_fabric`, `control_plane`, and others).
+
+| Commit: `(pending)` | Owner: Mustafa | Files: `backend/tests/test_service_accounts_authz.py`, `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`, `docs/security/AUTHORIZATION_GAP_REGISTER.md`, `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`, `docs/security/FINAL_ENGINEERING_CLOSURE_REPORT.md` | Next action: next bounded batch should pick ≤5 more domains from the ~68 remaining UNKNOWN routers — strong candidates named in the coverage matrix's honesty note are the authentication-adjacent trio (`password_reset`/`oauth2`/`saml`, similar risk class to this batch's `mfa`) and/or `hospital` (23 mutating routes, largest single remaining candidate, would need its own bounded batch given the 35-route cap). Do not repeat any of the now ~20 audited domains. |

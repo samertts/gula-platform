@@ -130,18 +130,32 @@ the codebase. Reclassified: **DEAD** (9 of 10 sub-packages) — not
 `ai_fabric`, `certification`, `chronic_care`, `citizen_platform`,
 `clinical_gateway`, `contracts`, `control_plane`, `kernel`,
 `notifications`, `platform`, and the generic `routes/` package (tiers,
-citizen_portal, claims, ai, optimizer, stats, canonical_patient, consent,
-user_preferences, mfa, password_reset, oauth2, saml, service_accounts,
-integrations, advanced_integrations, edge, patient_card, care_continuum,
-ai_telemetry, clinical*, hospital, national_data, national_streaming)
-declare zero `__tablename__` of their own. This does **not** mean broken
-— many of these are legitimately thin orchestration/read layers over
-shared models (`app/models/`, `Patient`, `LabUser`, `CanonicalPatient`,
-etc.) or genuinely stateless (e.g. `optimizer`, `stats` as read-only
-aggregation). Each one needs an individual "what does this router actually
-persist, and where" check before it can be called LIVE or LATENT with
-confidence — not attempted in this pass; flagged here as the honest
+citizen_portal, claims, ai, optimizer, stats, user_preferences,
+password_reset, oauth2, saml, integrations, advanced_integrations,
+edge, care_continuum, ai_telemetry, clinical*, hospital, national_data,
+national_streaming) declare zero `__tablename__` of their own. This
+does **not** mean broken — many of these are legitimately thin
+orchestration/read layers over shared models (`app/models/`,
+`Patient`, `LabUser`, `CanonicalPatient`, etc.) or genuinely stateless
+(e.g. `optimizer`, `stats` as read-only aggregation). Each one needs an
+individual "what does this router actually persist, and where" check
+before it can be called LIVE or LATENT with confidence — not yet
+attempted for the routers still listed here; flagged as the honest
 `UNKNOWN` bucket rather than silently assumed either way.
+
+**Resolved this pass (Authorization Coverage Batch 3) — confirmed
+LIVE, real persistence via shared models, authorization traced and
+VERIFIED**: `canonical_patient` (writes `CanonicalPatient` via
+`app/services/mpi/canonical_service.py`), `consent` (writes via
+`app/services/consent_service.py`), `mfa` (writes `MFADevice` via
+`app/security/mfa_service.py`), `service_accounts` (writes
+`ServiceAccount` via `app/security/service_accounts.py`),
+`patient_card` (reads/audits against `Patient`/`AuditLog`; issues
+HMAC tokens, does not own a table itself). See
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md` and
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` for the full
+route-level evidence. Removed from this bucket's "not yet confirmed"
+list above.
 
 ## What this map does NOT claim
 

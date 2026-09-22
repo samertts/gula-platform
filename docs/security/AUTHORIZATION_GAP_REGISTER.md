@@ -207,6 +207,77 @@ accounts) → role-permission check. `create_fhir_resource` scopes by
 `ClinicalCommandGuard`, not a check-then-insert race. **VERIFIED, not
 a gap.**
 
+## Batch 3 — 5 domains traced (`consent`, `patient_card`, `canonical_patient`, `service_accounts`, `mfa`), 0 findings
+
+Selected from the `LIVE / NO-OWNED-MODELS` bucket per Batch 3's own
+Phase 1 priority (identity/patient-data/security-configuration
+relevance). All 5 read as correctly authorized on direct code trace;
+no P0/P1/P2/P3 discovered.
+
+### Checked and confirmed NOT a gap — `app/routes/consent.py`
+
+`grant`/`revoke` require `get_current_user` plus `_user_owns_gpid`
+(caller must be the citizen subject: `role == "citizen" and
+citizen_ulid == gpid`) OR `role in {master_admin, ministry_admin}`. A
+real self-or-admin ownership check, not a role-only gate. **VERIFIED.**
+
+### Checked and confirmed NOT a gap — `app/routes/patient_card.py`
+
+Every route (`get_patient_card`, `qr.png`, `/scan`, `/history`,
+`/print`) requires `get_current_user`, filters by
+`current_user.lab_id` via `lookup_patient_for_lab`, and `/scan`
+additionally verifies an HMAC-signed token bound to the issuing lab —
+a token from Lab A is explicitly rejected (403, logged as
+`scan_cross_lab_blocked`) when redeemed by a Lab B user. Every action
+writes to the audit log. Matches CLAUDE.md's own stated invariant for
+this file exactly. **VERIFIED.**
+
+### Checked and confirmed NOT a gap — `app/routes/canonical_patient.py`
+
+Gated by `app/services/mpi/scope.py`'s `require_national_scope` /
+`require_own_patient` / `provenance_lab_id` — **a pre-existing fix
+("NR-148") already closed before this session**, re-verified this
+pass rather than assumed still correct. `create_canonical` derives
+`lab_id` server-side (the historic bug this fix closed: the client
+could set `lab_id` directly via `**data.model_dump()`). `merge`,
+`search`, `by-citizen`, and `link-citizen` require national scope
+(`platform:view_stats` permission — held only by
+master_admin/ministry_admin/province_admin). `link-patient` requires
+the caller own the target patient. `visible_canonical` returns 404
+(not 403) on an unauthorized read, preventing an existence-oracle
+side channel. **VERIFIED, and a good example of a correctly-designed
+cross-tenant-by-design domain** (the MPI is deliberately national in
+scope; the fix was about *which* callers may act nationally, not about
+eliminating cross-tenant reads entirely).
+
+### Checked and confirmed NOT a gap — `app/routes/service_accounts.py`
+
+Role check (`master_admin`/`admin` only) plus real DB-level `lab_id`
+scoping inside `app/security/service_accounts.py`'s
+`revoke_service_account`/`rotate_api_key` (both filter the target row
+by `lab_id` unless the caller is `master_admin` — confirmed by reading
+the query construction, not assumed from the route's role check
+alone). **New test evidence added this pass** (no prior test proved
+the cross-lab-denial or non-admin-denial cases —
+`backend/tests/test_service_accounts_authz.py`, 6 tests, all passing):
+non-admin role → 403, foreign `lab_id` in creation body → 403, Lab A
+admin rotating/revoking Lab B's service account → 404, master_admin
+cross-lab rotate → 200, unauthenticated → 401 on all 4 mutating
+routes. **VERIFIED.**
+
+### Checked and confirmed NOT a gap — `app/routes/mfa.py`
+
+Every mutation (`totp/setup`, `totp/verify`, `webauthn/*`,
+`devices/{id}` DELETE) is scoped to `current_user.id` server-side —
+**no route in this file accepts a client-supplied account/session
+identifier**, the exact shape the carried-forward P1
+(`adaptive-auth-account-id-idor`) is about. `remove_device` filters
+`MFADevice.id == device_id AND user_id == current_user.id` before
+deleting — a client cannot delete another user's MFA device by
+guessing its id (404, not a silent cross-account deletion).
+**VERIFIED**, and a useful contrast case: this is what the
+adaptive_auth P1's endpoints would need to look like to be closed.
+
 ## Summary
 
 | ID | Severity | Status |
@@ -214,16 +285,24 @@ a gap.**
 | `adaptive-auth-account-id-idor` | P1 | BLOCKED — NEEDS_DECISION (carried forward) |
 | federation self-service session routes | — | VERIFIED (checked prior pass, not a gap) |
 | Platform Authority grant/revoke | — | NOT IMPLEMENTED (by design, not a gap) |
-| `lifecycle-platform-no-auth` | P0 | **CLOSED this pass** (fixed, proven, tested) |
-| `billing-settlement-no-lock` | P2 | DOCUMENTED this pass, not fixed |
-| `billing-idempotency-key-unhandled-race` | P3 | DOCUMENTED this pass, not fixed |
-| `pilot_platform` router auth | — | RE-VERIFIED this pass, still in place |
-| `services/mpi/api.py` | — | VERIFIED this pass, not a gap |
-| `capabilities/fhir_interoperability` | — | VERIFIED this pass, not a gap |
+| `lifecycle-platform-no-auth` | P0 | **CLOSED** (Batch 2 — fixed, proven, tested) |
+| `billing-settlement-no-lock` | P2 | DOCUMENTED (Batch 2), not fixed |
+| `billing-idempotency-key-unhandled-race` | P3 | DOCUMENTED (Batch 2), not fixed |
+| `pilot_platform` router auth | — | RE-VERIFIED (Batch 2), still in place |
+| `services/mpi/api.py` | — | VERIFIED (Batch 2), not a gap |
+| `capabilities/fhir_interoperability` | — | VERIFIED (Batch 2), not a gap |
+| `consent` | — | VERIFIED (Batch 3), not a gap |
+| `patient_card` | — | VERIFIED (Batch 3), not a gap |
+| `canonical_patient` (MPI) | — | VERIFIED (Batch 3), prior fix re-confirmed |
+| `service_accounts` | — | VERIFIED (Batch 3), new test evidence added |
+| `mfa` | — | VERIFIED (Batch 3), not a gap |
 
-**One P0 found and closed in this bounded pass** (lifecycle_platform).
-Two lower-severity concurrency findings in billing documented, not
-fixed, per this directive's own P0/P1-fix / P2/P3-document disposition
-rule. This reflects the 5 domains actually traced in this batch (23
-routes total), not a claim that the remaining UNKNOWN-bucket routers
-(see `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`) are gap-free.
+**Batch 3 found zero new findings of any severity** — a genuine result
+of the 5 domains selected (all already correctly designed), not
+evidence that the remaining UNKNOWN bucket is clean. Cumulative: one
+P0 found and closed (Batch 2, lifecycle_platform); two lower-severity
+concurrency findings in billing documented, not fixed (Batch 2); zero
+findings in Batch 3. This reflects the 10 domains actually traced
+across both batches (40 routes total), not a claim that the remaining
+UNKNOWN-bucket routers (see
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`) are gap-free.
