@@ -395,18 +395,26 @@ class WorkforceService:
 
 
 class GovernmentHRService:
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`), matching every other NIAM service in this
+    codebase. Previously had no `__init__` at all -- the same construction-
+    time `TypeError` as `WorkforceService`. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F4_GOVERNMENT_HR_STATUS.md."""
 
-    def create_appointment(
-        self, db: Session, appointment_id: str, person_id: str,
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def create_appointment(
+        self, appointment_id: str, person_id: str,
         organization_id: str, hr_reference: str, appointment_type: str,
         position: str | None = None, grade: str | None = None,
         salary_scale: str | None = None, department: str | None = None,
-        start_date: datetime | None = None,
+        start_date: datetime | None = None, actor_account_id: str | None = None,
     ) -> GovernmentAppointment:
-        existing = db.query(GovernmentAppointment).filter(
-            GovernmentAppointment.hr_reference == hr_reference,
-        ).first()
-        if existing:
+        stmt = select(GovernmentAppointment).where(GovernmentAppointment.hr_reference == hr_reference)
+        result = await self.session.execute(stmt)
+        if result.scalar_one_or_none():
             raise ValueError(f"GovernmentAppointment with hr_reference={hr_reference} already exists")
 
         appt = GovernmentAppointment(
@@ -424,59 +432,99 @@ class GovernmentHRService:
             status="draft",
             is_active=True,
         )
-        db.add(appt)
-        db.flush()
+        self.session.add(appt)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_APPOINTMENT_CREATED", category="LIFECYCLE",
+            action="lifecycle.government_hr.create_appointment", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def approve_appointment(self, db: Session, appointment_id: str, approved_by: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def approve_appointment(
+        self, appointment_id: str, approved_by: str, actor_account_id: str | None = None,
+    ) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         appt.hr_approved_by = approved_by
         appt.hr_approved_at = datetime.now(UTC)
         appt.status = "hr_approved"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_APPOINTMENT_APPROVED", category="LIFECYCLE",
+            action="lifecycle.government_hr.approve_appointment", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def create_identity(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def create_identity(self, appointment_id: str, actor_account_id: str | None = None) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if appt.status not in ("hr_approved", "identity_created"):
             raise ValueError(f"Cannot create identity: status is {appt.status}, expected hr_approved")
         appt.identity_created = True
         appt.status = "identity_created"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_IDENTITY_CREATED", category="LIFECYCLE",
+            action="lifecycle.government_hr.create_identity", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def issue_credential(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def issue_credential(self, appointment_id: str, actor_account_id: str | None = None) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if not appt.identity_created:
             raise ValueError("Cannot issue credential before identity is created")
         appt.credential_issued = True
         appt.status = "credential_issued"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_CREDENTIAL_ISSUED", category="LIFECYCLE",
+            action="lifecycle.government_hr.issue_credential", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def activate_account(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def activate_account(self, appointment_id: str, actor_account_id: str | None = None) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if not appt.credential_issued:
             raise ValueError("Cannot activate account before credential is issued")
         appt.account_activated = True
         appt.status = "activated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_ACCOUNT_ACTIVATED", category="LIFECYCLE",
+            action="lifecycle.government_hr.activate_account", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def assign_permissions(self, db: Session, appointment_id: str, permissions: dict[str, Any] | None = None) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def assign_permissions(
+        self, appointment_id: str, permissions: dict[str, Any] | None = None, actor_account_id: str | None = None,
+    ) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if not appt.account_activated:
             raise ValueError("Cannot assign permissions before account is activated")
         appt.permissions_assigned = True
         appt.status = "active"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_PERMISSIONS_ASSIGNED", category="LIFECYCLE",
+            action="lifecycle.government_hr.assign_permissions", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def promote(
-        self, db: Session, appointment_id: str,
-        new_position: str, new_grade: str, promoted_by: str | None = None,
+    async def promote(
+        self, appointment_id: str,
+        new_position: str, new_grade: str, promoted_by: str | None = None, actor_account_id: str | None = None,
     ) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+        appt = await self._get_appointment(appointment_id)
         history = appt.promotion_history or []
         history.append({
             "from_position": appt.position,
@@ -490,15 +538,21 @@ class GovernmentHRService:
         appt.position = new_position
         appt.grade = new_grade
         appt.status = "promoted"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_EMPLOYEE_PROMOTED", category="LIFECYCLE",
+            action="lifecycle.government_hr.promote", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def transfer(
-        self, db: Session, appointment_id: str,
+    async def transfer(
+        self, appointment_id: str,
         new_org_id: str | None = None, new_dept: str | None = None,
-        transferred_by: str | None = None,
+        transferred_by: str | None = None, actor_account_id: str | None = None,
     ) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+        appt = await self._get_appointment(appointment_id)
         history = appt.transfer_history or []
         history.append({
             "from_org": appt.organization_id,
@@ -514,21 +568,35 @@ class GovernmentHRService:
         if new_dept:
             appt.department = new_dept
         appt.status = "transferred"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_EMPLOYEE_TRANSFERRED", category="LIFECYCLE",
+            action="lifecycle.government_hr.transfer", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def retire(self, db: Session, appointment_id: str, retirement_date: datetime) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def retire(
+        self, appointment_id: str, retirement_date: datetime, actor_account_id: str | None = None,
+    ) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         appt.end_date = retirement_date
         appt.status = "retired"
         appt.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_EMPLOYEE_RETIRED", category="LIFECYCLE",
+            action="lifecycle.government_hr.retire", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def _get_appointment(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = db.query(GovernmentAppointment).filter(
-            GovernmentAppointment.appointment_id == appointment_id,
-        ).first()
+    async def _get_appointment(self, appointment_id: str) -> GovernmentAppointment:
+        stmt = select(GovernmentAppointment).where(GovernmentAppointment.appointment_id == appointment_id)
+        result = await self.session.execute(stmt)
+        appt = result.scalar_one_or_none()
         if not appt:
             raise ValueError(f"GovernmentAppointment not found: appointment_id={appointment_id}")
         return appt

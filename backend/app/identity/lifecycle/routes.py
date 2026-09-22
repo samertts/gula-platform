@@ -320,6 +320,12 @@ async def preserve_workforce_history(
 #  Government HR
 # ──────────────────────────────────────────────
 
+# Category C (administrative) throughout, same reasoning as WorkforceService:
+# every route here is an HR/appointing-authority action performed on a
+# government employee's appointment record, with no self-service angle
+# and no existing PlatformCapability that fits -- and unlike WorkforceService,
+# this class has no read route at all. All 9 fail closed.
+
 @router.post("/government/appointments")
 async def create_government_appointment(
     appointment_id: str,
@@ -332,8 +338,10 @@ async def create_government_appointment(
     salary_scale: str | None = None,
     department: str | None = None,
     start_date: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
     appt = await svc.create_appointment(
         appointment_id=appointment_id,
@@ -346,7 +354,9 @@ async def create_government_appointment(
         salary_scale=salary_scale,
         department=department,
         start_date=start_date,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"appointment_id": appt.appointment_id}
 
 
@@ -354,40 +364,52 @@ async def create_government_appointment(
 async def approve_government_appointment(
     appointment_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.approve_appointment(appointment_id, approved_by)
+    appt = await svc.approve_appointment(appointment_id, approved_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
 @router.post("/government/appointments/{appointment_id}/create-identity")
 async def create_government_identity(
     appointment_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.create_identity(appointment_id)
+    appt = await svc.create_identity(appointment_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
 @router.post("/government/appointments/{appointment_id}/issue-credential")
 async def issue_government_credential(
     appointment_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.issue_credential(appointment_id)
+    appt = await svc.issue_credential(appointment_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
 @router.post("/government/appointments/{appointment_id}/activate")
 async def activate_government_account(
     appointment_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.activate_account(appointment_id)
+    appt = await svc.activate_account(appointment_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -395,10 +417,13 @@ async def activate_government_account(
 async def assign_government_permissions(
     appointment_id: str,
     permissions: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.assign_permissions(appointment_id, permissions)
+    appt = await svc.assign_permissions(appointment_id, permissions, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -408,15 +433,19 @@ async def promote_government_employee(
     new_position: str,
     new_grade: str,
     promoted_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
     appt = await svc.promote(
         appointment_id=appointment_id,
         new_position=new_position,
         new_grade=new_grade,
         promoted_by=promoted_by,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -426,15 +455,19 @@ async def transfer_government_employee(
     new_org_id: str | None = None,
     new_dept: str | None = None,
     transferred_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
     appt = await svc.transfer(
         appointment_id=appointment_id,
         new_org_id=new_org_id,
         new_dept=new_dept,
         transferred_by=transferred_by,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -442,10 +475,13 @@ async def transfer_government_employee(
 async def retire_government_employee(
     appointment_id: str,
     retirement_date: datetime,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.retire(appointment_id, retirement_date)
+    appt = await svc.retire(appointment_id, retirement_date, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 # ──────────────────────────────────────────────
