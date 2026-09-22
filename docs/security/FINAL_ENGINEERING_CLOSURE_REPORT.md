@@ -168,3 +168,47 @@ remain untraced. Next bounded-batch candidates named in the coverage
 matrix's honesty note: the authentication-adjacent trio
 (`password_reset`/`oauth2`/`saml`) and `hospital` (23 mutating routes,
 would need its own batch given the 35-route cap).
+
+---
+
+## Addendum 3 — Accelerated Security & Authorization Closure Batch 4
+
+Combined pass covering Hospital (23 mutating routes) + auth-adjacent
+(password_reset/oauth2/saml). **Four real P1 findings found and
+CLOSED**, each with the complete FIND→TRACE→REPRODUCE→FIX→NEGATIVE
+PROOF→REGRESSION cycle:
+
+1. `hospital-facility-no-role-check` — 19 mutating routes (including
+   clinical patient-safety operations: bed assign/discharge/transfer,
+   OT status, surgical safety checklist) had zero role check. Fixed
+   reusing this codebase's own existing role-set conventions.
+2. `hospital-get-entity-boolean-bug` — a Python `not` vs SQLAlchemy `~`
+   typo in a shared 17-call-site helper made every nested-entity
+   lookup unconditionally return "not found." Fixed; 5 more instances
+   of the identical bug registered (not fixed) in radiology/pharmacy/
+   admin.
+3. `hospital-missing-commit` — 18 routes never called `db.commit()`
+   anywhere, silently discarding every write despite returning a
+   200/201. Proven with two genuinely independent DB sessions against
+   a real file-backed SQLite DB (the standard shared-session test
+   client masks this entirely). Fixed.
+4. `oauth2-register-no-role-check` — any authenticated user could
+   register a platform-global OAuth2 client with attacker-chosen
+   redirect URIs. Fixed.
+
+Schema caveat (re-confirmed, not new): Hospital remains SCHEMA-BLOCKED
+on a real Postgres deployment (13 of 14 tables have no migration; the
+14th's migration is itself already-blocked in the alembic chain on a
+missing FK target) — these fixes are real and proven via this repo's
+own SQLite test harness, but none of Hospital's routes are reachable
+on a genuine migration-driven deployment today.
+
+Cumulative coverage-matrix totals after Batch 4: ~436 live mutating
+routes now have route-level authorization evidence (up from ~412
+after Batch 3). The UNKNOWN bucket is ~64 of 89 mounted routers (down
+from ~68). 209 regression tests re-run across all affected files, 0
+failures. **Still not "authorization complete," "system secure," or
+"production ready"** — ~64 routers remain untraced, Hospital remains
+schema-blocked, 5 more instances of the boolean-filter bug remain open
+in other domains, and the carried-forward `adaptive-auth-account-id-
+idor` P1 remains BLOCKED — NEEDS_DECISION.

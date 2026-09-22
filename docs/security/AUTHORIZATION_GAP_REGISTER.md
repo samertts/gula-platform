@@ -299,10 +299,265 @@ adaptive_auth P1's endpoints would need to look like to be closed.
 
 **Batch 3 found zero new findings of any severity** — a genuine result
 of the 5 domains selected (all already correctly designed), not
-evidence that the remaining UNKNOWN bucket is clean. Cumulative: one
-P0 found and closed (Batch 2, lifecycle_platform); two lower-severity
-concurrency findings in billing documented, not fixed (Batch 2); zero
-findings in Batch 3. This reflects the 10 domains actually traced
-across both batches (40 routes total), not a claim that the remaining
-UNKNOWN-bucket routers (see
-`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`) are gap-free.
+evidence that the remaining UNKNOWN bucket is clean.
+
+## Batch 4 — combined Hospital + auth-adjacent (Accelerated Security & Authorization Closure)
+
+### GAP-5 (found and CLOSED this pass) — `hospital-facility-no-role-check`
+
+- **Severity**: P1 (patient-safety-adjacent: some affected routes are
+  clinical operations, not merely administrative)
+- **Routes**: 19 of 23 mutating routes in `app/routes/hospital.py` —
+  facility/administrative creates (`create_building`, `create_floor`,
+  `create_department`, `update_department`, `create_clinic`,
+  `create_room`, `create_bed`, `create_unit`,
+  `create_operation_theater`, `create_equipment`, `update_equipment`,
+  `create_cost_center`, `update_campus`) and clinical patient-safety
+  operations (`assign_bed`, `discharge_bed`, `transfer_bed`,
+  `update_ot_status`, `complete_surgical_safety_checklist`,
+  `create_appointment`)
+- **Current mechanism (pre-fix)**: `Depends(get_current_user)` only —
+  no role check of any kind
+- **Missing control**: any authenticated `LabUser` of any role
+  (including non-clinical staff) could create hospital facility
+  structure, and critically could assign/discharge/transfer a real
+  patient to a bed, change an operation theater's status, or complete
+  a WHO-mandated surgical safety checklist
+- **Context**: a prior session pass had already fixed 4 sibling routes
+  in this same file (`create_hospital`/`update_hospital`/
+  `deactivate_hospital`/`create_campus`) and its own test file
+  (`test_hospital_update_security.py`) explicitly documented "the
+  entire hospital.py route surface still has no role gates beyond
+  these four" as deliberately deferred — this closes that deferral
+- **Fix applied**: reused the same two role-set convention already
+  established in this codebase — `_HOSPITAL_ADMIN_ROLES = {admin,
+  master_admin}` (already present in this file) for facility structure,
+  and a new `_HOSPITAL_CLINICAL_WRITE_ROLES = {admin, master_admin,
+  doctor, nurse}` (verbatim copy of NHDW's `_NHDW_ADMISSION_WRITE_ROLES`
+  / Nursing's `_NURSING_WRITE_ROLES`) for clinical operations — no new
+  role vocabulary invented
+- **Evidence**: real HTTP proof via `TestClient` — `staff` role denied
+  (403) on all 19 routes; `admin`/`nurse`/`doctor` succeed on
+  representative routes; cross-tenant target rejected (404) for
+  `assign_bed` and `update_department`
+- **Negative-proofed**: `git stash`/`git stash pop` with md5-verified
+  byte-identical restoration — vulnerability reproduces on revert (24
+  errors — see GAP-6, the fixture itself depends on GAP-6's fix — and
+  once isolated, 403 checks fail as 200/201), fix holds on restore
+- **Regression test**: `backend/tests/test_hospital_role_gate_completion.py`
+  (25 tests: 19 role-denial checks, 3 correct-role success checks, 2
+  cross-tenant denials, 1 unauthenticated-baseline check) — all pass
+- **Regression sweep**: `test_hospital_update_security.py`,
+  `test_hospital_service_log_action.py`, `test_security.py`,
+  `test_tenant_isolation_matrix.py`, `test_rbac_tenant_scope.py`,
+  `test_detect_missing_tenant_scope.py`, `test_feature_flags.py` — 209
+  tests total, 0 failures
+- **Status**: **CLOSED.**
+
+### GAP-6 (found and CLOSED this pass, discovered while building GAP-5's test harness) — `hospital-get-entity-boolean-bug`
+
+- **Severity**: P1 (data integrity / correctness, not authorization)
+- **Location**: `app/services/hospital_service.py::_get_entity` — the
+  shared nested-entity lookup helper used by 17 call sites across ~10
+  routes (`update_campus`, `create_building`, `create_floor`,
+  `create_department`'s parent check, `create_clinic`, `create_room`,
+  `update_department`, `assign_bed`/`discharge_bed`/`transfer_bed`,
+  `update_ot_status`/`complete_surgical_safety_checklist`,
+  `update_equipment`, `bed_assignment_history`)
+- **Bug**: `db.query(model).filter(model.id == entity_id, model.lab_id
+  == lab_id, not model.is_deleted)` — the `not` is Python's boolean
+  `not`, applied to the `InstrumentedAttribute` column object itself,
+  not a SQL `NOT`. Confirmed directly: `bool(Model.column)` is always
+  `True` (default object truthiness), so `not model.is_deleted`
+  evaluates to the **literal Python `False`** at query-build time,
+  before SQLAlchemy ever sees it. A standalone check confirmed
+  `.filter(False)` compiles to `WHERE 0 = 1` — every call through this
+  helper unconditionally matched zero rows, regardless of what data
+  actually existed
+- **Fix applied**: `~model.is_deleted` (SQLAlchemy's boolean-NOT
+  operator), matching every other `is_deleted` filter already in this
+  same file
+- **Evidence**: reproduced directly in a Python REPL-style check
+  (`bool(Foo.is_deleted)` → `True`; `not Foo.is_deleted` → `False`);
+  reproduced via the test suite (24 fixture-setup errors, all
+  `NotFoundError: hospital_campuses not found`, before the fix)
+- **Negative-proofed**: `git stash`/`git stash pop`, md5-verified;
+  vulnerability reproduces on revert, fix holds on restore
+- **Status**: **CLOSED**, same commit/regression evidence as GAP-5
+  (both fixes were needed together for the test harness to even run).
+- **Systemic pattern — NOT fixed, registered for a future batch**: the
+  identical `not X.is_deleted`/`not X.is_revoked`/`not X.is_active`
+  shape recurs at 5 more call sites outside Hospital, confirmed by
+  repo-wide grep: `app/radiology/pacs.py:365,375,388` (`ImageShare`
+  lookups), `app/pharmacy/routes.py:504` (generic entity lookup),
+  `app/routes/admin.py:257` (`Lab` listing). Each would need the same
+  one-line `not` → `~` fix, but these are in different, unaudited
+  domains outside this batch's bound — not fixed here.
+
+### GAP-7 (found and CLOSED this pass, discovered while proving GAP-6's fix) — `hospital-missing-commit`
+
+- **Severity**: P1 (transaction integrity / silent data loss — arguably
+  the most severe finding of this batch)
+- **Routes**: 18 of Hospital's mutating routes (all except the 5
+  `ClinicalCommandGuard`-based ones, which already commit inside
+  `_run_hospital_command`): `create_hospital`, `update_hospital`,
+  `deactivate_hospital`, `create_campus`, `update_campus`,
+  `create_building`, `create_floor`, `create_department`,
+  `update_department`, `create_clinic`, `create_room`, `create_bed`,
+  `create_unit`, `create_operation_theater`, `create_equipment`,
+  `update_equipment`, `create_cost_center`, `create_appointment`
+- **Bug**: none of these routes, nor `HospitalService`'s corresponding
+  methods, nor `log_action`, ever called `db.commit()`. `get_db()`
+  (`app/database.py`) uses `sessionmaker(autocommit=False, ...)` and
+  only calls `db.rollback()` on exception — a pending
+  (flushed-but-uncommitted) transaction is implicitly discarded by
+  SQLAlchemy's default `Session.close()` behavior when the request
+  ends. Every one of these routes returned a 200/201 with what looked
+  like a real created/updated record, but nothing was durably
+  persisted
+- **Why this was invisible to existing tests**: `tests/conftest.py`'s
+  `client` fixture's `_override_get_db` yields the **same** `db`
+  session object for every HTTP request within one test (`try: yield
+  db; finally: pass` — never closes or rolls back between requests).
+  A flush is visible to later queries on that same open
+  session/transaction regardless of whether it was ever committed, so
+  every pre-existing Hospital test (including the already-"FIXED —
+  VERIFIED" `create_hospital`/`update_hospital`/`deactivate_hospital`/
+  `create_campus` from a prior session) passed despite this bug
+- **Evidence (pre-fix reproduction)**: a standalone proof script
+  (not the shared-session test client) drove two genuinely
+  independent connections against a real file-backed SQLite DB:
+  `POST /hospital/` → `201` with `id=1`; the very next request,
+  `POST /hospital/1/departments`, got **`404 Hospital not found`**
+  (a fresh `SessionLocal()`, matching real production per-request
+  behavior, found nothing); a third, fully independent session
+  confirmed neither row existed
+- **Fix applied**: `db.commit()` added immediately after each
+  affected route's service call, matching the exact pattern the
+  file's own `_run_hospital_command` helper already used for the 5
+  `ClinicalCommandGuard` routes
+- **Evidence (post-fix)**: same two-request proof — `POST
+  /hospital/1/departments` now returns `201`; an independent
+  third-session verification confirms both the hospital and
+  department rows durably exist
+- **Negative-proofed**: `git stash`/`git stash pop` with md5-verified
+  byte-identical restoration; the proof script's "not durably
+  committed" result reproduces on revert, "durably committed" holds on
+  restore
+- **Regression test**: `backend/tests/test_hospital_durable_commit.py`
+  (3 tests, using a genuinely independent two-session fixture rather
+  than the shared-session `client` fixture — confirmed to fail against
+  the pre-fix code, pass against the fix) — all pass
+- **Side effect worth noting**: `update_hospital`/`deactivate_hospital`
+  use `.with_for_update()` (a real row lock). Without a commit, that
+  lock would be held until connection close/rollback rather than
+  released promptly — a lock-contention risk on top of the data-loss
+  risk, once Hospital's schema exists in production
+- **Status**: **CLOSED.**
+
+### GAP-8 (found and CLOSED this pass) — `oauth2-register-no-role-check`
+
+- **Severity**: P1 (security configuration)
+- **Route**: `POST /oauth2/register`
+- **Current mechanism (pre-fix)**: `Depends(get_current_user)` only
+- **Missing control**: `OAuth2Client` (`app/models/oauth2_client.py`)
+  is a platform-global registry — no `lab_id`/tenant column exists on
+  the model at all, by design, not an omission. Any authenticated
+  `LabUser` of any role could register an OAuth2 client with
+  attacker-chosen `redirect_uris`, which then receives real users'
+  access/refresh/id tokens the moment any user completes `/authorize`
+  against it — a real open-redirect / token-exfiltration vector
+- **Fix applied**: `_OAUTH2_CLIENT_ADMIN_ROLES = {admin, master_admin}`
+  role gate, reusing the same convention as `service_accounts.py` and
+  Hospital
+- **Evidence**: real HTTP proof — unauthenticated → 401; `staff` role
+  → 403; `admin` role → 200 with `client_id`/`client_secret` issued
+- **Negative-proofed**: `git stash`/`git stash pop`, md5-verified;
+  vulnerability reproduces on revert, fix holds on restore
+- **Regression test**: `backend/tests/test_oauth2_register_authz.py`
+  (3 tests) — all pass; existing `test_auth_infrastructure.py` oauth2
+  coverage (discovery/jwks/token-no-auth) re-run unaffected
+- **Status**: **CLOSED.**
+
+### Checked and confirmed NOT a gap this pass — `app/routes/password_reset.py`
+
+All 3 routes correctly scoped: `forgot_password`/`reset_password`
+derive identity solely from the reset token itself (anti-enumeration
+response for `forgot`, no client-supplied user id anywhere in either)
+— the exact "identity A must never mutate/authenticate as identity B"
+property holds because there is no identity parameter to spoof in the
+first place. `change_password` requires `get_current_user` and only
+ever reads/writes the caller's own `password_hash`, then calls
+`bump_perm_version` to revoke other sessions. **VERIFIED.**
+
+### Checked and confirmed NOT a gap (but functionally incomplete) — `app/routes/saml.py`
+
+`POST /auth/saml/acs` validates the SAML response's signature, issuer,
+audience, and assertion cryptographically — but never issues a
+session, JWT, or writes to the database (the `db: Session =
+Depends(get_db)` parameter is declared but unused in the function
+body). There is no privileged effect to authorize because the route
+grants no session at all yet; this is an incomplete SSO
+implementation (a feature-completeness gap), not an authentication
+bypass. **VERIFIED, not exploitable, not fixed (feature completion is
+out of this audit's scope).**
+
+### OAuth2 protocol-conformance notes — documented, not fixed (P2/P3)
+
+Traced but out of this batch's fix scope, per Phase 5's "do not
+redesign authentication protocols" instruction:
+
+- **`GET /oauth2/authorize` has no explicit user-consent screen** — it
+  issues an authorization code bound to `current_user.id` immediately.
+  Not a proven IDOR (no client-supplied identity is ever used — the
+  code is always bound to whoever is currently authenticated), but a
+  deviation from typical OAuth2 UX/security practice. P3.
+- **`POST /oauth2/introspect` and `POST /oauth2/revoke` require no
+  client authentication** — a deviation from RFC 7662's convention
+  that introspection/revocation endpoints authenticate the caller.
+  Not practically exploitable without already possessing the real
+  token value (the lookup key is `hash_token(data.token)`, not a
+  guessable identifier), so this is a protocol-conformance hardening
+  note, not a proven vulnerability. P3.
+- **`_handle_refresh_token_grant`'s `user_id`/`client_id` come from
+  the refresh token's own server-signed JWT payload** (verified via
+  `decode_oauth2_refresh_token` → `decode_access_token`, which
+  validates the signature and raises `JWTError` on tamper) — **checked
+  and confirmed NOT an IDOR risk.**
+
+## Summary
+
+| ID | Severity | Status |
+|---|---|---|
+| `adaptive-auth-account-id-idor` | P1 | BLOCKED — NEEDS_DECISION (carried forward) |
+| federation self-service session routes | — | VERIFIED (checked prior pass, not a gap) |
+| Platform Authority grant/revoke | — | NOT IMPLEMENTED (by design, not a gap) |
+| `lifecycle-platform-no-auth` | P0 | **CLOSED** (Batch 2 — fixed, proven, tested) |
+| `billing-settlement-no-lock` | P2 | DOCUMENTED (Batch 2), not fixed |
+| `billing-idempotency-key-unhandled-race` | P3 | DOCUMENTED (Batch 2), not fixed |
+| `pilot_platform` router auth | — | RE-VERIFIED (Batch 2), still in place |
+| `services/mpi/api.py` | — | VERIFIED (Batch 2), not a gap |
+| `capabilities/fhir_interoperability` | — | VERIFIED (Batch 2), not a gap |
+| `consent` | — | VERIFIED (Batch 3), not a gap |
+| `patient_card` | — | VERIFIED (Batch 3), not a gap |
+| `canonical_patient` (MPI) | — | VERIFIED (Batch 3), prior fix re-confirmed |
+| `service_accounts` | — | VERIFIED (Batch 3), new test evidence added |
+| `mfa` | — | VERIFIED (Batch 3), not a gap |
+| `hospital-facility-no-role-check` | P1 | **CLOSED** (Batch 4 — fixed, proven, tested) |
+| `hospital-get-entity-boolean-bug` | P1 | **CLOSED** (Batch 4 — fixed, proven, tested) |
+| `hospital-missing-commit` | P1 | **CLOSED** (Batch 4 — fixed, proven, tested) |
+| `oauth2-register-no-role-check` | P1 | **CLOSED** (Batch 4 — fixed, proven, tested) |
+| `not`-vs-`~` boolean-filter (radiology/pharmacy/admin) | P1 | DOCUMENTED (Batch 4), not fixed |
+| `password_reset` | — | VERIFIED (Batch 4), not a gap |
+| `saml` ACS | — | VERIFIED (Batch 4), not exploitable, functionally incomplete |
+| oauth2 `/authorize` no consent screen | P3 | DOCUMENTED (Batch 4), not fixed |
+| oauth2 `/introspect`, `/revoke` no client auth | P3 | DOCUMENTED (Batch 4), not fixed |
+
+**Batch 4 found and closed 4 real P1 findings** (1 authorization gap
+with patient-safety impact, 1 data-integrity bug, 1 transaction-
+integrity bug affecting silent data loss, 1 security-configuration
+authorization gap) — the most severe single batch this program has
+run since the lifecycle_platform P0. This reflects the 2 domains
+actually traced in depth this batch (Hospital fully, OAuth2's
+highest-risk route), not a claim that the remaining UNKNOWN-bucket
+routers are gap-free.

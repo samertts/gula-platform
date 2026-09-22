@@ -96,6 +96,19 @@ production code changed this batch** — one new test file
 (`backend/tests/test_service_accounts_authz.py`) closing an evidence
 gap identified during tracing.
 
+### Batch 4 additions (this pass — combined Hospital + auth-adjacent, 24 mutating routes traced, 3 real findings closed)
+
+| Domain | Live mutating routes | Findings | Status |
+|---|---|---|---|
+| Hospital (`app/routes/hospital.py`) | 23 (4 already gated from a prior pass: `create_hospital`/`update_hospital`/`deactivate_hospital`/`create_campus`; 19 newly traced this batch) | **P0/P1 #1 (authorization)**: 19 of 23 mutating routes had zero role check beyond bare authentication — facility/administrative creates (buildings/floors/departments/clinics/rooms/beds/units/OTs/equipment/cost-centers) and, critically, clinical patient-safety operations (bed assign/discharge/transfer, OT status change, surgical safety checklist completion) were reachable by any authenticated LabUser of any role. **P1 #2 (data-integrity, found while building the fix's test harness)**: `HospitalService._get_entity`'s `not model.is_deleted` is a Python `not` applied to the column attribute itself (evaluates to a literal `False` at query-build time — confirmed directly), so every nested-entity lookup through it unconditionally matched zero rows; this is a shared helper used by 17 call sites across ~10 routes. **P1 #3 (transaction integrity, found while proving #2's fix)**: 18 of Hospital's mutating routes never called `db.commit()` anywhere (not the route, not the service, not `log_action`) — `get_db()` uses `autocommit=False` and only rolls back on exception, so every one of these routes returned a 200/201 showing an apparently-created/updated record that was never durably persisted; proven with two genuinely independent DB sessions against a real file-backed SQLite DB (the shared-session `client` test fixture masks this entirely). | **All three CLOSED**: role gates added (reusing this session's `_HOSPITAL_ADMIN_ROLES`/NHDW's `_NHDW_ADMISSION_WRITE_ROLES` conventions, no new role vocabulary); `_get_entity` fixed (`~model.is_deleted`); `db.commit()` added to all 18 affected routes. Full FIND→REPRODUCE→FIX→NEGATIVE PROOF→REGRESSION cycle for all three, `git stash`/`pop` md5-verified. 25 + 3 new tests, 209 total regression tests re-run, all green. |
+| OAuth2 (`app/routes/oauth2.py`) | 1 selected (`POST /oauth2/register`; the rest of the OAuth2 surface traced but not fixed — see notes below) | `OAuth2Client` is a platform-global registry (no lab_id/tenant column on the model at all, by design). `register_client` had only `get_current_user` — any authenticated LabUser of any role could register a client with attacker-chosen `redirect_uris`, which then receives real users' access/refresh/id tokens the moment any user completes `/authorize` against it. | **CLOSED**: role-gated with the same `{admin, master_admin}` convention used elsewhere this session (`service_accounts.py`, Hospital). 3 new tests, full negative-proof cycle. |
+| Password Reset (`app/routes/password_reset.py`) | 3 (`forgot-password`, `reset-password`, `change-password`) | All correctly scoped: `forgot`/`reset` derive identity solely from the token (anti-enumeration response, no client-supplied user id anywhere); `change-password` requires `get_current_user` and only ever mutates the caller's own row, then bumps `perm_version` to revoke other sessions. | **VERIFIED, no gap.** |
+| SAML (`app/routes/saml.py`) | 1 mutating-shaped route (`POST /auth/saml/acs`) | Validates signature/issuer/audience/assertion cryptographically but **never issues a session, JWT, or writes to the DB** — the `db` parameter is declared but unused. Not a live authentication bypass because it grants no privileged effect; it is an incomplete SSO implementation (a functional gap, not a security gap). | **VERIFIED, not exploitable — documented as functionally incomplete, not fixed (feature completion is out of this audit's scope).** |
+
+**Batch 4 subtotal: 24 mutating routes traced, 3 real findings, all closed with full proof rigor.** OAuth2's other routes (`/authorize`, `/token`, `/introspect`, `/revoke`, and their helper grant handlers) were read and traced but not included in the 24-route count above since they were not independently re-proven this pass; notes: `/authorize` issues an auth code bound to `current_user.id` only (no client-supplied identity, but also no explicit consent screen — a UX/protocol-completeness observation, not a proven IDOR); `/introspect` and `/revoke` require no client authentication (a deviation from RFC 7662 convention) but are not practically exploitable without already possessing the real token value. Both documented as P2/P3-level hardening notes in the gap register, not fixed (Phase 5's "do not redesign authentication protocols" instruction).
+
+**Systemic pattern discovered, not fixed this batch**: the exact `not model.is_deleted` (Python `not` instead of SQLAlchemy `~`) bug recurs at 5 more call sites outside Hospital — `app/radiology/pacs.py:365,375,388` and `app/pharmacy/routes.py:504` and `app/routes/admin.py:257` — all confirmed by direct grep + a standalone SQLAlchemy behavior check (`.filter(False)` compiles to `WHERE 0=1`, always zero rows). Out of this batch's bounded scope (different, unaudited domains); registered in the gap register and repair queue as the next concrete, cheap, high-confidence fix candidate.
+
 ## Axis 3 — NIAM Organization RBAC (`AuthorizationDecisionService`)
 
 Closed this session, prior continuation (NIAM sync/async closure,
@@ -124,20 +137,21 @@ existing evidence.
 ## Phase 8 — Live mutation coverage summary
 
 ```
-TOTAL LIVE MUTATING ROUTES WITH INDIVIDUALLY-VERIFIED EVIDENCE (cumulative through Batch 3)
+TOTAL LIVE MUTATING ROUTES WITH INDIVIDUALLY-VERIFIED EVIDENCE (cumulative through Batch 4)
 ----------------------------------------------------------------------------
 ~186 (legacy axis) + 51 (Platform Authority call sites, 4 domains) + 135
 (NIAM organization RBAC, prior continuation) + 23 (Batch 2: billing,
 lifecycle_platform, pilot_platform, mpi, fhir_interoperability) + 17
 (Batch 3: consent, patient_card, canonical_patient, service_accounts,
-mfa) = ~412
+mfa) + 24 (Batch 4: Hospital 23, oauth2 register 1) = ~436
 
 WITH EXPLICIT AUTHORIZATION
 ---------------------------
-~412 (all of the above — none of these routes were found unguarded at
-the end of their respective passes; lifecycle_platform's 7 routes had
-ZERO authorization until Batch 2's fix — see gap register GAP-2 — and
-are counted here only post-fix)
+~436 (all of the above — none of these routes were found unguarded at
+the end of their respective passes; lifecycle_platform's 7 routes
+(Batch 2) and Hospital's 19 routes + oauth2's register route (Batch 4)
+had ZERO authorization until their respective fixes this session — see
+gap register GAP-2/GAP-5/GAP-8 — and are counted here only post-fix)
 
 WITH TENANT ISOLATION
 ---------------------
@@ -209,8 +223,11 @@ FULLY VERIFIED
 Platform Authority certificates cluster (8 routes, 64 tests, re-run
 green this pass) + the 6 CAS-fixed domains' specific fixed routes (6
 routes) + lifecycle_platform's `register_component` (Batch 2's P0 fix,
-full cycle) = 15 routes with the complete FIND→TRACE→PROVE→FIX→
-NEGATIVE PROOF→REGRESSION lifecycle demonstrably closed.
+full cycle) + Hospital's 19 role-gated routes, `_get_entity`'s fix (17
+call sites), and 18 commit-fixed routes (Batch 4, three findings each
+with a complete FIND→TRACE→REPRODUCE→FIX→NEGATIVE PROOF→REGRESSION
+cycle) + oauth2's `register_client` (Batch 4) = 44 routes with the
+complete lifecycle demonstrably closed.
 
 PARTIALLY VERIFIED
 ------------------
@@ -218,21 +235,34 @@ PARTIALLY VERIFIED
 session or a prior one, but was not independently re-proven inside
 *that specific bounded pass* with the full negative-proof cycle;
 includes lifecycle_platform's other 6 routes, all of billing/
-pilot_platform/mpi/fhir_interoperability's routes, and Batch 3's 17
+pilot_platform/mpi/fhir_interoperability's routes, Batch 3's 17
+routes, Hospital's 4 already-gated routes, and password_reset/saml's 4
 routes — VERIFIED via direct code read + existing/new test evidence,
 not a from-scratch negative-proof cycle per route)
 
 AUTHORIZATION GAP
 -----------------
-0 remaining open authorization gaps found through Batch 3. One P0 was
-found (`lifecycle-platform-no-auth`, Batch 2, zero auth on 7 mutating
-routes) and CLOSED within that same batch (fixed, proven,
-negative-proofed, tested, zero regressions). Batch 3 found 0 new
-findings of any severity. See docs/security/AUTHORIZATION_GAP_REGISTER.md
-for full evidence, plus the one item carried forward from a prior
-pass — `adaptive-auth-account-id-idor`, still NEEDS_DECISION, not
-newly discovered — and two non-authorization concurrency findings in
-billing (P2/P3, documented not fixed, Batch 2, out of bounded scope).
+0 remaining open authorization gaps found through Batch 4. Found and
+CLOSED this session: `lifecycle-platform-no-auth` (P0, Batch 2, zero
+auth on 7 mutating routes); `hospital-facility-no-role-check` (P1,
+Batch 4, zero role check on 19 mutating routes including clinical
+patient-safety operations — bed assign/discharge/transfer, OT status,
+surgical safety checklist); `oauth2-register-no-role-check` (P1, Batch
+4, zero role check on platform-global OAuth2 client registration).
+Also closed this batch, non-authorization but P1 severity:
+`hospital-get-entity-boolean-bug` (a Python `not` vs SQLAlchemy `~`
+typo made 17 nested-entity lookup call sites always return "not
+found") and `hospital-missing-commit` (18 routes never called
+`db.commit()` anywhere, so writes were never durably persisted despite
+a 200/201 response — proven with two genuinely independent DB
+sessions). See docs/security/AUTHORIZATION_GAP_REGISTER.md for full
+evidence, plus the one item carried forward from a prior pass —
+`adaptive-auth-account-id-idor`, still NEEDS_DECISION, not newly
+discovered — non-authorization concurrency findings in billing (P2/P3,
+documented not fixed, Batch 2), and a newly-registered systemic
+`not`-vs-`~` boolean-filter pattern (5 more occurrences in
+radiology/pharmacy/admin, documented not fixed, Batch 4, out of
+bounded scope).
 
 BLOCKED
 -------
@@ -243,51 +273,58 @@ authorize)
 
 UNKNOWN
 -------
-The remaining ~68 of the 89 mounted routers not named above (the
-schema-latent 7, the `NO-OWNED-MODELS` bucket minus Batch 3's 5 newly
-resolved routers, `national`'s 11 routers, `governance`'s 1 router, and
-every router no pass has vertical-slice-audited) — their route-level
+The remaining ~64 of the 89 mounted routers not named above (the
+schema-latent 7, the `NO-OWNED-MODELS` bucket minus Batch 3's 5 and
+Batch 4's 4 (hospital, password_reset, oauth2, saml) newly resolved
+routers, `national`'s 11 routers, `governance`'s 1 router, and every
+router no pass has vertical-slice-audited) — their route-level
 authorization mechanism was NOT traced. Recorded as UNKNOWN, not
 silently assumed either safe or unsafe. (Was ~78 before Batch 2, ~73
-before Batch 3, now ~68 — derived from the actual mounted router graph
-in `app/factory.py`, re-confirmed at 89 routers this pass, not by
-blindly subtracting 5.)
+before Batch 3, ~68 before Batch 4, now ~64 — derived from the actual
+mounted router graph in `app/factory.py`, re-confirmed at 89 routers
+this pass, not by blindly subtracting 4.)
 ```
 
 ## Scope and honesty note
 
 This matrix consolidates **real, already-gathered evidence** across
-multiple bounded passes, most recently Batch 3 (consent, patient_card,
+multiple bounded passes, most recently Batch 4 (combined Hospital +
+password_reset/oauth2/saml — 24 mutating routes traced, 3 real
+findings closed: an authorization gap, a data-integrity bug, and a
+transaction-integrity bug) following Batch 3 (consent, patient_card,
 canonical_patient, service_accounts, mfa — 5 domains, 17 mutating
-routes, 0 new findings) following Batch 2 (billing, lifecycle_platform,
+routes, 0 new findings) and Batch 2 (billing, lifecycle_platform,
 pilot_platform, `services/mpi`, `capabilities/fhir_interoperability` —
-5 domains, 23 mutating routes, 1 P0 found and closed with full proof
-rigor). It is not a fresh route-by-route trace of all 89 mounted
-routers — that would be a multi-day undertaking on its own, explicitly
-out of scope for any of these "discovery + proof only, minimum
-resources" bounded passes. The ~68 routers marked UNKNOWN above are the
-honest remainder as of Batch 3 (down from ~78 before Batch 2, ~73
-before Batch 3). **Already-audited domains — do not repeat in the next
-bounded batch**: Platform Authority (certificates/federation/
-trust/governance), Laboratory, Imaging/Radiology, EMS, Nursing, NHDW,
-Payments, Devices, Biomedical, Command Center, Public Health, Blood
-Bank, Critical Care, the 12 NIAM-axis domains (workflows/notifications/
-compliance/admin/adaptive_auth/federation/governance/lifecycle
-sub-services), billing, lifecycle_platform, pilot_platform,
-`services/mpi`, `capabilities/fhir_interoperability`, consent,
-patient_card, canonical_patient, service_accounts, mfa.
+5 domains, 23 mutating routes, 1 P0 found and closed). It is not a
+fresh route-by-route trace of all 89 mounted routers — that would be a
+multi-day undertaking on its own, explicitly out of scope for any of
+these "discovery + proof only, minimum resources" bounded passes. The
+~64 routers marked UNKNOWN above are the honest remainder as of Batch 4
+(down from ~78 before Batch 2, ~73 before Batch 3, ~68 before Batch 4).
+**Already-audited domains — do not repeat in the next bounded batch**:
+Platform Authority (certificates/federation/trust/governance),
+Laboratory, Imaging/Radiology, EMS, Nursing, NHDW, Payments, Devices,
+Biomedical, Command Center, Public Health, Blood Bank, Critical Care,
+the 12 NIAM-axis domains (workflows/notifications/compliance/admin/
+adaptive_auth/federation/governance/lifecycle sub-services), billing,
+lifecycle_platform, pilot_platform, `services/mpi`,
+`capabilities/fhir_interoperability`, consent, patient_card,
+canonical_patient, service_accounts, mfa, **hospital, password_reset,
+oauth2, saml**.
 
 **Next bounded batch candidates (from the `LIVE / NO-OWNED-MODELS`
 bucket in `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`, still
-UNKNOWN after Batch 3)**: `password_reset`, `oauth2`, `saml`
-(authentication-adjacent, similar risk class to `mfa`), `hospital`
-(23 mutating routes — largest single remaining candidate), `edge`
-(14 mutating routes), `ai_fabric` (23 mutating routes), `control_plane`
-(10 mutating routes), `integrations`/`advanced_integrations`,
-`chronic_care`, `certification`, `citizen_platform`, `contracts`,
-`ai_telemetry`, `hospital`/`kernel`/`clinical_gateway`, and the generic
-`routes/` package's remaining untraced files (`claims`, `ai`,
-`optimizer`, `stats`, `user_preferences`, `national_data`,
-`national_streaming`, `care_continuum`, `clinical*`). Each still needs
-its own "what does this router actually persist, and where" check
-before being called LIVE with confidence.
+UNKNOWN after Batch 4)**: `edge` (14 mutating routes), `ai_fabric`
+(23 mutating routes), `control_plane` (10 mutating routes),
+`integrations`/`advanced_integrations`, `chronic_care`,
+`certification`, `citizen_platform`, `contracts`, `ai_telemetry`,
+`kernel`/`clinical_gateway`, and the generic `routes/` package's
+remaining untraced files (`claims`, `ai`, `optimizer`, `stats`,
+`user_preferences`, `national_data`, `national_streaming`,
+`care_continuum`, `clinical*`). Each still needs its own "what does
+this router actually persist, and where" check before being called
+LIVE with confidence. **Also a strong non-domain candidate**: fix the
+5 remaining `not`-vs-`~` boolean-filter bugs registered this batch
+(`app/radiology/pacs.py:365,375,388`, `app/pharmacy/routes.py:504`,
+`app/routes/admin.py:257`) — small, cheap, high-confidence, same
+one-line fix already proven safe in `hospital_service.py` this batch.

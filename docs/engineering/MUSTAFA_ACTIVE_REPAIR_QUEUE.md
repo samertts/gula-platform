@@ -432,3 +432,126 @@ next-batch candidates (`password_reset`, `oauth2`, `saml`, `hospital`,
 `edge`, `ai_fabric`, `control_plane`, and others).
 
 | Commit: `(pending)` | Owner: Mustafa | Files: `backend/tests/test_service_accounts_authz.py`, `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`, `docs/security/AUTHORIZATION_GAP_REGISTER.md`, `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`, `docs/security/FINAL_ENGINEERING_CLOSURE_REPORT.md` | Next action: next bounded batch should pick ≤5 more domains from the ~68 remaining UNKNOWN routers — strong candidates named in the coverage matrix's honesty note are the authentication-adjacent trio (`password_reset`/`oauth2`/`saml`, similar risk class to this batch's `mfa`) and/or `hospital` (23 mutating routes, largest single remaining candidate, would need its own bounded batch given the 35-route cap). Do not repeat any of the now ~20 audited domains. |
+
+## Phase 14 — Accelerated Security & Authorization Closure Batch 4: Hospital vertical slice completion (3 real P1s), OAuth2 register gap closed
+
+Combined bounded pass (authorization + transaction integrity +
+idempotency + concurrency triage in one discovery sweep, per this
+batch's own "accelerated" directive). Re-baselined first: `git
+rev-parse HEAD` = `9680130c`, clean tree, 89 mounted routers
+re-confirmed.
+
+**Primary domain: Hospital** (`app/routes/hospital.py`, 23 mutating
+routes total — 4 already gated from a prior session pass, 19 newly
+traced this batch). **Three real, independent P1 findings, all closed
+with full FIND→TRACE→REPRODUCE→FIX→NEGATIVE PROOF→REGRESSION
+evidence:**
+
+1. **`hospital-facility-no-role-check`** — 19 of 23 mutating routes had
+   zero role check beyond bare authentication, including clinical
+   patient-safety operations (bed assign/discharge/transfer, OT status
+   change, surgical safety checklist completion — a WHO-mandated
+   attestation). A prior session's own test file
+   (`test_hospital_update_security.py`) explicitly documented this as
+   deliberately deferred ("the entire hospital.py route surface still
+   has no role gates beyond these four"). Fixed by reusing this
+   file's own existing `_HOSPITAL_ADMIN_ROLES` convention for facility
+   structure and NHDW/Nursing's existing clinical-write role
+   convention (`{admin, master_admin, doctor, nurse}`) for clinical
+   operations — no new role vocabulary. 25 new tests
+   (`backend/tests/test_hospital_role_gate_completion.py`).
+
+2. **`hospital-get-entity-boolean-bug`** (discovered while building
+   #1's test fixtures) — `HospitalService._get_entity`'s
+   `not model.is_deleted` is Python's `not` applied to the column
+   attribute itself, evaluating to the literal `False` at
+   query-build time (`bool(Model.column)` is always `True` by
+   default), so this shared helper (17 call sites across ~10 routes)
+   unconditionally matched zero rows. Fixed: `~model.is_deleted`.
+   **The identical bug shape recurs at 5 more sites outside Hospital**
+   (`app/radiology/pacs.py:365,375,388`, `app/pharmacy/routes.py:504`,
+   `app/routes/admin.py:257`) — registered in
+   `docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md` as Pattern
+   2, not fixed (different, unaudited domains, out of this batch's
+   bound).
+
+3. **`hospital-missing-commit`** (discovered while proving #2's fix) —
+   18 of Hospital's mutating routes (everything except the 5
+   `ClinicalCommandGuard`-based ones) never called `db.commit()`
+   anywhere. `get_db()` uses `autocommit=False` and only rolls back on
+   exception; SQLAlchemy's default `Session.close()` discards a
+   pending transaction. Every affected route returned a 200/201
+   showing an apparently-created/updated record that was **never
+   durably persisted**. Invisible to every pre-existing Hospital test
+   because `tests/conftest.py`'s `client` fixture shares one session
+   across all requests in a test (masks any missing commit
+   completely). Proven with a standalone two-independent-session
+   script against a real file-backed SQLite DB: `POST /hospital/` →
+   `201`; the very next request, `POST /hospital/1/departments` → 404
+   "Hospital not found" (pre-fix); → `201` (post-fix); a third,
+   independent session confirmed durable persistence only post-fix.
+   Fixed: `db.commit()` added to all 18 routes, matching the pattern
+   already used by the file's own `_run_hospital_command` helper. 3
+   new tests using a genuine two-session fixture (not the masking
+   shared-session client) —
+   `backend/tests/test_hospital_durable_commit.py`.
+
+**Schema note** (re-confirmed, not new): 13 of Hospital's 14 tables
+have zero Alembic migration; the 14th's own migration is itself
+already-documented as blocked in the chain (missing
+`hospital_operation_theaters` FK target). Hospital is SCHEMA-BLOCKED
+on a real Postgres deployment — these three fixes are real, correct,
+and proven via this repo's own SQLite test harness, but none of the
+23 routes are currently reachable on a genuine migration-driven
+deployment. Not fabricated or worked around; documented precisely in
+`docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`.
+
+**Secondary domain: OAuth2 + auth-adjacent** (`app/routes/oauth2.py`,
+`password_reset.py`, `saml.py`):
+
+- **`oauth2-register-no-role-check`** (P1, CLOSED) — `OAuth2Client` is
+  a platform-global registry (no tenant column at all, by design).
+  `POST /oauth2/register` had only `get_current_user`: any
+  authenticated user of any role could register a client with
+  attacker-chosen `redirect_uris`. Fixed with `{admin, master_admin}`,
+  matching `service_accounts.py`/Hospital's convention. 3 new tests
+  (`backend/tests/test_oauth2_register_authz.py`).
+- `password_reset.py` — VERIFIED, no gap (identity derived solely
+  from the reset token; `change_password` self-scoped +
+  perm_version bump).
+- `saml.py`'s `/acs` — VERIFIED not exploitable; reclassified as
+  functionally incomplete (validates the SAML assertion
+  cryptographically but issues no session/JWT/DB write at all — the
+  `db` param is unused).
+- Two P3 protocol-conformance notes on OAuth2 documented, not fixed
+  (no consent screen on `/authorize`; no client auth on
+  `/introspect`/`/revoke`) — see gap register.
+
+**Verification**: 209 tests re-run across all affected + adjacent
+files (Hospital's own suites, oauth2/auth infrastructure,
+security/tenant-isolation/rbac/feature-flags), 0 failures. Every one
+of the 4 real findings individually negative-proofed via `git
+stash`/`git stash pop` with md5-verified byte-identical restoration.
+
+**Documentation updated** (append/reconcile): `docs/security/
+AUTHORIZATION_COVERAGE_MATRIX.md` (Batch 4 section, totals ~412→~436,
+UNKNOWN ~68→~64), `docs/security/AUTHORIZATION_GAP_REGISTER.md`
+(GAP-5/6/7/8 + password_reset/saml/oauth2-notes entries),
+`docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md` (2 new
+pattern sections), `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`
+(hospital reclassified, password_reset/oauth2/saml resolved),
+`docs/architecture/PRODUCTION_READINESS_DELTA.md` (addendum, scoped
+evidence only).
+
+STATUS: **4 real P1 findings found and CLOSED this batch** (1
+authorization gap with patient-safety impact, 1 data-integrity bug, 1
+transaction-integrity/silent-data-loss bug, 1 security-configuration
+authorization gap) — proven, fixed, negative-proofed, regression-
+tested, zero collateral regressions. This is the most severe single
+batch this program has run since the original `lifecycle-platform-
+no-auth` P0. **Not claimed**: "authorization complete," "all routes
+protected," or "production ready" — ~64 of 89 mounted routers remain
+UNKNOWN, Hospital remains schema-blocked for real deployment, and 5
+more instances of the boolean-filter bug remain open in other domains.
+
+| Commit: `(pending)` | Owner: Mustafa | Files: `app/routes/hospital.py`, `app/services/hospital_service.py`, `app/routes/oauth2.py`, 3 new test files, 6 docs | Next action: fix the 5 remaining `not`-vs-`~` boolean-filter sites (`app/radiology/pacs.py`, `app/pharmacy/routes.py`, `app/routes/admin.py` — same one-line fix already proven safe here) as a small, cheap, high-confidence follow-up; or continue the authorization inventory into `edge`/`ai_fabric`/`control_plane` from the ~64 remaining UNKNOWN routers. |

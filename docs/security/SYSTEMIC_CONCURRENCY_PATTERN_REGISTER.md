@@ -94,3 +94,84 @@ yet had a vertical-slice audit (`insurance`'s live routes are
 schema-latent so excluded; `national`/`governance` likewise) should be
 checked for this exact shape as the first, cheapest concurrency check
 before any deeper audit.
+
+## Pattern 2 (new, this pass): "Python `not` applied to a SQLAlchemy column instead of `~`"
+
+**Not a concurrency defect** (recorded here per this batch's own
+documentation-update instructions, since this file is the established
+place this session registers "same shape found 3+ times" defects; a
+correctness-pattern register would be the more precise home if one
+existed).
+
+**Shape**: `.filter(Model.id == x, Model.lab_id == y, not Model.is_deleted)`
+(or `is_revoked`/`is_active`). Python evaluates `not <InstrumentedAttribute>`
+immediately at query-*construction* time, not at SQL-execution time — a
+bare column attribute has no special `__bool__` override, so `bool(Model.column)`
+is always `True` (default object truthiness) and `not Model.column` is
+always the literal Python `False`. Confirmed directly:
+```python
+>>> bool(Foo.is_deleted)
+True
+>>> not Foo.is_deleted
+False
+```
+and confirmed that `.filter(False)` compiles to `WHERE 0 = 1` — the
+query unconditionally matches **zero rows**, regardless of what data
+actually exists. The correct SQLAlchemy idiom is `~Model.is_deleted`
+(the library's boolean-NOT operator on a column expression), which
+already appears dozens of times correctly elsewhere in this same
+codebase — this is a same-file typo/inconsistency, not a
+misunderstanding of the ORM.
+
+**Confirmed in 4 domains this session** (this pass):
+
+| Domain | Site | Fixed this pass? |
+|---|---|---|
+| `app/services/hospital_service.py:152` (`_get_entity`, shared by 17 call sites) | `not model.is_deleted` | **Yes** — `~model.is_deleted`, proven via real HTTP two-request reproduction/fix, negative-proofed |
+| `app/radiology/pacs.py:365,375,388` | `not ImageShare.is_revoked` (3 call sites, 2 methods) | No — different, unaudited domain, out of this batch's bound |
+| `app/pharmacy/routes.py:504` | `not model.is_deleted` | No — different, unaudited domain, out of this batch's bound |
+| `app/routes/admin.py:257` | `not Lab.is_active` | No — different, unaudited domain, out of this batch's bound |
+
+**Impact class**: every affected query call always returns "not found" /
+empty, regardless of real data — the opposite failure mode from most
+security bugs (fails closed, not open), so this reads as an
+availability/correctness bug rather than an authorization bypass. In
+Hospital's case specifically, it silently broke 10+ routes' nested-entity
+lookups (campus/building/department/room/bed/OT/equipment) until fixed
+this pass.
+
+**Not built this pass**: a repo-wide AST-based detector (matching the
+`scripts/setattr_mass_assignment_guard.py`/`scripts/log_action_arg_order_guard.py`
+convention already established for other systemic patterns this
+session). The 3 remaining known sites above are a small, bounded,
+next-batch candidate — grep for `not [A-Za-z_.]+\.is_(deleted|revoked|active)\b`
+inside a `.filter(` call finds all of them; a proper detector would need
+to handle multi-line `.filter(...)` calls and avoid false positives on
+legitimate value-assignment negation (e.g. `lab.is_active = not
+lab.is_active`, confirmed NOT a bug — it's a plain Python boolean
+toggle, not a query filter).
+
+## Pattern 3 (new, this pass, Hospital-specific so far — not yet confirmed systemic): "route/service never calls `db.commit()`"
+
+**Shape**: a route calls a service method that does
+`db.add(...)`/`db.flush()` (or a route does its own `setattr` loop +
+`db.flush()`) and returns a success response, but neither the route nor
+the service ever calls `db.commit()`. Since `get_db()`
+(`app/database.py`) uses `sessionmaker(autocommit=False, ...)` and only
+rolls back on exception, the transaction is implicitly discarded when
+the request-scoped session closes — the caller sees a 200/201 with
+what looks like a persisted record, but the very next request (a fresh
+session, matching real production behavior) cannot find it.
+
+**Confirmed in 1 domain so far this session** (Hospital, 18 routes —
+see GAP-7 in `docs/security/AUTHORIZATION_GAP_REGISTER.md` for full
+proof). Below this register's own normal 3-domain naming threshold, so
+this is recorded as a single-domain finding to watch for, not yet
+promoted to a named cross-domain pattern. **Worth checking manually**
+in any future domain audit: does every route that mutates state via a
+service method calling only `db.add()`/`db.flush()` have an explicit
+`db.commit()` somewhere in its call path? This repo's own shared-session
+test-client fixture (`tests/conftest.py`'s `client`) masks this defect
+shape completely (see GAP-7's "why this was invisible" note) — a
+domain's tests all passing is not evidence this pattern is absent
+there.

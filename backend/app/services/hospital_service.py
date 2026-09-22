@@ -149,7 +149,13 @@ class HospitalService:
 
     @staticmethod
     def _get_entity(db: Session, model, entity_id: int, lab_id: int, parent_filter=None):
-        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, not model.is_deleted)
+        # `not model.is_deleted` (the prior form here) is a Python `not` applied to the
+        # InstrumentedAttribute itself, not a SQL NOT -- it evaluates to the literal
+        # `False` at query-build time (confirmed directly: `bool(Model.col)` is always
+        # truthy), so every call through this helper unconditionally filtered on a
+        # false literal and never matched any row. `~` is SQLAlchemy's boolean-NOT
+        # operator, matching every other is_deleted filter already in this file.
+        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, ~model.is_deleted)
         if parent_filter is not None:
             q = q.filter(parent_filter)
         entity = q.first()

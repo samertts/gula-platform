@@ -64,3 +64,26 @@ category-F occurrences) and the unrelated pre-existing
 `pharmacy_drug_substitution_rules` migration defect. **Overall
 classification: NOT Production Ready — PARTIALLY VERIFIED, with a
 precise, evidenced list of what remains.**
+
+---
+
+## Addendum — Authorization Coverage Batch 4 (Accelerated Security & Authorization Closure)
+
+This addendum reflects **only** the evidence this specific batch
+produced (Hospital + password_reset/oauth2/saml, 24 mutating routes
+traced). It does not upgrade any category system-wide.
+
+| Category | Delta from prior state |
+|---|---|
+| Authorization | Hospital's 19 previously-ungated mutating routes (including clinical patient-safety operations) now VERIFIED with role gates + real HTTP proof; OAuth2's platform-global client-registration route now VERIFIED with a role gate. Still PARTIALLY VERIFIED overall — ~64 of 89 mounted routers remain UNKNOWN. |
+| Data integrity | One real, proven bug closed: `HospitalService._get_entity`'s `not`-vs-`~` typo (17 call sites unconditionally returned "not found"). 5 more confirmed instances of the identical bug remain open in other domains (radiology, pharmacy, admin) — NOT fixed this batch, registered for a future one. |
+| Transaction integrity | One real, proven bug closed: 18 Hospital routes never called `db.commit()`, silently discarding every write. Proven with two genuinely independent DB sessions (the standard shared-session test client masks this class of bug entirely — worth checking in any future domain audit). Not verified as absent elsewhere; only Hospital was checked this batch. |
+| Idempotency | Hospital's clinical bed/OT operations already use the proven `ClinicalCommandGuard` mechanism (If-Match version CAS + Idempotency-Key claim/complete/reject) — re-confirmed, not newly built. Facility-structure creates were assessed as not requiring idempotency (a duplicate POST creating a duplicate row is an acceptable retry outcome for non-clinical/non-financial master data, per this session's established heuristic) — not independently proven with a concurrency test this batch. |
+| Concurrency | Not the primary focus this batch; Hospital's `update_hospital`/`deactivate_hospital` already use `.with_for_update()` (a prior pass's fix) — the missing-commit bug this batch fixed also means that row lock is now released promptly on commit rather than held until connection close, an incidental concurrency-hygiene improvement. |
+| Schema / deployability | Hospital reconfirmed SCHEMA-BLOCKED on real Postgres (13/14 tables unmigrated; the 14th's own migration is itself chain-blocked) — unchanged blocker, re-verified with exact evidence (grep of every migration file), not newly discovered. |
+
+**No category is claimed VERIFIED at the whole-system level.** Every
+line above is scoped to what this batch actually traced and proved.
+Overall classification unchanged: **NOT Production Ready** — the
+schema-blocked domains, the ~64 UNKNOWN routers, and the carried-
+forward `adaptive-auth-account-id-idor` P1 all remain open.

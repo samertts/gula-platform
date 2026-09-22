@@ -59,6 +59,7 @@ different claims and this map does not conflate them.
 | `nhdw` | 15 | 1 | `nhdw_offline_changes` (offline-sync only; the admission/discharge/transfer journey already audited this session is unaffected) |
 | `nursing` | 15 | 2 | `nursing_checklists`, `nursing_escalations` (the task/assignment journey already audited this session is unaffected) |
 | `radiology` | 18 | 1 | `radiology_ai_jobs` (the report/exam journey already audited this session is unaffected) |
+| `hospital` (Authorization Coverage Batch 4) | 14 | **13** | `hospitals`, `hospital_campuses`, `hospital_buildings`, `hospital_floors`, `hospital_departments`, `hospital_clinics`, `hospital_rooms`, `hospital_beds`, `hospital_units`, `hospital_operation_theaters`, `hospital_medical_equipment`, `hospital_cost_centers`, `bed_assignments` — the 14th, `hospital_surgical_safety_checklists`, nominally has a migration (`20260820_0004_surgical_safety_checklists.py`) but that migration is itself already-documented as blocked in the alembic chain (missing `hospital_operation_theaters` FK target), so in practice **0 of 14 are reachable on a clean sequential migration replay today** — closer in effect to the LIVE/SCHEMA-LATENT domains below than this table's other rows |
 
 **`national` and `governance` are the two largest new findings of this
 pass.** `national` alone backs 11 of the 88 registered routers (rules
@@ -131,9 +132,9 @@ the codebase. Reclassified: **DEAD** (9 of 10 sub-packages) — not
 `clinical_gateway`, `contracts`, `control_plane`, `kernel`,
 `notifications`, `platform`, and the generic `routes/` package (tiers,
 citizen_portal, claims, ai, optimizer, stats, user_preferences,
-password_reset, oauth2, saml, integrations, advanced_integrations,
-edge, care_continuum, ai_telemetry, clinical*, hospital, national_data,
-national_streaming) declare zero `__tablename__` of their own. This
+integrations, advanced_integrations, edge, care_continuum,
+ai_telemetry, clinical*, national_data, national_streaming) declare
+zero `__tablename__` of their own. This
 does **not** mean broken — many of these are legitimately thin
 orchestration/read layers over shared models (`app/models/`,
 `Patient`, `LabUser`, `CanonicalPatient`, etc.) or genuinely stateless
@@ -143,19 +144,65 @@ before it can be called LIVE or LATENT with confidence — not yet
 attempted for the routers still listed here; flagged as the honest
 `UNKNOWN` bucket rather than silently assumed either way.
 
-**Resolved this pass (Authorization Coverage Batch 3) — confirmed
-LIVE, real persistence via shared models, authorization traced and
-VERIFIED**: `canonical_patient` (writes `CanonicalPatient` via
+**Resolved in Authorization Coverage Batch 3** — confirmed LIVE, real
+persistence via shared models, authorization traced and VERIFIED:
+`canonical_patient` (writes `CanonicalPatient` via
 `app/services/mpi/canonical_service.py`), `consent` (writes via
 `app/services/consent_service.py`), `mfa` (writes `MFADevice` via
 `app/security/mfa_service.py`), `service_accounts` (writes
 `ServiceAccount` via `app/security/service_accounts.py`),
 `patient_card` (reads/audits against `Patient`/`AuditLog`; issues
-HMAC tokens, does not own a table itself). See
-`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md` and
+HMAC tokens, does not own a table itself).
+
+**Resolved in Authorization Coverage Batch 4** — confirmed LIVE, real
+persistence, authorization traced:
+- `password_reset` (writes `LabUser.reset_token`/`password_hash`
+  fields directly — no table of its own) — VERIFIED, no gap.
+- `oauth2` (writes `OAuth2Client`/`OAuth2Token`, both real tables —
+  `oauth2_clients`/`oauth2_tokens`) — 1 P1 authorization gap found and
+  closed (`oauth2-register-no-role-check`; see gap register GAP-8).
+- `saml` (reads/validates only; the `db` dependency is declared but
+  unused — the route issues no session/token and writes nothing) —
+  VERIFIED not exploitable, but reclassified as **functionally
+  incomplete**, not a full SSO login flow.
+- **`hospital`** — this domain was previously miscategorized twice:
+  the `ems-domain-discovery` finding (an earlier pass) called it fully
+  LATENT/disqualified on persistence grounds, while a later pass
+  (`log-action-arg-order-hospital-service`) proceeded to fix and test
+  parts of it anyway via the SQLite test harness. Batch 4 resolves the
+  contradiction with hard evidence: **13 of `hospital`'s 14 tables have
+  zero Alembic migration** (`hospitals`, `hospital_campuses`,
+  `hospital_buildings`, `hospital_floors`, `hospital_departments`,
+  `hospital_clinics`, `hospital_rooms`, `hospital_beds`,
+  `hospital_units`, `hospital_operation_theaters`,
+  `hospital_medical_equipment`, `hospital_cost_centers`,
+  `bed_assignments`), and the 14th
+  (`hospital_surgical_safety_checklists`) has a migration that is
+  itself already-documented as blocked in the alembic chain (missing
+  `hospital_operation_theaters` FK target,
+  `20260820_0004_surgical_safety_checklists.py`). **Correct
+  classification: LIVE / SCHEMA-BLOCKED** — every one of `hospital`'s
+  23 mutating routes will 500 with `UndefinedTable` on a real,
+  migration-driven Postgres deployment today, identical in kind to the
+  7 already-documented schema-latent domains above (not a security
+  defect — nothing is exploitable against a table that cannot be
+  written to). It remains fully code-reachable and testable via this
+  repo's own SQLite test harness (`HospitalBase.metadata` is created
+  via `metadata.create_all()` in `conftest.py`, independent of
+  Alembic) — the same harness the pre-existing Hospital tests already
+  use, and the one Batch 4 used to find and close 3 real P1s (an
+  authorization gap on 19 routes, a data-integrity bug in a shared
+  entity-lookup helper, and a transaction-integrity bug where 18
+  routes never committed their writes). See
+  `docs/security/AUTHORIZATION_GAP_REGISTER.md` GAP-5/6/7 for full
+  evidence. **Excluded from the "next vertical slice" candidate pool**
+  going forward, matching this map's own stated policy for
+  schema-latent domains, until a human-approved migration lands.
+
+See `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md` and
 `docs/security/AUTHORIZATION_GAP_REGISTER.md` for the full
-route-level evidence. Removed from this bucket's "not yet confirmed"
-list above.
+route-level evidence on all of the above. Removed from this bucket's
+"not yet confirmed" list above.
 
 ## What this map does NOT claim
 
