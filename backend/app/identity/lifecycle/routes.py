@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -15,11 +16,52 @@ from app.identity.lifecycle.services import (
     GuardianService,
     WorkforceService,
 )
+from app.identity.models.identity import IdentityRecord
 from app.identity.niam_async_db import get_niam_db
 from app.identity.platform_authority.authorization import require_platform_capability
 from app.identity.platform_authority.models import PlatformCapability
 
 router = APIRouter(prefix="/lifecycle", tags=["NIAM Lifecycle"])
+
+
+_NO_ADMIN_AUTHORITY_AVAILABLE = (
+    "This operation requires an administrative authority that does not "
+    "yet exist in NIAM's Platform Authority model (federation_manage/"
+    "trust_manage/certificates_manage/governance_manage are all "
+    "platform-administrative concepts unrelated to this operation's "
+    "actual semantics). Rather than invent a new permission unilaterally, "
+    "this fails closed until a real authority is designed and reviewed."
+)
+
+
+def _require_admin_authority_unavailable() -> None:
+    """Fails closed for lifecycle mutations that are genuinely
+    administrative (require a real-world authority -- a court order, an
+    HR department, a licensing body -- the platform doesn't yet model)
+    and for which none of the 4 existing PlatformCapability values
+    semantically fit. Matches the established
+    _POLICY_AUTHORITY_UNAVAILABLE precedent in
+    app.identity.adaptive_auth.routes."""
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_NO_ADMIN_AUTHORITY_AVAILABLE)
+
+
+async def _resolve_actor_person_id(db: AsyncSession, actor: NiamActor) -> str | None:
+    """Resolves the Person this NIAM actor's account represents, via
+    Account.identity_id -> IdentityRecord.person_id. Used for
+    self-ownership checks on lifecycle resources keyed by person_id
+    rather than account_id directly (unlike adaptive_auth, where
+    account_id IS actor.account.id)."""
+    return await db.scalar(
+        select(IdentityRecord.person_id).where(IdentityRecord.id == actor.account.identity_id),
+    )
+
+
+def _require_self_person(actor_person_id: str | None, target_person_id: str) -> None:
+    if actor_person_id is None or actor_person_id != target_person_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot act on another person's lifecycle record.",
+        )
 
 # ──────────────────────────────────────────────
 #  Enterprise Registration
@@ -503,8 +545,17 @@ async def create_guardianship(
     dependent_person_id: str,
     relationship: str,
     guardian_type: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A (self-owned): the caller asserts *themselves* as the
+    # guardian of another person (e.g. a parent registering a claim over
+    # their child) -- guardian_person_id must be the caller's own person.
+    # This is a claim, not yet an authority-confirmed fact: see
+    # verify_guardianship below, which is the administrative step and
+    # fails closed until a real verifying authority exists.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, guardian_person_id)
     svc = GuardianService(db)
     guardian = await svc.create_guardianship(
         guardian_id=guardian_id,
@@ -512,15 +563,21 @@ async def create_guardianship(
         dependent_person_id=dependent_person_id,
         relationship=relationship,
         guardian_type=guardian_type,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"guardian_id": guardian.guardian_id}
 
 
 @router.get("/guardians/dependents/{guardian_person_id}")
 async def get_dependents(
     guardian_person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a guardian may only list their own dependents.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, guardian_person_id)
     svc = GuardianService(db)
     dependents = await svc.get_dependents(guardian_person_id)
     return {"dependents": [d.to_dict() for d in dependents]}
@@ -529,8 +586,13 @@ async def get_dependents(
 @router.get("/guardians/guardians/{dependent_person_id}")
 async def get_guardians(
     dependent_person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a dependent (or their own record) may only list their
+    # own guardians.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, dependent_person_id)
     svc = GuardianService(db)
     guardians = await svc.get_guardians(dependent_person_id)
     return {"guardians": [g.to_dict() for g in guardians]}
@@ -540,10 +602,18 @@ async def get_guardians(
 async def terminate_guardianship(
     guardian_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: only the guardian of record may renounce their own
+    # guardianship. Pre-fetch to check ownership before mutating.
     svc = GuardianService(db)
-    guardian = await svc.terminate_guardianship(guardian_id, reason)
+    existing = await svc.get_guardian(guardian_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.guardian_person_id)
+    guardian = await svc.terminate_guardianship(guardian_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"guardian_id": guardian.guardian_id, "status": guardian.status}
 
 
@@ -551,10 +621,18 @@ async def terminate_guardianship(
 async def delegate_guardian_access(
     guardian_id: str,
     access_permissions: dict[str, Any],
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: only the guardian of record may delegate their own
+    # access. Pre-fetch to check ownership before mutating.
     svc = GuardianService(db)
-    guardian = await svc.delegate_access(guardian_id, access_permissions)
+    existing = await svc.get_guardian(guardian_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.guardian_person_id)
+    guardian = await svc.delegate_access(guardian_id, access_permissions, actor_account_id=actor.account.id)
+    await db.commit()
     return {"guardian_id": guardian.guardian_id, "status": guardian.status}
 
 
@@ -562,8 +640,16 @@ async def delegate_guardian_access(
 async def verify_guardianship(
     guardian_id: str,
     verified_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C (platform/admin): confirming a guardianship claim is
+    # legitimate (e.g. against a court order or civil registry) requires
+    # a real-world verifying authority NIAM does not yet model. No
+    # existing PlatformCapability fits -- fails closed rather than
+    # inventing one. See _NO_ADMIN_AUTHORITY_AVAILABLE.
+    _require_admin_authority_unavailable()
     svc = GuardianService(db)
-    guardian = await svc.verify_guardianship(guardian_id, verified_by)
+    guardian = await svc.verify_guardianship(guardian_id, verified_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"guardian_id": guardian.guardian_id, "status": guardian.status}

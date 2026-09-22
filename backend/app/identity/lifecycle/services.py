@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -552,11 +553,19 @@ class CitizenService:
 
 
 class GuardianService:
+    """Category-F conversion: matches EnterpriseRegistrationService's
+    proven representative repair (__init__(self, session), self.session,
+    self.audit -- see NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md)."""
 
-    def create_guardianship(
-        self, db: Session, guardian_id: str,
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def create_guardianship(
+        self, guardian_id: str,
         guardian_person_id: str, dependent_person_id: str,
         relationship: str, guardian_type: str,
+        actor_account_id: str | None = None,
     ) -> GuardianAccount:
         guardian = GuardianAccount(
             uuid=guardian_id,
@@ -569,50 +578,120 @@ class GuardianService:
             status="active",
             is_active=True,
         )
-        db.add(guardian)
-        db.flush()
+        self.session.add(guardian)
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_CREATED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.create",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_CREATED",
+                data_classification="INTERNAL",
+            ),
+        )
         return guardian
 
-    def terminate_guardianship(self, db: Session, guardian_id: str, reason: str) -> GuardianAccount:
-        guardian = self._get_guardian(db, guardian_id)
+    async def terminate_guardianship(
+        self, guardian_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> GuardianAccount:
+        guardian = await self._get_guardian(guardian_id)
         guardian.end_date = datetime.now(UTC)
         guardian.status = "terminated"
         guardian.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_TERMINATED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.terminate",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_TERMINATED",
+                data_classification="INTERNAL",
+                metadata={"reason": reason},
+            ),
+        )
         return guardian
 
-    def get_dependents(self, db: Session, guardian_person_id: str) -> list[GuardianAccount]:
-        return db.query(GuardianAccount).filter(
+    async def get_dependents(self, guardian_person_id: str) -> list[GuardianAccount]:
+        stmt = select(GuardianAccount).where(
             GuardianAccount.guardian_person_id == guardian_person_id,
-            GuardianAccount.is_active,
-        ).all()
+            GuardianAccount.is_active.is_(True),
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
-    def get_guardians(self, db: Session, dependent_person_id: str) -> list[GuardianAccount]:
-        return db.query(GuardianAccount).filter(
+    async def get_guardians(self, dependent_person_id: str) -> list[GuardianAccount]:
+        stmt = select(GuardianAccount).where(
             GuardianAccount.dependent_person_id == dependent_person_id,
-            GuardianAccount.is_active,
-        ).all()
+            GuardianAccount.is_active.is_(True),
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
-    def delegate_access(
-        self, db: Session, guardian_id: str,
+    async def delegate_access(
+        self, guardian_id: str,
         access_permissions: dict[str, Any],
+        actor_account_id: str | None = None,
     ) -> GuardianAccount:
-        guardian = self._get_guardian(db, guardian_id)
+        guardian = await self._get_guardian(guardian_id)
         guardian.delegated_access = access_permissions
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_ACCESS_DELEGATED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.delegate_access",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_ACCESS_DELEGATED",
+                data_classification="INTERNAL",
+            ),
+        )
         return guardian
 
-    def verify_guardianship(self, db: Session, guardian_id: str, verified_by: str) -> GuardianAccount:
-        guardian = self._get_guardian(db, guardian_id)
+    async def verify_guardianship(
+        self, guardian_id: str, verified_by: str, actor_account_id: str | None = None,
+    ) -> GuardianAccount:
+        guardian = await self._get_guardian(guardian_id)
         guardian.verified_by = verified_by
         guardian.verified_at = datetime.now(UTC)
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_VERIFIED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.verify",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_VERIFIED",
+                data_classification="INTERNAL",
+            ),
+        )
         return guardian
 
-    def _get_guardian(self, db: Session, guardian_id: str) -> GuardianAccount:
-        guardian = db.query(GuardianAccount).filter(
+    async def get_guardian(self, guardian_id: str) -> GuardianAccount | None:
+        """Public lookup, used by routes for pre-mutation ownership
+        checks (e.g. confirming the caller is the guardian_person_id on
+        an existing record before allowing terminate/delegate)."""
+        stmt = select(GuardianAccount).where(
             GuardianAccount.guardian_id == guardian_id,
-        ).first()
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _get_guardian(self, guardian_id: str) -> GuardianAccount:
+        guardian = await self.get_guardian(guardian_id)
         if not guardian:
             raise ValueError(f"GuardianAccount not found: guardian_id={guardian_id}")
         return guardian
