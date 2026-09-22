@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.lifecycle.services import (
     CitizenService,
@@ -488,34 +487,59 @@ async def retire_government_employee(
 #  Citizen Lifecycle
 # ──────────────────────────────────────────────
 
+# Mixed model, unlike Workforce/GovernmentHR: citizens act on their own
+# lifecycle records (Category A, self-owned), while identity verification,
+# health-id issuance, and death recording are inherently administrative
+# (Category C, fail closed -- record_death in particular can never be
+# self-service, since a deceased person cannot call an API).
+
 @router.post("/citizen/register")
 async def register_citizen(
     person_id: str,
     citizen_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a person may only register *themselves* as a citizen.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, person_id)
     svc = CitizenService(db)
-    citizen = await svc.register_citizen(person_id, citizen_id=citizen_id)
+    citizen = await svc.register_citizen(person_id, citizen_id=citizen_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id}
 
 
 @router.post("/citizen/{citizen_id}/send-otp")
 async def send_citizen_otp(
     citizen_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: pre-fetch to check ownership before mutating (mirrors
+    # GuardianService's terminate/delegate pattern).
     svc = CitizenService(db)
-    citizen = await svc.send_otp(citizen_id)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
+    citizen = await svc.send_otp(citizen_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
 @router.post("/citizen/{citizen_id}/verify-otp")
 async def verify_citizen_otp(
     citizen_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = CitizenService(db)
-    citizen = await svc.verify_otp(citizen_id)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
+    citizen = await svc.verify_otp(citizen_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
@@ -523,10 +547,16 @@ async def verify_citizen_otp(
 async def verify_citizen_identity(
     citizen_id: str,
     verified_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C: confirming a citizen's identity documents is an
+    # administrative verification act, not a self-service one -- no
+    # existing PlatformCapability models this. Fails closed.
+    _require_admin_authority_unavailable()
     svc = CitizenService(db)
-    citizen = await svc.verify_identity(citizen_id, verified_by)
+    citizen = await svc.verify_identity(citizen_id, verified_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
@@ -534,10 +564,15 @@ async def verify_citizen_identity(
 async def issue_health_id(
     citizen_id: str,
     health_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C: issuing a national health id is an administrative /
+    # national-registry act, not a self-service one. Fails closed.
+    _require_admin_authority_unavailable()
     svc = CitizenService(db)
-    citizen = await svc.issue_health_id(citizen_id, health_id)
+    citizen = await svc.issue_health_id(citizen_id, health_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "health_id": citizen.health_id}
 
 
@@ -546,14 +581,25 @@ async def link_citizen_guardian(
     citizen_id: str,
     guardian_person_id: str,
     relationship: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A, but self-checked on the GUARDIAN side, not the citizen
+    # side: this creates the same kind of GuardianAccount record as
+    # GuardianService.create_guardianship, and that route's established
+    # rule (a person may only register *themselves* as a guardian, never
+    # claim guardianship on someone else's behalf) is applied identically
+    # here for consistency -- the actor must be the prospective guardian.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, guardian_person_id)
     svc = CitizenService(db)
     guardian = await svc.link_guardian(
         citizen_id=citizen_id,
         guardian_person_id=guardian_person_id,
         relationship=relationship,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"guardian_id": guardian.guardian_id}
 
 
@@ -562,14 +608,24 @@ async def link_citizen_family(
     citizen_id: str,
     relative_id: str,
     relationship: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: unlike link-guardian, this confers no authority over the
+    # citizen -- it is the citizen declaring their own family/emergency
+    # contacts, so the actor must own the citizen record itself.
     svc = CitizenService(db)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
     link = await svc.link_family_member(
         citizen_id=citizen_id,
         relative_id=relative_id,
         relationship=relationship,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"link_id": link.link_id}
 
 
@@ -579,15 +635,22 @@ async def record_citizen_consent(
     consent_type: str,
     granted_to: str | None = None,
     scope: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = CitizenService(db)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
     consent = await svc.record_consent(
         citizen_id=citizen_id,
         consent_type=consent_type,
         granted_to=granted_to,
         scope=scope,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"consent_id": consent.consent_id}
 
 
@@ -595,10 +658,16 @@ async def record_citizen_consent(
 async def deactivate_citizen(
     citizen_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = CitizenService(db)
-    citizen = await svc.deactivate(citizen_id, reason)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
+    citizen = await svc.deactivate(citizen_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
@@ -607,18 +676,29 @@ async def record_citizen_death(
     citizen_id: str,
     death_date: datetime,
     death_certificate_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C, and inherently so: a deceased person cannot call this
+    # API themselves, so there is no self-service angle to even consider.
+    # No existing PlatformCapability models a civil-registry death-recording
+    # authority. Fails closed.
+    _require_admin_authority_unavailable()
     svc = CitizenService(db)
-    citizen = await svc.record_death(citizen_id, death_date, death_certificate_id)
+    citizen = await svc.record_death(citizen_id, death_date, death_certificate_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
 @router.get("/citizen/{person_id}")
 async def get_citizen_status(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a person may only read their own citizen status.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, person_id)
     svc = CitizenService(db)
     status = await svc.get_citizen_status(person_id)
     return {"status": status}

@@ -6,7 +6,6 @@ from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.lifecycle.models import (
@@ -603,8 +602,19 @@ class GovernmentHRService:
 
 
 class CitizenService:
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`), matching every other NIAM service in this
+    codebase. Previously had no `__init__` at all -- the same construction-
+    time `TypeError` as `WorkforceService`/`GovernmentHRService`. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F5_CITIZEN_STATUS.md."""
 
-    def register_citizen(self, db: Session, person_id: str, citizen_id: str | None = None) -> CitizenLifecycle:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def register_citizen(
+        self, person_id: str, citizen_id: str | None = None, actor_account_id: str | None = None,
+    ) -> CitizenLifecycle:
         cid = citizen_id or person_id
         citizen = CitizenLifecycle(
             uuid=cid,
@@ -614,48 +624,87 @@ class CitizenService:
             registration_date=datetime.now(UTC),
             is_active=True,
         )
-        db.add(citizen)
-        db.flush()
+        self.session.add(citizen)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_REGISTERED", category="LIFECYCLE",
+            action="lifecycle.citizen.register", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def send_otp(self, db: Session, citizen_id: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def send_otp(self, citizen_id: str, actor_account_id: str | None = None) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.otp_sent_at = datetime.now(UTC)
         citizen.status = "otp_sent"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_OTP_SENT", category="LIFECYCLE",
+            action="lifecycle.citizen.send_otp", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def verify_otp(self, db: Session, citizen_id: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def verify_otp(self, citizen_id: str, actor_account_id: str | None = None) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.otp_verified_at = datetime.now(UTC)
         citizen.status = "otp_verified"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_OTP_VERIFIED", category="LIFECYCLE",
+            action="lifecycle.citizen.verify_otp", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def verify_identity(self, db: Session, citizen_id: str, verified_by: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def verify_identity(
+        self, citizen_id: str, verified_by: str, actor_account_id: str | None = None,
+    ) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.identity_verified_at = datetime.now(UTC)
         citizen.document_verification = citizen.document_verification or {}
         citizen.document_verification["verified_by"] = verified_by
         citizen.document_verification["verified_at"] = datetime.now(UTC).isoformat()
         citizen.status = "identity_verified"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_IDENTITY_VERIFIED", category="LIFECYCLE",
+            action="lifecycle.citizen.verify_identity", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def issue_health_id(self, db: Session, citizen_id: str, health_id: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def issue_health_id(
+        self, citizen_id: str, health_id: str, actor_account_id: str | None = None,
+    ) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.health_id = health_id
         citizen.status = "health_id_issued"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_HEALTH_ID_ISSUED", category="LIFECYCLE",
+            action="lifecycle.citizen.issue_health_id", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def link_guardian(
-        self, db: Session, citizen_id: str,
-        guardian_person_id: str, relationship: str,
+    async def link_guardian(
+        self, citizen_id: str,
+        guardian_person_id: str, relationship: str, actor_account_id: str | None = None,
     ) -> GuardianAccount:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         guardian = GuardianAccount(
-            uuid=f"{citizen_id}-guardian-{guardian_person_id}",
+            # uuid is String(36) but this business-key composite (citizen_id
+            # + guardian_person_id, the latter a 26-char ULID) routinely
+            # exceeds that -- see docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F5_CITIZEN_STATUS.md.
+            # guardian_id (String(100), the FK'able identifier callers see)
+            # keeps the descriptive composite; only uuid uses a real uuid4.
+            uuid=str(uuid4()),
             guardian_id=f"{citizen_id}-guardian-{guardian_person_id}",
             guardian_person_id=guardian_person_id,
             dependent_person_id=citizen.person_id,
@@ -667,15 +716,21 @@ class CitizenService:
         )
         citizen.guardian_person_id = guardian_person_id
         citizen.status = "guardian_linked"
-        db.add(guardian)
-        db.flush()
+        self.session.add(guardian)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_GUARDIAN_LINKED", category="LIFECYCLE",
+            action="lifecycle.citizen.link_guardian", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return guardian
 
-    def link_family_member(
-        self, db: Session, citizen_id: str,
-        relative_id: str, relationship: str,
+    async def link_family_member(
+        self, citizen_id: str,
+        relative_id: str, relationship: str, actor_account_id: str | None = None,
     ) -> FamilyLink:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         link = FamilyLink(
             uuid=f"{citizen_id}-fam-{relative_id}",
             link_id=f"{citizen_id}-fam-{relative_id}",
@@ -687,16 +742,22 @@ class CitizenService:
             is_active=True,
         )
         citizen.status = "family_linked"
-        db.add(link)
-        db.flush()
+        self.session.add(link)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_FAMILY_LINKED", category="LIFECYCLE",
+            action="lifecycle.citizen.link_family_member", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return link
 
-    def record_consent(
-        self, db: Session, citizen_id: str,
+    async def record_consent(
+        self, citizen_id: str,
         consent_type: str, granted_to: str | None = None,
-        scope: dict[str, Any] | None = None,
+        scope: dict[str, Any] | None = None, actor_account_id: str | None = None,
     ) -> ConsentRecord:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         consent = ConsentRecord(
             uuid=f"{citizen_id}-consent-{consent_type}",
             consent_id=f"{citizen_id}-consent-{consent_type}",
@@ -708,40 +769,66 @@ class CitizenService:
             status="active",
             is_active=True,
         )
-        db.add(consent)
-        db.flush()
+        self.session.add(consent)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_CONSENT_RECORDED", category="LIFECYCLE",
+            action="lifecycle.citizen.record_consent", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return consent
 
-    def deactivate(self, db: Session, citizen_id: str, reason: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def deactivate(self, citizen_id: str, reason: str, actor_account_id: str | None = None) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.deactivated_at = datetime.now(UTC)
         citizen.deactivation_reason = reason
         citizen.status = "deactivated"
         citizen.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_DEACTIVATED", category="LIFECYCLE",
+            action="lifecycle.citizen.deactivate", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+            metadata={"reason": reason},
+        ))
         return citizen
 
-    def record_death(
-        self, db: Session, citizen_id: str,
-        death_date: datetime, death_certificate_id: str,
+    async def record_death(
+        self, citizen_id: str,
+        death_date: datetime, death_certificate_id: str, actor_account_id: str | None = None,
     ) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         citizen.deceased_at = death_date
         citizen.death_certificate_id = death_certificate_id
         citizen.status = "deceased"
         citizen.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_DEATH_RECORDED", category="LIFECYCLE",
+            action="lifecycle.citizen.record_death", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def get_citizen_status(self, db: Session, person_id: str) -> CitizenLifecycle | None:
-        return db.query(CitizenLifecycle).filter(
+    async def get_citizen_status(self, person_id: str) -> CitizenLifecycle | None:
+        stmt = select(CitizenLifecycle).where(
             CitizenLifecycle.person_id == person_id,
-        ).order_by(CitizenLifecycle.created_at.desc()).first()
+        ).order_by(CitizenLifecycle.created_at.desc())
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
-    def _get_citizen(self, db: Session, citizen_id: str) -> CitizenLifecycle:
-        citizen = db.query(CitizenLifecycle).filter(
-            CitizenLifecycle.citizen_id == citizen_id,
-        ).first()
+    async def get_citizen(self, citizen_id: str) -> CitizenLifecycle | None:
+        """Public lookup, used by routes for pre-mutation ownership checks
+        (mirrors GuardianService.get_guardian's precedent)."""
+        stmt = select(CitizenLifecycle).where(CitizenLifecycle.citizen_id == citizen_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _get_citizen(self, citizen_id: str) -> CitizenLifecycle:
+        citizen = await self.get_citizen(citizen_id)
         if not citizen:
             raise ValueError(f"CitizenLifecycle not found: citizen_id={citizen_id}")
         return citizen
