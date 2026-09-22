@@ -92,39 +92,52 @@ class PaymentService:
             )
         )
 
-    def _invoice(self, invoice_id: str, institution_id: int | None = None) -> PaymentInvoice:
+    def _invoice(
+        self, invoice_id: str, institution_id: int | None = None, *, for_update: bool = False
+    ) -> PaymentInvoice:
         query = self.db.query(PaymentInvoice).filter(PaymentInvoice.id == invoice_id)
         if institution_id is not None:
             query = query.filter(PaymentInvoice.institution_id == institution_id)
+        if for_update:
+            query = query.with_for_update()
         invoice = query.first()
         if invoice is None:
             raise NotFoundError("Payment invoice not found")
         return invoice
 
-    def _intent(self, intent_id: str, institution_id: int | None = None) -> PaymentIntent:
+    def _intent(
+        self, intent_id: str, institution_id: int | None = None, *, for_update: bool = False
+    ) -> PaymentIntent:
         query = self.db.query(PaymentIntent).filter(PaymentIntent.id == intent_id)
         if institution_id is not None:
             query = query.filter(PaymentIntent.institution_id == institution_id)
+        if for_update:
+            query = query.with_for_update()
         intent = query.first()
         if intent is None:
             raise NotFoundError("Payment intent not found")
         return intent
 
-    def _refund(self, refund_id: str, institution_id: int | None = None) -> PaymentRefund:
+    def _refund(
+        self, refund_id: str, institution_id: int | None = None, *, for_update: bool = False
+    ) -> PaymentRefund:
         query = self.db.query(PaymentRefund).filter(PaymentRefund.id == refund_id)
         if institution_id is not None:
             query = query.filter(PaymentRefund.institution_id == institution_id)
+        if for_update:
+            query = query.with_for_update()
         refund = query.first()
         if refund is None:
             raise NotFoundError("Payment refund not found")
         return refund
 
-    def _cash_shift(self, shift_id: str, institution_id: int) -> CashShift:
-        shift = (
-            self.db.query(CashShift)
-            .filter(CashShift.id == shift_id, CashShift.institution_id == institution_id)
-            .first()
+    def _cash_shift(self, shift_id: str, institution_id: int, *, for_update: bool = False) -> CashShift:
+        query = self.db.query(CashShift).filter(
+            CashShift.id == shift_id, CashShift.institution_id == institution_id
         )
+        if for_update:
+            query = query.with_for_update()
+        shift = query.first()
         if shift is None:
             raise NotFoundError("Cash shift not found")
         return shift
@@ -388,7 +401,7 @@ class PaymentService:
         cashier_reference: str,
         actor_user_id: int,
     ) -> PaymentAttempt:
-        intent = self._intent(intent_id, institution_id)
+        intent = self._intent(intent_id, institution_id, for_update=True)
         if intent.method != "CASH":
             raise PaymentStateError("Only CASH payment intents can be captured by the cashier")
         if intent.expires_at is not None and normalize_utc(intent.expires_at) <= now_utc():
@@ -403,10 +416,10 @@ class PaymentService:
             return successful
         if intent.status not in {"PENDING", "PROCESSING"}:
             raise PaymentStateError("Payment intent cannot be captured in its current state")
-        shift = self._cash_shift(cash_shift_id, institution_id)
+        shift = self._cash_shift(cash_shift_id, institution_id, for_update=True)
         if shift.status != "OPEN":
             raise PaymentStateError("Cash shift is not open")
-        invoice = self._invoice(intent.invoice_id, institution_id)
+        invoice = self._invoice(intent.invoice_id, institution_id, for_update=True)
         if money(intent.amount) > money(invoice.total_amount - invoice.paid_amount):
             raise PaymentStateError("Invoice balance has changed; create a new payment intent")
         duplicate_reference = (
@@ -469,7 +482,7 @@ class PaymentService:
         variance_reason: str | None,
         actor_user_id: int,
     ) -> tuple[CashShift, ReconciliationCase | None]:
-        shift = self._cash_shift(shift_id, institution_id)
+        shift = self._cash_shift(shift_id, institution_id, for_update=True)
         if shift.status != "OPEN":
             raise PaymentStateError("Cash shift is already closed")
         # Aggregate queries below must include captures/refunds created in this transaction.
@@ -537,7 +550,7 @@ class PaymentService:
         external_reference: str | None,
         actor_user_id: int,
     ) -> PaymentRefund:
-        intent = self._intent(payment_intent_id, institution_id)
+        intent = self._intent(payment_intent_id, institution_id, for_update=True)
         if intent.status != "SUCCEEDED":
             raise PaymentStateError("Refunds are only available for successful payment intents")
         amount = money(amount)
@@ -575,7 +588,7 @@ class PaymentService:
         return refund
 
     def approve_refund(self, *, institution_id: int, refund_id: str, actor_user_id: int) -> PaymentRefund:
-        refund = self._refund(refund_id, institution_id)
+        refund = self._refund(refund_id, institution_id, for_update=True)
         if refund.status != "REQUESTED":
             raise PaymentStateError("Only requested refunds can be approved")
         if refund.requested_by == actor_user_id:
@@ -594,16 +607,16 @@ class PaymentService:
         cashier_reference: str,
         actor_user_id: int,
     ) -> PaymentRefund:
-        refund = self._refund(refund_id, institution_id)
+        refund = self._refund(refund_id, institution_id, for_update=True)
         if refund.status != "APPROVED":
             raise PaymentStateError("Only approved refunds can be processed")
         intent = self._intent(refund.payment_intent_id, institution_id)
         if intent.method != "CASH":
             raise PaymentStateError("P0 can process cash refunds only; electronic refunds require a provider adapter")
-        shift = self._cash_shift(cash_shift_id, institution_id)
+        shift = self._cash_shift(cash_shift_id, institution_id, for_update=True)
         if shift.status != "OPEN":
             raise PaymentStateError("Cash refunds require an open cash shift")
-        invoice = self._invoice(refund.invoice_id, institution_id)
+        invoice = self._invoice(refund.invoice_id, institution_id, for_update=True)
         transition_refund(refund, "PROCESSING")
         refund.cash_shift_id = shift.id
         cash_account = self._account(institution_id, "CASH_ON_HAND", "Cash on hand", "asset")
