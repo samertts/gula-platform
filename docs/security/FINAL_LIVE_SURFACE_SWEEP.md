@@ -174,6 +174,35 @@ comparison, one DEAD_OR_UNREACHABLE disposition recorded).
 - **NOT STARTED**: the majority of the originating directive's 21
   substantive sections (7–21), honestly recorded as such above.
 
+## Continuation — Command Center + Public Health audited
+
+Per the follow-up "CONTINUE LIVE CONCURRENCY SWEEP" directive: audited
+`app/command_center/` and `app/public_health/` (both LIVE, table-backed,
+`system:admin`-gated, zero prior test coverage). Both had exactly one
+real P1 concurrency finding each — `resolve_emergency`/`fulfill_resource`
+and `update_alert_status` respectively — matching the identical shape
+already fixed in biomedical (unused `OptimisticLockMixin.version`, no
+row lock, no terminal-state guard). Both proven on real PostgreSQL 16,
+fixed, negative-proofed, regression-guarded (8 new tests total across
+the two domains), zero suite regressions (320 passed / 4 skipped).
+
+Because the same shape now appears in 3 independently-audited domains,
+it is formally registered as a systemic pattern:
+`docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md`. A repo-wide
+AST detector for it was evaluated and declined for now (same reasoning
+as the earlier `imaging-slice-detector-decision`) — not enough
+instances yet to justify the cross-procedural analysis a reliable
+detector would need, and the fix is cheap enough to keep applying
+manually as new domains are audited.
+
+**Updated tally**: 4 domains now have a full vertical-slice
+concurrency+authorization audit with a real Postgres-proven fix
+committed this session (biomedical, command_center, public_health, plus
+payments/devices from before) — 6 total closed concurrency defects.
+`blood_bank`/`critical_care` independently re-verified safe (no fix
+needed). No new P0 found in either new domain (both bounded by the
+`system:admin` router gate, same as biomedical); both closures are P1.
+
 ## Next highest-value live surface
 
 Not a concurrency target (nothing to race against an unbacked table):

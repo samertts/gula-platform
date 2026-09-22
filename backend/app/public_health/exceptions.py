@@ -12,6 +12,16 @@ class OutbreakNotFoundError(PublicHealthError):
         return "Outbreak alert not found"
 
 
+class InvalidOutbreakStatusError(PublicHealthError):
+    def __str__(self) -> str:
+        return "Invalid outbreak alert status"
+
+
+class OutbreakAlreadyDeclaredOverError(PublicHealthError):
+    def __str__(self) -> str:
+        return "Outbreak has already been declared over"
+
+
 class VaccineNotFoundError(PublicHealthError):
     def __str__(self) -> str:
         return "Vaccination record not found"

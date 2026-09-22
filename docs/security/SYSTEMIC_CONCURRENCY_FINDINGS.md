@@ -68,3 +68,24 @@ to race against an unbacked table), so they sit outside this document's
 scope, but they are the correct next target for whoever owns those
 domains' schema design, ahead of any further security/concurrency work
 in either package.
+
+## 5. Continuation — Command Center + Public Health (Section 2/3 of the follow-up directive)
+
+Two more real closures of the exact same pattern named in
+`docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md`:
+`command-center-emergency-resource-cas` (`resolve_emergency`,
+`fulfill_resource`) and `public-health-outbreak-alert-cas`
+(`update_alert_status`, which also lacked enum validation on the
+client-supplied status string). Both proven pre-fix/post-fix on real
+disposable PostgreSQL 16, both negative-proofed, both got permanent
+regression suites (their domains had zero prior test coverage). Full
+per-domain evidence: `docs/security/COMMAND_CENTER_CONCURRENCY_STATUS.md`,
+`docs/security/PUBLIC_HEALTH_CONCURRENCY_STATUS.md`.
+
+This brings the total to **6 independently proven and closed
+concurrency defects this session** (payments, devices, biomedical,
+command_center, public_health — 5 domains, 6 methods) — three of them
+(biomedical, command_center, public_health) sharing the identical
+"unused `OptimisticLockMixin`, no terminal-state guard" shape, now
+formally registered as a systemic pattern rather than treated as three
+coincidental one-offs.
