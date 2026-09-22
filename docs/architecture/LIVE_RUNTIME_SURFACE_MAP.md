@@ -108,6 +108,23 @@ this session has used elsewhere (that method assumes real persistence to
 race against). They are excluded from the "next vertical slice"
 candidate pool until/unless a human-approved migration lands for them.
 
+### Correction — `capabilities` is not one domain, it's 10 routers, 9 of them DEAD
+
+The original pass above counted `capabilities` as a single TABLE-BACKED
+domain (1 table, `fhir_resource_records`, via the one router this repo
+actually mounts — `fhir_interoperability`). That undercounted it: `app/capabilities/`
+contains **10 independent sub-packages**, each with its own `routes.py`
+and a `commands/` subpackage (46 command files total) —
+`clinical_foundation`, `document_management`, `encounter_management`,
+`fhir_interoperability`, `healthcare_consent`, `provider_management`,
+`reporting_service`, `search_service`, `storage_service`,
+`workflow_engine`. Grepped exhaustively (found while doing the
+idempotency-mechanism inventory, `docs/security/IDEMPOTENCY_CLOSURE_STATUS.md`):
+**only `fhir_interoperability`'s router is ever imported by
+`app/factory.py`**; the other 9 routers have zero references anywhere in
+the codebase. Reclassified: **DEAD** (9 of 10 sub-packages) — not
+"needs per-router confirmation," confirmed unreachable.
+
 ### LIVE / NO-OWNED-MODELS — needs per-router confirmation before assuming broken
 
 `ai_fabric`, `certification`, `chronic_care`, `citizen_platform`,
