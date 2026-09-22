@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,18 +23,22 @@ from app.identity.services.canonical_audit import AuditEventInput, CanonicalAudi
 
 
 class EnterpriseRegistrationService:
-    """`start_registration` is converted to the async
-    session-stored convention (`__init__(self, session)`,
-    `await self.session.execute(...)`), matching every other NIAM
-    service in this codebase -- proven as the one representative
-    Category-F repair (docs/security/NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md).
-    The rest of this class's methods (validate_license,
-    submit_inspection, assess_risk, approve_registration,
-    reject_registration, get_registration_status) are NOT yet
-    converted -- deliberately left as the pre-existing (broken) sync
-    shape until the proven pattern is propagated, per this repair's own
-    bounded scope (repair one representative route first, then decide
-    whether to propagate)."""
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`, `await self.session.execute(...)`),
+    matching every other NIAM service in this codebase. `start_registration`
+    was the one representative Category-F repair
+    (docs/security/NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md); the remaining 6
+    methods (validate_license, submit_inspection, assess_risk,
+    approve_registration, reject_registration, get_registration_status,
+    plus the private _get_registration/_complete_step helpers) previously
+    still took an explicit `db: Session` and used the legacy sync
+    `db.query()` API while routes.py called them via
+    `EnterpriseRegistrationService(db)` (a class already converted to a
+    single-arg async constructor) and `await`ed their return values --
+    a real arity mismatch (`db` bound into the first positional business
+    parameter) plus a missed-`await` on the now-async `_add_step`/
+    `_complete_step`, not just the usual dependency-typing mismatch. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F2_ENTERPRISE_STATUS.md."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -76,7 +81,12 @@ class EnterpriseRegistrationService:
         performed_by: str | None = None, output: dict[str, Any] | None = None,
     ) -> EnterpriseRegistrationStep:
         step = EnterpriseRegistrationStep(
-            uuid=step_name,
+            # uuid must be globally unique (column constraint) and this
+            # step's own reg_id+step_name composite (already unique via
+            # step_id, the business key) can exceed the column's 36-char
+            # limit, so a real uuid4 is used here rather than a composite
+            # business string. See docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F2_ENTERPRISE_STATUS.md.
+            uuid=str(uuid4()),
             step_id=f"{reg_pk}-{step_name}",
             reg_id=reg_pk,
             step_name=step_name,
@@ -89,89 +99,134 @@ class EnterpriseRegistrationService:
         self.session.add(step)
         return step
 
-    def validate_license(self, db: Session, reg_id: str, license_document: str, validated_by: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
+    async def validate_license(
+        self, reg_id: str, license_document: str, validated_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
         reg.license_document = license_document
         reg.license_validated_at = datetime.now(UTC)
         reg.license_validated_by = validated_by
         reg.status = "license_validated"
         reg.current_step = "inspection"
         reg.is_active = True
-        self._complete_step(db, reg.id, "license_validation", performed_by=validated_by)
-        self._add_step(db, reg.id, "inspection", performed_by=validated_by)
-        db.flush()
+        await self._complete_step(reg.id, "license_validation", performed_by=validated_by)
+        await self._add_step(reg.id, "inspection", performed_by=validated_by)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_LICENSE_VALIDATED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.validate_license", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
         return reg
 
-    def submit_inspection(self, db: Session, reg_id: str, inspection_report: dict[str, Any], inspected_by: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
+    async def submit_inspection(
+        self, reg_id: str, inspection_report: dict[str, Any], inspected_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
         reg.inspection_report = inspection_report
         reg.inspected_at = datetime.now(UTC)
         reg.inspected_by = inspected_by
         reg.status = "inspected"
         reg.current_step = "risk_assessment"
         reg.is_active = True
-        self._complete_step(db, reg.id, "inspection", performed_by=inspected_by)
-        self._add_step(db, reg.id, "risk_assessment", performed_by=inspected_by)
-        db.flush()
+        await self._complete_step(reg.id, "inspection", performed_by=inspected_by)
+        await self._add_step(reg.id, "risk_assessment", performed_by=inspected_by)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_INSPECTED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.inspect", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
         return reg
 
-    def assess_risk(self, db: Session, reg_id: str, risk_assessment: dict[str, Any], risk_score: int) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
+    async def assess_risk(
+        self, reg_id: str, risk_assessment: dict[str, Any], risk_score: int, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
         reg.risk_assessment = risk_assessment
         reg.risk_score = risk_score
         reg.risk_assessed_at = datetime.now(UTC)
         reg.status = "risk_assessed"
         reg.current_step = "approval"
         reg.is_active = True
-        self._complete_step(db, reg.id, "risk_assessment", performed_by=risk_assessment.get("assessed_by"))
-        self._add_step(db, reg.id, "approval")
-        db.flush()
+        await self._complete_step(reg.id, "risk_assessment", performed_by=risk_assessment.get("assessed_by"))
+        await self._add_step(reg.id, "approval")
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_RISK_ASSESSED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.assess_risk", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
         return reg
 
-    def approve_registration(self, db: Session, reg_id: str, approved_by: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
+    async def approve_registration(
+        self, reg_id: str, approved_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
         reg.approved_by = approved_by
         reg.approved_at = datetime.now(UTC)
         reg.certificate_id = f"CERT-{reg.reg_id}-{int(datetime.now(UTC).timestamp())}"
         reg.status = "approved"
         reg.current_step = "certificate_issued"
         reg.is_active = True
-        self._complete_step(db, reg.id, "approval", performed_by=approved_by)
-        self._add_step(db, reg.id, "certificate_issued", performed_by=approved_by, output={"certificate_id": reg.certificate_id})
-        db.flush()
+        await self._complete_step(reg.id, "approval", performed_by=approved_by)
+        await self._add_step(reg.id, "certificate_issued", performed_by=approved_by, output={"certificate_id": reg.certificate_id})
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_APPROVED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.approve", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
         return reg
 
-    def reject_registration(self, db: Session, reg_id: str, reason: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
+    async def reject_registration(
+        self, reg_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
         reg.rejection_reason = reason
         reg.status = "rejected"
         reg.is_active = False
-        self._complete_step(db, reg.id, reg.current_step or "rejected", output={"reason": reason})
-        db.flush()
+        await self._complete_step(reg.id, reg.current_step or "rejected", output={"reason": reason})
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_REJECTED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.reject", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+            metadata={"reason": reason},
+        ))
         return reg
 
-    def get_registration_status(self, db: Session, org_id: str) -> EnterpriseRegistration | None:
-        return db.query(EnterpriseRegistration).filter(
+    async def get_registration_status(self, org_id: str) -> EnterpriseRegistration | None:
+        stmt = select(EnterpriseRegistration).where(
             EnterpriseRegistration.organization_id == org_id,
-            EnterpriseRegistration.is_active,
-        ).order_by(EnterpriseRegistration.created_at.desc()).first()
+            EnterpriseRegistration.is_active.is_(True),
+        ).order_by(EnterpriseRegistration.created_at.desc())
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
-    def _get_registration(self, db: Session, reg_id: str) -> EnterpriseRegistration:
-        reg = db.query(EnterpriseRegistration).filter(
-            EnterpriseRegistration.reg_id == reg_id,
-        ).first()
+    async def _get_registration(self, reg_id: str) -> EnterpriseRegistration:
+        stmt = select(EnterpriseRegistration).where(EnterpriseRegistration.reg_id == reg_id)
+        result = await self.session.execute(stmt)
+        reg = result.scalar_one_or_none()
         if not reg:
             raise ValueError(f"EnterpriseRegistration not found: reg_id={reg_id}")
         return reg
 
-    def _complete_step(
-        self, db: Session, reg_pk: str, step_name: str,
+    async def _complete_step(
+        self, reg_pk: str, step_name: str,
         performed_by: str | None = None, output: dict[str, Any] | None = None,
     ) -> None:
-        step = db.query(EnterpriseRegistrationStep).filter(
+        stmt = select(EnterpriseRegistrationStep).where(
             EnterpriseRegistrationStep.reg_id == reg_pk,
             EnterpriseRegistrationStep.step_name == step_name,
-        ).order_by(EnterpriseRegistrationStep.created_at.desc()).first()
+        ).order_by(EnterpriseRegistrationStep.created_at.desc())
+        result = await self.session.execute(stmt)
+        step = result.scalars().first()
         if step:
             step.status = "completed"
             step.completed_at = datetime.now(UTC)

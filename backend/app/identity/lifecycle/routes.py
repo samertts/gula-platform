@@ -93,10 +93,16 @@ async def validate_enterprise_license(
     reg_id: str,
     license_document: str,
     validated_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C (administrative): identical workflow to start_registration
+    # (same file, same class) -- governance_manage is direct reuse of an
+    # already-established, semantically-fitting capability, not a new one.
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.validate_license(reg_id, license_document, validated_by)
+    reg = await svc.validate_license(reg_id, license_document, validated_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
@@ -105,10 +111,13 @@ async def submit_enterprise_inspection(
     reg_id: str,
     inspection_report: dict[str, Any],
     inspected_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.submit_inspection(reg_id, inspection_report, inspected_by)
+    reg = await svc.submit_inspection(reg_id, inspection_report, inspected_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
@@ -117,10 +126,13 @@ async def assess_enterprise_risk(
     reg_id: str,
     risk_assessment: dict[str, Any],
     risk_score: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.assess_risk(reg_id, risk_assessment, risk_score)
+    reg = await svc.assess_risk(reg_id, risk_assessment, risk_score, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "risk_score": reg.risk_score}
 
 
@@ -128,10 +140,13 @@ async def assess_enterprise_risk(
 async def approve_enterprise_registration(
     reg_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.approve_registration(reg_id, approved_by)
+    reg = await svc.approve_registration(reg_id, approved_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
@@ -139,17 +154,21 @@ async def approve_enterprise_registration(
 async def reject_enterprise_registration(
     reg_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.reject_registration(reg_id, reason)
+    reg = await svc.reject_registration(reg_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
 @router.get("/enterprise/{org_id}")
 async def get_enterprise_status(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = EnterpriseRegistrationService(db)
     status = await svc.get_registration_status(org_id)
