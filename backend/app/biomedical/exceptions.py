@@ -13,6 +13,10 @@ class WorkOrderNotFoundError(BiomedicalException):
     pass
 
 
+class WorkOrderAlreadyCompletedError(BiomedicalException):
+    pass
+
+
 class TechnicianNotFoundError(BiomedicalException):
     pass
 
