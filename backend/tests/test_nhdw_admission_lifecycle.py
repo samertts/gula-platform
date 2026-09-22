@@ -173,6 +173,16 @@ _MIGRATIONS_DIR = os.path.join(
 
 _HOSPITAL_STRUCTURE_TABLES = (
     "hospitals", "hospital_departments", "hospital_rooms", "hospital_beds",
+    # hospital_operation_theaters: confirmed this pass to be a stronger form
+    # of the same gap -- 20260820_0004_surgical_safety_checklists.py's
+    # hospital_surgical_safety_checklists table has an unconditional
+    # ForeignKeyConstraint(["operation_theater_id"], ["hospital_operation_theaters.id"])
+    # with no _table_exists guard, so a real `alembic upgrade head` from a
+    # blank PostgreSQL database now fails outright at this migration
+    # (UndefinedTable), not merely at NHDW's own runtime queries as
+    # previously documented. Reproduced directly against a disposable
+    # PostgreSQL 16 database this pass.
+    "hospital_operation_theaters",
 )
 
 

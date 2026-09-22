@@ -876,13 +876,13 @@ class DrugSubstitutionRule(TenantAuditEntity):  # type: ignore[misc]
     __tablename__ = "pharmacy_drug_substitution_rules"
 
     original_drug_catalog_id = Column(
-        String(26),
+        Integer,
         ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     alternative_drug_catalog_id = Column(
-        String(26),
+        Integer,
         ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -921,8 +921,8 @@ class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
         nullable=False,
         index=True,
     )
-    original_drug_catalog_id = Column(String(26), nullable=False, index=True)
-    alternative_drug_catalog_id = Column(String(26), nullable=False, index=True)
+    original_drug_catalog_id = Column(Integer, nullable=False, index=True)
+    alternative_drug_catalog_id = Column(Integer, nullable=False, index=True)
     prescription_id = Column(String(26), nullable=True, index=True)
     patient_id = Column(String(26), nullable=True, index=True)
     citizen_id = Column(String(26), nullable=True, index=True)
