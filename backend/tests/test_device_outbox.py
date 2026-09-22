@@ -113,3 +113,41 @@ def test_oldest_age_only_counts_active_messages(db):
 
     process_batch(db, 1)
     assert summarize(db, 1)["oldest_age_seconds"] == 0.0
+
+
+# ── device-outbox-cas: concurrent-worker claim guard regression ────────────
+#
+# process_batch previously claimed "due" messages with a plain, unlocked
+# SELECT before marking them "processing" and invoking the dispatcher — a
+# TOCTOU race that two genuinely concurrent DB connections against a real
+# disposable PostgreSQL 16 database proved causes the SAME message to be
+# dispatched twice when two workers (or two load-balanced backend replicas,
+# per CLAUDE.md's `make scale REPLICAS=N`) call /outbox/process at once.
+# SQLite cannot reproduce the race itself (single-writer locking masks it),
+# so this test asserts the guard's SQL shape directly: the claim query now
+# compiles to a real `SELECT ... FOR UPDATE SKIP LOCKED` against the
+# production (PostgreSQL) dialect — verified here by spying on the exact
+# call process_batch makes, not a separately-constructed lookalike query.
+
+
+def test_outbox_claim_query_is_row_locked_with_skip_locked(db, monkeypatch):
+    from sqlalchemy.orm import Query as SAQuery
+
+    message = _enqueue(db, key="cas-check-1")
+    db.commit()
+
+    calls = []
+    original = SAQuery.with_for_update
+
+    def spy(self, *args, **kwargs):
+        calls.append(kwargs)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(SAQuery, "with_for_update", spy)
+
+    result = process_batch(db, 1)
+
+    assert calls, "process_batch's claim query must call Query.with_for_update()"
+    assert calls[-1].get("skip_locked") is True
+    assert result["delivered"] == 1
+    assert message.status == "delivered"
