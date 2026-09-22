@@ -178,6 +178,14 @@ async def get_enterprise_status(
 #  Workforce
 # ──────────────────────────────────────────────
 
+# Category C (administrative) throughout: every mutation here is an
+# organization/HR-side workforce-onboarding action performed *on* a
+# person by requesting-org staff, never *by* the person themselves --
+# there is no `person_id`-vs-actor self-service angle anywhere in this
+# class (unlike CitizenService). None of the 4 existing PlatformCapability
+# values model "workforce onboarding authority", so every mutation fails
+# closed rather than reusing a capability whose semantics don't fit.
+
 @router.post("/workforce/request")
 async def request_employee(
     request_id: str,
@@ -185,8 +193,10 @@ async def request_employee(
     requesting_org_id: str,
     requested_by: str,
     person_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
     req = await svc.request_employee(
         request_id=request_id,
@@ -194,7 +204,9 @@ async def request_employee(
         requesting_org_id=requesting_org_id,
         requested_by=requested_by,
         person_id=person_id,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"request_id": req.request_id}
 
 
@@ -202,10 +214,13 @@ async def request_employee(
 async def validate_workforce_national_id(
     request_id: str,
     national_id_hash: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.validate_national_id(request_id, national_id_hash)
+    req = await svc.validate_national_id(request_id, national_id_hash, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
@@ -213,10 +228,13 @@ async def validate_workforce_national_id(
 async def validate_workforce_license(
     request_id: str,
     license_number: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.validate_license(request_id, license_number)
+    req = await svc.validate_license(request_id, license_number, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
@@ -224,10 +242,13 @@ async def validate_workforce_license(
 async def check_workforce_conflicts(
     request_id: str,
     conflict_report: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.check_conflicts(request_id, conflict_report)
+    req = await svc.check_conflicts(request_id, conflict_report, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "conflicts": req.conflict_report}
 
 
@@ -235,20 +256,26 @@ async def check_workforce_conflicts(
 async def approve_workforce_request(
     request_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.approve_request(request_id, approved_by)
+    req = await svc.approve_request(request_id, approved_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
 @router.post("/workforce/{request_id}/activate")
 async def activate_workforce_account(
     request_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.activate_account(request_id)
+    req = await svc.activate_account(request_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
@@ -256,17 +283,21 @@ async def activate_workforce_account(
 async def terminate_workforce_employment(
     request_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.terminate_employment(request_id, reason)
+    req = await svc.terminate_employment(request_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
 @router.get("/workforce/{request_id}")
 async def get_workforce_request_status(
     request_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = WorkforceService(db)
     req = await svc.get_request_status(request_id)
@@ -276,10 +307,13 @@ async def get_workforce_request_status(
 @router.post("/workforce/preserve-history/{person_id}")
 async def preserve_workforce_history(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    requests = await svc.preserve_history(person_id)
+    requests = await svc.preserve_history(person_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"preserved": len(requests)}
 
 # ──────────────────────────────────────────────

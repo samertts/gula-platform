@@ -236,10 +236,22 @@ class EnterpriseRegistrationService:
 
 
 class WorkforceService:
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`), matching every other NIAM service in this
+    codebase. Previously had no `__init__` at all and every method took an
+    explicit `db: Session`, while routes.py constructed it as
+    `WorkforceService(db)` against a class with no constructor -- a real
+    `TypeError` on every call. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F3_WORKFORCE_STATUS.md."""
 
-    def request_employee(
-        self, db: Session, request_id: str, request_type: str,
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def request_employee(
+        self, request_id: str, request_type: str,
         requesting_org_id: str, requested_by: str, person_id: str | None = None,
+        actor_account_id: str | None = None,
     ) -> WorkforceRequest:
         req = WorkforceRequest(
             uuid=request_id,
@@ -251,72 +263,132 @@ class WorkforceService:
             status="draft",
             is_active=True,
         )
-        db.add(req)
-        db.flush()
+        self.session.add(req)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_REQUEST_CREATED", category="LIFECYCLE",
+            action="lifecycle.workforce.request_employee", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def validate_national_id(self, db: Session, request_id: str, national_id_hash: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def validate_national_id(
+        self, request_id: str, national_id_hash: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.national_id_hash = national_id_hash
         req.status = "national_id_validated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_NATIONAL_ID_VALIDATED", category="LIFECYCLE",
+            action="lifecycle.workforce.validate_national_id", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def validate_license(self, db: Session, request_id: str, license_number: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def validate_license(
+        self, request_id: str, license_number: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.license_number = license_number
         req.status = "license_validated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_LICENSE_VALIDATED", category="LIFECYCLE",
+            action="lifecycle.workforce.validate_license", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def check_conflicts(self, db: Session, request_id: str, conflict_report: dict[str, Any] | None = None) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def check_conflicts(
+        self, request_id: str, conflict_report: dict[str, Any] | None = None, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.conflict_report = conflict_report or {}
         req.status = "conflict_checked"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_CONFLICTS_CHECKED", category="LIFECYCLE",
+            action="lifecycle.workforce.check_conflicts", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def approve_request(self, db: Session, request_id: str, approved_by: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def approve_request(
+        self, request_id: str, approved_by: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.approved_by = approved_by
         req.approved_at = datetime.now(UTC)
         req.status = "approved"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_REQUEST_APPROVED", category="LIFECYCLE",
+            action="lifecycle.workforce.approve_request", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def activate_account(self, db: Session, request_id: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def activate_account(self, request_id: str, actor_account_id: str | None = None) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.activated_at = datetime.now(UTC)
         req.status = "activated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_ACCOUNT_ACTIVATED", category="LIFECYCLE",
+            action="lifecycle.workforce.activate_account", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def terminate_employment(self, db: Session, request_id: str, reason: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def terminate_employment(
+        self, request_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.termination_reason = reason
         req.status = "terminated"
         req.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_EMPLOYMENT_TERMINATED", category="LIFECYCLE",
+            action="lifecycle.workforce.terminate_employment", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+            metadata={"reason": reason},
+        ))
         return req
 
-    def get_request_status(self, db: Session, request_id: str) -> WorkforceRequest | None:
-        return db.query(WorkforceRequest).filter(
-            WorkforceRequest.request_id == request_id,
-        ).first()
+    async def get_request_status(self, request_id: str) -> WorkforceRequest | None:
+        stmt = select(WorkforceRequest).where(WorkforceRequest.request_id == request_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def preserve_history(self, db: Session, person_id: str) -> list[WorkforceRequest]:
-        requests = db.query(WorkforceRequest).filter(
-            WorkforceRequest.person_id == person_id,
-        ).all()
+    async def preserve_history(self, person_id: str, actor_account_id: str | None = None) -> list[WorkforceRequest]:
+        stmt = select(WorkforceRequest).where(WorkforceRequest.person_id == person_id)
+        result = await self.session.execute(stmt)
+        requests = list(result.scalars().all())
         for req in requests:
             req.historical_preserved = True
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_HISTORY_PRESERVED", category="LIFECYCLE",
+            action="lifecycle.workforce.preserve_history", actor_id=actor_account_id,
+            target_type="person", target_id=person_id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+            metadata={"preserved_count": len(requests)},
+        ))
         return requests
 
-    def _get_request(self, db: Session, request_id: str) -> WorkforceRequest:
-        req = db.query(WorkforceRequest).filter(
-            WorkforceRequest.request_id == request_id,
-        ).first()
+    async def _get_request(self, request_id: str) -> WorkforceRequest:
+        stmt = select(WorkforceRequest).where(WorkforceRequest.request_id == request_id)
+        result = await self.session.execute(stmt)
+        req = result.scalar_one_or_none()
         if not req:
             raise ValueError(f"WorkforceRequest not found: request_id={request_id}")
         return req
