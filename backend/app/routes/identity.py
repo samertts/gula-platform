@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
-from ..security.dependencies import get_current_user, require_permission
+from ..security.dependencies import require_permission
 from ..services.identity import hash_national_id
 
 router = APIRouter(prefix="/identity", tags=["identity"])
@@ -22,7 +22,7 @@ class LinkIdentityRequest(BaseModel):
 @router.post("/link")
 def link_national_id(
     data: LinkIdentityRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     """Link a national ID to a patient's health record."""

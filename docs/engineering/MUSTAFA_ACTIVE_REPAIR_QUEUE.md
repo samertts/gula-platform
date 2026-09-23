@@ -654,3 +654,92 @@ boolean-filter defects" (only this precise AST-detectable shape was
 scanned for), "authorization complete," or "production ready."
 
 | Commit: `(pending)` | Owner: Mustafa | Files: `app/lims/routes.py`, `app/pharmacy/inventory.py`, `app/pharmacy/routes.py`, `app/pharmacy/services.py`, `app/radiology/pacs.py`, `app/routes/admin.py`, `scripts/security/boolean_not_filter_guard.py`, 1 new test file, 5 docs | Next action: trace the 25 newly-surfaced UNKNOWN routers from the accounting correction (highest priority — they were invisible to every prior batch); separately, the pharmacy `/batches/expiring` route-shadowing bug (documented this pass) is a small, cheap, independent follow-up if a future batch is scoped to fix P2/P3-adjacent findings rather than only document them. |
+
+## Batch 6 — Runtime Surface Reconciliation + Security Triage Acceleration
+
+Combined discovery/triage pass across 16 of the 25 routers Batch 5's
+accounting correction surfaced (`login, register, verification,
+identity, id_scan, qr, cds_hooks, security, patients, test_results,
+notifications, compliance, admin_log_level, setup` fully traced;
+`ehr, ehr_fhir` sampled/structurally confirmed).
+
+**Confirmed and CLOSED — same systemic shape recurring a 4th and 5th
+time this session**: a route depends only on `Depends(get_current_user)`
+(authentication) with zero `require_permission(...)` call anywhere in
+the function (authorization), while tenant isolation
+(`current_user.lab_id`) is correctly enforced. Confirmed exploitable
+via direct RBAC query against all 10 roles (`cashier`, `citizen`,
+`finance_auditor`, `finance_controller`, `finance_operator`,
+`reconciler`, `refund_reviewer` lack `patients:read` entirely; those
+plus `doctor`, `ministry_admin`, `province_admin`, `technician` also
+lack `patients:write`).
+
+**7 routes fixed across 4 files** (all `require_permission(...)` added,
+reusing existing RBAC permission strings — no new permissions, no RBAC
+matrix changes):
+- `app/routes/identity.py::link_national_id` → `patients:write`
+- `app/routes/patients.py` — all 6 routes (4 → `patients:read`, 2 →
+  `patients:write`) — the largest single-router blast radius this
+  batch: the entire canonical patient-management surface (full_name,
+  phone, birth_date, gender, email, national_id, family_id) was
+  previously reachable by any authenticated LabUser regardless of role
+- `app/routes/test_results.py::create_test_result` → `results:write`
+  (plus `list_citizen_results`/`citizen_timeline` → `results:read`,
+  same-file, low-risk, fixed alongside for consistency)
+- `app/routes/compliance.py` — 4 FHIR export routes
+  (`get_fhir_patient` → `patients:read`; `get_fhir_observations`,
+  `get_fhir_diagnostic_report`, `get_fhir_service_request` →
+  `results:read`)
+
+**Negative-proofed**: `git stash push --` on all 4 files, reproduced
+all 7 findings live via a new permanent regression test
+(`backend/tests/test_batch6_permission_gates.py`, 10 tests — 7
+negative-proof + 3 sanity), `git stash pop`, md5-verified byte-identical
+restoration, re-ran to confirm 10/10 pass post-fix. 163 + 58 = 221
+adjacent regression tests re-run — 0 failures.
+
+**New P1-candidate systemic gap found, documented, NOT fixed this
+pass**: `app/routes/ehr.py` (86 routes) + `app/routes/ehr_fhir.py` (29
+routes) — the identical missing-permission-check shape, confirmed via
+`grep -c require_permission` returning 0 across both files plus
+representative sampling, but **no existing RBAC permission string
+fits** (`ehr:read`/`ehr:write` do not exist) — fixing this correctly
+requires a permission-taxonomy decision (reuse `patients:*`/`results:*`
+vs. add new `ehr:*` permissions to the RBAC matrix for all 10 roles)
+that is out of this batch's bound. See GAP-3 in
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` for full detail.
+
+**Also traced this pass, VERIFIED SAFE, no fix needed**: `login`,
+`register`, `verification`, `id_scan`, `qr` (intentional capability-URL
+design), `cds_hooks`, `admin_log_level` (already correctly gated),
+`setup` (intentionally public). `notifications` (tenant-scoped,
+no state mutation — low-risk, not fixed). `security` (`/security/status`
+— P3, platform-scoped aggregate counts, SYSTEM_CONTROLLED allowance,
+documented not fixed).
+
+**Boolean-filter detector re-run this pass** (`scripts/security/boolean_not_filter_guard.py`):
+0 hits — no regression of the Batch 5 pattern.
+
+**UNKNOWN accounting (exact this pass, not approximate)**: 86 (Batch
+5's figure) − 16 (routers moved to VERIFIED/PARTIALLY VERIFIED this
+pass) = **70 of 117 mounted routers remain UNKNOWN.** 9 of the 25
+Batch-5-surfaced routers not yet examined: `demo, metrics, dashboard,
+app_updates, device_results, quality_control, critical_alerts, batch,
+mobile`.
+
+**Documentation updated**: `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`
+(Batch 6 section + exact UNKNOWN recalculation), `docs/security/AUTHORIZATION_GAP_REGISTER.md`
+(GAP-2 closed, GAP-3 opened/documented), this queue (Batch 6 entry).
+
+STATUS: **7 P1 findings + 1 systemic P2 CLOSED across 4 files (12
+routes). 1 new P1-candidate systemic gap (GAP-3, 115 routes) OPEN —
+BLOCKED on a permission-taxonomy decision, documented not fixed. 16 of
+25 newly-surfaced routers resolved; 70 of 117 mounted routers remain
+UNKNOWN.** Not claimed: "authorization complete," "security complete,"
+"production ready," or "national scale ready." Carried forward
+unchanged: `adaptive-auth-account-id-idor` (P1, BLOCKED —
+NEEDS_DECISION), Hospital schema blocker (13/14 tables lack Alembic
+migrations), external CI runner blocker, pharmacy `/batches/expiring`
+route-shadowing bug (P3, documented not fixed).
+
+| Commit: `(pending)` | Owner: Mustafa | Files: `app/routes/identity.py`, `app/routes/patients.py`, `app/routes/test_results.py`, `app/routes/compliance.py`, 1 new test file, 3 docs | Next action: resolve GAP-3's permission-taxonomy question (reuse `patients:*`/`results:*` vs. add `ehr:*` to the RBAC matrix) then apply the fix across `ehr.py`/`ehr_fhir.py`'s 115 routes with the same negative-proof discipline; separately, trace the remaining 9 UNKNOWN routers from Batch 5's surfacing (`demo, metrics, dashboard, app_updates, device_results, quality_control, critical_alerts, batch, mobile`). |

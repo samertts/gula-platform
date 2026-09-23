@@ -253,3 +253,15 @@ route-level evidence on all of the above. Removed from this bucket's
   coverage — that is the separate `LIVE_MUTATION_SURFACE_REGISTRY.md`
   deliverable, not yet built (see scope note in
   `docs/security/FINAL_LIVE_SURFACE_SWEEP.md`).
+
+**Batch 6 update**: 16 of the 25 routers Batch 5's mounted-router
+accounting correction surfaced as newly-honest UNKNOWN were traced
+this pass (`login, register, verification, identity, id_scan, qr,
+cds_hooks, security, patients, test_results, notifications,
+compliance, admin_log_level, setup` fully; `ehr, ehr_fhir` sampled).
+All are confirmed LIVE (mounted, reachable, no schema-blocking). 7 P1
+authorization findings were closed (see
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` GAP-2) and 1 new
+P1-candidate systemic gap was documented, not fixed (`ehr`/`ehr_fhir`,
+GAP-3). Recalculated UNKNOWN: 70 of 117 mounted routers (exact, see
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`'s Batch 6 section).

@@ -683,3 +683,186 @@ denominator in every prior batch. This does not mean "all boolean-
 filter defects are gone" (only this precise AST-detectable shape was
 scanned for) or "authorization complete" — ~86 of the corrected 117
 mounted routers remain UNKNOWN.
+
+## Batch 6 — Runtime Surface Reconciliation + Security Triage Acceleration
+
+Scope: the 25 routers newly surfaced by Batch 5's router-count
+correction. Traced as one combined discovery/triage pass, not 25
+independent projects.
+
+### GAP-2 (new, this pass, CLOSED) — "missing `require_permission` on a
+`get_current_user`-only mutation/PII-read" — confirmed systemic, 4th–5th
+instance of the pattern
+
+**Shape**: a route depends only on `Depends(get_current_user)` (proves
+authentication) with no `require_permission(...)` call anywhere in the
+function (proves authorization). Tenant isolation (`lab_id ==
+current_user.lab_id`) is present and correct in every instance below —
+only the role/permission layer is missing. Confirmed exploitable via
+direct RBAC query (`app/security/rbac.py::get_permissions_for_role`)
+against all 10 roles: `cashier`, `citizen`, `finance_auditor`,
+`finance_controller`, `finance_operator`, `reconciler`,
+`refund_reviewer` lack `patients:read` entirely; those plus `doctor`,
+`ministry_admin`, `province_admin`, `technician` lack `patients:write`;
+`cashier`, `citizen`, `finance_*`, `reconciler`, `refund_reviewer` also
+lack `results:read`.
+
+- **Severity**: P1 (real patient PII / clinical-identity mutation
+  reachable by authenticated actors outside the intended role)
+- **Routes fixed** (7 total, 4 files):
+  - `app/routes/identity.py::link_national_id` (`POST /identity/link`)
+    — mutates `patient.national_id_hash` with zero permission check,
+    while its sibling read route (`lookup_by_national_id`) in the same
+    file already correctly requires `patients:read`. **Fix**: added
+    `Depends(require_permission("patients:write"))`.
+  - `app/routes/patients.py` — **all 6 routes** in the canonical
+    patient-management router (`list`, `create`, `family/{family_id}`,
+    `{patient_id}/children`, `get {patient_id}`, `update
+    {patient_id}`) had zero permission checks; confirmed the service
+    layer (`app/services/patient_service.py`) also performs no
+    permission check (`grep` for
+    `require_permission|patients:read|patients:write|current_user.role`
+    → no matches). This was the single largest-blast-radius finding
+    this pass — the entire patient PII surface (full_name, phone,
+    birth_date, gender, email, national_id, family_id) was reachable
+    by any authenticated LabUser regardless of role. **Fix**: added
+    `Depends(require_permission("patients:read"))` to the 4 reads,
+    `Depends(require_permission("patients:write"))` to the 2
+    mutations.
+  - `app/routes/test_results.py::create_test_result` (`POST
+    /test-results/`) — same shape; sibling routes in the same file
+    (`get_test_result`, `verify_test_result`) are already correctly
+    role/state-gated (see "positive examples" below). **Fix**: added
+    `Depends(require_permission("results:write"))`. Also extended to
+    `list_citizen_results` and `citizen_timeline` (`GET
+    /test-results/citizen/{health_id}[/timeline]`) — read-only but
+    return full clinical result history; gated with
+    `Depends(require_permission("results:read"))` for consistency with
+    the same-file write-side fix.
+  - `app/routes/compliance.py` — 4 HL7 FHIR export routes
+    (`get_fhir_patient`, `get_fhir_observations`,
+    `get_fhir_diagnostic_report`, `get_fhir_service_request`) return
+    real patient PII (full_name, phone, email, birth_date, gender) and
+    clinical result data with zero permission check, unlike the file's
+    other admin-gated routes (`system_info`, `audit_integrity`,
+    `security_report`, `system_status`, all correctly role-checked).
+    **Fix**: `get_fhir_patient` → `require_permission("patients:read")`;
+    the 3 order/result-centric routes →
+    `require_permission("results:read")`. `audit-summary` and
+    `dhis2/aggregate` in the same file were checked and are **not**
+    gaps — both return counts/aggregates only, no patient PII (the
+    dhis2 route's own docstring and `log_action` call explicitly assert
+    `contains_patient_pii: False`, confirmed correct by inspection).
+- **Positive examples confirmed in the same sweep (NOT gaps)**:
+  `test_results.py::verify_test_result` (explicit role gate +
+  atomic `UPDATE ... WHERE locked_at IS NULL` CAS + `enforce_transition`
+  state-machine check — exemplary), `test_results.py::get_test_result`
+  (role-filtered query, `citizen` role hits `sa.false()`), `login.py`,
+  `register.py`, `verification.py`, `id_scan.py`, `qr.py` (intentional
+  capability-URL design, `secrets.token_urlsafe(32)` + SHA-256 hash +
+  expiry, matches `patient_card.py` precedent), `cds_hooks.py`,
+  `admin_log_level.py`, `setup.py` — all traced in full, all VERIFIED
+  SAFE, no fix needed.
+- **Evidence**: `backend/tests/test_batch6_permission_gates.py` (10
+  tests) — 7 negative-proof cases (a role confirmed via direct RBAC
+  query to lack the relevant permission gets 403 post-fix) + 3 sanity
+  cases (a role that legitimately holds the permission is still
+  allowed, 200/201).
+- **Negative-proofed**: `git stash push --` on all 4 files, reproduced
+  every one of the 7 findings live (200/201 where 403 is expected,
+  confirmed by running the new test file against the reverted state),
+  `git stash pop`, md5-verified byte-identical restoration of all 4
+  files, re-ran the same test file to confirm all 10 pass post-restore.
+- **Regression sweep**: 163 tests across
+  `test_chaos_survival.py`, `test_compliance_integrity.py`,
+  `test_elite_improvements.py`, `test_observability_invariants.py`,
+  `test_public_demo_security.py`, `test_security_regression.py`,
+  `test_tenant_isolation_matrix.py`, plus 58 tests across
+  `test_canonical_patient_lab_id_authority.py`,
+  `test_canonical_patient_scope.py`,
+  `test_clinical_authorization_context.py`,
+  `test_clinical_authorization_policy.py`, `test_rbac_tenant_scope.py`,
+  `test_patient_card.py` — 0 failures.
+- **Status**: **CLOSED** for the 7 routes listed. Not a claim that
+  `identity.py`/`patients.py`/`test_results.py`/`compliance.py` have no
+  other findings — only these specific missing-permission-check sites.
+
+### GAP-3 (new, this pass, OPEN — NOT fixed, next batch's primary target)
+— `app/routes/ehr.py` (86 routes) + `app/routes/ehr_fhir.py` (29 routes)
+same missing-permission-check pattern, at much larger scale
+
+- **Severity**: P1 (candidate) — clinical data (clinical notes,
+  allergies, medication statements/requests/dispenses/administrations,
+  care plans/goals/activities in `ehr.py`; FHIR Patient, Encounter,
+  Condition, Observation, MedicationRequest, MedicationStatement,
+  CarePlan, Procedure, AllergyIntolerance, Immunization,
+  DocumentReference resources in `ehr_fhir.py`)
+- **Method**: not exhaustively traced route-by-route (86+29 = 115
+  routes is too large for one bounded pass per this batch's own scope
+  discipline — "do not treat this as 25 independent projects" applies
+  equally to not exploding into a 115-route sub-project). Instead:
+  structurally verified via `grep -c require_permission` returning 0
+  hits in both files, cross-checked against representative sampling
+  (`create_clinical_note`, `get_clinical_note`, `update_clinical_note`,
+  `delete_clinical_note` in `ehr.py`; `fhir_read_patient`,
+  `fhir_metadata`, `fhir_population_summary` in `ehr_fhir.py`) —
+  every sampled route follows the identical shape: tenant/ownership
+  scoping present and correct (`_get_patient(db, patient_id,
+  current_user.lab_id)` in `ehr.py`; a `ClinicalEhrReadGate` exists for
+  one specialized cross-facility route
+  `get_clinical_note_for_verified_facility` but is not the router-wide
+  default), permission/role check absent throughout.
+- **Why not fixed this pass**: unlike the 4 files in GAP-2, there is
+  **no existing RBAC permission string** for EHR data (`ehr:read`/
+  `ehr:write` do not exist in `app/security/rbac.py`; confirmed by
+  listing every permission string returned across all 10 roles).
+  Reusing `patients:read`/`patients:write` here would be a judgment
+  call, not the precise semantic fit it was for identity/patients/
+  test_results/compliance (which literally are patient/result read or
+  write). Introducing a new permission pair would mean editing the
+  central RBAC role-permission matrix for all 10 roles — a
+  broader-than-one-route decision this batch's scope discipline
+  reserves for explicit authorization, not a same-pattern mechanical
+  fix.
+- **Recommendation for next batch**: decide (a) reuse
+  `patients:read`/`patients:write` for `ehr.py` (patient clinical data,
+  closest existing fit) and `results:read` for `ehr_fhir.py`'s
+  read-only surface, or (b) add `ehr:read`/`ehr:write` to the RBAC
+  matrix first, then apply the same mechanical `Depends(...)` fix
+  across all 115 routes with the same negative-proof discipline used
+  in GAP-2.
+- **Status**: **OPEN — BLOCKED on a permission-taxonomy decision,
+  documented not fixed.** Recommended as the next bounded batch's
+  primary target.
+
+### Carried forward, unchanged this pass
+
+- GAP-1 `adaptive-auth-account-id-idor` — still **BLOCKED —
+  NEEDS_DECISION**, not re-investigated.
+- Hospital schema blocker (13/14 tables lack Alembic migrations) —
+  unchanged.
+- External CI runner blocker — unchanged, re-verified after this
+  pass's push.
+- Pharmacy `/batches/expiring` route-shadowing bug (P3) — still
+  documented, not fixed (out of this batch's scope, P3).
+
+## Summary (additions this pass)
+
+| ID | Severity | Status |
+|---|---|---|
+| `identity.py::link_national_id` missing `patients:write` | P1 | **CLOSED** |
+| `patients.py` — 6 routes missing `patients:read`/`patients:write` | P1 | **CLOSED** |
+| `test_results.py::create_test_result` missing `results:write` | P1 | **CLOSED** |
+| `test_results.py` citizen-results reads missing `results:read` | P2 (systemic, low-risk, fixed alongside the write-side fix in the same file) | **CLOSED** |
+| `compliance.py` — 4 FHIR routes missing `patients:read`/`results:read` | P1 | **CLOSED** |
+| `ehr.py` (86 routes) + `ehr_fhir.py` (29 routes) — same pattern, no existing permission string | P1 (candidate) | **OPEN — BLOCKED, next batch** |
+| `security.py::/security/status` cross-tenant aggregate counts for `admin`/`master_admin` | P3 | DOCUMENTED, not fixed (SYSTEM_CONTROLLED platform-scope allowance) |
+
+**Batch 6 closed 12 routes across 4 files (7 P1 + 1 systemic P2), all
+fully negative-proofed and regression-tested (10 new + 221 adjacent
+existing tests, 0 failures), and documented — but explicitly did not
+fix — a 115-route sibling finding (`ehr.py`/`ehr_fhir.py`) whose
+correct fix requires a permission-taxonomy decision first. This is not
+"authorization complete," "security complete," or "production ready" —
+per the recalculated accounting below, most of the 117 mounted routers
+remain outside this pass's exhaustive-trace scope.

@@ -135,6 +135,70 @@ Of these 29: `labs`, `samples`, `results` map to this matrix's existing "Laborat
 
 **Batch 5 subtotal: 28 boolean-filter sites found and fixed (23 beyond the 5 assumed), 1 new detector built and self-tested, 3 routers moved from UNKNOWN to VERIFIED/PARTIALLY VERIFIED (`lims`, `pharmacy`, partial `admin`), mounted-router count corrected from 89 to 117.**
 
+### Batch 6 (this pass — combined discovery/triage of the 25 routers Batch 5 newly surfaced)
+
+Traced 16 of the 25 newly-surfaced UNKNOWN routers as one combined
+discovery/triage pass (full route enumeration + classification +
+authorization trace), per the batch's own instruction not to treat this
+as 25 independent projects:
+
+**Fully traced, VERIFIED SAFE (no fix needed)**: `login` (3 routes, 2
+mutations — timing-safe login enumeration defense, MFA enforcement for
+privileged roles, lockout, audited on every branch), `register` (4
+routes — fail-closed onboarding gate, `is_active=False`/`is_verified=False`
+pending state, duplicate-detection with `IntegrityError` TOCTOU
+handling, the one authenticated route derives `lab_id` server-side),
+`verification` (2 routes — HMAC-compared code binds to `user_id`,
+preventing cross-account code confusion; anti-enumeration identical
+responses), `id_scan` (1 route — stateless OCR, no DB writes, image not
+persisted, rate-limited), `qr` (2 routes — intentionally unauthenticated
+capability-URL design, `secrets.token_urlsafe(32)` + SHA-256 hash +
+expiry + rate-limit, matches the already-accepted `patient_card.py`
+precedent), `cds_hooks` (2 routes — stateless, advisory-only, no DB
+access), `admin_log_level` (2 routes — correctly gated with
+`require_permission("system:admin")` already), `setup` (1 route —
+intentionally public, production-safe default).
+
+**Fully traced, P1 findings CLOSED this pass**: `identity` (1 of 2
+routes fixed — see GAP-2), `patients` (all 6 routes fixed), `test_results`
+(3 of 6 routes fixed: 1 write + 2 reads; the other 3 — `validate`,
+`get_test_result`, `verify_test_result` — were already correctly
+gated/scoped, the latter an exemplary CAS+state-machine pattern),
+`compliance` (4 of 10 routes fixed; the other 6 — `system_info`,
+`audit_integrity`, `security_report`, `system_status`, `audit-summary`,
+`dhis2/aggregate` — were already correctly role-gated or contain no
+PII). `notifications` (2 routes — traced, tenant-scoped correctly,
+no permission gate but also no `db.commit()` — generates a
+notification link only, does not mutate state; classified low-risk,
+not fixed this pass, consistent with this batch's "fix only P0/P1"
+rule). `security` (1 route, `/security/status` — code-level soft gate,
+platform-scoped aggregate counts, no PII; classified P3 per this
+batch's SYSTEM_CONTROLLED platform-scope allowance, documented not
+fixed).
+
+**Sampled, not exhaustive (representative trace + structural grep,
+not route-by-route)**: `ehr` (86 routes) and `ehr_fhir` (29 routes) —
+see GAP-3. Both moved from UNKNOWN to PARTIALLY VERIFIED: a real,
+high-confidence systemic finding is documented (zero
+`require_permission` call sites in either file, confirmed by grep, with
+tenant/ownership scoping otherwise correct in every sampled route), but
+not fixed, because no existing RBAC permission string fits without a
+taxonomy decision.
+
+**Not examined this pass** (9 of the 25): `demo`, `metrics`,
+`dashboard`, `app_updates`, `device_results`, `quality_control`,
+`critical_alerts`, `batch`, `mobile` — all lower priority per the
+batch's own explicit ordering (these come after the
+identity/clinical/security-priority group). Remain UNKNOWN.
+
+**Batch 6 subtotal: 7 P1 findings + 1 systemic P2 closed across 4
+files (12 routes fixed total), 1 new P1-candidate systemic gap
+documented (GAP-3, `ehr`/`ehr_fhir`, 115 routes, BLOCKED on a
+permission-taxonomy decision), 16 of the 25 newly-surfaced routers
+moved out of UNKNOWN (14 fully VERIFIED, 2 PARTIALLY VERIFIED), 9
+remain UNKNOWN. Mounted-router count unchanged at 117 (no new
+registration-methodology issue found this pass).**
+
 ## Axis 3 — NIAM Organization RBAC (`AuthorizationDecisionService`)
 
 Closed this session, prior continuation (NIAM sync/async closure,
@@ -333,6 +397,37 @@ last pass's ~64 not because coverage regressed, but because the
 denominator itself was wrong until this pass's mandatory
 recalculation — exactly the "do not estimate, discover from source"
 outcome this batch's own directive anticipated.
+
+### Batch 6 recalculation (exact, not approximate subtraction)
+
+Starting point: 86 of 117 UNKNOWN (Batch 5's own figure, itself
+approximate — this pass's directive required an exact accounting this
+time, not a further approximate subtraction).
+
+Of the 25 routers Batch 5 newly surfaced, this pass traced 16:
+`login, register, verification, identity, id_scan, qr, cds_hooks,
+security, patients, test_results, notifications, compliance,
+admin_log_level, setup` (14, fully traced — VERIFIED SAFE or fixed) +
+`ehr, ehr_fhir` (2, sampled/structurally-confirmed — PARTIALLY
+VERIFIED, per this register's own convention that a router leaves the
+UNKNOWN bucket once it has *any* real evidence-based trace, matching
+how Batch 5 counted `pharmacy_router` and the partial `admin.py` trace
+the same way).
+
+**Exact new UNKNOWN: 86 − 16 = 70 of 117 mounted routers.**
+
+The 9 not examined this pass, still UNKNOWN: `demo, metrics, dashboard,
+app_updates, device_results, quality_control, critical_alerts, batch,
+mobile`. No other router's status changed this pass — the 92
+previously-VERIFIED/PARTIALLY-VERIFIED/BLOCKED/DEAD routers from prior
+batches are untouched and not re-counted here.
+
+Sanity check: 70 (UNKNOWN) + 16 (newly resolved this pass) + the
+prior-batches' running total of resolved routers (117 − 86 = 31, i.e.
+`lims`, `pharmacy`, partial `admin`, Platform Authority's 4 capabilities
+grouped as router-level entries, Laboratory, Imaging/Radiology, EMS,
+Nursing, NHDW, Payments, Devices, and the other already-audited domains
+listed in "Already-audited domains" below) = 117. Arithmetic holds.
 ```
 
 ## Scope and honesty note
@@ -372,19 +467,22 @@ billing, lifecycle_platform, pilot_platform, `services/mpi`,
 canonical_patient, service_accounts, mfa, hospital, password_reset,
 oauth2, saml, **`lims_routes.router`, `pharmacy_router` (partial —
 only 2 of its routes traced), `app/routes/admin.py`'s router (partial
-— only 1 of its ~15+ routes traced)**.
+— only 1 of its ~15+ routes traced)**, and, as of Batch 6: **`login`,
+`register`, `verification`, `identity`, `id_scan`, `qr`, `cds_hooks`,
+`security`, `patients`, `test_results`, `notifications`,
+`compliance` (`app/routes/compliance.py`), `admin_log_level`, `setup`
+(fully traced), `ehr`, `ehr_fhir` (partial — structurally confirmed,
+not route-by-route; see GAP-3, `ehr:read`/`ehr:write` permission
+taxonomy decision needed before the fix can be applied)**.
 
-**Next bounded batch candidates**: the 25 routers newly surfaced by
-this batch's router-count correction are the highest-priority
-candidates precisely because they were invisible to every prior batch
-— `login, register, verification, demo, setup, metrics, patients,
-test_results, dashboard, app_updates` (core, likely auth-adjacent —
-some may overlap with already-audited auth flows, verify per-router
-before assuming), `qr, id_scan, identity, notifications, ehr,
-ehr_fhir, cds_hooks, security, device_results` (feature routes),
-`quality_control, critical_alerts, batch` (advanced routes),
-`admin_log_level, mobile, compliance` (`app/routes/compliance.py`,
-distinct from the NIAM one). Also still open from before Batch 5:
+**Next bounded batch candidates**: `ehr`/`ehr_fhir` (GAP-3 — decide the
+permission-taxonomy question first, then apply the fix across 115
+routes with the same negative-proof discipline used in Batch 6), then
+the 9 routers from the 25 Batch 5 surfaced that Batch 6 did not reach
+— `demo, metrics, dashboard, app_updates` (core/lower-priority per this
+program's own ordering), `device_results, quality_control,
+critical_alerts, batch` (feature/advanced routes), `mobile`. Also still
+open from before Batch 5:
 `edge` (14 mutating routes), `ai_fabric` (23 mutating routes),
 `control_plane` (10 mutating routes), `integrations`/
 `advanced_integrations`, `chronic_care`, `certification`,

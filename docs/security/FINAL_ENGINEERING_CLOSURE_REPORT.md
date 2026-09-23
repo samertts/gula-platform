@@ -249,3 +249,64 @@ AST-detectable shape was scanned for), "authorization complete," or
 remain untraced, the carried-forward `adaptive-auth-account-id-idor`
 P1 remains open, and the pharmacy route-shadowing bug found this pass
 remains open (documented, not fixed).
+
+## Addendum 5 — Batch 6: Runtime Surface Reconciliation + Security Triage Acceleration
+
+Objective: use the 25 routers Batch 5's router-count correction
+surfaced to reduce UNKNOWN coverage while performing route-level
+security triage, as one combined pass. Traced 16 of the 25 (`login,
+register, verification, identity, id_scan, qr, cds_hooks, security,
+patients, test_results, notifications, compliance, admin_log_level,
+setup` fully; `ehr, ehr_fhir` sampled/structurally confirmed given
+their combined 115-route scope).
+
+**7 P1 authorization findings closed** (12 routes across 4 files),
+all the same systemic shape confirmed a 4th and 5th time this session:
+a route depending only on `Depends(get_current_user)` — proving
+authentication, not authorization — with zero `require_permission(...)`
+call anywhere in the function, while tenant isolation
+(`current_user.lab_id`) was already correctly enforced. Confirmed
+exploitable via direct RBAC query against all 10 roles. Fixed:
+`identity.py::link_national_id` (`patients:write`), all 6 routes in
+`patients.py` (`patients:read`/`patients:write` — the entire canonical
+patient-management surface was previously reachable by any
+authenticated role), `test_results.py::create_test_result`
+(`results:write`, plus 2 read routes gated with `results:read`
+alongside it), and 4 FHIR export routes in `compliance.py`
+(`patients:read`/`results:read`) that returned real patient PII
+(name, phone, email, birth date) with no permission check.
+
+Every fix negative-proofed via `git stash`/`git stash pop` with
+md5-verified byte-identical restoration; a new permanent regression
+test (`backend/tests/test_batch6_permission_gates.py`, 10 tests)
+reproduces all 7 findings against the reverted state and confirms the
+fix; 221 adjacent existing tests re-run, 0 failures. The boolean-filter
+detector (`scripts/security/boolean_not_filter_guard.py`) was re-run
+as required — 0 hits, no regression.
+
+**1 new P1-candidate systemic gap documented, not fixed**:
+`ehr.py` (86 routes) + `ehr_fhir.py` (29 routes) show the identical
+missing-permission-check shape (confirmed via `grep -c
+require_permission` = 0 in both files plus representative sampling),
+but no existing RBAC permission string fits without a taxonomy
+decision (`ehr:read`/`ehr:write` do not exist; reusing `patients:*`
+would be a judgment call, not the precise fit it was for the 4 files
+above). Documented as GAP-3, recommended as the next batch's primary
+target — not fixed here, consistent with this batch's own scope
+discipline against exploding a 115-route sibling finding into this
+pass.
+
+**UNKNOWN accounting, recalculated exactly from the 117 baseline**:
+86 (Batch 5's figure) − 16 (routers moved to VERIFIED/PARTIALLY
+VERIFIED this pass) = **70 of 117 mounted routers remain UNKNOWN.**
+9 of the 25 Batch-5-surfaced routers were not examined this pass:
+`demo, metrics, dashboard, app_updates, device_results,
+quality_control, critical_alerts, batch, mobile`.
+
+**Still not claimed**: "authorization complete," "security complete,"
+"production ready," or "national scale ready." Carried forward,
+unchanged: `adaptive-auth-account-id-idor` (P1, BLOCKED —
+NEEDS_DECISION), Hospital schema blocker, external CI runner blocker,
+pharmacy `/batches/expiring` route-shadowing bug (P3, still
+documented, not fixed), and the newly-opened `ehr`/`ehr_fhir` gap
+(P1-candidate, BLOCKED on a permission-taxonomy decision).
