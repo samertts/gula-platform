@@ -310,3 +310,71 @@ NEEDS_DECISION), Hospital schema blocker, external CI runner blocker,
 pharmacy `/batches/expiring` route-shadowing bug (P3, still
 documented, not fixed), and the newly-opened `ehr`/`ehr_fhir` gap
 (P1-candidate, BLOCKED on a permission-taxonomy decision).
+
+## Addendum 6 — Batch 7: EHR Authorization Taxonomy + Remaining Small Router Sweep
+
+Objective: resolve Batch 6's open `ehr`/`ehr_fhir` taxonomy question —
+explicitly without directly patching all 115 routes — by establishing
+canonical ownership first; and trace the 9 remaining Batch-5-surfaced
+routers Batch 6 didn't reach.
+
+**Canonical ownership established, not guessed**: full route-family
+inventory found EHR's clinical resources genuinely belong to EHR/the
+National platform (keyed to `app.national.domain.patient.Patient`,
+structurally distinct from the legacy `patients` table
+`patients:read`/`patients:write` guard), and that the National domain
+already has its own considerably more sophisticated authorization
+layer (`app/national/security/*` — 16-role ABAC/RBAC + consent +
+break-glass) that is confirmed, by grep, to be **entirely dormant** —
+never wired to any live route, and using a role taxonomy (`NationalRole`)
+that has no mapping to the `LabUser.role` space actually issued in
+JWTs. Rather than reuse an imprecise legacy permission or silently
+activate dormant code, this was recorded as **`docs/national/ADR.md`
+ADR-009** — a genuine architecture decision with 3 options, put to a
+domain owner.
+
+**Family-level result**: of 115 EHR/FHIR routes, 109 (clinical CRUD,
+FHIR reads/searches over EHR-native/National models, the generic FHIR
+dispatcher) are **BLOCKED pending ADR-009**. 3
+(`ehr_fhir.py`'s Observation read/search + Provenance search) turned
+out to project the legacy `LabResult`/`LabOrder`/`AuditLog` resources —
+already permissioned elsewhere — and are now fixed with
+`results:read`/`audit:read`. 3 (metadata, population-summary, a
+pre-existing `ClinicalEhrReadGate`-protected route) are verified, not
+gaps.
+
+**Small-router sweep**: all 9 remaining Batch-5-surfaced routers
+traced. `demo`, `metrics`, `dashboard`, `app_updates`, `mobile` (11
+routes) verified safe. `device_results.py`, `critical_alerts.py` (both
+routes), `batch.py` — the same missing-permission-check P1 shape found
+repeatedly this session, on the same canonical `LabResult`/`LabOrder`
+resources Batch 6 already permissioned — fixed with
+`results:write`/`results:read`/`orders:write`. `quality_control.py` (4
+routes) — same shape, no precise-fit permission exists — documented,
+not fixed (P2/P3).
+
+Every fix negative-proofed via `git stash`/`git stash pop` with
+md5-verified byte-identical restoration; 2 new regression test files
+(12 tests total) reproduce all 7 findings against the reverted state
+and confirm the fix; 3099 tests re-run across the full backend suite
+(2 pre-existing, unrelated failures excluded), 0 regressions. Both
+existing detectors (`boolean_not_filter_guard.py`,
+`log_action_arg_order_guard.py`) re-run clean;
+`setattr_mass_assignment_guard.py` flagged 17 pre-existing candidates
+in `app/services/ehr_service.py`, checked and confirmed not exploitable
+through the live route surface today — recorded as an observation, not
+fixed (out of this batch's mandate).
+
+**UNKNOWN accounting**: 70 (Batch 6) − 9 (all remaining Batch-5-surfaced
+routers now examined) = **61 of 117 mounted routers remain UNKNOWN.**
+All 25 routers from Batch 5's router-count correction have now been
+examined.
+
+**Still not claimed**: "authorization complete," "security complete,"
+"production ready," or "national scale ready." Carried forward,
+unchanged: `adaptive-auth-account-id-idor` (P1, BLOCKED —
+NEEDS_DECISION), Hospital schema blocker, external CI runner blocker,
+pharmacy `/batches/expiring` route-shadowing bug (P3). Newly open:
+ADR-009's 109-route decision (architecture-level, needs a human
+owner), and `quality_control.py`'s smaller permission-taxonomy
+question (P2/P3).

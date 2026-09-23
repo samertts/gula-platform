@@ -496,3 +496,70 @@ LIVE with confidence. **Also worth periodic re-running**: `python3
 scripts/security/boolean_not_filter_guard.py` (this batch's new
 detector) as a cheap first check before any future domain audit, and
 the pre-existing `python3 scripts/setattr_mass_assignment_guard.py`.
+
+### Batch 7 (this pass — EHR authorization taxonomy + remaining small-router sweep)
+
+Resolved Batch 6's open `ehr`/`ehr_fhir` taxonomy question by
+establishing canonical ownership first (not by guessing a permission):
+EHR's clinical resources are genuinely EHR/National-owned (distinct
+from the legacy `Patient`/`LabResult` models), and the National domain
+already has its own, more sophisticated, but entirely dormant
+authorization layer (`app/national/security/*` — 16-role ABAC/RBAC +
+consent + break-glass, never wired to any live route). Recorded as
+**ADR-009** in `docs/national/ADR.md` — a real architectural decision
+now put explicitly to a domain owner, not guessed. Of the 115
+EHR/FHIR routes: 109 remain **OPEN — BLOCKED** on that decision, 3
+(`ehr_fhir.py`'s Observation read/search + Provenance search) turned
+out to project the already-permissioned legacy `LabResult`/`AuditLog`
+resources and are now **CLOSED** with `results:read`/`audit:read`, and
+3 (metadata, population-summary, the one cross-facility-gated note
+route) are **VERIFIED, not gaps**. Full family-by-family breakdown in
+`docs/security/AUTHORIZATION_GAP_REGISTER.md`'s GAP-3 refinement.
+
+Also completed the small-router sweep Batch 6 deferred — all 9 of the
+25 Batch-5-surfaced routers not yet traced: `demo`, `metrics`,
+`dashboard`, `app_updates`, `mobile` (11 routes total) are **VERIFIED
+SAFE** (fail-closed demo gate, Bearer-gated Prometheus endpoint,
+already-correct `dashboard:read` gate, intentionally public update
+manifest, all-self-scoped mobile routes); `device_results.py`,
+`critical_alerts.py` (both routes), `batch.py` had the identical
+Batch-6-established missing-permission-check P1 shape and are now
+**CLOSED** with `results:write`/`results:read`/`orders:write`
+respectively; `quality_control.py` (4 routes) is a new, smaller-scale,
+same-shape finding with no precise-fit existing permission —
+**documented, not fixed** (P2/P3 — no PII, tenant-isolated).
+
+**Batch 7 subtotal: 3 EHR/FHIR + 3 small-router routes closed (6
+routes total across 4 files), 1 new architecture decision recorded
+(ADR-009, 109 routes pending it), 1 new small P2/P3 finding
+documented, 8 of 9 remaining small routers moved to VERIFIED SAFE, 1
+to BLOCKED (with real evidence). All 25 of the routers Batch 5's
+router-count correction surfaced have now been examined (16 in Batch
+6, 9 in Batch 7).**
+
+#### Recalculated UNKNOWN (exact, from 117)
+
+Batch 6 ended at 70 of 117. This pass examined the remaining 9
+routers Batch 6 had not reached, each now resolved with real evidence
+(VERIFIED, or BLOCKED with a documented reason) rather than left
+unexamined. **70 − 9 = 61 of 117 mounted routers remain UNKNOWN.**
+`ehr`/`ehr_fhir` were already counted as resolved in Batch 6's tally
+(PARTIALLY VERIFIED) and are not double-subtracted here — this pass
+refined their internal route-family classification without changing
+the router-level UNKNOWN count.
+
+**Already-audited domains — updated this pass**: `demo`, `metrics`,
+`dashboard`, `app_updates`, `device_results`, `critical_alerts`,
+`batch`, `mobile` now join the fully-traced list; `quality_control`
+joins the partially-traced list (traced, findings documented, fix
+pending a permission decision); `ehr`/`ehr_fhir` remain partially
+traced (family-level classification complete, 109 routes pending
+ADR-009).
+
+**Next bounded batch candidates**: resolve ADR-009 (the EHR/FHIR
+authorization-taxonomy decision) and apply its chosen fix across the
+109 pending routes with the same negative-proof discipline used
+throughout this program; separately, `quality_control.py`'s
+permission-taxonomy question (reuse `staff:manage` or add a new `qc:*`
+pair); then the still-untraced routers listed above (`edge`,
+`ai_fabric`, `control_plane`, etc.).

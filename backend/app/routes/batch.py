@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import get_client_ip
 from ..services.order_service import create_order
 
@@ -37,7 +37,7 @@ class BatchOrderRequest(BaseModel):
 def create_batch_orders(
     data: BatchOrderRequest,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     """Create multiple orders at once."""

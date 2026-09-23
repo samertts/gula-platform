@@ -265,3 +265,19 @@ authorization findings were closed (see
 P1-candidate systemic gap was documented, not fixed (`ehr`/`ehr_fhir`,
 GAP-3). Recalculated UNKNOWN: 70 of 117 mounted routers (exact, see
 `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`'s Batch 6 section).
+
+**Batch 7 update**: the remaining 9 of the 25 Batch-5-surfaced routers
+were traced (`demo, metrics, dashboard, app_updates, device_results,
+quality_control, critical_alerts, batch, mobile`) — all confirmed
+LIVE. `ehr`/`ehr_fhir`'s canonical ownership was established (EHR-native
+clinical data keyed to the National platform's own patient identity,
+not the legacy `Patient`/`LabResult`; National's own dormant
+authorization layer is never wired to any live route) and recorded as
+`docs/national/ADR.md`'s ADR-009 — a real architecture decision, not a
+guessed fix. 6 P1 findings were closed across 4 files (see
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` GAP-3 refinement + GAP-4);
+1 new small P2/P3 finding documented (GAP-5, `quality_control.py`).
+Recalculated UNKNOWN: 61 of 117 mounted routers (exact, see
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`'s Batch 7 section).
+All 25 routers Batch 5's accounting correction surfaced have now been
+examined.

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services.critical_alerts import (
     alert_statistics as _alert_statistics,
 )
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/alerts", tags=["critical-alerts"])
 def get_critical_alerts(
     hours: int = Query(24, ge=1, le=168),
     acknowledged: bool | None = None,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Get critical results requiring immediate attention."""
@@ -29,7 +29,7 @@ def get_critical_alerts(
 
 @router.get("/stats")
 def alert_statistics(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Statistics on critical results for the lab."""

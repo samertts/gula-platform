@@ -10,7 +10,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.sample import Sample
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import rate_limit_public
 from ..services.audit_service import log_action
 from ..services.interpretation import get_flag
@@ -37,7 +37,7 @@ class DeviceSubmission(BaseModel):
 def receive_device_results(
     data: DeviceSubmission,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     """Receive results from a lab analyzer device.

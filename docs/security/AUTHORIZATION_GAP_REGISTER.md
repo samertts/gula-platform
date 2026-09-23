@@ -787,53 +787,162 @@ lack `results:read`.
   `identity.py`/`patients.py`/`test_results.py`/`compliance.py` have no
   other findings — only these specific missing-permission-check sites.
 
-### GAP-3 (new, this pass, OPEN — NOT fixed, next batch's primary target)
-— `app/routes/ehr.py` (86 routes) + `app/routes/ehr_fhir.py` (29 routes)
-same missing-permission-check pattern, at much larger scale
+### GAP-3 (Batch 6 stub, REFINED this pass — Batch 7) —
+`app/routes/ehr.py` (86 routes) + `app/routes/ehr_fhir.py` (29 routes):
+canonical-ownership analysis complete, family-level classification
+replaces the earlier blanket "115 routes, all BLOCKED" statement
 
-- **Severity**: P1 (candidate) — clinical data (clinical notes,
-  allergies, medication statements/requests/dispenses/administrations,
-  care plans/goals/activities in `ehr.py`; FHIR Patient, Encounter,
-  Condition, Observation, MedicationRequest, MedicationStatement,
-  CarePlan, Procedure, AllergyIntolerance, Immunization,
-  DocumentReference resources in `ehr_fhir.py`)
-- **Method**: not exhaustively traced route-by-route (86+29 = 115
-  routes is too large for one bounded pass per this batch's own scope
-  discipline — "do not treat this as 25 independent projects" applies
-  equally to not exploding into a 115-route sub-project). Instead:
-  structurally verified via `grep -c require_permission` returning 0
-  hits in both files, cross-checked against representative sampling
-  (`create_clinical_note`, `get_clinical_note`, `update_clinical_note`,
-  `delete_clinical_note` in `ehr.py`; `fhir_read_patient`,
-  `fhir_metadata`, `fhir_population_summary` in `ehr_fhir.py`) —
-  every sampled route follows the identical shape: tenant/ownership
-  scoping present and correct (`_get_patient(db, patient_id,
-  current_user.lab_id)` in `ehr.py`; a `ClinicalEhrReadGate` exists for
-  one specialized cross-facility route
-  `get_clinical_note_for_verified_facility` but is not the router-wide
-  default), permission/role check absent throughout.
-- **Why not fixed this pass**: unlike the 4 files in GAP-2, there is
-  **no existing RBAC permission string** for EHR data (`ehr:read`/
-  `ehr:write` do not exist in `app/security/rbac.py`; confirmed by
-  listing every permission string returned across all 10 roles).
-  Reusing `patients:read`/`patients:write` here would be a judgment
-  call, not the precise semantic fit it was for identity/patients/
-  test_results/compliance (which literally are patient/result read or
-  write). Introducing a new permission pair would mean editing the
-  central RBAC role-permission matrix for all 10 roles — a
-  broader-than-one-route decision this batch's scope discipline
-  reserves for explicit authorization, not a same-pattern mechanical
-  fix.
-- **Recommendation for next batch**: decide (a) reuse
-  `patients:read`/`patients:write` for `ehr.py` (patient clinical data,
-  closest existing fit) and `results:read` for `ehr_fhir.py`'s
-  read-only surface, or (b) add `ehr:read`/`ehr:write` to the RBAC
-  matrix first, then apply the same mechanical `Depends(...)` fix
-  across all 115 routes with the same negative-proof discipline used
-  in GAP-2.
-- **Status**: **OPEN — BLOCKED on a permission-taxonomy decision,
-  documented not fixed.** Recommended as the next bounded batch's
-  primary target.
+Batch 6 left this as a single undifferentiated 115-route P1 candidate.
+Batch 7's mandate ("resolve the authorization taxonomy decision... do
+NOT directly patch all 115 routes, first establish the authorization
+model") required determining canonical ownership before classifying
+further. Full route-family inventory, canonical-ownership analysis,
+and the resulting architecture decision are now recorded in
+`docs/national/ADR.md`'s **ADR-009** (new this pass) — this entry
+summarizes the disposition; see the ADR for full evidence and the
+3-option decision it puts to a domain owner.
+
+**Canonical ownership finding (the key discovery this pass)**: EHR's
+clinical resources (`app/ehr/models/*` — ClinicalNote, Allergy,
+Medication*, CarePlan*, Condition, Diagnosis, FamilyHistory,
+SocialHistory, RiskFactor, Immunization, Attachment) are genuinely
+EHR-owned, first-party canonical data — NOT a projection/facade over
+the legacy monolith's `Patient`/`LabResult` (confirmed via ADR-001).
+They key off `app.national.domain.patient.Patient` (table
+`national_patients`), the National platform's own canonical patient
+identity — a structurally distinct table from the legacy `patients`
+table that `patients:read`/`patients:write` were built to guard.
+Tenant isolation is sound across this boundary (both share the same
+`lab_id` value space via `TenantMixin`), but role/permission
+authorization is a separate question, and that's where the real gap
+is.
+
+**The National domain already has its own dormant, more sophisticated
+authorization layer** (`app/national/security/{rbac,abac,
+consent_enforcement,break_glass}.py` — 16-role × 42-permission ABAC/RBAC
++ consent + break-glass, documented as built in
+`app/national/DOMAIN_AUDIT_REPORT.md`) that is confirmed, by grep,
+**never called by any live route** (`app/national/api/routes/security.py`
+and `consent.py` are not mounted in `app/factory.py`; `ehr.py`/
+`ehr_fhir.py`/`ehr_service.py` never import from
+`app.national.security.*`). Its `NationalRole` enum does not map onto
+`LabUser.role` (the legacy 10-role space actually issued in JWTs) — no
+mapping function exists anywhere in the codebase.
+
+**Family-level breakdown of the 115 routes** (see ADR-009 for full
+route lists):
+
+| Family | Routes | Canonical owner | Disposition |
+|---|---|---|---|
+| EHR clinical sub-resource CRUD (`ehr.py`) | 82 | EHR-native (`app/ehr/models`) via `NationalPatient` | **G — BLOCKED**, pending ADR-009's taxonomy decision |
+| Patient timeline/summary aggregation (`ehr.py`) | 3 | Same as above (aggregates the same family) | **G — BLOCKED** |
+| Cross-facility verified clinical read (`ehr.py::get_clinical_note_for_verified_facility`) | 1 | Same, but already has its own gate | **VERIFIED** — `ClinicalEhrReadGate` already authorizes this route; not a gap |
+| FHIR read/search over EHR-native + National resources (`ehr_fhir.py`: Patient, Encounter, Condition, MedicationRequest, MedicationStatement, CarePlan, Procedure, AllergyIntolerance, Immunization, DocumentReference, Composition, $everything, Bundle) | 20 | Same as row 1 | **G — BLOCKED** |
+| Generic FHIR create/update/delete/batch dispatcher (`ehr_fhir.py`) | 4 | Dispatches to the same EHR-native/National models (never `LabResult`/`Patient`) | **G — BLOCKED** |
+| FHIR Observation read + search (`ehr_fhir.py`) | 2 | Legacy `LabResult`/`LabOrder` (already owns `results:read`/`results:write`) | **FIXED this pass** — `require_permission("results:read")` |
+| FHIR Provenance search (`ehr_fhir.py`) | 1 | `AuditLog` (already owns `audit:read`, reused identically in `app/routes/admin.py`) | **FIXED this pass** — `require_permission("audit:read")` |
+| FHIR population-summary analytics (`ehr_fhir.py`) | 1 | Aggregate counts only, no PII (matches the already-accepted `dhis2/aggregate` precedent) | **VERIFIED, not a gap** |
+| FHIR metadata/CapabilityStatement (`ehr_fhir.py`) | 1 | Static server metadata, no patient data | **VERIFIED SAFE** |
+
+Totals: **109 of 115 routes BLOCKED** (pending ADR-009), **3 of 115
+FIXED this pass**, **3 of 115 VERIFIED SAFE / not a gap**.
+
+- **Fix applied this pass**: `ehr_fhir.py`'s `fhir_read_observation`,
+  `fhir_search_observation` → `require_permission("results:read")`;
+  `fhir_search_provenance` → `require_permission("audit:read")`.
+- **Evidence**: `backend/tests/test_batch7_ehr_fhir_permission_gates.py`
+  (5 tests — 3 negative-proof + 2 sanity).
+- **Negative-proofed**: `git stash`/`pop` on `ehr_fhir.py`, md5-verified
+  byte-identical restoration; all 3 negative-proof cases reproduced
+  live (200 where 403 expected) pre-fix, confirmed fixed post-restore.
+- **Status**: 3 routes **CLOSED**. 109 routes **OPEN — BLOCKED on
+  ADR-009's taxonomy decision**, explicitly not guessed. 3 routes
+  **VERIFIED, not a gap**.
+
+### GAP-4 (new, this pass — Batch 7) — 3 more instances of the same
+missing-permission-check pattern, found while sweeping the remaining
+9 small routers
+
+Phase 8's sweep of `demo`, `metrics`, `dashboard`, `app_updates`,
+`device_results`, `quality_control`, `critical_alerts`, `batch`,
+`mobile` (the last 9 of the 25 routers Batch 5's accounting correction
+surfaced) found 3 more confirmed instances of the same
+`Depends(get_current_user)`-only pattern, each with an unambiguous,
+already-established, precise-fit permission:
+
+- **`app/routes/device_results.py::receive_device_results`** (`POST
+  /device/results`) — creates `LabResult` rows from a lab analyzer
+  device submission; tenant-scoped correctly (`LabOrder.lab_id ==
+  current_user.lab_id`), excellent CAS/state-machine concurrency
+  handling already in place, but zero permission check on a mutation
+  of the same canonical resource `test_results.py::create_test_result`
+  was gated with in Batch 6. **Fix**: `require_permission("results:write")`.
+- **`app/routes/critical_alerts.py`** — both routes
+  (`get_critical_alerts`, `alert_statistics`) return real patient names
+  and critical `LabResult` values (`get_critical_alerts` eager-loads
+  `LabResult.order.patient`), tenant-scoped correctly, zero permission
+  check. **Fix**: both → `require_permission("results:read")`.
+- **`app/routes/batch.py::create_batch_orders`** (`POST /batch/orders`)
+  — bulk-creates `LabOrder` + `LabResult` rows, tenant-scoped correctly
+  (patient IDs pre-validated against `current_user.lab_id`), zero
+  permission check on the same canonical resource `orders:write`
+  already governs. **Fix**: `require_permission("orders:write")`.
+- **Evidence**: `backend/tests/test_batch7_small_router_permission_gates.py`
+  (7 tests — 4 negative-proof + 3 sanity).
+- **Negative-proofed**: `git stash`/`pop` on all 3 files, md5-verified
+  byte-identical restoration; all 4 negative-proof cases reproduced
+  live pre-fix (200/201 where 403 expected — including
+  `device_results.py` reaching real business logic and 404ing on an
+  unknown barcode, proving the gate is a real authorization check and
+  not merely masking an unrelated 404), confirmed fixed post-restore.
+- **Regression sweep**: 3099 tests across the full backend suite
+  (excluding the 2 pre-existing, unrelated failures already confirmed
+  identical on unmodified HEAD in Batch 6) — 0 new failures.
+- **Status**: **CLOSED** — 4 routes across 3 files.
+
+### GAP-5 (new, this pass — Batch 7, OPEN — documented, not fixed,
+P2/P3) — `app/routes/quality_control.py`, 4 routes, same pattern, no
+precise-fit permission exists
+
+`submit_qc`, `submit_qc_batch` (mutations creating `QualityControl`
+rows — instrument calibration/Westgard-rule records) and `list_qc`,
+`qc_summary` (reads) all depend only on `Depends(get_current_user)`,
+tenant-scoped correctly (`QualityControl.lab_id == current_user.lab_id`),
+no permission check. Unlike GAP-4's 3 fixes, `QualityControl` is not
+the same canonical resource as any existing permission
+(`patients:*`/`results:*`/`orders:*` all govern different tables) —
+reusing one would be an imprecise fit, and inventing a new
+`qc:read`/`qc:write` pair would mean editing the central RBAC matrix,
+which this batch's scope discipline reserves for explicit
+authorization (same reasoning as GAP-3, at much smaller scale: no
+patient PII is exposed, and lab quality-control records don't carry
+the same clinical-safety weight as a patient's own result — this is a
+data-integrity/operational-hygiene concern, not a patient-privacy or
+mis-diagnosis risk).
+
+- **Severity**: P2/P3 (tenant-isolated, no PII, no patient-safety
+  bypass — any authenticated lab staff member recording or viewing
+  instrument QC data is a much lower-impact exposure than the P1s
+  fixed elsewhere this batch).
+- **Status**: **OPEN — documented, not fixed.** A future batch should
+  decide whether QC data belongs under a new permission pair or should
+  simply require `staff:manage` (the closest existing "lab operations"
+  permission) before gating it.
+
+### Observation (not triaged this pass — out of this batch's mandate)
+— `scripts/setattr_mass_assignment_guard.py` flags 17 unguarded
+`for key, value in data.items(): setattr(record, key, value)` sites in
+`app/services/ehr_service.py` (one per `update_*` function). Checked
+whether these are exploitable through the live route surface: every
+`ehr.py` `*Update` Pydantic model (e.g. `ClinicalNoteUpdate`) declares
+only safe fields and none override `model_config`/`class Config` to
+allow extra fields, so FastAPI's default `extra="ignore"` behavior
+means a client cannot inject `patient_id`/`lab_id`/`id` through the
+live route today. Recorded as a defense-in-depth observation, not a
+live finding — the service layer isn't independently safe if a future
+caller passes a less-constrained dict. Not investigated further or
+fixed this pass; this batch's mandate was authorization taxonomy, not
+mass-assignment.
 
 ### Carried forward, unchanged this pass
 
@@ -866,3 +975,69 @@ correct fix requires a permission-taxonomy decision first. This is not
 "authorization complete," "security complete," or "production ready" —
 per the recalculated accounting below, most of the 117 mounted routers
 remain outside this pass's exhaustive-trace scope.
+
+## Batch 7 — EHR Authorization Taxonomy + Remaining Small Router Sweep
+
+### Carried forward, unchanged this pass
+
+- GAP-1 `adaptive-auth-account-id-idor` — still **BLOCKED —
+  NEEDS_DECISION**, not re-investigated.
+- Hospital schema blocker (13/14 tables lack Alembic migrations) —
+  unchanged.
+- External CI runner blocker — unchanged, re-verified after this
+  pass's push.
+- Pharmacy `/batches/expiring` route-shadowing bug (P3) — still
+  documented, not fixed (out of this batch's scope, P3).
+- GAP-5 (`quality_control.py`, this pass's own new P2/P3 finding) —
+  documented above, not fixed, carried into the next batch.
+
+## Summary (additions this pass — Batch 7)
+
+| ID | Severity | Status |
+|---|---|---|
+| GAP-3 refinement: `ehr.py`+`ehr_fhir.py` canonical-ownership analysis, 115 routes classified into families | — | 109 **OPEN — BLOCKED on ADR-009**, 3 **CLOSED** (Observation×2 + Provenance), 3 **VERIFIED, not a gap** |
+| `ehr_fhir.py::fhir_read_observation`/`fhir_search_observation` missing `results:read` | P1 | **CLOSED** |
+| `ehr_fhir.py::fhir_search_provenance` missing `audit:read` | P1 | **CLOSED** |
+| `device_results.py::receive_device_results` missing `results:write` | P1 | **CLOSED** |
+| `critical_alerts.py` — both routes missing `results:read` | P1 | **CLOSED** |
+| `batch.py::create_batch_orders` missing `orders:write` | P1 | **CLOSED** |
+| GAP-5: `quality_control.py` — 4 routes, no precise-fit permission | P2/P3 | DOCUMENTED, not fixed |
+| `demo.py`, `metrics.py`, `dashboard.py`, `app_updates.py`, `mobile.py` (11 routes total) | — | **VERIFIED SAFE** — no gap found |
+
+**Batch 7 resolved the EHR/FHIR authorization-taxonomy question Batch 6
+left open — not by guessing a permission, but by establishing canonical
+ownership first (ADR-009) and discovering the real shape of the
+problem: 109 of 115 routes are genuinely EHR/National-owned and
+BLOCKED on a real architectural decision (reuse the legacy flat RBAC vs.
+wire in the National domain's own dormant, more sophisticated ABAC/RBAC/
+consent/break-glass layer), while 3 routes turned out to be
+mislabeled — they project the already-permissioned legacy
+`LabResult`/`AuditLog` resources and are now fixed. Separately, Batch 7
+completed the small-router sweep Batch 6 deferred: of the 9 remaining
+routers from Batch 5's accounting correction, 5 are fully safe, 3 had
+the same missing-permission-check P1 (all closed with existing, precise-fit
+permissions), and 1 (`quality_control.py`) is a new, low-severity,
+documented-not-fixed finding pending its own permission decision.**
+
+**Recalculated UNKNOWN (exact, from the 117 baseline, per this
+program's router-level convention that a router "resolves" out of
+UNKNOWN once it has real evidence — whether VERIFIED, PARTIALLY
+VERIFIED, or BLOCKED with a documented reason — not only when every
+finding within it is closed)**: Batch 6 ended at 70 of 117. This pass
+examined all 9 of the 25 Batch-5-surfaced routers that Batch 6 had not
+yet reached (`demo, metrics, dashboard, app_updates, device_results,
+quality_control, critical_alerts, batch, mobile`) — every one of them
+now has real evidence (5 VERIFIED SAFE, 3 fixed/CLOSED, 1 BLOCKED with
+a documented reason). **70 − 9 = 61 of 117 mounted routers remain
+UNKNOWN.** This completes examination of all 25 routers Batch 5's
+router-count correction originally surfaced (16 in Batch 6 + 9 in
+Batch 7 = 25). `ehr`/`ehr_fhir` themselves were already counted as
+resolved (PARTIALLY VERIFIED) in Batch 6's tally and are not
+double-counted here — this pass refined their internal classification
+without changing the router-level UNKNOWN count.
+
+This is not "authorization complete," "security complete," "production
+ready," or "national scale ready." 61 of 117 mounted routers remain
+genuinely untraced, GAP-3's 109 EHR/FHIR routes remain open pending a
+human architecture decision (ADR-009), and the carried-forward items
+above remain exactly as open as before.
