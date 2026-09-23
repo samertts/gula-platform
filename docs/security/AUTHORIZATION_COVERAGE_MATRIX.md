@@ -109,6 +109,32 @@ gap identified during tracing.
 
 **Systemic pattern discovered, not fixed this batch**: the exact `not model.is_deleted` (Python `not` instead of SQLAlchemy `~`) bug recurs at 5 more call sites outside Hospital — `app/radiology/pacs.py:365,375,388` and `app/pharmacy/routes.py:504` and `app/routes/admin.py:257` — all confirmed by direct grep + a standalone SQLAlchemy behavior check (`.filter(False)` compiles to `WHERE 0=1`, always zero rows). Out of this batch's bounded scope (different, unaudited domains); registered in the gap register and repair queue as the next concrete, cheap, high-confidence fix candidate.
 
+### Batch 5 (this pass — systemic boolean-filter closure + a mounted-router accounting correction)
+
+A deterministic AST-based discovery pass (`scripts/security/boolean_not_filter_guard.py`, built this batch) — not a grep, per this batch's own "do not assume exact files or line numbers" instruction — found **28 total repo-wide occurrences** of the `not`-vs-`~` boolean-filter defect, 23 more than the "5 known sites" this batch's own directive assumed going in. All 28 fixed; the detector now returns zero hits. Full per-site evidence in `docs/security/AUTHORIZATION_GAP_REGISTER.md` (GAP-9) and `docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md` (Pattern 2, updated).
+
+**LIMS is the headline finding**: `app/lims/routes.py` (`lims_routes.router`, mounted directly in `app/factory.py` — a genuinely distinct router from the legacy `routes/labs.py`/`routes/samples.py`/`routes/results.py` files this matrix's existing "Laboratory" line covers) had **20 of the 28 sites**, all LIVE, all tenant-scoped correctly (`_lab_id(current_user)`), across every list/get/dashboard-count route for Instrument, Specimen, Order, Panel, Result, Reagent, Consumable, Lot, ReferenceRangeDef, AutoValidationRule, LabReport, QCProgram, Supplier, Storage, DeltaCheckRule, Department, and Manufacturer. This router had never been individually vertical-slice-audited under any name before this batch — the entire LIMS listing surface was silently non-functional (every affected call returned empty/zero, not an error) until fixed. **`lims_routes.router` moves from UNKNOWN to VERIFIED this batch** — genuine new coverage, not a re-verification of already-audited work.
+
+**`pharmacy_router` also moves from UNKNOWN to PARTIALLY VERIFIED**: 2 live sites traced (`GET /pharmacy/dashboard/expiry-alerts`, and the `GET /pharmacy/batches/expiring` route it shares a fixed method with — though that second route is itself shadowed by an earlier-registered `/batches/{batch_id}` path, a separate, pre-existing routing bug, NOT fixed here, out of bound), both correctly tenant-scoped via `self.lab_id` (server-derived from `user.lab_id`, never client-supplied) and gated by `get_current_user`. 3 more sites in this same router are DEAD code (`_get_or_404`, `auto_quarantine_expired`, `get_cold_chain_drugs` — zero callers anywhere).
+
+**`radiology_router` was already audited** (this matrix's existing "Imaging/Radiology" line, 24 routes, `imaging-slice-*` repair-queue rows) — re-verified, not newly counted. 1 of its 3 buggy sites is LIVE (`revoke_share`, via `DELETE /radiology/sharing/{id}`, correctly ownership-scoped via `_study_for_user`); the other 2 (`access_share`, `list_shares`) are DEAD code.
+
+**`app/routes/admin.py`'s router gains partial new evidence**: `list_pending_labs` (`GET /admin/labs/pending`) traced — gated by `require_permission("platform:manage_users")`, additionally province-scoped for `province_admin`. Only this one route traced; the router's other ~15+ routes remain UNKNOWN.
+
+#### Mounted-router accounting correction (Phase 11 mandate: "recalculate from source, do not estimate")
+
+Every prior batch this session counted mounted routers via `grep -c "app.include_router("` against `app/factory.py`, reporting **89**. This batch's mandatory recalculation found that count is **wrong** — not because routers were added, but because one line in `app/factory.py` (`for r in core_routes + feature_routes + advanced_routes + admin_routes + mobile_routes + compliance_routes: app.include_router(r.router)`, line 578-579) registers **29 routers** in a single loop iteration, which a textual line-count of `app.include_router(` only counts as **1**.
+
+**Corrected total: 117 mounted routers** (89 − 1 [the loop line, previously counted once] + 29 [the routers it actually registers] = 117).
+
+The 29 loop-registered routers: `login, register, verification, demo, setup, metrics, patients, results, test_results, dashboard, labs, samples, app_updates` (13, `core_routes`), `qr, id_scan, identity, notifications, ehr, ehr_fhir, cds_hooks, security, device_results` (9, `feature_routes`), `quality_control, critical_alerts, batch` (3, `advanced_routes`), `admin, admin_log_level` (2, `admin_routes`), `mobile` (1), `compliance` (1, `app/routes/compliance.py` — confirmed by direct code read to be a **distinct** router from the already-counted NIAM-axis `app/identity/compliance/routes.py`, not a duplicate).
+
+Of these 29: `labs`, `samples`, `results` map to this matrix's existing "Laboratory (orders/samples/results)" audited line (already counted, just newly confirmed to be individually these 3 specific routers rather than a bundled reference). `admin` gained the one-route evidence above this batch (partial). The remaining **25 routers were never previously individually accounted for at all** in any prior batch's UNKNOWN estimate — genuinely newly surfaced by this correction, not new work product: `login, register, verification, demo, setup, metrics, patients, test_results, dashboard, app_updates, qr, id_scan, identity, notifications, ehr, ehr_fhir, cds_hooks, security, device_results, quality_control, critical_alerts, batch, admin_log_level, mobile, compliance`.
+
+**This is a correction to the counting methodology, not a regression or new mounting activity.** No router was added to the running application by this batch; the routers were always there, always reachable, and always (accidentally) excluded from every previous batch's denominator.
+
+**Batch 5 subtotal: 28 boolean-filter sites found and fixed (23 beyond the 5 assumed), 1 new detector built and self-tested, 3 routers moved from UNKNOWN to VERIFIED/PARTIALLY VERIFIED (`lims`, `pharmacy`, partial `admin`), mounted-router count corrected from 89 to 117.**
+
 ## Axis 3 — NIAM Organization RBAC (`AuthorizationDecisionService`)
 
 Closed this session, prior continuation (NIAM sync/async closure,
@@ -273,58 +299,102 @@ authorize)
 
 UNKNOWN
 -------
-The remaining ~64 of the 89 mounted routers not named above (the
-schema-latent 7, the `NO-OWNED-MODELS` bucket minus Batch 3's 5 and
-Batch 4's 4 (hospital, password_reset, oauth2, saml) newly resolved
-routers, `national`'s 11 routers, `governance`'s 1 router, and every
-router no pass has vertical-slice-audited) — their route-level
-authorization mechanism was NOT traced. Recorded as UNKNOWN, not
-silently assumed either safe or unsafe. (Was ~78 before Batch 2, ~73
-before Batch 3, ~68 before Batch 4, now ~64 — derived from the actual
-mounted router graph in `app/factory.py`, re-confirmed at 89 routers
-this pass, not by blindly subtracting 4.)
+**Mounted-router denominator corrected this pass: 89 → 117** (see
+Batch 5's "Mounted-router accounting correction" above — one line in
+`app/factory.py` registers 29 routers via a `for` loop that a textual
+`grep -c "app.include_router("` only counts as 1; this is a counting-
+methodology fix, not new mounting activity).
+
+Of the 28 net new routers this correction surfaces (29 loop routers −
+1 already counted): 3 (`labs`/`samples`/`results`) map to the
+already-audited "Laboratory" line above (no change), 1 (`admin`) gained
+one route's evidence this pass (partial), and **25 are genuinely,
+newly-honest UNKNOWN** — never individually accounted for by any prior
+batch's estimate: `login, register, verification, demo, setup, metrics,
+patients, test_results, dashboard, app_updates, qr, id_scan, identity,
+notifications, ehr, ehr_fhir, cds_hooks, security, device_results,
+quality_control, critical_alerts, batch, admin_log_level, mobile,
+compliance` (the last being `app/routes/compliance.py`, confirmed
+distinct from the already-counted NIAM-axis `app/identity/compliance/`).
+
+Also this pass: `lims_routes.router` moves from UNKNOWN to VERIFIED
+(20 sites traced, all LIVE, all tenant-scoped — the largest single
+router audit this batch), `pharmacy_router` moves from UNKNOWN to
+PARTIALLY VERIFIED (2 LIVE sites traced), `radiology_router` was
+already audited (re-verified, not newly counted — 1 real regression
+found and fixed within it).
+
+**Corrected UNKNOWN: ~64 (previous, against the wrong 89 denominator)
++ 25 (newly surfaced by the router-count correction) − 3 (`lims`,
+`pharmacy`, partial `admin` moved to VERIFIED/PARTIALLY VERIFIED this
+pass) = ~86 of 117 mounted routers.** Recorded as UNKNOWN, not
+silently assumed either safe or unsafe. This number is *larger* than
+last pass's ~64 not because coverage regressed, but because the
+denominator itself was wrong until this pass's mandatory
+recalculation — exactly the "do not estimate, discover from source"
+outcome this batch's own directive anticipated.
 ```
 
 ## Scope and honesty note
 
 This matrix consolidates **real, already-gathered evidence** across
-multiple bounded passes, most recently Batch 4 (combined Hospital +
-password_reset/oauth2/saml — 24 mutating routes traced, 3 real
-findings closed: an authorization gap, a data-integrity bug, and a
-transaction-integrity bug) following Batch 3 (consent, patient_card,
-canonical_patient, service_accounts, mfa — 5 domains, 17 mutating
-routes, 0 new findings) and Batch 2 (billing, lifecycle_platform,
-pilot_platform, `services/mpi`, `capabilities/fhir_interoperability` —
-5 domains, 23 mutating routes, 1 P0 found and closed). It is not a
-fresh route-by-route trace of all 89 mounted routers — that would be a
-multi-day undertaking on its own, explicitly out of scope for any of
-these "discovery + proof only, minimum resources" bounded passes. The
-~64 routers marked UNKNOWN above are the honest remainder as of Batch 4
-(down from ~78 before Batch 2, ~73 before Batch 3, ~68 before Batch 4).
+multiple bounded passes, most recently Batch 5 (systemic boolean-filter
+closure — 28 sites found and fixed across LIMS/pharmacy/radiology/
+admin, plus the mounted-router accounting correction from 89 to 117)
+following Batch 4 (combined Hospital + password_reset/oauth2/saml — 24
+mutating routes traced, 3 real findings closed), Batch 3 (consent,
+patient_card, canonical_patient, service_accounts, mfa — 5 domains, 17
+mutating routes, 0 new findings), and Batch 2 (billing,
+lifecycle_platform, pilot_platform, `services/mpi`,
+`capabilities/fhir_interoperability` — 5 domains, 23 mutating routes, 1
+P0 found and closed). It is not a fresh route-by-route trace of all 117
+mounted routers — that would be a multi-day undertaking on its own,
+explicitly out of scope for any of these "discovery + proof only,
+minimum resources" bounded passes. The ~86 routers marked UNKNOWN above
+are the honest remainder as of Batch 5, against the *corrected* 117
+denominator (was ~78 of 89 before Batch 2, ~73 of 89 before Batch 3,
+~68 of 89 before Batch 4, ~64 of 89 before Batch 5 — all of those prior
+"of 89" figures were computed against the undercounted denominator; see
+Batch 5's accounting-correction note above for why ~86 of 117 is larger
+despite continuous forward progress, not a regression).
+
 **Already-audited domains — do not repeat in the next bounded batch**:
 Platform Authority (certificates/federation/trust/governance),
-Laboratory, Imaging/Radiology, EMS, Nursing, NHDW, Payments, Devices,
-Biomedical, Command Center, Public Health, Blood Bank, Critical Care,
-the 12 NIAM-axis domains (workflows/notifications/compliance/admin/
-adaptive_auth/federation/governance/lifecycle sub-services), billing,
-lifecycle_platform, pilot_platform, `services/mpi`,
+Laboratory (`routes/labs.py`/`routes/samples.py`/`routes/results.py`),
+Imaging/Radiology (`radiology_router`), EMS, Nursing, NHDW, Payments,
+Devices, Biomedical, Command Center, Public Health, Blood Bank,
+Critical Care, the 12 NIAM-axis domains (workflows/notifications/
+compliance/admin/adaptive_auth/federation/governance/lifecycle
+sub-services — note: `app/identity/compliance/` and `app/identity/admin/`
+here, NOT the same-named `app/routes/compliance.py`/`app/routes/admin.py`),
+billing, lifecycle_platform, pilot_platform, `services/mpi`,
 `capabilities/fhir_interoperability`, consent, patient_card,
-canonical_patient, service_accounts, mfa, **hospital, password_reset,
-oauth2, saml**.
+canonical_patient, service_accounts, mfa, hospital, password_reset,
+oauth2, saml, **`lims_routes.router`, `pharmacy_router` (partial —
+only 2 of its routes traced), `app/routes/admin.py`'s router (partial
+— only 1 of its ~15+ routes traced)**.
 
-**Next bounded batch candidates (from the `LIVE / NO-OWNED-MODELS`
-bucket in `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`, still
-UNKNOWN after Batch 4)**: `edge` (14 mutating routes), `ai_fabric`
-(23 mutating routes), `control_plane` (10 mutating routes),
-`integrations`/`advanced_integrations`, `chronic_care`,
-`certification`, `citizen_platform`, `contracts`, `ai_telemetry`,
-`kernel`/`clinical_gateway`, and the generic `routes/` package's
-remaining untraced files (`claims`, `ai`, `optimizer`, `stats`,
+**Next bounded batch candidates**: the 25 routers newly surfaced by
+this batch's router-count correction are the highest-priority
+candidates precisely because they were invisible to every prior batch
+— `login, register, verification, demo, setup, metrics, patients,
+test_results, dashboard, app_updates` (core, likely auth-adjacent —
+some may overlap with already-audited auth flows, verify per-router
+before assuming), `qr, id_scan, identity, notifications, ehr,
+ehr_fhir, cds_hooks, security, device_results` (feature routes),
+`quality_control, critical_alerts, batch` (advanced routes),
+`admin_log_level, mobile, compliance` (`app/routes/compliance.py`,
+distinct from the NIAM one). Also still open from before Batch 5:
+`edge` (14 mutating routes), `ai_fabric` (23 mutating routes),
+`control_plane` (10 mutating routes), `integrations`/
+`advanced_integrations`, `chronic_care`, `certification`,
+`citizen_platform`, `contracts`, `ai_telemetry`, `kernel`/
+`clinical_gateway`, and the generic `routes/` package's remaining
+untraced files (`claims`, `ai`, `optimizer`, `stats`,
 `user_preferences`, `national_data`, `national_streaming`,
 `care_continuum`, `clinical*`). Each still needs its own "what does
 this router actually persist, and where" check before being called
-LIVE with confidence. **Also a strong non-domain candidate**: fix the
-5 remaining `not`-vs-`~` boolean-filter bugs registered this batch
-(`app/radiology/pacs.py:365,375,388`, `app/pharmacy/routes.py:504`,
-`app/routes/admin.py:257`) — small, cheap, high-confidence, same
-one-line fix already proven safe in `hospital_service.py` this batch.
+LIVE with confidence. **Also worth periodic re-running**: `python3
+scripts/security/boolean_not_filter_guard.py` (this batch's new
+detector) as a cheap first check before any future domain audit, and
+the pre-existing `python3 scripts/setattr_mass_assignment_guard.py`.

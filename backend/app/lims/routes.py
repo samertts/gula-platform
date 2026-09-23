@@ -319,7 +319,7 @@ def list_departments(
 ):
     depts = db.query(lims_models.Department).filter(
         lims_models.Department.lab_id == _lab_id(current_user),
-        not lims_models.Department.is_deleted,
+        ~lims_models.Department.is_deleted,
     ).order_by(lims_models.Department.sort_order).all()
     return {"departments": _list_to_dict(depts)}
 
@@ -415,7 +415,7 @@ def list_instruments(
 ):
     q = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == _lab_id(current_user),
-        not lims_models.Instrument.is_deleted,
+        ~lims_models.Instrument.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Instrument.status == status)
@@ -604,7 +604,7 @@ def list_manufacturers(
     db: Session = Depends(get_db),
 ):
     mfrs = db.query(lims_models.Manufacturer).filter(
-        not lims_models.Manufacturer.is_deleted,
+        ~lims_models.Manufacturer.is_deleted,
     ).order_by(lims_models.Manufacturer.name).all()
     return {"manufacturers": _list_to_dict(mfrs)}
 
@@ -634,7 +634,7 @@ def list_instrument_models(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.InstrumentModel).filter(
-        not lims_models.InstrumentModel.is_deleted,
+        ~lims_models.InstrumentModel.is_deleted,
     )
     if manufacturer_id:
         q = q.filter(lims_models.InstrumentModel.manufacturer_id == manufacturer_id)
@@ -688,7 +688,7 @@ def list_specimens(
 ):
     q = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == _lab_id(current_user),
-        not lims_models.Specimen.is_deleted,
+        ~lims_models.Specimen.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Specimen.status == status)
@@ -872,7 +872,7 @@ def list_lims_orders(
 ):
     q = db.query(lims_models.Order).filter(
         lims_models.Order.lab_id == _lab_id(current_user),
-        not lims_models.Order.is_deleted,
+        ~lims_models.Order.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Order.order_status == status)
@@ -1020,7 +1020,7 @@ def list_panels(
 ):
     q = db.query(lims_models.Panel).filter(
         lims_models.Panel.lab_id == _lab_id(current_user),
-        not lims_models.Panel.is_deleted,
+        ~lims_models.Panel.is_deleted,
     )
     if category:
         q = q.filter(lims_models.Panel.category == category)
@@ -1164,7 +1164,7 @@ def list_results(
 ):
     q = db.query(lims_models.Result).filter(
         lims_models.Result.lab_id == _lab_id(current_user),
-        not lims_models.Result.is_deleted,
+        ~lims_models.Result.is_deleted,
     )
     if specimen_id:
         q = q.filter(lims_models.Result.specimen_id == specimen_id)
@@ -1470,7 +1470,7 @@ def list_qc_programs(
 ):
     programs = db.query(lims_models.QCProgram).filter(
         lims_models.QCProgram.lab_id == _lab_id(current_user),
-        not lims_models.QCProgram.is_deleted,
+        ~lims_models.QCProgram.is_deleted,
     ).all()
     return {"programs": _list_to_dict(programs)}
 
@@ -1583,7 +1583,7 @@ def list_reagents(
 ):
     q = db.query(lims_models.Reagent).filter(
         lims_models.Reagent.lab_id == _lab_id(current_user),
-        not lims_models.Reagent.is_deleted,
+        ~lims_models.Reagent.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Reagent.current_quantity <= lims_models.Reagent.minimum_quantity)
@@ -1646,7 +1646,7 @@ def list_consumables(
 ):
     q = db.query(lims_models.Consumable).filter(
         lims_models.Consumable.lab_id == _lab_id(current_user),
-        not lims_models.Consumable.is_deleted,
+        ~lims_models.Consumable.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Consumable.current_quantity <= lims_models.Consumable.minimum_quantity)
@@ -1663,7 +1663,7 @@ def list_lots(
     from datetime import timedelta
     q = db.query(lims_models.Lot).filter(
         lims_models.Lot.lab_id == _lab_id(current_user),
-        not lims_models.Lot.is_deleted,
+        ~lims_models.Lot.is_deleted,
     )
     if item_type:
         q = q.filter(lims_models.Lot.item_type == item_type)
@@ -1681,7 +1681,7 @@ def list_suppliers(
 ):
     suppliers = db.query(lims_models.Supplier).filter(
         lims_models.Supplier.lab_id == _lab_id(current_user),
-        not lims_models.Supplier.is_deleted,
+        ~lims_models.Supplier.is_deleted,
     ).all()
     return {"suppliers": _list_to_dict(suppliers)}
 
@@ -1693,7 +1693,7 @@ def list_storage(
 ):
     storage = db.query(lims_models.Storage).filter(
         lims_models.Storage.lab_id == _lab_id(current_user),
-        not lims_models.Storage.is_deleted,
+        ~lims_models.Storage.is_deleted,
     ).all()
     return {"storage": _list_to_dict(storage)}
 
@@ -1729,7 +1729,7 @@ def list_reference_ranges(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.ReferenceRangeDef).filter(
-        not lims_models.ReferenceRangeDef.is_deleted,
+        ~lims_models.ReferenceRangeDef.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.ReferenceRangeDef.test_code == test_code)
@@ -1774,7 +1774,7 @@ def list_auto_validation_rules(
 ):
     q = db.query(lims_models.AutoValidationRule).filter(
         lims_models.AutoValidationRule.lab_id == _lab_id(current_user),
-        not lims_models.AutoValidationRule.is_deleted,
+        ~lims_models.AutoValidationRule.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.AutoValidationRule.test_code == test_code)
@@ -1810,7 +1810,7 @@ def list_delta_check_rules(
 ):
     rules = db.query(lims_models.DeltaCheckRule).filter(
         lims_models.DeltaCheckRule.lab_id == _lab_id(current_user),
-        not lims_models.DeltaCheckRule.is_deleted,
+        ~lims_models.DeltaCheckRule.is_deleted,
     ).all()
     return {"rules": _list_to_dict(rules)}
 
@@ -1887,7 +1887,7 @@ def list_reports(
 ):
     q = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.lab_id == _lab_id(current_user),
-        not lims_models.LabReport.is_deleted,
+        ~lims_models.LabReport.is_deleted,
     )
     if status:
         q = q.filter(lims_models.LabReport.status == status)
@@ -2253,7 +2253,7 @@ def lims_dashboard(
 
     specimens_total = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == lab_id,
-        not lims_models.Specimen.is_deleted,
+        ~lims_models.Specimen.is_deleted,
     ).count()
 
     specimens_by_status = {}
@@ -2280,7 +2280,7 @@ def lims_dashboard(
 
     instruments_total = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == lab_id,
-        not lims_models.Instrument.is_deleted,
+        ~lims_models.Instrument.is_deleted,
     ).count()
 
     qc_warnings = db.query(lims_models.IQC).filter(

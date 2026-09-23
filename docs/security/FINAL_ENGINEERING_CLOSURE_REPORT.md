@@ -212,3 +212,40 @@ failures. **Still not "authorization complete," "system secure," or
 schema-blocked, 5 more instances of the boolean-filter bug remain open
 in other domains, and the carried-forward `adaptive-auth-account-id-
 idor` P1 remains BLOCKED — NEEDS_DECISION.
+
+---
+
+## Addendum 4 — Accelerated Batch 5: Systemic Boolean-Filter Closure + Router-Count Correction
+
+Objective: close 5 known `not X.field`-vs-`~X.field` boolean-filter
+defects via one systemic investigation. Discovery (a new AST-based
+detector, `scripts/security/boolean_not_filter_guard.py`) found **28
+total sites**, 23 more than assumed. **All 28 fixed** — 20 in
+`app/lims/routes.py` (a router never before individually audited; the
+entire LIMS listing surface was silently non-functional), 4 in
+pharmacy (2 dead, 1 dead, 1 live — the live one backs a real dashboard
+route plus a route shadowed by a separate, documented, unfixed
+routing bug), 3 in radiology (1 live — `revoke_share`, 2 dead), 1 in
+admin (`list_pending_labs`, live). Every fix independently negative-
+proofed via `git stash`/`pop` with md5-verified restoration. 5 new
+regression tests, 151 total tests re-run, 0 failures.
+
+**Significant correction**: Phase 11's mandatory router-recalculation
+found every prior batch's "89 mounted routers" was wrong — a `for`
+loop in `app/factory.py` registers 29 routers that a textual
+`app.include_router(` count only counted as 1. **Corrected total: 117
+mounted routers.** 25 of the 28 net-new routers this surfaces were
+never individually accounted for by any prior batch — genuinely
+newly-honest UNKNOWN, not a regression. Corrected UNKNOWN: ~86 of 117
+(up from ~64 of 89, because the denominator was wrong, not because
+coverage regressed). `lims_routes.router` moves from UNKNOWN to
+VERIFIED (genuine new coverage, 20 routes traced); `pharmacy_router`
+to PARTIALLY VERIFIED (2 routes traced); `admin`'s router gains 1
+route's evidence.
+
+**Still not claimed**: "all boolean-filter defects" (only this
+AST-detectable shape was scanned for), "authorization complete," or
+"production ready." Hospital remains schema-blocked, ~86 routers
+remain untraced, the carried-forward `adaptive-auth-account-id-idor`
+P1 remains open, and the pharmacy route-shadowing bug found this pass
+remains open (documented, not fixed).

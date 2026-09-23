@@ -1,5 +1,30 @@
 # GULA — Live Runtime Surface Map
 
+**Correction (Authorization Coverage Batch 5)**: this document's
+original "88 `app.include_router(...)` calls" count (and every later
+batch's restatement of it as 89 after a routers-added recount) was
+produced by a textual line-count of `app.include_router(` in
+`app/factory.py`. That undercounts: one line
+(`app/factory.py:578-579`, `for r in core_routes + feature_routes +
+advanced_routes + admin_routes + mobile_routes + compliance_routes:
+app.include_router(r.router)`) registers **29 routers** in a single
+loop iteration, which a textual count only counts as 1. **The true
+mounted-router count is 117** (89 − 1 + 29), confirmed by reading the
+six list literals it iterates over directly. This is a
+counting-methodology correction, not new mounting activity — see
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`'s Batch 5 section for
+the full list of the 29 loop-registered routers and which of them were
+already implicitly covered (`labs`/`samples`/`results`, under this
+document's existing "Laboratory" references) versus genuinely
+newly-surfaced UNKOWN routers (25 of them — `login, register,
+verification, demo, setup, metrics, patients, test_results, dashboard,
+app_updates, qr, id_scan, identity, notifications, ehr, ehr_fhir,
+cds_hooks, security, device_results, quality_control, critical_alerts,
+batch, admin_log_level, mobile, compliance`). The domain classifications
+below (LIVE/SCHEMA-LATENT/NO-OWNED-MODELS/etc.) for the routers this
+document already named remain valid; they simply were not the complete
+set.
+
 **Method**: ground truth, not directory-name inference. Every router
 actually registered in `backend/app/factory.py::_register_routes` (88
 `app.include_router(...)` calls, enumerated by parsing the file directly)
@@ -49,6 +74,17 @@ different claims and this map does not conflate them.
 `identity`/NIAM (89), `lifecycle_platform` (5), `lims` (35), `payments` (28),
 `pharmacy` (27), `pilot_platform` (5), `public_health` (6), `services/mpi` (3),
 `trust` (6).
+
+**Authorization coverage note (Batch 5)**: `lims` and `pharmacy`'s
+table-backed status was already correctly recorded here, but neither
+had ever been individually vertical-slice-audited for authorization
+until this pass. `lims_routes.router` is now VERIFIED (20 routes
+traced, all tenant-scoped correctly); `pharmacy_router` is PARTIALLY
+VERIFIED (2 of its routes traced). Both also had real, live
+data-correctness bugs found and fixed this pass (see
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` GAP-9) — the entire LIMS
+listing/lookup/dashboard surface was silently non-functional until
+fixed.
 
 ### LIVE / PARTIAL — inconsistent, needs per-table triage
 

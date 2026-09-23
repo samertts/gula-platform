@@ -561,3 +561,125 @@ run since the lifecycle_platform P0. This reflects the 2 domains
 actually traced in depth this batch (Hospital fully, OAuth2's
 highest-risk route), not a claim that the remaining UNKNOWN-bucket
 routers are gap-free.
+
+## Batch 5 — systemic boolean-filter closure (28 sites, 1 detector, 1 accounting correction)
+
+### GAP-9 (found and CLOSED this pass) — `not-vs-tilde-boolean-filter` (repo-wide, all instances)
+
+- **Severity**: P1 (data-integrity/correctness; opposite failure mode
+  from most security bugs — fails closed/empty, not open)
+- **Discovery method**: a deterministic AST-based detector
+  (`scripts/security/boolean_not_filter_guard.py`, built this pass) —
+  per this batch's own "do not assume exact files or line numbers"
+  instruction, not a grep of the 5 sites the directive assumed going
+  in. The detector found **28 total occurrences**, 23 more than
+  assumed.
+- **Root cause** (identical across all 28): `not Model.field` inside a
+  `.filter()`/`.filter_by()` call. Python evaluates `not
+  <InstrumentedAttribute>` immediately at query-build time; a bare
+  column has no `__bool__` override, so `bool(Model.column)` is always
+  `True` and `not Model.column` is the literal Python `False`.
+  `.filter(False)` compiles to `WHERE 0 = 1` — unconditionally zero
+  rows, regardless of real data.
+- **All 28 sites, fixed, with reachability**:
+  - `app/lims/routes.py` — **20 sites, all LIVE**: `Instrument`(×2),
+    `InstrumentModel`, `Specimen`(×2), `Order`, `Panel`, `Result`,
+    `Reagent`, `Consumable`, `Lot`, `ReferenceRangeDef`,
+    `AutoValidationRule`, `LabReport`, `QCProgram`, `Supplier`,
+    `Storage`, `DeltaCheckRule`, `Department`, `Manufacturer`. Every
+    one is a real, mounted, `_lab_id(current_user)`-tenant-scoped
+    list/get/dashboard-count route. This is `lims_routes.router`, a
+    genuinely distinct router from the legacy `routes/labs.py`/
+    `routes/samples.py`/`routes/results.py` files already covered by
+    this register's "Laboratory" entries — **never before
+    individually audited**. The entire LIMS listing/lookup/dashboard
+    surface was silently non-functional (every affected call returned
+    empty/zero) until this fix.
+  - `app/pharmacy/inventory.py` — 2 sites (`auto_quarantine_expired`,
+    `get_cold_chain_drugs`), both **DEAD** (zero callers anywhere in
+    the tree).
+  - `app/pharmacy/routes.py:504` — 1 site (`_get_or_404`), **DEAD**
+    (zero callers).
+  - `app/pharmacy/services.py:198` — 1 site (`get_expiring_batches`),
+    **LIVE** — backs `GET /pharmacy/dashboard/expiry-alerts`
+    (confirmed reachable and fixed by real HTTP proof) and `GET
+    /pharmacy/batches/expiring` (same fixed method, but that specific
+    route is itself shadowed by an earlier-registered
+    `/batches/{batch_id}` path — a **separate, pre-existing
+    route-ordering bug**, confirmed by reading the registration order,
+    NOT fixed here, out of this batch's bound). Tenant-scoped via
+    `self.lab_id`, server-derived from `user.lab_id` in
+    `_get_pharmacy_service`, never client-supplied.
+  - `app/radiology/pacs.py` — 3 sites: `revoke_share` (**LIVE**, via
+    `DELETE /radiology/sharing/{share_id}`, ownership-scoped via
+    `_study_for_user` before the buggy method is even reached — the
+    bug broke the revoke *action* itself, not the authorization
+    boundary in front of it); `access_share`, `list_shares` (**DEAD**,
+    zero callers).
+  - `app/routes/admin.py:257` — 1 site (`list_pending_labs`), **LIVE**
+    — `GET /admin/labs/pending`, gated by
+    `require_permission("platform:manage_users")`, additionally
+    province-scoped for `province_admin`.
+- **False positive checked and excluded**: `app/routes/demo.py:96`'s
+  `elif not user.is_active or user.lab_id != lab.id or ...` — `not` on
+  an already-fetched ORM *instance's* real runtime boolean value,
+  inside a plain `if`/`elif`, not inside a `.filter()` call at all.
+  Confirmed a completely different and correct usage; excluded from
+  the detector by construction (it only flags `not <attribute>` as a
+  direct argument to `.filter()`/`.filter_by()`).
+- **Fix applied**: `not X.field` → `~X.field` at all 28 sites (20 via
+  a verified, uniform `sed` substitution in `lims/routes.py` after
+  confirming exact occurrence-count match and uniform semantics via 2
+  spot checks; the remaining 8 via individual edits).
+- **Evidence**: real HTTP/service-level proof for all 4 LIVE-reachable
+  representative sites — LIMS (`POST`+`GET /lims/departments`, a
+  created department is now found), pharmacy (`GET
+  /pharmacy/dashboard/expiry-alerts` finds a real expiring batch),
+  radiology (`ImageSharingService.revoke_share` returns `True` for a
+  real share), admin (`GET /admin/labs/pending` lists a real inactive
+  lab) — `backend/tests/test_boolean_not_filter_regression.py`, 5
+  tests, all passing.
+- **Negative-proofed**: `git stash`/`git stash pop` across all 6
+  affected files, md5-verified byte-identical restoration; the
+  detector and all 5 new tests reproduce the vulnerability (28 hits;
+  5 test failures) on the reverted state and confirm the fix (0 hits;
+  5 passes) after restore.
+- **Regression sweep**: 151 tests across LIMS/pharmacy/radiology
+  domain suites plus security/tenant-isolation/rbac — 0 failures.
+- **Status**: **CLOSED — 28 of 28 known-shape sites fixed.** Not a
+  claim that no other boolean-filter mistake of any shape exists
+  anywhere in the codebase — only that this specific, precisely
+  AST-detectable shape has zero remaining instances as of this scan.
+
+### Mounted-router accounting correction (not a gap — a counting-methodology fix)
+
+Every prior batch counted mounted routers via `grep -c
+"app.include_router("` against `app/factory.py`, reporting 89. This
+batch's mandatory Phase 11 recalculation found that one line
+(`app/factory.py:578-579`, a `for` loop over 6 concatenated lists)
+registers **29 routers** in a single loop iteration that a textual
+line-count only counts as 1. **Corrected total: 117 mounted routers**
+(89 − 1 + 29). Full detail and the complete list of the 25 newly
+surfaced UNKNOWN routers in
+`docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`'s Batch 5 section.
+This is a correction to how this session has been counting, not new
+mounting activity or a regression in prior work.
+
+## Summary (additions this pass)
+
+| ID | Severity | Status |
+|---|---|---|
+| `not-vs-tilde-boolean-filter` (repo-wide, 28 sites) | P1 | **CLOSED** (Batch 5 — 28/28 fixed, proven, tested; 23 of the 28 newly discovered by this pass's own detector, not the 5 originally assumed) |
+| `lims_routes.router` | — | **VERIFIED this pass** — genuinely new coverage (was UNKNOWN, 20 LIVE routes traced) |
+| `pharmacy_router` | — | **PARTIALLY VERIFIED this pass** — genuinely new coverage (was UNKNOWN, 2 LIVE routes traced) |
+| `app/routes/admin.py` router | — | PARTIALLY VERIFIED this pass (1 of ~15+ routes traced) |
+| `radiology_router` | — | RE-VERIFIED (already audited prior pass), 1 regression found+fixed |
+| pharmacy `/batches/expiring` route-shadowing bug | P3 | DOCUMENTED this pass, not fixed (pre-existing, unrelated to the boolean-filter defect) |
+
+**Batch 5 found and closed 1 systemic P1 pattern across 28 sites** (the
+largest single-pattern closure this program has run) and corrected a
+mounted-router accounting error that had understated the true UNKNOWN
+denominator in every prior batch. This does not mean "all boolean-
+filter defects are gone" (only this precise AST-detectable shape was
+scanned for) or "authorization complete" — ~86 of the corrected 117
+mounted routers remain UNKNOWN.

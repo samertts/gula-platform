@@ -555,3 +555,102 @@ UNKNOWN, Hospital remains schema-blocked for real deployment, and 5
 more instances of the boolean-filter bug remain open in other domains.
 
 | Commit: `(pending)` | Owner: Mustafa | Files: `app/routes/hospital.py`, `app/services/hospital_service.py`, `app/routes/oauth2.py`, 3 new test files, 6 docs | Next action: fix the 5 remaining `not`-vs-`~` boolean-filter sites (`app/radiology/pacs.py`, `app/pharmacy/routes.py`, `app/routes/admin.py` — same one-line fix already proven safe here) as a small, cheap, high-confidence follow-up; or continue the authorization inventory into `edge`/`ai_fabric`/`control_plane` from the ~64 remaining UNKNOWN routers. |
+
+## Phase 15 — Accelerated Batch 5: systemic boolean-filter closure (28 sites) + mounted-router accounting correction
+
+Bounded pass with a single objective ("close the remaining five known
+boolean-filter defects using one systemic investigation") that, per
+its own explicit "discover from current source, do not assume exact
+files or line numbers" instruction, uncovered a much larger scope: a
+new deterministic detector (`scripts/security/boolean_not_filter_guard.py`,
+AST-based, no network/AI/DB access) found **28 total repo-wide
+occurrences** of the `not X.field` vs `~X.field` bug — 23 more than
+the 5 originally assumed.
+
+**All 28 fixed**, same mechanical, previously-proven-safe substitution
+throughout:
+
+- `app/lims/routes.py` — **20 sites, all LIVE**, tenant-scoped
+  (`_lab_id(current_user)`) list/get/dashboard-count routes across
+  Instrument/Specimen/Order/Panel/Result/Reagent/Consumable/Lot/
+  ReferenceRangeDef/AutoValidationRule/LabReport/QCProgram/Supplier/
+  Storage/DeltaCheckRule/Department/Manufacturer. `lims_routes.router`
+  had never been individually vertical-slice-audited before — this
+  batch closes that gap and, in doing so, discovers the entire LIMS
+  listing surface was silently non-functional (every affected call
+  returned empty/zero, not an error). Fixed via a verified uniform
+  `sed` substitution (occurrence-count and semantics confirmed
+  identical across all 20 before applying).
+- `app/pharmacy/inventory.py` (2 sites, both DEAD — zero callers),
+  `app/pharmacy/routes.py:504` (1 site, DEAD), `app/pharmacy/services.py:198`
+  (1 site, LIVE — backs `GET /pharmacy/dashboard/expiry-alerts`, real
+  HTTP-proven; also backs `GET /pharmacy/batches/expiring`, itself
+  shadowed by a separate, pre-existing route-ordering bug found while
+  writing the test for it — documented, not fixed, out of bound).
+- `app/radiology/pacs.py` (3 sites: `revoke_share` LIVE via `DELETE
+  /radiology/sharing/{id}`, ownership-scoped via `_study_for_user`;
+  `access_share`/`list_shares` DEAD).
+- `app/routes/admin.py:257` (1 site, LIVE — `GET /admin/labs/pending`,
+  gated by `require_permission("platform:manage_users")`).
+
+**False positive checked and excluded**: `app/routes/demo.py:96`'s
+`not user.is_active` inside a plain `elif` — a different, correct
+usage (negating an already-fetched instance's real boolean, not a
+column expression inside a query filter). The detector's self-test
+(6/6 passing) encodes this distinction so it won't regress.
+
+**Detector built** (Phase 4's requirement, satisfied — the pattern
+was reliably AST-detectable with zero false positives found):
+`scripts/security/boolean_not_filter_guard.py`, matching the house
+convention of `scripts/setattr_mass_assignment_guard.py`/
+`scripts/log_action_arg_order_guard.py`. Unlike those two (which flag
+candidates requiring manual classification), every hit from this
+detector is a near-certain defect. `--self-test` (6/6 pass),
+`--json`, exit code 1 on any hit (CI-usable). Repo-wide scan post-fix:
+0 hits.
+
+**Verification**: 5 new regression tests
+(`backend/tests/test_boolean_not_filter_regression.py`) proving the
+fix via real HTTP/service-level calls for all 4 LIVE-reachable
+representative sites (LIMS department create+list, pharmacy
+expiry-alerts route, radiology revoke_share, admin pending-labs);
+confirmed to fail against the pre-fix state and pass against the fix
+via `git stash`/`git stash pop` with md5-verified byte-identical
+restoration. 151 regression tests re-run across LIMS/pharmacy/
+radiology domain suites plus security/tenant-isolation/rbac — 0
+failures.
+
+**Mounted-router accounting correction** (Phase 11's mandatory
+recalculation, not new work product): every prior batch counted
+mounted routers via `grep -c "app.include_router("`, reporting 89.
+This undercounts — `app/factory.py:578-579`'s `for` loop registers 29
+routers in one iteration that a textual count only counts as 1.
+**Corrected total: 117 mounted routers.** Of the 28 net-new routers
+this surfaces, 3 (`labs`/`samples`/`results`) were already implicitly
+covered by this queue's existing "Laboratory" references; `admin`
+gained one route's evidence this batch; **25 are genuinely,
+newly-honest UNKNOWN**, never individually accounted for before:
+`login, register, verification, demo, setup, metrics, patients,
+test_results, dashboard, app_updates, qr, id_scan, identity,
+notifications, ehr, ehr_fhir, cds_hooks, security, device_results,
+quality_control, critical_alerts, batch, admin_log_level, mobile,
+compliance`. Corrected UNKNOWN: ~86 of 117 (up from ~64 of 89 — larger
+because the denominator was wrong, not because coverage regressed).
+
+**Documentation updated**: `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`
+(Batch 5 section, corrected totals throughout the summary and honesty
+note), `docs/security/AUTHORIZATION_GAP_REGISTER.md` (GAP-9 + the
+accounting-correction note), `docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md`
+(Pattern 2 fully updated with all 28 sites + detector), `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md`
+(router-count correction note + lims/pharmacy authorization-coverage
+note), `docs/security/FINAL_ENGINEERING_CLOSURE_REPORT.md` (addendum).
+
+STATUS: **28 of 28 known-shape boolean-filter sites CLOSED. Mounted-
+router accounting corrected from 89 to 117 (methodology fix, not new
+mounting). ~86 of 117 routers remain UNKNOWN** — larger than the
+previous "~64 of 89" not from regression but from correcting a
+denominator that was wrong in every prior batch. Not claimed: "all
+boolean-filter defects" (only this precise AST-detectable shape was
+scanned for), "authorization complete," or "production ready."
+
+| Commit: `(pending)` | Owner: Mustafa | Files: `app/lims/routes.py`, `app/pharmacy/inventory.py`, `app/pharmacy/routes.py`, `app/pharmacy/services.py`, `app/radiology/pacs.py`, `app/routes/admin.py`, `scripts/security/boolean_not_filter_guard.py`, 1 new test file, 5 docs | Next action: trace the 25 newly-surfaced UNKNOWN routers from the accounting correction (highest priority — they were invisible to every prior batch); separately, the pharmacy `/batches/expiring` route-shadowing bug (documented this pass) is a small, cheap, independent follow-up if a future batch is scoped to fix P2/P3-adjacent findings rather than only document them. |

@@ -123,33 +123,70 @@ already appears dozens of times correctly elsewhere in this same
 codebase — this is a same-file typo/inconsistency, not a
 misunderstanding of the ORM.
 
-**Confirmed in 4 domains this session** (this pass):
+**UPDATE (Batch 5 — CLOSED repo-wide, detector built).** The prior pass
+(Hospital) fixed only 1 of what turned out to be many sites and
+deferred the rest as "3 remaining known." Batch 5's own discovery
+instruction ("do not assume exact files or line numbers — discover
+from current source") produced a deterministic AST scan
+(`scripts/security/boolean_not_filter_guard.py`) rather than relying on
+grep, and it found **28 total repo-wide occurrences** — 23 more than
+the "5 known sites" Batch 5's own directive assumed going in. All 28
+have now been fixed. A fresh run of the detector against the current
+tree returns zero hits (exit code 0); this is not a claim that every
+possible variant of the bug is gone, only that this specific
+AST-detectable shape (`not <attribute>` as a direct argument to
+`.filter()`/`.filter_by()`) has zero remaining instances as of this
+scan.
 
-| Domain | Site | Fixed this pass? |
-|---|---|---|
-| `app/services/hospital_service.py:152` (`_get_entity`, shared by 17 call sites) | `not model.is_deleted` | **Yes** — `~model.is_deleted`, proven via real HTTP two-request reproduction/fix, negative-proofed |
-| `app/radiology/pacs.py:365,375,388` | `not ImageShare.is_revoked` (3 call sites, 2 methods) | No — different, unaudited domain, out of this batch's bound |
-| `app/pharmacy/routes.py:504` | `not model.is_deleted` | No — different, unaudited domain, out of this batch's bound |
-| `app/routes/admin.py:257` | `not Lab.is_active` | No — different, unaudited domain, out of this batch's bound |
+| Domain | File | Sites | Fixed | Reachability |
+|---|---|---|---|---|
+| Hospital | `app/services/hospital_service.py:152` (`_get_entity`, shared by 17 call sites) | 1 | Batch 4 | LIVE (17 call sites across ~10 routes) |
+| Radiology | `app/radiology/pacs.py` | 3 (`revoke_share`, `access_share`, `list_shares`) | Batch 5 | 1 LIVE (`revoke_share`, via `DELETE /radiology/sharing/{id}`), 2 DEAD (`access_share`/`list_shares` have zero callers anywhere) |
+| Pharmacy | `app/pharmacy/routes.py:504` (`_get_or_404`) | 1 | Batch 5 | DEAD — zero callers anywhere in the tree |
+| Pharmacy | `app/pharmacy/inventory.py` (`auto_quarantine_expired`, `get_cold_chain_drugs`) | 2 | Batch 5 | DEAD — zero callers anywhere in the tree |
+| Pharmacy | `app/pharmacy/services.py:198` (`get_expiring_batches`) | 1 | Batch 5 | LIVE — via `GET /pharmacy/dashboard/expiry-alerts`; also backs `GET /pharmacy/batches/expiring`, which is itself shadowed by an earlier-registered `/batches/{batch_id}` route (a separate, pre-existing route-ordering bug, NOT fixed here, out of bound) |
+| Admin | `app/routes/admin.py:257` (`list_pending_labs`) | 1 | Batch 5 | LIVE — `GET /admin/labs/pending`, gated by `require_permission("platform:manage_users")` |
+| **LIMS** | `app/lims/routes.py` (20 distinct list/get/dashboard-count routes: Instrument, InstrumentModel, Specimen, Order, Panel, Result, Reagent, Consumable, Lot, ReferenceRangeDef, AutoValidationRule, LabReport, QCProgram, Supplier, Storage, DeltaCheckRule, Department, Manufacturer, plus 2 repeat sites in the dashboard-stats function) | 20 | Batch 5 | **All 20 LIVE** — each is a real, mounted, tenant-scoped (`_lab_id(current_user)`) route; this is the single largest concentration found, in a router (`lims_routes.router`, mounted directly in `app/factory.py`) that had never been individually vertical-slice-audited under any name before this batch |
+
+**28 of 28 fixed.** Every fix follows the identical, mechanical,
+previously-proven-safe pattern (`not X.field` → `~X.field`); Phase 2's
+invariant (a fix must never turn a security boundary into a broader
+query) holds trivially for all of them since every fix narrows an
+always-empty query to its correct, already-authorized scope — never
+broadens one.
 
 **Impact class**: every affected query call always returns "not found" /
-empty, regardless of real data — the opposite failure mode from most
-security bugs (fails closed, not open), so this reads as an
-availability/correctness bug rather than an authorization bypass. In
-Hospital's case specifically, it silently broke 10+ routes' nested-entity
-lookups (campus/building/department/room/bed/OT/equipment) until fixed
-this pass.
+empty / zero-count, regardless of real data — the opposite failure mode
+from most security bugs (fails closed, not open), so this reads as an
+availability/correctness bug rather than an authorization bypass, with
+one exception worth naming: LIMS's 20 sites meant the entire LIMS
+listing/lookup/dashboard-count surface was silently non-functional
+(instruments, specimens, orders, panels, results, reagents,
+consumables, lots, reference ranges, validation rules, lab reports, QC
+programs, suppliers, storage, delta-check rules, departments,
+manufacturers) — a severe, previously-undetected regression in a
+clinical LIMS domain.
 
-**Not built this pass**: a repo-wide AST-based detector (matching the
-`scripts/setattr_mass_assignment_guard.py`/`scripts/log_action_arg_order_guard.py`
-convention already established for other systemic patterns this
-session). The 3 remaining known sites above are a small, bounded,
-next-batch candidate — grep for `not [A-Za-z_.]+\.is_(deleted|revoked|active)\b`
-inside a `.filter(` call finds all of them; a proper detector would need
-to handle multi-line `.filter(...)` calls and avoid false positives on
-legitimate value-assignment negation (e.g. `lab.is_active = not
-lab.is_active`, confirmed NOT a bug — it's a plain Python boolean
-toggle, not a query filter).
+**Detector**: `scripts/security/boolean_not_filter_guard.py` (AST-based,
+deterministic, no network/AI/DB access, whole-repo scan in well under a
+second). Unlike `scripts/setattr_mass_assignment_guard.py`'s
+candidate-requiring-manual-classification model, every hit from this
+detector is a near-certain defect (there is no legitimate reason to
+apply Python's `not` to a bare SQLAlchemy column inside a filter call).
+6/6 self-test cases pass (3 vulnerable shapes incl. a multi-line
+`.filter()` call and a sole-argument call; 3 correct/false-positive
+shapes incl. `app/routes/demo.py`'s `elif not user.is_active or ...`,
+confirmed a genuinely different and correct usage — `not` on an
+already-fetched instance's real runtime boolean, inside a plain `if`,
+not inside a `.filter()` call at all).
+
+```bash
+python3 scripts/security/boolean_not_filter_guard.py            # scan
+python3 scripts/security/boolean_not_filter_guard.py --json      # machine-readable
+python3 scripts/security/boolean_not_filter_guard.py --self-test # 6/6 expected
+```
+
+Exit code 0 = clean; exit code 1 = at least one hit (CI-usable).
 
 ## Pattern 3 (new, this pass, Hospital-specific so far — not yet confirmed systemic): "route/service never calls `db.commit()`"
 
