@@ -67,6 +67,8 @@ class NursingService:
         assignment_type: str, shift_id: int | None = None,
         ward: str | None = None, bed_number: str | None = None,
         notes: str | None = None,
+        *,
+        actor_role: str,
     ) -> PatientAssignment:
         existing = db.query(PatientAssignment).filter(
             PatientAssignment.nurse_id == nurse_id,
@@ -87,7 +89,7 @@ class NursingService:
         )
         db.add(assignment)
         db.flush()
-        log_action(db, f"{_NURSING_NS}.assign_patient", "patient_assignment", assignment.id, user_id=user_id, lab_id=lab_id, details={
+        log_action(db, f"{_NURSING_NS}.assign_patient", "patient_assignment", assignment.id, user_id=user_id, user_role=actor_role, lab_id=lab_id, details={
             "nurse_id": nurse_id, "patient_id": patient_id, "type": assignment_type,
         })
         return assignment
@@ -96,6 +98,8 @@ class NursingService:
     def unassign_patient(
         db: Session, lab_id: int, user_id: int, nurse_id: int, patient_id: int,
         unassigned_reason: str | None = None,
+        *,
+        actor_role: str,
     ) -> None:
         assignment = db.query(PatientAssignment).filter(
             PatientAssignment.nurse_id == nurse_id,
@@ -114,7 +118,7 @@ class NursingService:
             assignment.unassigned_reason = unassigned_reason
         assignment.updated_by = user_id
         db.flush()
-        log_action(db, f"{_NURSING_NS}.unassign_patient", "patient_assignment", assignment.id, user_id=user_id, lab_id=lab_id, details={
+        log_action(db, f"{_NURSING_NS}.unassign_patient", "patient_assignment", assignment.id, user_id=user_id, user_role=actor_role, lab_id=lab_id, details={
             "nurse_id": nurse_id, "patient_id": patient_id,
         })
 
@@ -177,11 +181,15 @@ class NursingService:
     # ── Tasks ────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_task(db: Session, lab_id: int, user_id: int, data: dict) -> NursingTask:
+    def create_task(
+        db: Session, lab_id: int, user_id: int, data: dict,
+        *,
+        actor_role: str,
+    ) -> NursingTask:
         task = NursingTask(lab_id=lab_id, created_by=user_id, **_payload(NursingTask, data))
         db.add(task)
         db.flush()
-        log_action(db, f"{_NURSING_NS}.create_task", "nursing_task", task.id, user_id=user_id, lab_id=lab_id, details=data)
+        log_action(db, f"{_NURSING_NS}.create_task", "nursing_task", task.id, user_id=user_id, user_role=actor_role, lab_id=lab_id, details=data)
         return task
 
     @staticmethod

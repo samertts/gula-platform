@@ -37,6 +37,8 @@ class MedicationAdminService:
         right_dose: bool,
         right_route: bool,
         right_time: bool,
+        *,
+        actor_role: str,
     ) -> FiveRightsResult:
         """Record the administering clinician's five-rights attestation.
 
@@ -80,6 +82,7 @@ class MedicationAdminService:
             "nursing.medication.five_rights_attested",
             "medication_administration",
             user_id=user_id,
+            user_role=actor_role,
             lab_id=lab_id,
             details={"checks": checks, "complete": complete, "verified_against_record": False},
         )
@@ -117,6 +120,8 @@ class MedicationAdminService:
     @staticmethod
     def record_administration(
         db: Session, lab_id: int, user_id: int, admin_data: dict,
+        *,
+        actor_role: str,
     ) -> MedicationAdministration:
         admin = MedicationAdministration(
             lab_id=lab_id,
@@ -126,7 +131,7 @@ class MedicationAdminService:
         admin.recorded_time = datetime.now(UTC)
         db.add(admin)
         db.flush()
-        log_action(db, "nursing.medication.administer", "medication_administration", admin.id, user_id=user_id, lab_id=lab_id, details=admin_data)
+        log_action(db, "nursing.medication.administer", "medication_administration", admin.id, user_id=user_id, user_role=actor_role, lab_id=lab_id, details=admin_data)
         return admin
 
     @staticmethod
@@ -221,6 +226,8 @@ class MedicationAdminService:
     @staticmethod
     def electronic_signature(
         db: Session, lab_id: int, nurse_id: str, medication_admin_id: str,
+        *,
+        actor_role: str,
     ) -> dict[str, Any]:
         admin = db.query(MedicationAdministration).filter(
             MedicationAdministration.id == medication_admin_id,
@@ -231,7 +238,7 @@ class MedicationAdminService:
         signed_at = datetime.now(UTC)
         log_action(
             db, "nursing.medication.sign", "medication_administration",
-            medication_admin_id, user_id=nurse_id, lab_id=lab_id,
+            medication_admin_id, user_id=nurse_id, user_role=actor_role, lab_id=lab_id,
             details={"signed_at": signed_at.isoformat()},
         )
         return {

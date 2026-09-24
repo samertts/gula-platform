@@ -508,6 +508,7 @@ def assign_patient(
         db, current_user.lab_id, current_user.id,
         body.nurse_id, body.patient_id, body.assignment_type,
         body.shift_id, body.ward, body.bed_number, body.notes,
+        actor_role=current_user.role,
     )
     return _model_to_dict(assignment)
 
@@ -521,6 +522,7 @@ def unassign_patient(
     NursingService.unassign_patient(
         db, current_user.lab_id, current_user.id,
         body.nurse_id, body.patient_id, body.unassigned_reason,
+        actor_role=current_user.role,
     )
     return {"detail": "Patient unassigned", "detail_ar": "تم إلغاء تعيين المريض"}
 
@@ -584,7 +586,7 @@ def create_task(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    task = NursingService.create_task(db, current_user.lab_id, current_user.id, body.model_dump(exclude_none=True))
+    task = NursingService.create_task(db, current_user.lab_id, current_user.id, body.model_dump(exclude_none=True), actor_role=current_user.role)
     return _model_to_dict(task)
 
 
@@ -1199,6 +1201,7 @@ def verify_five_rights(
         db, current_user.lab_id, current_user.id,
         body.right_patient, body.right_drug,
         body.right_dose, body.right_route, body.right_time,
+        actor_role=current_user.role,
     )
     return {
         "attested": result.passed,
@@ -1217,7 +1220,7 @@ def record_medication_admin(
 ):
     data = body.model_dump(exclude_none=True)
     data["administrator_id"] = current_user.id
-    admin = MedicationAdminService.record_administration(db, current_user.lab_id, current_user.id, data)
+    admin = MedicationAdminService.record_administration(db, current_user.lab_id, current_user.id, data, actor_role=current_user.role)
     return _model_to_dict(admin)
 
 
@@ -1229,6 +1232,7 @@ def sign_medication_admin(
 ):
     return MedicationAdminService.electronic_signature(
         db, current_user.lab_id, current_user.id, body.medication_admin_id,
+        actor_role=current_user.role,
     )
 
 
@@ -1246,6 +1250,7 @@ def send_physician_message(
     return CareCoordinatorService.send_physician_message(
         db, current_user.lab_id, current_user.id,
         body.physician_id, body.patient_id, body.subject, body.body, body.priority,
+        actor_role=current_user.role,
     )
 
 
@@ -1257,6 +1262,7 @@ def request_lab_collection(
 ):
     return CareCoordinatorService.request_lab_collection(
         db, current_user.lab_id, current_user.id, body.patient_id, body.tests,
+        actor_role=current_user.role,
     )
 
 
@@ -1268,6 +1274,7 @@ def request_radiology(
 ):
     return CareCoordinatorService.coordinate_radiology(
         db, current_user.lab_id, current_user.id, body.patient_id, body.exam_type, body.urgency,
+        actor_role=current_user.role,
     )
 
 
@@ -1280,6 +1287,7 @@ def request_pharmacy(
     return CareCoordinatorService.coordinate_pharmacy(
         db, current_user.lab_id, current_user.id, body.patient_id,
         body.medication, body.dose, body.route,
+        actor_role=current_user.role,
     )
 
 
@@ -1292,6 +1300,7 @@ def create_referral(
     return CareCoordinatorService.manage_referral(
         db, current_user.lab_id, current_user.id, body.patient_id,
         body.to_specialty, body.reason, body.urgency,
+        actor_role=current_user.role,
     )
 
 
@@ -1304,6 +1313,7 @@ def create_discharge_plan(
     return CareCoordinatorService.plan_discharge(
         db, current_user.lab_id, current_user.id, body.patient_id,
         body.expected_date, body.discharge_needs,
+        actor_role=current_user.role,
     )
 
 
@@ -1316,6 +1326,7 @@ def family_communication(
     return CareCoordinatorService.family_communication(
         db, current_user.lab_id, current_user.id, body.patient_id,
         body.family_contact, body.message,
+        actor_role=current_user.role,
     )
 
 
@@ -1328,4 +1339,5 @@ def home_care_handover(
     return CareCoordinatorService.home_care_handover(
         db, current_user.lab_id, current_user.id, body.patient_id,
         body.home_care_provider, body.summary,
+        actor_role=current_user.role,
     )

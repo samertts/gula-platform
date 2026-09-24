@@ -217,11 +217,14 @@ def test_unassigning_a_patient_actually_ends_the_assignment(Session) -> None:
 
     with Session() as s:
         NursingService.assign_patient(
-            s, LAB_A, NURSE_A, NURSE_A, PATIENT_A, "primary", notes="probe")
+            s, LAB_A, NURSE_A, NURSE_A, PATIENT_A, "primary", notes="probe",
+            actor_role="technician")
         s.commit()
         assert NursingService.get_assigned_patients(s, LAB_A, NURSE_A)
 
-        NursingService.unassign_patient(s, LAB_A, NURSE_A, NURSE_A, PATIENT_A, "shift end")
+        NursingService.unassign_patient(
+            s, LAB_A, NURSE_A, NURSE_A, PATIENT_A, "shift end",
+            actor_role="technician")
         s.commit()
 
         row = s.query(PatientAssignment).filter_by(
@@ -241,7 +244,7 @@ def test_a_task_can_be_created_completed_and_deferred(Session) -> None:
             "patient_id": PATIENT_A, "assigned_to": NURSE_A, "task_type": "vital_signs",
             "title": "Four-hourly observations", "description": "NEWS2 set",
             "due_at": datetime.now(UTC),
-        })
+        }, actor_role="technician")
         s.commit()
         assert isinstance(task.id, int)
 
@@ -376,15 +379,19 @@ def test_a_nursing_mutation_writes_a_correct_audit_row(Session) -> None:
         NursingService.create_task(s, LAB_A, NURSE_A, {
             "patient_id": PATIENT_A, "task_type": "observation",
             "title": "Audit probe", "due_at": datetime.now(UTC),
-        })
+        }, actor_role="technician")
         s.commit()
 
         row = s.execute(text(
-            "SELECT action, user_id, lab_id, details FROM audit_logs "
+            "SELECT action, user_id, user_role, lab_id, details FROM audit_logs "
             "WHERE id > :w ORDER BY id DESC LIMIT 1"), {"w": watermark}).one()
-        action, user_id, lab_id, details = row
+        action, user_id, user_role, lab_id, details = row
         assert action == "nursing.create_task"
         assert user_id == NURSE_A
+        # NR-160: the row must name the actor's authority, not just their id.
+        assert user_role == "technician", (
+            f"the nursing audit row recorded the role as {user_role!r}; before "
+            "NR-160 it was NULL for every nursing action")
         assert lab_id == LAB_A, "the laboratory did not reach the lab_id column"
         assert details and "Audit probe" in details, "the details were dropped"
 

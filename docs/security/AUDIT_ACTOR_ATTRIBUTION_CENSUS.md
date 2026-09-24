@@ -2,7 +2,8 @@
 
 **Generated:** 2026-09-24 · **Branch:** `claude/p0-2-pharmacy-reconciliation`
 **Register findings:** NR-158 (LIMS, fixed), NR-159 (hospital, fixed), NR-160 (the
-pattern), NR-161 (financial, blocked), NR-162 (role vocabularies)
+pattern; nursing closed, 11 sites open), NR-161 (financial, blocked), NR-162
+(role vocabularies)
 
 This document records a complete, measured classification of every audit-writing
 call site in the backend monolith. It is not a sample. Every one of the 188
@@ -43,16 +44,17 @@ parameters for `current_user`, an explicit role parameter, or only `user_id`.
 
 ## 3. Census
 
-| Class | Before repair | After repair |
-|-------|--------------:|-------------:|
-| `EXPR` | 145 | **150** |
-| `OMITTED` | 33 | 33 |
-| `LITERAL` | 10 | **5** |
-| **Total** | **188** | **188** |
+| Class | Baseline | After NR-158 + NR-159 | After NR-160 (nursing) |
+|-------|---------:|----------------------:|-----------------------:|
+| `EXPR` | 145 | 150 | **164** |
+| `OMITTED` | 33 | 33 | **19** |
+| `LITERAL` | 10 | 5 | **5** |
+| **Total** | **188** | **188** | **188** |
 
 Nine falsifying literals were repaired: four in `app/lims/services.py`
 (`"lab_tech"`, NR-158) and five in `app/services/hospital_service.py`
-(`'hospital_staff'`, NR-159).
+(`'hospital_staff'`, NR-159). Fourteen omitted roles were then closed across the
+nursing package (NR-160).
 
 ## 4. The five remaining literals — all inspected, none falsifying
 
@@ -70,24 +72,34 @@ Nine falsifying literals were repaired: four in `app/lims/services.py`
 |---------|------:|-------|
 | **Correct by construction** — no authenticated actor exists, so NULL is the true value | 4 | `routes/password_reset.py:53,76` (`user_id` is the *subject*, not the actor); `services/order_service.py:759,858` (public token-authenticated reads) |
 | **BLOCKED — human approval required** | 4 | `financial/routes.py:313,368`; `financial/services.py:131,247` — see NR-161 |
-| **OPEN coverage gap** — role must be threaded from the caller | 25 | see below |
+| **Coverage gap** — role must be threaded from the caller | 25 | 14 now closed (nursing), 11 open |
 
-### The 25 open sites
+### The 25 coverage-gap sites
 
-| Domain | Count | Notes |
-|--------|------:|-------|
-| `app/nursing/` | 15 | `coordination.py` ×8, `medication.py` ×3, `services.py` ×3 |
-| `app/pharmacy/` | 4 | `inventory.py` ×3, `services.py` ×1 (two are `_audit()` helpers — the role must arrive from their callers) |
-| `app/nhdw/services.py` | 3 | `complete_clinical_task`, `review_care_plan`, `resolve_alert` |
-| `app/blood_bank/application/service.py` | 1 | `_audit()` helper |
-| `app/governance/repositories/base.py` | 1 | `_write_audit()` |
-| `app/audit/__init__.py` | 1 | a wrapper — inherits from its caller |
-| `app/services/hospital_service.py:109` | 1 | `deactivate_hospital` |
+| Domain | Count | State | Notes |
+|--------|------:|-------|-------|
+| `app/nursing/` | 14 | **CLOSED (NR-160)** | `coordination.py` ×8, `medication.py` ×3, `services.py` ×3 |
+| `app/pharmacy/` | 4 | open | `inventory.py` ×3, `services.py` ×1 (two are `_audit()` helpers — the role must arrive from their callers) |
+| `app/nhdw/services.py` | 3 | open | `complete_clinical_task`, `review_care_plan`, `resolve_alert` |
+| `app/blood_bank/application/service.py` | 1 | open | `_audit()` helper |
+| `app/governance/repositories/base.py` | 1 | open | `_write_audit()` |
+| `app/audit/__init__.py` | 1 | open | a wrapper — inherits from its caller |
+| `app/services/hospital_service.py:109` | 1 | open | `deactivate_hospital` |
 
-**Nursing medication is the highest-value remaining cluster.**
+> **Count correction.** The first version of this table said `app/nursing/` had
+> 15 sites. It has 14 — 8 + 3 + 3, as the same row already broke down. The
+> per-domain figures summed to 25 correctly; only the nursing subtotal was
+> mistyped. Confirmed by re-running the census after the repair: `OMITTED` fell
+> from 33 to 19, i.e. exactly 14 closed.
+
+**Nursing was taken first because it was the highest-value cluster.**
 `record_five_rights_attestation`, `record_administration` and
-`electronic_signature` are exactly the records whose evidential value depends on
-knowing the signer's authority.
+`electronic_signature` are evidence records. An electronic signature whose row
+does not say what the signer was permitted to do is a signature without a
+capacity, which is most of what a signature is for. The same holds for a
+five-rights attestation, which the platform already documents as an attestation
+rather than a verification (NR-102) — its evidential value rests entirely on who
+attested.
 
 ## 6. The canonical source, and why it can be trusted
 
@@ -120,24 +132,40 @@ proved itself on landing: it surfaced seven stale call sites in
 |-------|--------|
 | `backend/tests/test_lims_audit_actor_is_server_derived.py` (5 tests) | NR-158 |
 | `backend/tests/test_hospital_audit_actor_is_server_derived.py` (6 tests) | NR-159, and pins NR-162's vocabulary claim |
+| `backend/tests/test_nursing_audit_actor_is_server_derived.py` (5 tests) | NR-160 (nursing) |
+| `backend/tests/test_nursing_runtime.py` (15 tests, PostgreSQL) | the nursing audit row's role, end to end |
 
 Each guard carries a structural test (the parameter is keyword-only with no
 default), a source ratchet that filters comment lines, a positive control (the
 role the wrong constant happened to resemble is asserted, not assumed), and the
 finding itself.
 
+The nursing guard ratchets in **both** directions, because closing an `OMITTED`
+site by writing a constant would turn NR-160 into NR-158. `test_b` fails on any
+`log_action` in the package without a role — including one added later — and
+`test_c` fails if any of them hard-codes it.
+
 There is **no platform-wide ratchet yet**. One would have to allow-list the eight
 correct-by-construction sites together with the reason each is correct;
 otherwise it would either fail permanently or be weakened into vacuity.
 
-## 9. Negative proof (NR-159)
+## 9. Negative proofs
 
-Restoring `user_role='hospital_staff'` in `assign_bed` alone fails three of the
-six tests — the source ratchet, the technician positive control, and the
-administrator finding — while the structural and wiring tests correctly continue
-to pass, because the signature and the routes are untouched and only the written
-row is falsified. The file was then restored byte-identically (sha256 verified)
-and all 10 tests across both hospital files pass.
+**NR-159.** Restoring `user_role='hospital_staff'` in `assign_bed` alone fails
+three of the six tests — the source ratchet, the technician positive control, and
+the administrator finding — while the structural and wiring tests correctly
+continue to pass, because the signature and the routes are untouched and only the
+written row is falsified. Restored byte-identically (sha256 verified); all 10
+tests across both hospital files pass.
+
+**NR-160, behavioural.** Omitting `user_role` in `create_task` alone fails
+`test_a_nursing_mutation_writes_a_correct_audit_row` against real PostgreSQL;
+14 of 15 still pass. Restored byte-identically (sha256); 15/15 green.
+
+**NR-160, structural, both directions.** Omitting the role in `manage_referral`
+fails *only* `test_b`. Substituting the literal `'nurse'` fails *only* `test_c`.
+Each leaves the other four green, so the two ratchets are independent rather than
+one test failing twice. Restored byte-identically (sha256); 5/5 green.
 
 ## 10. Open items requiring a decision from an owner
 
@@ -145,4 +173,6 @@ and all 10 tests across both hospital files pass.
    Phase A? Two of the four are one-line changes.
 2. **NR-162** — which role vocabulary is canonical, and should writing a role
    outside it raise rather than fail silently closed?
-3. **NR-160** — the 25 open sites, nursing medication first.
+3. **NR-160** — the 11 sites still open: pharmacy 4, NHDW 3, blood bank 1,
+   governance 1, the `app/audit/__init__.py` wrapper, and
+   `deactivate_hospital`.
