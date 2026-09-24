@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -8,7 +7,6 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
-from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
 from app.identity.api.workspaces import NiamActor
 from app.identity.models.administrative_structure import NIAMAdminFacility
 from app.identity.models.legacy_account_link import (
@@ -20,11 +18,13 @@ from app.identity.models.membership import Membership, MembershipStatus
 from app.identity.models.niam_organization import NIAMOrganization
 from app.identity.models.workspace import Workspace, WorkspaceSessionContext, WorkspaceStatus
 from app.identity.services.clinical_authorization_context_service import (
+    ClinicalAuthorizationContextError,
     ClinicalAuthorizationContextService,
 )
 from app.models.clinical_scope import ClinicalLabFacilityBinding, ClinicalLabFacilityBindingStatus
 from app.models.lab_user import LabUser
 from app.services.clinical_legacy_read_scope import ClinicalLegacyReadScope
+from app.services.clinical_scope_bridge_service import ClinicalScopeBridgeError
 
 
 class ClinicalGatewayBlocked(PermissionError):
@@ -51,7 +51,6 @@ class ClinicalGatewayContextResolver:
 
     def __init__(self, db: Session) -> None:
         self.db = db
-        self.facade = SyncSessionAsyncFacade(db)
 
     def resolve(self, actor: NiamActor) -> ClinicalGatewayContext:
         workspace_context = (
@@ -150,17 +149,24 @@ class ClinicalGatewayContextResolver:
 
         try:
             # Reuse the reviewed account→identity→assignment→facility proof chain.
-            asyncio.run(
-                ClinicalAuthorizationContextService(self.facade).resolve_for_legacy_lab_user(
-                    legacy_lab_user_id=legacy_user.id,
-                    legacy_lab_id=legacy_user.lab_id,
-                    expected_niam_organization_id=workspace.organization_id,
-                    expected_niam_facility_id=workspace.facility_id,
-                ),
+            # NR-044.2: called directly. It used to be driven by `asyncio.run()`
+            # over a facade that made a synchronous Session look awaitable; the
+            # service is synchronous now, so the event loop and the facade are
+            # both gone.
+            ClinicalAuthorizationContextService(self.db).resolve_for_legacy_lab_user(
+                legacy_lab_user_id=legacy_user.id,
+                legacy_lab_id=legacy_user.lab_id,
+                expected_niam_organization_id=workspace.organization_id,
+                expected_niam_facility_id=workspace.facility_id,
             )
-        except Exception as exc:
-            if isinstance(exc, ClinicalGatewayBlocked):
-                raise
+        except (ClinicalAuthorizationContextError, ClinicalScopeBridgeError) as exc:
+            # NR-048: only the service's own denial vocabulary becomes
+            # `invalid_context`. This used to catch `Exception`, so a missing
+            # column (NR-047) or an un-awaitable result (NR-044) was returned to
+            # the client as an authorization denial — a database fault wearing a
+            # policy decision's clothes, and indistinguishable from one in the
+            # audit trail. Anything else now propagates and surfaces as a 500:
+            # still denied, but honestly.
             raise ClinicalGatewayBlocked("invalid_context") from exc
 
         scope = ClinicalLegacyReadScope(

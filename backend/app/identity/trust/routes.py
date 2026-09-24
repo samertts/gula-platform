@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.models.audit import AuditAction
+from app.identity.services.audit_service import AuditService
 
 from .services import (
     AssuranceService,
@@ -17,14 +20,61 @@ from .services import (
     TrustFrameworkService,
 )
 
-router = APIRouter(prefix="/niam/trust", tags=["NIAM Trust"])
+# This router is mounted under app/identity/api/router.py, which already
+# carries prefix="/niam". Declaring "/niam" here as well served every one of
+# these routes at /niam/niam/..., which no client calls: frontend-v3 asks for
+# the single-prefix path and got 404. 60 served paths were doubled this way.
+router = APIRouter(prefix="/trust", tags=["NIAM Trust"])
+
+
+def _require_assurance_administrator(db: Session, actor: NiamActor) -> None:
+    """Only an active administrative assignment may act for another account.
+
+    Fail-closed: no assignment, an inactive one, or one in another organization
+    is a refusal. This guards *who may ask*; the answer itself is derived from
+    evidence either way, so a forged request cannot raise an assurance level.
+    """
+    from sqlalchemy import select as _select
+
+    from app.identity.models.assignment import Assignment, AssignmentStatus
+    from app.identity.models.identity import IdentityRecord
+
+    # NR-052. This filtered on `Assignment.account_id`, which is not a column:
+    # an assignment belongs to a *person*, and an account reaches one through
+    # `Account.identity_id -> IdentityRecord.person_id`. So the gate raised
+    # AttributeError instead of deciding anything — invisibly, because NR-044
+    # meant this route could not execute at all. It failed closed, as a 500, so
+    # nothing was ever wrongly allowed; but the check had never once been
+    # evaluated, and "fails closed by crashing" is not a control.
+    #
+    # This walks the same account -> identity -> person chain that
+    # ClinicalAuthorizationContextService uses, and keeps the identity's own
+    # standing in the conjunction rather than trusting the account alone. The
+    # predicate is therefore at least as strict as the one that was intended.
+    result = db.execute(
+        _select(Assignment.id)
+        .join(IdentityRecord, IdentityRecord.person_id == Assignment.person_id)
+        .where(
+            IdentityRecord.id == actor.account.identity_id,
+            IdentityRecord.status == "active",
+            IdentityRecord.is_active.is_(True),
+            Assignment.status == AssignmentStatus.active.value,
+            Assignment.is_active.is_(True),
+        )
+        .limit(1),
+    )
+    if result.scalars().first() is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Asserting an assurance profile for another account requires an active administrative assignment",
+        )
 
 
 # ── Trust Frameworks ──────────────────────────────────────────────────────────
 
 
 @router.post("/frameworks")
-async def create_framework(
+def create_framework(
     framework_id: str,
     name_en: str,
     name_ar: str,
@@ -34,10 +84,10 @@ async def create_framework(
     authority_id: str | None = None,
     scope: dict | None = None,
     assurance_policies: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustFrameworkService(db)
-    entity = await service.create_framework(
+    entity = service.create_framework(
         framework_id=framework_id,
         name_en=name_en,
         name_ar=name_ar,
@@ -52,13 +102,13 @@ async def create_framework(
 
 
 @router.get("/frameworks")
-async def list_frameworks(
+def list_frameworks(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustFrameworkService(db)
-    frameworks = await service.list_frameworks(skip=skip, limit=limit)
+    frameworks = service.list_frameworks(skip=skip, limit=limit)
     return [
         {
             "uuid": f.uuid,
@@ -73,37 +123,37 @@ async def list_frameworks(
 
 
 @router.get("/frameworks/{framework_id}")
-async def get_framework(
+def get_framework(
     framework_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustFrameworkService(db)
-    entity = await service.get_framework(framework_id)
+    entity = service.get_framework(framework_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.put("/frameworks/{framework_id}")
-async def update_framework(
+def update_framework(
     framework_id: str,
     body: dict[str, Any],
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustFrameworkService(db)
-    entity = await service.update_framework(framework_id, **body)
+    entity = service.update_framework(framework_id, **body)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.post("/frameworks/{framework_id}/activate")
-async def activate_framework(
+def activate_framework(
     framework_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustFrameworkService(db)
-    entity = await service.activate_framework(framework_id)
+    entity = service.activate_framework(framework_id)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "status": entity.status}
@@ -113,42 +163,69 @@ async def activate_framework(
 
 
 @router.post("/assurance-profiles")
-async def create_assurance_profile(
+def create_assurance_profile(
+    account_id: str,
     person_id: str,
     identity_id: str,
-    ial: str = "IAL1",
-    aal: str = "AAL1",
-    fal: str = "FAL1",
-    assessed_by: str | None = None,
-    evidence: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: Session = Depends(get_db),
 ):
+    """Recompute an account's assurance profile from its verification evidence.
+
+    NR-038. This route used to accept `ial`, `aal`, `fal`, `assessed_by` and
+    `evidence` from the caller and write them through with `status="active"`, so
+    a client named its own assurance level, its own assessor and its own
+    evidence, with no verification record consulted.
+
+    Nothing a caller sends can raise a level now: the profile is derived from
+    `niam_verification_records`, which only a trusted server-side verifier can
+    write, and the assessor is the authenticated actor. The request names a
+    subject; it does not supply an answer.
+
+    An account may recompute its own profile. Asserting for a different account
+    additionally requires an active administrative assignment — and even then it
+    asserts nothing, because the inputs are evidence rather than claims.
+    """
+    if account_id != actor.account.id:
+        _require_assurance_administrator(db, actor)
+
     service = AssuranceService(db)
-    entity = await service.assign_profile(
+    entity = service.derive_profile(
+        account_id=account_id,
         person_id=person_id,
         identity_id=identity_id,
-        ial=ial,
-        aal=aal,
-        fal=fal,
-        assessed_by=assessed_by,
-        evidence=evidence,
+        assessed_by=f"account:{actor.account.id}",
+    )
+    AuditService(db).record(
+        AuditAction.assurance_profile_assigned,
+        actor_id=actor.account.id,
+        actor_type="account",
+        target_type="assurance_profile",
+        target_id=entity.id,
+        metadata={
+            "subject_account_id": account_id,
+            "derived": True,
+            "ial": entity.ial,
+            "overall_assurance": entity.overall_assurance,
+        },
     )
     return {
         "uuid": entity.uuid,
         "id": entity.id,
+        "ial": entity.ial,
         "overall_assurance": entity.overall_assurance,
         "status": entity.status,
     }
 
 
 @router.get("/assurance-profiles")
-async def list_assurance_profiles(
+def list_assurance_profiles(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = AssuranceService(db)
-    profiles = await service.list_profiles(skip=skip, limit=limit)
+    profiles = service.list_profiles(skip=skip, limit=limit)
     return [
         {
             "uuid": p.uuid,
@@ -165,24 +242,24 @@ async def list_assurance_profiles(
 
 
 @router.get("/assurance-profiles/{profile_uuid}")
-async def get_assurance_profile(
+def get_assurance_profile(
     profile_uuid: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = AssuranceService(db)
-    entity = await service.get_profile(profile_uuid)
+    entity = service.get_profile(profile_uuid)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.get("/assurance-profiles/identity/{identity_id}")
-async def get_profiles_for_identity(
+def get_profiles_for_identity(
     identity_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = AssuranceService(db)
-    profiles = await service.get_profiles_for_identity(identity_id)
+    profiles = service.get_profiles_for_identity(identity_id)
     return [
         {
             "uuid": p.uuid,
@@ -197,12 +274,12 @@ async def get_profiles_for_identity(
 
 
 @router.post("/assurance-profiles/{profile_uuid}/revoke")
-async def revoke_assurance_profile(
+def revoke_assurance_profile(
     profile_uuid: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = AssuranceService(db)
-    entity = await service.revoke_profile(profile_uuid)
+    entity = service.revoke_profile(profile_uuid)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "status": entity.status}
@@ -212,7 +289,7 @@ async def revoke_assurance_profile(
 
 
 @router.post("/anchors")
-async def create_anchor(
+def create_anchor(
     anchor_id: str,
     name: str,
     anchor_type: str,
@@ -223,10 +300,10 @@ async def create_anchor(
     valid_from: datetime | None = None,
     valid_to: datetime | None = None,
     signed_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustAnchorService(db)
-    entity = await service.create_anchor(
+    entity = service.create_anchor(
         anchor_id=anchor_id,
         name=name,
         anchor_type=anchor_type,
@@ -242,13 +319,13 @@ async def create_anchor(
 
 
 @router.get("/anchors")
-async def list_anchors(
+def list_anchors(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustAnchorService(db)
-    anchors = await service.list_anchors(skip=skip, limit=limit)
+    anchors = service.list_anchors(skip=skip, limit=limit)
     return [
         {
             "uuid": a.uuid,
@@ -262,34 +339,34 @@ async def list_anchors(
 
 
 @router.get("/anchors/{anchor_id}")
-async def get_anchor(
+def get_anchor(
     anchor_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustAnchorService(db)
-    entity = await service.get_anchor(anchor_id)
+    entity = service.get_anchor(anchor_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.get("/anchors/{anchor_id}/validate")
-async def validate_anchor_chain(
+def validate_anchor_chain(
     anchor_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustAnchorService(db)
-    return await service.validate_chain(anchor_id)
+    return service.validate_chain(anchor_id)
 
 
 @router.post("/anchors/{anchor_id}/revoke")
-async def revoke_anchor(
+def revoke_anchor(
     anchor_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustAnchorService(db)
-    entity = await service.revoke_anchor(anchor_id, reason)
+    entity = service.revoke_anchor(anchor_id, reason)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "status": entity.status}
@@ -299,7 +376,7 @@ async def revoke_anchor(
 
 
 @router.post("/federation")
-async def create_federation_trust(
+def create_federation_trust(
     trust_id: str,
     source_org_id: str,
     target_org_id: str,
@@ -309,10 +386,10 @@ async def create_federation_trust(
     agreement_id: str | None = None,
     expires_at: datetime | None = None,
     terms: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = FederationTrustService(db)
-    entity = await service.create_trust(
+    entity = service.create_trust(
         trust_id=trust_id,
         source_org_id=source_org_id,
         target_org_id=target_org_id,
@@ -327,13 +404,13 @@ async def create_federation_trust(
 
 
 @router.get("/federation")
-async def list_federation_trusts(
+def list_federation_trusts(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = FederationTrustService(db)
-    trusts = await service.list_all(skip=skip, limit=limit)
+    trusts = service.list_all(skip=skip, limit=limit)
     return [
         {
             "uuid": t.uuid,
@@ -349,24 +426,24 @@ async def list_federation_trusts(
 
 
 @router.get("/federation/{trust_id}")
-async def get_federation_trust(
+def get_federation_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = FederationTrustService(db)
-    entity = await service.get_trust(trust_id)
+    entity = service.get_trust(trust_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.get("/federation/org/{org_id}")
-async def list_federation_for_org(
+def list_federation_for_org(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = FederationTrustService(db)
-    trusts = await service.list_for_org(org_id)
+    trusts = service.list_for_org(org_id)
     return [
         {
             "uuid": t.uuid,
@@ -381,24 +458,24 @@ async def list_federation_for_org(
 
 
 @router.post("/federation/{trust_id}/suspend")
-async def suspend_federation_trust(
+def suspend_federation_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = FederationTrustService(db)
-    entity = await service.suspend_trust(trust_id)
+    entity = service.suspend_trust(trust_id)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "status": entity.status}
 
 
 @router.post("/federation/{trust_id}/terminate")
-async def terminate_federation_trust(
+def terminate_federation_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = FederationTrustService(db)
-    entity = await service.terminate_trust(trust_id)
+    entity = service.terminate_trust(trust_id)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "status": entity.status}
@@ -408,7 +485,7 @@ async def terminate_federation_trust(
 
 
 @router.post("/proofing")
-async def create_proofing(
+def create_proofing(
     proofing_id: str,
     person_id: str,
     identity_id: str,
@@ -417,10 +494,10 @@ async def create_proofing(
     evidence_type: dict | None = None,
     evidence_documents: dict | None = None,
     authority_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = IdentityProofingService(db)
-    entity = await service.create_proofing(
+    entity = service.create_proofing(
         proofing_id=proofing_id,
         person_id=person_id,
         identity_id=identity_id,
@@ -434,13 +511,13 @@ async def create_proofing(
 
 
 @router.get("/proofing")
-async def list_proofing(
+def list_proofing(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = IdentityProofingService(db)
-    records = await service.list_all(skip=skip, limit=limit)
+    records = service.list_all(skip=skip, limit=limit)
     return [
         {
             "uuid": r.uuid,
@@ -455,24 +532,24 @@ async def list_proofing(
 
 
 @router.get("/proofing/{proofing_id}")
-async def get_proofing(
+def get_proofing(
     proofing_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = IdentityProofingService(db)
-    entity = await service.get_proofing(proofing_id)
+    entity = service.get_proofing(proofing_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.get("/proofing/person/{person_id}")
-async def list_proofing_for_person(
+def list_proofing_for_person(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = IdentityProofingService(db)
-    records = await service.list_for_person(person_id)
+    records = service.list_for_person(person_id)
     return [
         {
             "uuid": r.uuid,
@@ -486,26 +563,26 @@ async def list_proofing_for_person(
 
 
 @router.post("/proofing/{proofing_id}/verify")
-async def verify_proofing(
+def verify_proofing(
     proofing_id: str,
     verified_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = IdentityProofingService(db)
-    entity = await service.verify_proofing(proofing_id, verified_by)
+    entity = service.verify_proofing(proofing_id, verified_by)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "status": entity.status}
 
 
 @router.post("/proofing/{proofing_id}/reject")
-async def reject_proofing(
+def reject_proofing(
     proofing_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = IdentityProofingService(db)
-    entity = await service.reject_proofing(proofing_id, reason)
+    entity = service.reject_proofing(proofing_id, reason)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "status": entity.status}
@@ -515,7 +592,7 @@ async def reject_proofing(
 
 
 @router.post("/evaluations")
-async def create_evaluation(
+def create_evaluation(
     evaluation_id: str,
     target_type: str,
     target_id: str,
@@ -526,10 +603,10 @@ async def create_evaluation(
     evaluation_method: str | None = None,
     findings: dict | None = None,
     recommendations: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustEvaluationService(db)
-    entity = await service.create_evaluation(
+    entity = service.create_evaluation(
         evaluation_id=evaluation_id,
         target_type=target_type,
         target_id=target_id,
@@ -545,13 +622,13 @@ async def create_evaluation(
 
 
 @router.get("/evaluations")
-async def list_evaluations(
+def list_evaluations(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustEvaluationService(db)
-    evaluations = await service.list_all(skip=skip, limit=limit)
+    evaluations = service.list_all(skip=skip, limit=limit)
     return [
         {
             "uuid": e.uuid,
@@ -568,25 +645,25 @@ async def list_evaluations(
 
 
 @router.get("/evaluations/{evaluation_id}")
-async def get_evaluation(
+def get_evaluation(
     evaluation_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustEvaluationService(db)
-    entity = await service.get_evaluation(evaluation_id)
+    entity = service.get_evaluation(evaluation_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.get("/evaluations/target/{target_type}/{target_id}")
-async def get_evaluations_for_target(
+def get_evaluations_for_target(
     target_type: str,
     target_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = TrustEvaluationService(db)
-    evaluations = await service.list_for_target(target_type, target_id)
+    evaluations = service.list_for_target(target_type, target_id)
     return [
         {
             "uuid": e.uuid,

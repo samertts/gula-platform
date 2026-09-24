@@ -5,9 +5,7 @@ import hashlib
 import hmac
 import json
 import os
-from collections.abc import Awaitable
 from dataclasses import dataclass
-from typing import TypeVar
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -23,7 +21,6 @@ from app.clinical_gateway.contracts import (
     OrderRead,
     PatientRead,
 )
-from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
 from app.identity.services.authorization_decision import (
     AuthorizationActor,
     AuthorizationDecisionService,
@@ -42,7 +39,6 @@ class ClinicalGatewayInvalidCursor(ValueError):
     """Raised when a cursor is invalid, expired by scope, or tampered with."""
 
 
-_ResultT = TypeVar("_ResultT")
 
 
 @dataclass(frozen=True)
@@ -104,8 +100,7 @@ class ClinicalGatewayService:
 
     def __init__(self, db: Session) -> None:
         self.db = db
-        self.facade = SyncSessionAsyncFacade(db)
-        self.audit = CanonicalAuditService(self.facade)
+        self.audit = CanonicalAuditService(db)
         self.cursor = ClinicalCursorCodec()
         self.context_resolver = ClinicalGatewayContextResolver(db)
 
@@ -242,11 +237,9 @@ class ClinicalGatewayService:
             },
             sensitivity="high",
         )
-        decision = self._run(
-            AuthorizationDecisionService(self.facade).authorize(
-                AuthorizationActor(account=context.actor.account, session=context.actor.session),
-                request,
-            ),
+        decision = AuthorizationDecisionService(self.db).authorize(
+            AuthorizationActor(account=context.actor.account, session=context.actor.session),
+            request,
         )
         self._audit(
             context=context,
@@ -270,28 +263,26 @@ class ClinicalGatewayService:
         reason_code: str,
     ) -> None:
         try:
-            self._run(
-                self.audit.record(
-                    AuditEventInput(
-                        event_type="clinical_gateway_access",
-                        category="clinical_access",
-                        action=f"{resource}.read",
-                        actor_id=context.actor.account.id,
-                        actor_identity_id=context.actor.account.identity_id,
-                        organization_id=context.scope.niam_organization_id,
-                        facility_id=context.scope.niam_facility_id,
-                        workspace_id=context.scope.niam_workspace_id,
-                        target_type=self.RESOURCE_TYPES[resource],
-                        decision=decision,
-                        reason_code=reason_code,
-                        request_id=str(request_id),
-                        correlation_id=str(correlation_id),
-                        session_id=context.actor.session.id,
-                        source="clinical_gateway",
-                        data_classification="CLINICAL_SENSITIVE",
-                        metadata={"scope_mapping_version": context.scope.scope_mapping_version},
-                        outcome="success" if decision == "allow" else "denied",
-                    ),
+            self.audit.record(
+                AuditEventInput(
+                    event_type="clinical_gateway_access",
+                    category="clinical_access",
+                    action=f"{resource}.read",
+                    actor_id=context.actor.account.id,
+                    actor_identity_id=context.actor.account.identity_id,
+                    organization_id=context.scope.niam_organization_id,
+                    facility_id=context.scope.niam_facility_id,
+                    workspace_id=context.scope.niam_workspace_id,
+                    target_type=self.RESOURCE_TYPES[resource],
+                    decision=decision,
+                    reason_code=reason_code,
+                    request_id=str(request_id),
+                    correlation_id=str(correlation_id),
+                    session_id=context.actor.session.id,
+                    source="clinical_gateway",
+                    data_classification="CLINICAL_SENSITIVE",
+                    metadata={"scope_mapping_version": context.scope.scope_mapping_version},
+                    outcome="success" if decision == "allow" else "denied",
                 ),
             )
         except Exception as exc:
@@ -327,9 +318,3 @@ class ClinicalGatewayService:
             "workspace_id": context.scope.niam_workspace_id,
             "department_id": context.workspace.department_id,
         }
-
-    @staticmethod
-    def _run(awaitable: Awaitable[_ResultT]) -> _ResultT:
-        import asyncio
-
-        return asyncio.run(awaitable)

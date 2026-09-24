@@ -378,6 +378,100 @@ ENABLE_FINANCIAL_ENGINE = os.getenv("ENABLE_FINANCIAL_ENGINE", "false").lower() 
 ENABLE_ADS = os.getenv("ENABLE_ADS", "false").lower() == "true"
 
 
+# ENABLE_AI_CLINICAL_AGENT_TOOLS — the agent tools on POST /api/ai/v2/agents/execute
+#   that read patient demographics and lab results (lookup_patient,
+#   get_recent_results, analyze_lab_pattern).
+#
+#   OFF, deliberately, and this flag exists because until now the only thing
+#   keeping them inert was a typo: all three name columns the database does not
+#   have (patients.full_name, not name; lab_results.created_at, not
+#   result_date), so every call raised and returned an error string. Correcting
+#   two column names would have switched a clinical AI surface on as a side
+#   effect of a tidy-up. Safety that depends on a bug is not safety.
+#
+#   Assessed against the operating brief's criteria. What is ready:
+#   tenant isolation (NR-092 — the runtime injects the authenticated lab_id and
+#   the planning model cannot override it) and authorization (_require_doctor,
+#   plus session ownership after NR-093).
+#
+#   What is not, and none of it is fixed by repairing the column names:
+#     * no audit. agent_runtime.py calls log_action zero times, so no record
+#       exists that an AI tool read a patient's results.
+#     * external model exposure. _plan_tools sends the caller's free text and
+#       up to 500 tokens of conversation history to Google Gemini to choose the
+#       tool and its patient_id. §27 forbids exposing patient data to external
+#       AI by default.
+#     * no deterministic layer. §15 requires rule -> SQL/search -> small model
+#       -> large model. Here the model is first, and it picks both the tool and
+#       the patient.
+#     * the failure path returned str(exc) to the caller, disclosing schema.
+#     * ai_evaluations is written without a lab_id, so the evaluation record is
+#       not tenant-scoped.
+#
+#   Turning this on is a clinical product decision, not an engineering one.
+ENABLE_AI_CLINICAL_AGENT_TOOLS = (
+    os.getenv("ENABLE_AI_CLINICAL_AGENT_TOOLS", "false").lower() == "true"
+)
+
+
+# ENABLE_CLINICAL_ORDERS_STUB — the /clinical/orders router in
+#   app/routes/clinical_orders.py (order intake, templates, recurring and
+#   standing orders).
+#
+#   OFF, deliberately. The router is registered in factory.py and served, and
+#   every handler takes a `db: Session` it never uses. The backing store is a
+#   module-level dict. An authenticated clinician can POST a medication,
+#   radiology or procedure order, receive 201 with an id, and have that order
+#   exist in one gunicorn worker's memory until the next restart. Nothing is
+#   written to PostgreSQL, nothing is audited, and the other workers cannot
+#   see it.
+#
+#   Two further defects were measured on the same surface and are fixed in the
+#   module regardless of this flag, because a gate that can be flipped must not
+#   uncover them:
+#     * cross-tenant read and mutation. create recorded lab_id; no reader used
+#       it. Executed: lab 901 listed lab 902's orders, fetched one by id, and
+#       cancelled it.
+#     * GET /templates, /recurring and /standing were shadowed by
+#       GET /{order_id}, declared earlier, so those three reads were
+#       unreachable while the matching POSTs still accepted writes.
+#
+#   Turning this on requires the orders to persist first. Use /orders, which
+#   writes lab_orders rows, until then.
+ENABLE_CLINICAL_ORDERS_STUB = (
+    os.getenv("ENABLE_CLINICAL_ORDERS_STUB", "false").lower() == "true"
+)
+
+
+# ENABLE_CLINICAL_DOCUMENTATION_STUB — the /clinical/documentation router in
+#   app/routes/clinical_documentation.py (SOAP, progress, nursing,
+#   consultation, operation and emergency notes, their electronic signatures,
+#   structured templates and version history).
+#
+#   OFF, deliberately, and for the same reason as the orders stub above, with
+#   one difference that makes it worse: this router is the medical record, and
+#   the module makes zero database calls. _DOCUMENTS, _TEMPLATES and
+#   _VERSION_HISTORY are module-level dicts. A signed operation note lives in
+#   one worker's memory until the next restart.
+#
+#   Two defects fixed in the module regardless of this flag, because a gate
+#   that can be flipped must not uncover them:
+#     * lab_id was not recorded on a document at all, so every reader returned
+#       every lab's clinical notes. Executed: lab 901 listed lab 902's
+#       operation note, read its findings, read its version history, and
+#       electronically SIGNED it -- the signature recorded against a lab 901
+#       user on another organisation's medical record.
+#     * GET /templates was shadowed by GET /{document_id} (NR-099), so the
+#       template read was unreachable while POST /templates still accepted
+#       writes.
+#
+#   Turning this on requires the documents to persist and the signatures to be
+#   audited first.
+ENABLE_CLINICAL_DOCUMENTATION_STUB = (
+    os.getenv("ENABLE_CLINICAL_DOCUMENTATION_STUB", "false").lower() == "true"
+)
+
+
 # ── Bootstrap Configuration ───────────────────────────────────────────────────
 # Controls the National Bootstrap Engine.
 # ENABLE_BOOTSTRAP — master switch; when false, no bootstrap runs (default: true)

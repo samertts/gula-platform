@@ -66,3 +66,14 @@ __pycache__/
 
 # Local Gradle caches and generated state
 mobile/android/.gradle/
+
+# nhop-platform local sqlite (created by importing app.main outside a container)
+/nhop-platform/*.db
+/nhop-platform/*.db-*
+
+# Playwright run artifacts (screenshots, traces, .last-run.json)
+/frontend-v3/test-results/
+/frontend-v3/playwright-report/
+
+# Redis persistence file when redis-server is run from the repo root
+dump.rdb

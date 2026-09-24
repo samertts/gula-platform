@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.federation.services import (
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/federation", tags=["NIAM Federation"])
 
 
 @router.post("/providers")
-async def register_provider(
+def register_provider(
     provider_id: str,
     name_en: str,
     name_ar: str | None = None,
@@ -34,10 +34,10 @@ async def register_provider(
     signature_algorithm: str | None = None,
     trust_anchor_id: str | None = None,
     metadata_url: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    provider = await svc.register_provider(
+    provider = svc.register_provider(
         provider_id=provider_id,
         name_en=name_en,
         name_ar=name_ar,
@@ -64,12 +64,12 @@ async def register_provider(
 
 
 @router.get("/providers")
-async def list_providers(
+def list_providers(
     status: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    providers = await svc.list_providers(status=status)
+    providers = svc.list_providers(status=status)
     return [
         {
             "uuid": p.uuid,
@@ -83,41 +83,41 @@ async def list_providers(
 
 
 @router.get("/providers/{provider_id}")
-async def get_provider(
+def get_provider(
     provider_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    provider = await svc.get_provider(provider_id)
+    provider = svc.get_provider(provider_id)
     if not provider:
         return {"error": "not_found"}
     return provider.to_dict()
 
 
 @router.put("/providers/{provider_id}")
-async def update_provider(
+def update_provider(
     provider_id: str,
     body: dict[str, Any],
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    provider = await svc.update_provider(provider_id, **body)
+    provider = svc.update_provider(provider_id, **body)
     if not provider:
         return {"error": "not_found"}
     return provider.to_dict()
 
 
 @router.post("/identities/link")
-async def link_identity(
+def link_identity(
     person_id: str,
     provider_id: str,
     external_subject_id: str,
     external_attributes: dict[str, Any] | None = None,
     identity_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    identity = await svc.link_identity(
+    identity = svc.link_identity(
         person_id=person_id,
         provider_id=provider_id,
         external_subject_id=external_subject_id,
@@ -132,13 +132,13 @@ async def link_identity(
 
 
 @router.post("/identities/unlink")
-async def unlink_identity(
+def unlink_identity(
     fed_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    identity = await svc.unlink_identity(fed_id, reason)
+    identity = svc.unlink_identity(fed_id, reason)
     if not identity:
         return {"error": "not_found"}
     return {
@@ -150,12 +150,12 @@ async def unlink_identity(
 
 
 @router.get("/identities/{person_id}")
-async def get_person_identities(
+def get_person_identities(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    identities = await svc.get_identities_for_person(person_id)
+    identities = svc.get_identities_for_person(person_id)
     return [
         {
             "uuid": i.uuid,
@@ -170,17 +170,17 @@ async def get_person_identities(
 
 
 @router.post("/trust")
-async def establish_trust(
+def establish_trust(
     source_org_id: str,
     target_org_id: str,
     trust_level: str = "full",
     trust_type: str = "bilateral",
     agreement: dict[str, Any] | None = None,
     established_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CrossOrgTrustService(db)
-    trust = await svc.establish_trust(
+    trust = svc.establish_trust(
         source_org_id=source_org_id,
         target_org_id=target_org_id,
         trust_level=trust_level,
@@ -196,12 +196,12 @@ async def establish_trust(
 
 
 @router.get("/trust/{org_id}")
-async def get_trust_relationships(
+def get_trust_relationships(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CrossOrgTrustService(db)
-    relationships = await svc.get_trust_relationships(org_id)
+    relationships = svc.get_trust_relationships(org_id)
     return [
         {
             "uuid": r.uuid,
@@ -216,7 +216,7 @@ async def get_trust_relationships(
 
 
 @router.post("/agreements")
-async def create_agreement(
+def create_agreement(
     name: str,
     parties: list[str],
     agreement_type: str,
@@ -226,10 +226,10 @@ async def create_agreement(
     effective_date: str | None = None,
     expiry_date: str | None = None,
     governing_law: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationAgreementService(db)
-    agreement = await svc.create_agreement(
+    agreement = svc.create_agreement(
         name=name,
         parties=parties,
         agreement_type=agreement_type,
@@ -246,13 +246,13 @@ async def create_agreement(
 
 
 @router.get("/agreements")
-async def list_agreements(
+def list_agreements(
     status: str | None = None,
     agreement_type: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationAgreementService(db)
-    agreements = await svc.list_agreements(
+    agreements = svc.list_agreements(
         status=status,
         agreement_type=agreement_type,
     )
@@ -269,13 +269,13 @@ async def list_agreements(
 
 
 @router.post("/agreements/{agreement_id}/sign")
-async def sign_agreement(
+def sign_agreement(
     agreement_id: str,
     signed_by: list[dict[str, Any]],
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationAgreementService(db)
-    agreement = await svc.sign_agreement(
+    agreement = svc.sign_agreement(
         agreement_id=agreement_id,
         signed_by=signed_by,
     )
@@ -290,28 +290,28 @@ async def sign_agreement(
 
 
 @router.get("/agreements/{agreement_id}")
-async def get_agreement(
+def get_agreement(
     agreement_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationAgreementService(db)
-    agreement = await svc.get_agreement(agreement_id)
+    agreement = svc.get_agreement(agreement_id)
     if not agreement:
         return {"error": "not_found"}
     return agreement.to_dict()
 
 
 @router.post("/sessions")
-async def create_federated_session(
+def create_federated_session(
     account_id: str,
     provider_id: str,
     fed_identity_id: str,
     tokens: dict[str, Any],
     attributes: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    fed_session = await svc.create_session(
+    fed_session = svc.create_session(
         account_id=account_id,
         provider_id=provider_id,
         fed_identity_id=fed_identity_id,
@@ -325,12 +325,12 @@ async def create_federated_session(
 
 
 @router.post("/sessions/{session_id}/terminate")
-async def terminate_federated_session(
+def terminate_federated_session(
     session_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = FederationService(db)
-    fed_session = await svc.terminate_session(session_id)
+    fed_session = svc.terminate_session(session_id)
     if not fed_session:
         return {"error": "not_found"}
     return {
@@ -340,24 +340,24 @@ async def terminate_federated_session(
 
 
 @router.post("/trust/{trust_id}/suspend")
-async def suspend_trust(
+def suspend_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CrossOrgTrustService(db)
-    trust = await svc.suspend_trust(trust_id)
+    trust = svc.suspend_trust(trust_id)
     if not trust:
         return {"error": "not_found"}
     return {"trust_id": trust.trust_id, "status": trust.status}
 
 
 @router.post("/trust/{trust_id}/terminate")
-async def terminate_trust(
+def terminate_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CrossOrgTrustService(db)
-    trust = await svc.terminate_trust(trust_id)
+    trust = svc.terminate_trust(trust_id)
     if not trust:
         return {"error": "not_found"}
     return {"trust_id": trust.trust_id, "status": trust.status}

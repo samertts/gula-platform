@@ -4,7 +4,7 @@ router = APIRouter(prefix="/accounts", tags=["NIAM Accounts"])
 
 
 @router.post("/")
-async def create_account() -> None:
+def create_account() -> None:
     """Direct public account creation is disabled; use the review-gated intake route."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -13,7 +13,7 @@ async def create_account() -> None:
 
 
 @router.post("/{account_uuid}/lock")
-async def lock_account(account_uuid: str) -> None:
+def lock_account(account_uuid: str) -> None:
     """Unscoped account mutation is disabled until a governed admin permission exists."""
     del account_uuid
     raise HTTPException(
@@ -23,7 +23,7 @@ async def lock_account(account_uuid: str) -> None:
 
 
 @router.post("/{account_uuid}/unlock")
-async def unlock_account(account_uuid: str) -> None:
+def unlock_account(account_uuid: str) -> None:
     """Unscoped account mutation is disabled until a governed admin permission exists."""
     del account_uuid
     raise HTTPException(

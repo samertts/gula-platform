@@ -18,15 +18,42 @@ class _Result:
         return self.row
 
 
+class _Query:
+    """The tail of the synchronous chain the actor dependency builds.
+
+    It records nothing about the predicates: a fake cannot prove that
+    `Account.is_locked` is filtered, which is exactly how the async
+    dependency kept a missing lock check out of sight. The predicates are
+    proved against real PostgreSQL in tests/test_identity_link_and_assurance.py
+    (`test_a_locked_account_is_refused`). What this file proves is the HTTP
+    boundary: which status code comes back for which shape of input.
+    """
+
+    def __init__(self, row):
+        self.row = row
+
+    def join(self, *args, **kwargs):
+        return self
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def first(self):
+        return self.row
+
+
 class _Db:
     def __init__(self, row=None, workspace=None):
         self.row = row
         self.workspace = workspace
 
-    async def execute(self, statement):
+    def query(self, *entities):
+        return _Query(self.row)
+
+    def execute(self, statement):
         return _Result(self.row)
 
-    async def get(self, model, workspace_id):
+    def get(self, model, workspace_id):
         return self.workspace
 
 
@@ -42,10 +69,10 @@ class _Audit:
     def __init__(self, db):
         self.db = db
 
-    async def record(self, *args, **kwargs):
+    def record(self, *args, **kwargs):
         self.records.append((args, kwargs))
 
-    async def record_event(self, *args, **kwargs):
+    def record_event(self, *args, **kwargs):
         self.denied.append((args, kwargs))
 
 
@@ -56,7 +83,7 @@ class _WorkspaceService:
     def __init__(self, db):
         self.db = db
 
-    async def switch(self, account, session_id, workspace_id):
+    def switch(self, account, session_id, workspace_id):
         if self.error:
             raise self.error
         return self.context
@@ -91,19 +118,16 @@ def workspace():
 def test_missing_niam_credentials_are_rejected(monkeypatch):
     credentials = None
     with pytest.raises(HTTPException) as error:
-        import asyncio
-
-        asyncio.run(workspace_api.get_current_niam_actor(request(), credentials, _Db()))
+        workspace_api.get_current_niam_actor(request(), credentials, _Db())
 
     assert error.value.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_invalid_or_inactive_niam_token_is_rejected(monkeypatch):
+def test_invalid_or_inactive_niam_token_is_rejected(monkeypatch):
     monkeypatch.setattr(workspace_api, "decode_token", lambda token: {"jti": "jti-1"})
 
     with pytest.raises(HTTPException) as error:
-        await workspace_api.get_current_niam_actor(
+        workspace_api.get_current_niam_actor(
             request(),
             _Credentials("invalid-token"),
             _Db(row=None),
@@ -112,8 +136,7 @@ async def test_invalid_or_inactive_niam_token_is_rejected(monkeypatch):
     assert error.value.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_valid_token_requires_matching_active_account_and_session(monkeypatch):
+def test_valid_token_requires_matching_active_account_and_session(monkeypatch):
     monkeypatch.setattr(
         workspace_api,
         "decode_token",
@@ -122,7 +145,7 @@ async def test_valid_token_requires_matching_active_account_and_session(monkeypa
     account = SimpleNamespace(id="account-1")
     session = SimpleNamespace(id="session-1")
 
-    result = await workspace_api.get_current_niam_actor(
+    result = workspace_api.get_current_niam_actor(
         request(),
         _Credentials("valid-token"),
         _Db(row=(account, session)),
@@ -132,8 +155,7 @@ async def test_valid_token_requires_matching_active_account_and_session(monkeypa
     assert result.session is session
 
 
-@pytest.mark.asyncio
-async def test_switch_route_returns_server_context_and_audits_success(monkeypatch):
+def test_switch_route_returns_server_context_and_audits_success(monkeypatch):
     _Audit.records = []
     _WorkspaceService.context = SimpleNamespace(
         account_id="account-1",
@@ -145,7 +167,7 @@ async def test_switch_route_returns_server_context_and_audits_success(monkeypatc
     monkeypatch.setattr(workspace_api, "WorkspaceService", _WorkspaceService)
     monkeypatch.setattr(workspace_api, "AuditService", _Audit)
 
-    result = await workspace_api.switch_workspace(
+    result = workspace_api.switch_workspace(
         "workspace-1",
         actor=actor(),
         db=_Db(workspace=workspace()),
@@ -157,15 +179,14 @@ async def test_switch_route_returns_server_context_and_audits_success(monkeypatc
     assert len(_Audit.records) == 1
 
 
-@pytest.mark.asyncio
-async def test_switch_route_returns_403_and_audits_denial(monkeypatch):
+def test_switch_route_returns_403_and_audits_denial(monkeypatch):
     _Audit.denied = []
     _WorkspaceService.error = WorkspaceAccessDenied("not eligible")
     monkeypatch.setattr(workspace_api, "WorkspaceService", _WorkspaceService)
     monkeypatch.setattr(workspace_api, "AuditService", _Audit)
 
     with pytest.raises(HTTPException) as error:
-        await workspace_api.switch_workspace("foreign-workspace", actor=actor(), db=_Db())
+        workspace_api.switch_workspace("foreign-workspace", actor=actor(), db=_Db())
 
     assert error.value.status_code == 403
     assert len(_Audit.denied) == 1

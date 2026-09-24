@@ -4,20 +4,20 @@ import argparse
 import sys
 from pathlib import Path
 
-from backend.app.engineering.ci.quality_gates import QualityGates
-from backend.app.engineering.crud.generator import CRUDGenerator, EntityField, EntitySpec
-from backend.app.engineering.generators.capability import (
+from app.engineering.ci.quality_gates import QualityGates
+from app.engineering.crud.generator import CRUDGenerator, EntityField, EntitySpec
+from app.engineering.generators.capability import (
     CapabilityGenerator,
     CapabilitySpec,
 )
-from backend.app.engineering.generators.microservice import MicroserviceGenerator, MicroserviceSpec
-from backend.app.engineering.generators.module import ModuleGenerator, ModuleSpec
-from backend.app.engineering.generators.plugin import PluginGenerator, PluginSpec
-from backend.app.engineering.generators.project import ProjectGenerator, ProjectSpec
-from backend.app.engineering.validation.clean_arch import CleanArchitectureValidator
-from backend.app.engineering.validation.solid import SOLIDValidator
+from app.engineering.generators.microservice import MicroserviceGenerator, MicroserviceSpec
+from app.engineering.generators.module import ModuleGenerator, ModuleSpec
+from app.engineering.generators.plugin import PluginGenerator, PluginSpec
+from app.engineering.generators.project import ProjectGenerator, ProjectSpec
+from app.engineering.validation.clean_arch import CleanArchitectureValidator
+from app.engineering.validation.solid import SOLIDValidator
 
-PACKAGE = "backend.app.engineering"
+PACKAGE = "app.engineering"
 
 
 def main() -> None:
@@ -479,7 +479,7 @@ def _do_generate_crud(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_rest(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.rest.generator import RESTGenerator, RESTSpec
+    from app.engineering.rest.generator import RESTGenerator, RESTSpec
 
     spec = RESTSpec(name=args.name, prefix=args.prefix, operations=args.operations)
     gen = RESTGenerator(target_dir=target)
@@ -488,7 +488,7 @@ def _do_generate_rest(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_openapi(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.openapi.generator import OpenAPIGenerator, OpenAPISpec
+    from app.engineering.openapi.generator import OpenAPIGenerator, OpenAPISpec
 
     spec = OpenAPISpec(title=args.title, version=args.version, description=args.description)
     gen = OpenAPIGenerator(target_dir=target)
@@ -497,7 +497,7 @@ def _do_generate_openapi(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_dto(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.dto.generator import DTOField, DTOGenerator, DTOSpec
+    from app.engineering.dto.generator import DTOField, DTOGenerator, DTOSpec
 
     fields = []
     if hasattr(args, "fields") and args.fields:
@@ -514,7 +514,7 @@ def _do_generate_dto(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_repository(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.repository.generator import RepositoryGenerator, RepositorySpec
+    from app.engineering.repository.generator import RepositoryGenerator, RepositorySpec
 
     spec = RepositorySpec(name=args.name, methods=args.methods)
     gen = RepositoryGenerator(target_dir=target)
@@ -523,7 +523,7 @@ def _do_generate_repository(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_cqrs(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.cqrs.generator import CQRSGenerator, CQRSSpec
+    from app.engineering.cqrs.generator import CQRSGenerator, CQRSSpec
 
     spec = CQRSSpec(name=args.name, commands=args.commands, queries=args.queries)
     gen = CQRSGenerator(target_dir=target)
@@ -532,13 +532,13 @@ def _do_generate_cqrs(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_tests(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.testing.factories import FactoriesGenerator
-    from backend.app.engineering.testing.fixtures import FixturesGenerator
-    from backend.app.engineering.testing.performance import (
+    from app.engineering.testing.factories import FactoriesGenerator
+    from app.engineering.testing.fixtures import FixturesGenerator
+    from app.engineering.testing.performance import (
         PerformanceTestGenerator,
         SecurityTestGenerator,
     )
-    from backend.app.engineering.testing.unit import IntegrationTestGenerator, UnitTestGenerator
+    from app.engineering.testing.unit import IntegrationTestGenerator, UnitTestGenerator
 
     entities = args.entities or [args.module.title()]
 
@@ -570,7 +570,7 @@ def _do_generate_tests(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_adr(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.docs.adr import ADRGenerator, ADRSpec
+    from app.engineering.docs.adr import ADRGenerator, ADRSpec
 
     spec = ADRSpec(
         title=args.title,
@@ -584,7 +584,7 @@ def _do_generate_adr(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_architecture(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.docs.adr import ArchitectureGenerator
+    from app.engineering.docs.adr import ArchitectureGenerator
 
     gen = ArchitectureGenerator(target_dir=target)
     result = gen.generate(name=args.name, description=args.description)
@@ -592,7 +592,7 @@ def _do_generate_architecture(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_diagram(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.docs.mermaid import MermaidGenerator, PlantUMLGenerator
+    from app.engineering.docs.mermaid import MermaidGenerator, PlantUMLGenerator
 
     if args.type == "plantuml":
         gen = PlantUMLGenerator(target_dir=target)
@@ -603,7 +603,7 @@ def _do_generate_diagram(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_ci(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.deployment.github_actions import (
+    from app.engineering.deployment.github_actions import (
         GitHubActionsGenerator,
         GitHubActionsSpec,
     )
@@ -619,7 +619,7 @@ def _do_generate_ci(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_docker(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.deployment.github_actions import DockerGenerator
+    from app.engineering.deployment.github_actions import DockerGenerator
 
     gen = DockerGenerator(target_dir=target)
     result = gen.generate(
@@ -633,7 +633,7 @@ def _do_generate_docker(args: argparse.Namespace, target: Path) -> None:
 
 
 def _do_generate_compose(target: Path) -> None:
-    from backend.app.engineering.deployment.github_actions import ComposeGenerator
+    from app.engineering.deployment.github_actions import ComposeGenerator
 
     gen = ComposeGenerator(target_dir=target)
     result = gen.generate()
@@ -641,7 +641,7 @@ def _do_generate_compose(target: Path) -> None:
 
 
 def _do_generate_kubernetes(args: argparse.Namespace, target: Path) -> None:
-    from backend.app.engineering.deployment.github_actions import KubernetesGenerator
+    from app.engineering.deployment.github_actions import KubernetesGenerator
 
     gen = KubernetesGenerator(target_dir=target)
     result = gen.generate(
@@ -807,8 +807,8 @@ def _handle_doctor(args: argparse.Namespace) -> None:
 
 
 def _handle_capability(args: argparse.Namespace) -> None:
-    from backend.app.kernel.capabilities_registry_populator import _get_all_descriptors
-    from backend.app.kernel.types import CapabilityStatus
+    from app.kernel.capabilities_registry_populator import _get_all_descriptors
+    from app.kernel.types import CapabilityStatus
 
     all_caps = _get_all_descriptors()
 

@@ -1,0 +1,349 @@
+{
+  "document": "NR-030 — Physical Tables With No ORM Owner",
+  "batch": "BATCH-2.7",
+  "generated": "2026-09-10T15:48:37Z",
+  "head_commit": "7319dc0d0be92d1c90280152f801342b8d33fa02",
+  "status": "PARTIALLY VERIFIED — 12 classified, 0 deleted, 0 created",
+  "summary": {
+    "KEEP_PHYSICAL_NO_ORM": 7,
+    "MAP_EXISTING_ORM": 2,
+    "CREATE_ORM": 1,
+    "BLOCKED": 2,
+    "RETIRE": 0,
+    "REPLACE": 0
+  },
+  "tables": [
+    {
+      "table": "fin_ads_campaigns",
+      "created_by": "20260506_0001_financial_engine_phase_a.py",
+      "last_modified_by": "20260506_0001_financial_engine_phase_a.py",
+      "columns": 9,
+      "pk": [
+        "id"
+      ],
+      "fks": [],
+      "indexes": 2,
+      "reachable_consumers": [],
+      "domain": "financial",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Financial Engine",
+      "classification": "KEEP_PHYSICAL_NO_ORM",
+      "justification": "Phase A is schema-only by design (CLAUDE.md); a model would be Phase B logic. ENABLE_ADS defaults false."
+    },
+    {
+      "table": "fin_ads_clicks",
+      "created_by": "20260506_0001_financial_engine_phase_a.py",
+      "last_modified_by": "20260506_0001_financial_engine_phase_a.py",
+      "columns": 9,
+      "pk": [
+        "id"
+      ],
+      "fks": [],
+      "indexes": 3,
+      "reachable_consumers": [],
+      "domain": "financial",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Financial Engine",
+      "classification": "KEEP_PHYSICAL_NO_ORM",
+      "justification": "as above"
+    },
+    {
+      "table": "fin_ads_conversions",
+      "created_by": "20260506_0001_financial_engine_phase_a.py",
+      "last_modified_by": "20260506_0001_financial_engine_phase_a.py",
+      "columns": 5,
+      "pk": [
+        "id"
+      ],
+      "fks": [],
+      "indexes": 2,
+      "reachable_consumers": [],
+      "domain": "financial",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Financial Engine",
+      "classification": "KEEP_PHYSICAL_NO_ORM",
+      "justification": "as above"
+    },
+    {
+      "table": "fin_clinical_behavior",
+      "created_by": "20260506_0001_financial_engine_phase_a.py",
+      "last_modified_by": "20260506_0001_financial_engine_phase_a.py",
+      "columns": 7,
+      "pk": [
+        "id"
+      ],
+      "fks": [],
+      "indexes": 2,
+      "reachable_consumers": [],
+      "domain": "financial",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Financial Engine",
+      "classification": "KEEP_PHYSICAL_NO_ORM",
+      "justification": "as above"
+    },
+    {
+      "table": "fin_fraud_logs",
+      "created_by": "20260506_0001_financial_engine_phase_a.py",
+      "last_modified_by": "20260506_0001_financial_engine_phase_a.py",
+      "columns": 7,
+      "pk": [
+        "id"
+      ],
+      "fks": [],
+      "indexes": 3,
+      "reachable_consumers": [],
+      "domain": "financial",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Financial Engine",
+      "classification": "KEEP_PHYSICAL_NO_ORM",
+      "justification": "as above"
+    },
+    {
+      "table": "fin_market_benchmarks",
+      "created_by": "20260506_0001_financial_engine_phase_a.py",
+      "last_modified_by": "20260506_0001_financial_engine_phase_a.py",
+      "columns": 6,
+      "pk": [
+        "id"
+      ],
+      "fks": [],
+      "indexes": 1,
+      "reachable_consumers": [],
+      "domain": "financial",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Financial Engine",
+      "classification": "KEEP_PHYSICAL_NO_ORM",
+      "justification": "as above"
+    },
+    {
+      "table": "idempotency_keys",
+      "created_by": "20250322_0000_create_base_schema.py",
+      "last_modified_by": "20250322_0000_create_base_schema.py",
+      "columns": 6,
+      "pk": [
+        "key"
+      ],
+      "fks": [
+        [
+          "lab_id",
+          "labs"
+        ]
+      ],
+      "indexes": 2,
+      "reachable_consumers": [
+        "app/core/idempotency.py (raw SQL: SELECT/INSERT/UPDATE/DELETE)"
+      ],
+      "domain": "core",
+      "data_may_exist": true,
+      "actively_required": true,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Core Platform",
+      "classification": "KEEP_PHYSICAL_NO_ORM",
+      "justification": "Deliberately raw SQL on a request hot path. HOLDS LIVE DATA — must never be dropped."
+    },
+    {
+      "table": "nursing_clinical_checklists",
+      "created_by": "20260716_0002_nursing_platform.py",
+      "last_modified_by": "20260716_0002_nursing_platform.py",
+      "columns": 27,
+      "pk": [
+        "id"
+      ],
+      "fks": [
+        [
+          "assigned_to",
+          "lab_users"
+        ],
+        [
+          "completed_by",
+          "lab_users"
+        ],
+        [
+          "lab_id",
+          "labs"
+        ],
+        [
+          "patient_id",
+          "patients"
+        ],
+        [
+          "shift_id",
+          "nursing_shifts"
+        ],
+        [
+          "verified_by",
+          "lab_users"
+        ]
+      ],
+      "indexes": 5,
+      "reachable_consumers": [
+        "nursing/routes.py:980 create_checklist -> nursing/services.py:553"
+      ],
+      "domain": "nursing",
+      "data_may_exist": false,
+      "actively_required": true,
+      "is_legacy": false,
+      "orm_under_another_name": "ClinicalChecklist declares __tablename__ nursing_checklists, which no migration creates",
+      "canonical_owner": "Nursing Platform",
+      "classification": "MAP_EXISTING_ORM",
+      "justification": "LIVE DEFECT: the route fails at runtime with relation \"nursing_checklists\" does not exist. Not repaired here — the __tablename__ and the NR-026 column types must be corrected together, or the query goes from failing loudly to succeeding with wrong types."
+    },
+    {
+      "table": "nursing_escalation_records",
+      "created_by": "20260716_0002_nursing_platform.py",
+      "last_modified_by": "20260716_0002_nursing_platform.py",
+      "columns": 27,
+      "pk": [
+        "id"
+      ],
+      "fks": [
+        [
+          "admission_id",
+          "nhdw_admissions"
+        ],
+        [
+          "escalated_by",
+          "lab_users"
+        ],
+        [
+          "escalated_to",
+          "lab_users"
+        ],
+        [
+          "lab_id",
+          "labs"
+        ],
+        [
+          "patient_id",
+          "patients"
+        ]
+      ],
+      "indexes": 6,
+      "reachable_consumers": [
+        "nursing/routes.py:1084 escalation listing -> nursing/services.py:132"
+      ],
+      "domain": "nursing",
+      "data_may_exist": false,
+      "actively_required": true,
+      "is_legacy": false,
+      "orm_under_another_name": "EscalationRecord declares __tablename__ nursing_escalations, which no migration creates",
+      "canonical_owner": "Nursing Platform",
+      "classification": "MAP_EXISTING_ORM",
+      "justification": "LIVE DEFECT, as above. EscalationRecord.escalated_to is String(26) against a physical integer and is used in a live filter, so a rename alone would produce a quietly wrong query."
+    },
+    {
+      "table": "radiology_ai_analysis_jobs",
+      "created_by": "20260716_0004_radiology_platform.py",
+      "last_modified_by": "20260716_0004_radiology_platform.py",
+      "columns": 34,
+      "pk": [
+        "id"
+      ],
+      "fks": [
+        [
+          "exam_id",
+          "radiology_exams"
+        ],
+        [
+          "image_id",
+          "radiology_images"
+        ],
+        [
+          "lab_id",
+          "labs"
+        ],
+        [
+          "patient_id",
+          "patients"
+        ],
+        [
+          "reviewed_by",
+          "lab_users"
+        ],
+        [
+          "series_id",
+          "radiology_series"
+        ]
+      ],
+      "indexes": 6,
+      "reachable_consumers": [],
+      "domain": "radiology",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Radiology Platform",
+      "classification": "CREATE_ORM",
+      "justification": "The only one of eighteen radiology tables with no model, and no radiology __tablename__ resembles it — an omission, not a physical-only table. Mechanical, but §2 forbids creating ORM classes automatically."
+    },
+    {
+      "table": "sndhs_audit_logs",
+      "created_by": "20260505_0005_sndhs_phase1_audit_logs_v2.py",
+      "last_modified_by": "20260505_0005_sndhs_phase1_audit_logs_v2.py",
+      "columns": 8,
+      "pk": [
+        "id"
+      ],
+      "fks": [],
+      "indexes": 5,
+      "reachable_consumers": [],
+      "domain": "sndhs",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "BLOCKED",
+      "classification": "BLOCKED",
+      "justification": "A parallel UUID-keyed, purpose-tagged, append-only audit surface created alongside audit_logs. Its migration promises app/services/sndhs_audit.py 'added in a follow-up step' — that file does not exist. Whether SNDHS audit supplements or replaces audit_logs is an architecture decision with retention implications."
+    },
+    {
+      "table": "visits",
+      "created_by": "20260505_0003_sndhs_phase1_visits_table.py",
+      "last_modified_by": "20260505_0003_sndhs_phase1_visits_table.py",
+      "columns": 6,
+      "pk": [
+        "id"
+      ],
+      "fks": [
+        [
+          "patient_id",
+          "patients"
+        ]
+      ],
+      "indexes": 3,
+      "reachable_consumers": [],
+      "domain": "sndhs / clinical",
+      "data_may_exist": false,
+      "actively_required": false,
+      "is_legacy": false,
+      "orm_under_another_name": null,
+      "canonical_owner": "Core (proposed)",
+      "classification": "BLOCKED",
+      "justification": "The proposed canonical clinical episode. lab_orders.visit_id already carries an enforced FK to it, but NO code reads or writes it. Its model is part of adopting Visit, which waits on the three clinical-owner questions."
+    }
+  ],
+  "correction_to_batch_2_6": "BATCH-2.6 reported visits as having code consumers. It has none — every hit was a substring false positive (national_visits, FactPatientVisit, max_visits, \"visits\": 0, anc_visits, an external /api/visits URL). This lowers adoption risk: there is no live usage to migrate.",
+  "effect_on_nr_023": "Still a blocker. All 12 are now named and justified rather than silently excluded, but seven are permanent exclusions and five need work, so a combined-MetaData architecture would still need the exclusion list wired in before running safely.",
+  "nothing_deleted": true,
+  "no_orm_created": true,
+  "no_migration_written": true
+}

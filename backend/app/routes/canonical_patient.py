@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models.canonical_patient import CanonicalPatient
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..services.audit_service import log_action
 from ..services.mpi.canonical_service import (
     get_canonical_by_citizen,
     get_canonical_by_patient,
@@ -16,15 +17,70 @@ from ..services.mpi.canonical_service import (
     link_patient,
     merge_canonicals,
 )
+from ..services.mpi.scope import (
+    not_found,
+    provenance_lab_id,
+    require_national_scope,
+    require_own_patient,
+    visible_canonical,
+)
 
 router = APIRouter(prefix="/api/v1/canonical-patients", tags=["canonical-patients"])
+
+
+def _client_ip(request: Request | None) -> str | None:
+    if request is None or request.client is None:
+        return None
+    return request.client.host
+
+
+def _audit(
+    db: Session,
+    request: Request | None,
+    actor: LabUser,
+    action: str,
+    resource_id: int | None,
+    **details: object,
+) -> None:
+    """NR-151: record a mutation of the national patient index.
+
+    CLAUDE.md security invariant 2 requires every mutation to be audited, and
+    this surface recorded nothing at all -- not a creation, not a link, and not
+    a merge. NR-148 hardened WHO may merge two people's identities and left
+    WHETHER IT IS WRITTEN DOWN untouched, so an abusive merge would have been
+    undetectable after the fact. The primitive was already in use one package
+    away, on a mere PIX read (national/api/routes/interop.py).
+
+    Written inside the caller's transaction, before its commit, so the audit row
+    and the mutation land together or not at all. An audit that can be committed
+    separately from the act it describes is not evidence.
+    """
+    log_action(
+        db,
+        action=action,
+        resource_type="canonical_patient",
+        resource_id=resource_id,
+        user_id=getattr(actor, "id", None),
+        user_role=getattr(actor, "role", None),
+        lab_id=getattr(actor, "lab_id", None),
+        details=details or None,
+        ip_address=_client_ip(request),
+    )
 
 
 # ── Schemas ──
 
 
 class CanonicalPatientCreate(BaseModel):
-    lab_id: int | None = None
+    """NR-148: this carries no lab_id.
+
+    It used to, and `CanonicalPatient(**data.model_dump())` wrote it straight
+    onto the record, so a laboratory could file a canonical patient under
+    another laboratory's name. lab_id on this table is PROVENANCE -- which lab
+    contributed the record -- and provenance the client chooses is not
+    provenance. It is now taken from the authenticated caller.
+    """
+
     national_id_hash: str | None = None
     health_id: str | None = None
     full_name: str = Field(..., min_length=1, max_length=300)
@@ -114,11 +170,22 @@ class SearchResponse(BaseModel):
 @router.post("", response_model=CanonicalPatientResponse, status_code=201)
 def create_canonical(
     data: CanonicalPatientCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
-    canonical = CanonicalPatient(**data.model_dump())
+    canonical = CanonicalPatient(
+        **data.model_dump(),
+        lab_id=provenance_lab_id(current_user),
+    )
     db.add(canonical)
+    db.flush()
+    _audit(
+        db, request, current_user, "canonical_patient.create", canonical.id,
+        provenance_lab_id=canonical.lab_id,
+        has_national_id_hash=bool(canonical.national_id_hash),
+        has_health_id=bool(canonical.health_id),
+    )
     db.commit()
     db.refresh(canonical)
     return canonical
@@ -133,9 +200,13 @@ def get_canonical(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
-    canonical = db.query(CanonicalPatient).filter(CanonicalPatient.id == canonical_id).first()
+    # NR-148. A laboratory sees a canonical record it is connected to -- one it
+    # contributed, or one linked to a patient of its own. A national role sees
+    # the index. Anything else reads as absent rather than forbidden, so this
+    # does not become an existence oracle over the national population.
+    canonical = visible_canonical(db, canonical_id, current_user)
     if canonical is None:
-        raise HTTPException(status_code=404, detail="canonical patient not found")
+        raise not_found()
     return canonical
 
 
@@ -145,10 +216,23 @@ def get_canonical(
 @router.post("/merge", response_model=MergeResult)
 def merge(
     data: CanonicalPatientMerge,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MergeResult:
+    # NR-148. Merging declares that two records are the same person. It is a
+    # national identity judgement, not a laboratory one, and it was reachable
+    # by any authenticated user.
+    require_national_scope(current_user, "merging canonical records")
     merge_canonicals(db, target_id=data.target_id, source_id=data.source_id)
+    # The most consequential operation on this surface: it declares that two
+    # records are the same person, and NR-153 records that it also blanks the
+    # source's provenance. Whatever that semantics settles as, it is now written
+    # down.
+    _audit(
+        db, request, current_user, "canonical_patient.merge", data.target_id,
+        source_id=data.source_id,
+    )
     db.commit()
     return MergeResult(
         target_id=data.target_id,
@@ -166,6 +250,9 @@ def get_by_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
+    # NR-148. Resolving YOUR patient to their canonical record is the MPI
+    # working as intended; resolving someone else's is not.
+    require_own_patient(db, patient_id, current_user)
     canonical = get_canonical_by_patient(db, patient_id)
     if canonical is None:
         raise HTTPException(status_code=404, detail="no canonical record linked to this patient")
@@ -181,6 +268,9 @@ def get_by_citizen(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
+    # NR-148. A citizen is a national subject; a laboratory has no standing to
+    # resolve one it has not been given.
+    require_national_scope(current_user, "resolving a citizen")
     canonical = get_canonical_by_citizen(db, citizen_id)
     if canonical is None:
         raise HTTPException(status_code=404, detail="no canonical record linked to this citizen")
@@ -199,6 +289,10 @@ def search_canonical(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SearchResponse:
+    # NR-148. This searches the whole national index by name, phone or
+    # national-id hash. It was open to every authenticated user, including a
+    # technician at a single private laboratory.
+    require_national_scope(current_user, "searching the patient index")
     base = db.query(CanonicalPatient)
 
     if q:
@@ -233,14 +327,27 @@ def search_canonical(
 @router.post("/link-patient", response_model=LinkResponse)
 def create_patient_link(
     data: LinkPatientRequest,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
+    # NR-148. Without this a laboratory could attach ANOTHER laboratory's
+    # patient to any canonical person -- writing a false identity claim into
+    # the national index under someone else's name.
+    require_own_patient(db, data.patient_id, current_user)
+    if visible_canonical(db, data.canonical_id, current_user) is None:
+        raise not_found()
     link = link_patient(
         db,
         patient_id=data.patient_id,
         canonical_id=data.canonical_id,
         method=data.method,
+        confidence=data.confidence,
+    )
+    db.flush()
+    _audit(
+        db, request, current_user, "canonical_patient.link_patient",
+        data.canonical_id, patient_id=data.patient_id, method=data.method,
         confidence=data.confidence,
     )
     db.commit()
@@ -261,14 +368,24 @@ def create_patient_link(
 @router.post("/link-citizen", response_model=LinkResponse)
 def create_citizen_link(
     data: LinkCitizenRequest,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
+    # NR-148. Binding a national citizen to a canonical person is a national
+    # identity assertion.
+    require_national_scope(current_user, "linking a citizen")
     link = link_citizen(
         db,
         citizen_id=data.citizen_id,
         canonical_id=data.canonical_id,
         method=data.method,
+        confidence=data.confidence,
+    )
+    db.flush()
+    _audit(
+        db, request, current_user, "canonical_patient.link_citizen",
+        data.canonical_id, citizen_id=data.citizen_id, method=data.method,
         confidence=data.confidence,
     )
     db.commit()

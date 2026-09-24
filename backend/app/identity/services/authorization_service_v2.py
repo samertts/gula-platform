@@ -4,7 +4,7 @@ import secrets
 from datetime import datetime
 
 from sqlalchemy import and_, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.audit import AuditAction
@@ -42,7 +42,7 @@ class AuthorizationCatalogError(ValueError):
 
 
 class RolePermissionService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @staticmethod
@@ -78,7 +78,7 @@ class RolePermissionService:
         assignment.version = (assignment.version or 1) + 1
         return assignment
 
-    async def _audit(
+    def _audit(
         self,
         action: AuditAction,
         actor_id: str | None,
@@ -88,7 +88,7 @@ class RolePermissionService:
         metadata: dict | None = None,
         outcome: str = "success",
     ) -> None:
-        await AuditService(self.session).record(
+        AuditService(self.session).record(
             action,
             actor_id=actor_id,
             actor_type="account",
@@ -99,28 +99,28 @@ class RolePermissionService:
             outcome=outcome,
         )
 
-    async def list_roles(self) -> list[Role]:
-        result = await self.session.execute(
+    def list_roles(self) -> list[Role]:
+        result = self.session.execute(
             select(Role).where(Role.status == CatalogStatus.active.value).order_by(Role.role_key),
         )
         return list(result.scalars().all())
 
-    async def list_permissions(self) -> list[Permission]:
-        result = await self.session.execute(
+    def list_permissions(self) -> list[Permission]:
+        result = self.session.execute(
             select(Permission).where(Permission.status == CatalogStatus.active.value).order_by(Permission.permission_key),
         )
         return list(result.scalars().all())
 
-    async def _load_active_membership(self, membership_id: str, account_id: str) -> Membership:
-        membership = await self.session.scalar(select(Membership).where(Membership.id == membership_id))
+    def _load_active_membership(self, membership_id: str, account_id: str) -> Membership:
+        membership = self.session.scalar(select(Membership).where(Membership.id == membership_id))
         if membership is None or membership.account_id != account_id or membership.status != MembershipStatus.active.value or not membership.is_active:
             raise RoleAuthorizationDenied("Target membership is not active for this account")
         if membership.expires_at and membership.expires_at <= datetime.now(UTC):
             raise RoleAuthorizationDenied("Target membership has expired")
         return membership
 
-    async def _load_active_role(self, role_id: str) -> Role:
-        role = await self.session.scalar(select(Role).where(Role.id == role_id))
+    def _load_active_role(self, role_id: str) -> Role:
+        role = self.session.scalar(select(Role).where(Role.id == role_id))
         if role is None or role.status != CatalogStatus.active.value:
             raise AuthorizationCatalogError("Role is not active")
         return role
@@ -135,7 +135,7 @@ class RolePermissionService:
             and membership.workspace_id == workspace_id
         )
 
-    async def grant_role(
+    def grant_role(
         self,
         actor_id: str,
         account_id: str,
@@ -147,18 +147,18 @@ class RolePermissionService:
         workspace_id: str | None = None,
     ) -> RoleAssignment:
         if actor_id == account_id:
-            await self._audit(AuditAction.role_assignment_denied, actor_id, "role", role_id, None, {"reason": "self_escalation"}, outcome="denied")
+            self._audit(AuditAction.role_assignment_denied, actor_id, "role", role_id, None, {"reason": "self_escalation"}, outcome="denied")
             raise RoleAuthorizationDenied("Self role assignment is not allowed")
-        membership = await self._load_active_membership(membership_id, account_id)
-        role = await self._load_active_role(role_id)
+        membership = self._load_active_membership(membership_id, account_id)
+        role = self._load_active_role(role_id)
         membership_service = MembershipService(self.session)
-        if not await membership_service._can_manage_organization(actor_id, membership.organization_id):
-            await self._audit(AuditAction.role_assignment_denied, actor_id, "role", role_id, membership.organization_id, {"reason": "organization_authority"}, outcome="denied")
+        if not membership_service._can_manage_organization(actor_id, membership.organization_id):
+            self._audit(AuditAction.role_assignment_denied, actor_id, "role", role_id, membership.organization_id, {"reason": "organization_authority"}, outcome="denied")
             raise RoleAuthorizationDenied("Actor cannot assign roles in this organization")
         if not self._scope_matches_membership(membership, role.scope_type, facility_id, department_id, unit_id, workspace_id):
             raise RoleAuthorizationDenied("Role scope does not match target membership scope")
         key = self.assignment_key(account_id, membership_id, role_id, membership.organization_id, facility_id, department_id, unit_id, workspace_id)
-        existing = await self.session.scalar(select(RoleAssignment).where(RoleAssignment.assignment_key == key))
+        existing = self.session.scalar(select(RoleAssignment).where(RoleAssignment.assignment_key == key))
         if existing:
             if existing.status == RoleAssignmentStatus.active.value:
                 return existing
@@ -179,28 +179,28 @@ class RolePermissionService:
             assigned_by=actor_id,
         )
         self.session.add(assignment)
-        await self.session.flush()
+        self.session.flush()
         self.transition_assignment(assignment, RoleAssignmentStatus.active)
         assignment.activated_at = datetime.now(UTC)
-        await self.session.flush()
-        await self._audit(AuditAction.role_assignment_created, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"role_id": role.id, "scope_type": role.scope_type})
-        await self._audit(AuditAction.role_assignment_activated, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"role_id": role.id})
+        self.session.flush()
+        self._audit(AuditAction.role_assignment_created, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"role_id": role.id, "scope_type": role.scope_type})
+        self._audit(AuditAction.role_assignment_activated, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"role_id": role.id})
         return assignment
 
-    async def revoke_role(self, assignment_id: str, actor_id: str, reason: str | None = None) -> RoleAssignment:
-        assignment = await self.session.scalar(select(RoleAssignment).where(RoleAssignment.id == assignment_id))
+    def revoke_role(self, assignment_id: str, actor_id: str, reason: str | None = None) -> RoleAssignment:
+        assignment = self.session.scalar(select(RoleAssignment).where(RoleAssignment.id == assignment_id))
         if assignment is None:
             raise RoleAuthorizationDenied("Role assignment not found")
-        if not await MembershipService(self.session)._can_manage_organization(actor_id, assignment.organization_id):
+        if not MembershipService(self.session)._can_manage_organization(actor_id, assignment.organization_id):
             raise RoleAuthorizationDenied("Actor cannot revoke roles in this organization")
         self.transition_assignment(assignment, RoleAssignmentStatus.revoked)
         assignment.revoked_at = datetime.now(UTC)
         assignment.revocation_reason = reason
-        await self.session.flush()
-        await self._audit(AuditAction.role_assignment_revoked, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"reason": reason})
+        self.session.flush()
+        self._audit(AuditAction.role_assignment_revoked, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"reason": reason})
         return assignment
 
-    async def effective_permissions(
+    def effective_permissions(
         self,
         account_id: str,
         organization_id: str,
@@ -217,7 +217,7 @@ class RolePermissionService:
             or_(RoleAssignment.unit_id.is_(None), RoleAssignment.unit_id == unit_id),
             or_(RoleAssignment.workspace_id.is_(None), RoleAssignment.workspace_id == workspace_id),
         )
-        result = await self.session.execute(
+        result = self.session.execute(
             select(Permission.permission_key)
             .join(RolePermission, RolePermission.permission_id == Permission.id)
             .join(Role, Role.id == RolePermission.role_id)
@@ -234,8 +234,8 @@ class RolePermissionService:
         )
         return set(result.scalars().all())
 
-    async def has_permission(self, account_id: str, permission_key: str, organization_id: str, **scope: str | None) -> bool:
-        permission = await self.session.scalar(
+    def has_permission(self, account_id: str, permission_key: str, organization_id: str, **scope: str | None) -> bool:
+        permission = self.session.scalar(
             select(Permission.id).where(
                 Permission.permission_key == permission_key,
                 Permission.status == CatalogStatus.active.value,
@@ -243,7 +243,7 @@ class RolePermissionService:
         )
         if permission is None:
             return False
-        permissions = await self.effective_permissions(
+        permissions = self.effective_permissions(
             account_id,
             organization_id,
             facility_id=scope.get("facility_id"),
@@ -252,7 +252,7 @@ class RolePermissionService:
             workspace_id=scope.get("workspace_id"),
         )
         allowed = permission_key in permissions
-        await self._audit(
+        self._audit(
             AuditAction.permission_enforced if allowed else AuditAction.permission_denied,
             account_id,
             "permission",

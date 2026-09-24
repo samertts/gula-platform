@@ -1,0 +1,172 @@
+{
+ "document": "GULA_HEALTHCARE_IDEA_BACKLOG",
+ "version": 1,
+ "generated": "2026-09-10",
+ "head_commit": "159d6b775a123647a079d896b2dd68089447e8d4",
+ "classes": [
+  "P0",
+  "P1",
+  "P2",
+  "P3",
+  "RESEARCH",
+  "EXPERIMENTAL",
+  "REJECTED"
+ ],
+ "note": "Ideas are placed where the repository already has a home for them. None is a commitment to build.",
+ "ideas": [
+  {
+   "idea": "Closed-loop abnormal result follow-up",
+   "priority": "P0",
+   "belongs_in": "clinical + lims",
+   "rationale": "A critical result that nobody acknowledges is the classic avoidable-harm pattern; GULA already has critical_alerts and an outbox to build it on",
+   "dependency": "EHR/encounter"
+  },
+  {
+   "idea": "Longitudinal patient timeline",
+   "priority": "P0",
+   "belongs_in": "ehr",
+   "rationale": "ehr_patient_timeline is already modelled and has no table; it is the spine every other clinical feature hangs off",
+   "dependency": "National core"
+  },
+  {
+   "idea": "Medication reconciliation across encounters",
+   "priority": "P1",
+   "belongs_in": "pharmacy + ehr",
+   "rationale": "GULA owns dispensing end-to-end; reconciliation is the missing half and needs only the EHR side",
+   "dependency": "EHR"
+  },
+  {
+   "idea": "Closed-loop referral tracking",
+   "priority": "P1",
+   "belongs_in": "clinical + national",
+   "rationale": "national_referrals is mapped and absent; referral leakage is a measurable national problem",
+   "dependency": "National core"
+  },
+  {
+   "idea": "Antimicrobial stewardship",
+   "priority": "P1",
+   "belongs_in": "pharmacy + lims",
+   "rationale": "GULA uniquely holds both prescribing and culture results in one platform — few systems do",
+   "dependency": "EHR"
+  },
+  {
+   "idea": "Blood utilisation intelligence",
+   "priority": "P1",
+   "belongs_in": "blood_bank + nhdw",
+   "rationale": "Wastage and over-ordering are measurable from data GULA already has",
+   "dependency": "NR-021 fix"
+  },
+  {
+   "idea": "National facility capacity and referral optimisation",
+   "priority": "P1",
+   "belongs_in": "national",
+   "rationale": "Needs the facility directory settled first",
+   "dependency": "NR-006"
+  },
+  {
+   "idea": "Maternal risk stratification",
+   "priority": "P1",
+   "belongs_in": "care_continuum",
+   "rationale": "cc_antenatal_care_visits is modelled; 45/45 care_continuum tables blocked on national core",
+   "dependency": "National core"
+  },
+  {
+   "idea": "Outbreak detection from laboratory signal",
+   "priority": "P1",
+   "belongs_in": "public_health + lims",
+   "rationale": "GULA sees lab results before notifications reach a ministry — a genuine national advantage",
+   "dependency": "National core"
+  },
+  {
+   "idea": "Care gaps / screening due lists",
+   "priority": "P2",
+   "belongs_in": "care_continuum",
+   "rationale": "Standard population health; needs longitudinal record",
+   "dependency": ""
+  },
+  {
+   "idea": "Chronic disease programme registries",
+   "priority": "P2",
+   "belongs_in": "chronic_care",
+   "rationale": "cc_chronic_disease_registry modelled, absent",
+   "dependency": "National core"
+  },
+  {
+   "idea": "Pediatric growth monitoring",
+   "priority": "P2",
+   "belongs_in": "care_continuum",
+   "rationale": "Well-defined algorithms, low ambiguity",
+   "dependency": ""
+  },
+  {
+   "idea": "Laboratory quality control analytics",
+   "priority": "P2",
+   "belongs_in": "lims",
+   "rationale": "GULA has quality_control routes already; Westgard-style rules are deterministic",
+   "dependency": ""
+  },
+  {
+   "idea": "Remote monitoring / wearables",
+   "priority": "P3",
+   "belongs_in": "devices",
+   "rationale": "WearableMeasurement model exists; low national priority now",
+   "dependency": ""
+  },
+  {
+   "idea": "Oncology pathways",
+   "priority": "P3",
+   "belongs_in": "clinical",
+   "rationale": "High complexity, needs terminology and EHR first",
+   "dependency": "Terminology + EHR"
+  },
+  {
+   "idea": "Mental health and rehabilitation pathways",
+   "priority": "P3",
+   "belongs_in": "clinical",
+   "rationale": "Underserved but dependent on the same core",
+   "dependency": ""
+  },
+  {
+   "idea": "Clinical trials / research infrastructure",
+   "priority": "P3",
+   "belongs_in": "research_platform",
+   "rationale": "research_platform exists with 49 ops and 7/7 tables missing",
+   "dependency": ""
+  },
+  {
+   "idea": "National digital twin",
+   "priority": "RESEARCH",
+   "belongs_in": "simulation",
+   "rationale": "simulation package exists (5 tables, none physical); demo generator already produces a twin dataset",
+   "dependency": ""
+  },
+  {
+   "idea": "AI-assisted clinical documentation",
+   "priority": "RESEARCH",
+   "belongs_in": "ai_fabric",
+   "rationale": "Must remain assistive; a note is a human authority artefact",
+   "dependency": ""
+  },
+  {
+   "idea": "AI population-health prediction",
+   "priority": "EXPERIMENTAL",
+   "belongs_in": "ai_fabric",
+   "rationale": "Only after deterministic indicators exist and can validate it",
+   "dependency": ""
+  },
+  {
+   "idea": "Replacing GULA's LIMS or pharmacy with OSS",
+   "priority": "REJECTED",
+   "belongs_in": "—",
+   "rationale": "Both are further along than the surveyed alternatives; replacement would lose verified work",
+   "dependency": ""
+  },
+  {
+   "idea": "Adopting an external FHIR server as the clinical datastore",
+   "priority": "REJECTED",
+   "belongs_in": "—",
+   "rationale": "Would create a second source of truth for patient and clinical records, which the architecture forbids",
+   "dependency": ""
+  }
+ ]
+}

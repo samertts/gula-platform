@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
@@ -14,6 +14,8 @@ from app.identity.models.administrative_structure import (
     OwnershipStatus,
     RepresentativeStatus,
 )
+from app.identity.models.membership import Membership, MembershipStatus
+from app.identity.models.niam_organization import NIAMOrganization
 from app.identity.models.verification_record import (
     VerificationRecord,
     VerificationRecordStatus,
@@ -45,8 +47,26 @@ LEGAL_WORKSPACE_TRANSITIONS: dict[str, frozenset[str]] = {
 }
 
 
+def _membership_covers(membership: Membership, workspace: Workspace) -> bool:
+    """True when this membership stands behind acting in this workspace.
+
+    Mirrors the conjunction ClinicalGatewayContextResolver applies at request
+    time, so a context bound here is one the gateway will accept rather than
+    reject a moment later: same organization, and a facility and workspace that
+    either match or are left unscoped by the membership.
+    """
+    if membership.organization_id != workspace.organization_id:
+        return False
+    if membership.workspace_id is not None and membership.workspace_id != workspace.id:
+        return False
+    return not (
+        membership.facility_id is not None
+        and membership.facility_id != workspace.facility_id
+    )
+
+
 class WorkspaceService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @staticmethod
@@ -57,11 +77,11 @@ class WorkspaceService:
     def professional_key(account_id: str, professional_type: str) -> str:
         return f"professional:{account_id}:{professional_type}"
 
-    async def ensure_citizen_workspace(self, account: Account) -> Workspace | None:
+    def ensure_citizen_workspace(self, account: Account) -> Workspace | None:
         if account.account_type != AccountType.human.value or account.status != AccountStatus.active.value or not account.is_active:
             return None
         key = self.citizen_key(account.id)
-        result = await self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
+        result = self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
         existing = result.scalar_one_or_none()
         if existing:
             return existing
@@ -76,13 +96,13 @@ class WorkspaceService:
             is_personal=True,
         )
         self.session.add(workspace)
-        await self.session.flush()
+        self.session.flush()
         self.transition(workspace, WorkspaceStatus.active)
-        await self.session.flush()
+        self.session.flush()
         from app.identity.models.audit import AuditAction
         from app.identity.services.audit_service import AuditService
 
-        await AuditService(self.session).record(
+        AuditService(self.session).record(
             AuditAction.workspace_created,
             actor_id=account.id,
             actor_type="account",
@@ -92,11 +112,11 @@ class WorkspaceService:
         )
         return workspace
 
-    async def ensure_professional_workspace(self, account: Account, professional_type: str) -> Workspace | None:
-        if not await self._professional_eligible(account.id, professional_type):
+    def ensure_professional_workspace(self, account: Account, professional_type: str) -> Workspace | None:
+        if not self._professional_eligible(account.id, professional_type):
             return None
         key = self.professional_key(account.id, professional_type)
-        result = await self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
+        result = self.session.execute(select(Workspace).where(Workspace.workspace_key == key))
         existing = result.scalar_one_or_none()
         if existing:
             return existing
@@ -112,21 +132,28 @@ class WorkspaceService:
             is_personal=False,
         )
         self.session.add(workspace)
-        await self.session.flush()
+        self.session.flush()
         self.transition(workspace, WorkspaceStatus.active)
-        await self.session.flush()
+        self.session.flush()
         return workspace
 
-    async def list_eligible(self, account: Account) -> list[Workspace]:
+    def list_eligible(self, account: Account) -> list[Workspace]:
         if account.status != AccountStatus.active.value or not account.is_active:
             return []
         direct = select(Workspace).where(
             Workspace.owner_account_id == account.id,
             Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
         )
-        result = await self.session.execute(direct)
+        result = self.session.execute(direct)
         workspaces = {workspace.id: workspace for workspace in result.scalars().all()}
 
+        # AUTH-F5. Eligibility is a conjunction, not a single fact: an active
+        # standing in an organization, an organization that is itself live, and
+        # a workspace that is available. Membership in `niam_memberships` is
+        # deliberately *not* consulted — it is necessary context, not a grant,
+        # and wiring it here would hand access to every member of every
+        # organization. Whether membership should confer eligibility is a
+        # platform policy decision, recorded as AUTH-F5 and still open.
         organization_ids = select(OrganizationRepresentative.organization_id).where(
             OrganizationRepresentative.account_id == account.id,
             OrganizationRepresentative.status == RepresentativeStatus.active.value,
@@ -135,9 +162,16 @@ class WorkspaceService:
             OrganizationOwnership.account_id == account.id,
             OrganizationOwnership.status == OwnershipStatus.active.value,
         )
-        organization_result = await self.session.execute(
+        # The organization's own standing was not checked before AUTH-005: a
+        # representative of a deactivated organization kept its workspaces.
+        live_organization_ids = select(NIAMOrganization.id).where(
+            NIAMOrganization.id.in_(organization_ids.union(ownership_ids)),
+            NIAMOrganization.is_active.is_(True),
+            NIAMOrganization.status == "active",
+        )
+        organization_result = self.session.execute(
             select(Workspace).where(
-                Workspace.organization_id.in_(organization_ids.union(ownership_ids)),
+                Workspace.organization_id.in_(live_organization_ids),
                 Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
             ),
         )
@@ -145,15 +179,15 @@ class WorkspaceService:
             workspaces[workspace.id] = workspace
         return list(workspaces.values())
 
-    async def switch(self, account: Account, session_id: str, workspace_id: str) -> WorkspaceSessionContext:
+    def switch(self, account: Account, session_id: str, workspace_id: str) -> WorkspaceSessionContext:
         if account.status != AccountStatus.active.value or not account.is_active:
             raise WorkspaceAccessDenied("Account is not eligible for workspace access")
-        eligible = await self.list_eligible(account)
+        eligible = self.list_eligible(account)
         workspace = next((item for item in eligible if item.id == workspace_id), None)
         if workspace is None or workspace.status != WorkspaceStatus.active.value:
             raise WorkspaceAccessDenied("Workspace is not available to this account")
 
-        result = await self.session.execute(
+        result = self.session.execute(
             select(WorkspaceSessionContext).where(WorkspaceSessionContext.session_id == session_id),
         )
         context = result.scalar_one_or_none()
@@ -172,11 +206,87 @@ class WorkspaceService:
                 raise WorkspaceAccessDenied("Workspace context does not belong to this account")
             context.workspace_id = workspace.id
             context.version += 1
-        await self.session.flush()
+        self.session.flush()
         return context
 
-    async def _professional_eligible(self, account_id: str, professional_type: str) -> bool:
-        result = await self.session.execute(
+    def bind_unambiguous_context(
+        self, account: Account, session_id: str,
+    ) -> WorkspaceSessionContext | None:
+        """NR-137: bind a workspace at login, but only when there is no choice.
+
+        The clinical gateway resolves every scope it needs from server state --
+        workspace, membership, legacy link, facility binding -- and refuses when
+        any link is unproven. It never got the chance: a legacy login produced a
+        canonical NIAM session (NR-135) and no WorkspaceSessionContext at all, so
+        the chain stopped at its first step with reason_code=missing_workspace.
+
+        WHAT THIS DOES NOT DO, AND WHY IT MATTERS
+        -----------------------------------------
+        It grants nothing. Every workspace it can select is one `list_eligible`
+        ALREADY considers eligible, under the AUTH-F5 conjunction above:
+        ownership or representation, a live organization, an available
+        workspace. Membership is applied here as a FURTHER restriction, never as
+        a source of eligibility -- which is precisely the line AUTH-F5 draws when
+        it says membership "is necessary context, not a grant, and wiring it here
+        would hand access to every member of every organization". So this is
+        auto-selection of a choice already available through `switch()`, not a
+        new grant, and `list_eligible` is untouched.
+
+        It also refuses to guess. Zero candidates, or more than one, binds
+        nothing and returns None; the gateway then keeps failing closed exactly
+        as it does today. Picking one of several would be inventing the answer to
+        "which workspace is this person acting in", which is the caller's to
+        state through `switch()`.
+        """
+        if account.status != AccountStatus.active.value or not account.is_active:
+            return None
+
+        eligible = [
+            workspace
+            for workspace in self.list_eligible(account)
+            if workspace.status == WorkspaceStatus.active.value
+            and workspace.organization_id
+            and workspace.facility_id
+        ]
+        if not eligible:
+            return None
+
+        memberships = self._active_memberships(account, datetime.now(UTC))
+        if not memberships:
+            return None
+
+        candidates = [
+            workspace
+            for workspace in eligible
+            if any(
+                _membership_covers(membership, workspace) for membership in memberships
+            )
+        ]
+        if len(candidates) != 1:
+            # Ambiguous, or nothing membership stands behind. Fail closed.
+            return None
+
+        return self.switch(account, session_id, candidates[0].id)
+
+    def _active_memberships(self, account: Account, now: datetime) -> list[Membership]:
+        """This account's memberships that are live right now.
+
+        A seam, so the selection rule above can be exercised without a database
+        and the freshness filter has one place to live.
+        """
+        return list(
+            self.session.execute(
+                select(Membership).where(
+                    Membership.account_id == account.id,
+                    Membership.status == MembershipStatus.active.value,
+                    Membership.is_active.is_(True),
+                    or_(Membership.expires_at.is_(None), Membership.expires_at > now),
+                ),
+            ).scalars().all(),
+        )
+
+    def _professional_eligible(self, account_id: str, professional_type: str) -> bool:
+        result = self.session.execute(
             select(VerificationRecord.id).where(
                 VerificationRecord.account_id == account_id,
                 VerificationRecord.record_type == VerificationRecordType.professional.value,

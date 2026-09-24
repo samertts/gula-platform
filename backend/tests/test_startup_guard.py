@@ -204,26 +204,37 @@ class TestTestModeBypass:
         # Restore RUNTIME_MODE if it was changed
         os.environ.pop("RUNTIME_MODE", None)
 
-    def test_test_mode_sets_ready_immediately(self):
+    # NR-125. These two set os.environ["RUNTIME_MODE"] and expected
+    # run_startup_guard() to see it. It does not: the function reads
+    # `from ..config import RUNTIME_MODE`, a constant bound when app.config is
+    # first imported. Run alone, that import happens inside the call and picks
+    # the variable up; run after anything else that touches app.config -- which
+    # is almost the whole suite -- the constant is already "api" and the bypass
+    # never fires. The tests were order-dependent, not the guard.
+    #
+    # Patching the constant the function actually reads is the faithful
+    # analogue of production, where RUNTIME_MODE is fixed at process start.
+
+    def test_test_mode_sets_ready_immediately(self, monkeypatch):
         """run_startup_guard() should set system_ready=True immediately in test mode."""
         import asyncio
 
         from app.core import startup_guard
 
-        os.environ["RUNTIME_MODE"] = "test"
+        monkeypatch.setattr("app.config.RUNTIME_MODE", "test")
 
         asyncio.run(startup_guard.run_startup_guard())
 
         assert startup_guard.system_ready is True
         assert startup_guard._readiness_reason == "test_mode"
 
-    def test_test_mode_skips_all_validation(self):
+    def test_test_mode_skips_all_validation(self, monkeypatch):
         """In test mode, no external services should be contacted."""
         import asyncio
 
         from app.core import startup_guard
 
-        os.environ["RUNTIME_MODE"] = "test"
+        monkeypatch.setattr("app.config.RUNTIME_MODE", "test")
 
         with patch("app.core.startup_guard.validate_config") as mock_val:
             mock_val.side_effect = RuntimeError("should not be called")

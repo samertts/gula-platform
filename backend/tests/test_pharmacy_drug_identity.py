@@ -29,7 +29,14 @@ def _service(db: Any, lab: Any) -> PharmacyService:
 
 
 def _drug(svc: PharmacyService, code: str = "IDENT-001") -> DrugCatalog:
-    return svc.create_drug({"code": code, "name": "Synthetic Identity Drug", "is_active": True})
+    return svc.create_drug(
+        {
+            "drug_code": code,
+            "drug_name": "Synthetic Identity Drug",
+            "dosage_form": "tablet",
+            "is_active": True,
+        }
+    )
 
 
 def test_identity_fields_are_declared_immutable() -> None:
@@ -38,14 +45,18 @@ def test_identity_fields_are_declared_immutable() -> None:
     assert "drug_id" in IMMUTABLE_CATALOG_IDENTITY_FIELDS
     # drug_code is a mutable business code (contract §4), never an identity.
     assert "drug_code" not in IMMUTABLE_CATALOG_IDENTITY_FIELDS
-    assert "code" not in IMMUTABLE_CATALOG_IDENTITY_FIELDS
 
 
 def test_client_cannot_choose_the_internal_identity_at_creation(db: Any) -> None:
     lab = _lab(db)
     svc = _service(db, lab)
     drug = svc.create_drug(
-        {"code": "IDENT-CHOOSE", "name": "Synthetic", "id": "client-supplied-identity"}
+        {
+            "drug_code": "IDENT-CHOOSE",
+            "drug_name": "Synthetic",
+            "dosage_form": "tablet",
+            "id": "client-supplied-identity",
+        }
     )
     assert drug.id != "client-supplied-identity"
 
@@ -77,10 +88,10 @@ def test_business_fields_remain_updatable(db: Any) -> None:
     svc = _service(db, lab)
     drug = _drug(svc, "IDENT-UPD-3")
 
-    updated = svc.update_drug(drug.id, {"name": "Renamed Synthetic Drug"})
+    updated = svc.update_drug(drug.id, {"drug_name": "Renamed Synthetic Drug"})
 
     assert updated is not None
-    assert updated.name == "Renamed Synthetic Drug"
+    assert updated.drug_name == "Renamed Synthetic Drug"
     assert updated.id == drug.id
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid as _uuid
 from datetime import datetime
 
 from sqlalchemy import JSON, Column, DateTime, String, Text
@@ -223,10 +224,30 @@ class AuditAction(StrEnum):
     data_export_requested = "data_export_requested"
 
 
+def _audit_entry_uuid() -> str:
+    """The canonical uuid authority for `niam_audit_entries` (NR-045).
+
+    The column is NOT NULL with no server default, and `IdentityBaseEntity`
+    supplies `id`, `created_at` and `updated_at` but not `uuid`. `AuditService`
+    (event_version 1) passed one explicitly; `CanonicalAuditService`
+    (event_version 2) did not, so every v2 insert violated the constraint and
+    the clinical gateway — which audits before it allows *and* before it denies
+    — answered 503 to every request.
+
+    Putting the default on the column makes one place authoritative for every
+    writer of this table rather than adding a second generator beside v1's.
+    `AuditService` still passes its own value, which takes precedence, so its
+    behaviour is unchanged. `uuid` is deliberately absent from v2's
+    `_canonical_payload`, so populating it cannot alter any entry hash, past or
+    future.
+    """
+    return str(_uuid.uuid4())
+
+
 class IdentityAuditEntry(IdentityBaseEntity):
     __tablename__ = "niam_audit_entries"
 
-    uuid = Column(String(36), unique=True, nullable=False, index=True)
+    uuid = Column(String(36), unique=True, nullable=False, index=True, default=_audit_entry_uuid)
 
     action = Column(String(120), nullable=False, index=True)
     event_type = Column(String(120), nullable=True, index=True)

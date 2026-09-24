@@ -1,13 +1,28 @@
 """Shared fixtures for nhop-platform tests.
 
-Each test gets a fresh in-memory SQLite DB so the suite can run in any order
+Each test gets a fresh SQLite database, so the suite can run in any order
 without state leaking between modules.
 
 Run tests from the nhop-platform directory:
     cd nhop-platform && python -m pytest tests/
+
+NR-130. These fixtures did not work. `app_client` read `sys.modules` without
+importing sys, so all ten tests that used it errored at setup, and `db_session`
+was never written at all, so the eleven tests that asked for it errored too --
+21 errors, two causes, and no coverage from either file since they were added.
+
+The repair is not `import sys`. The line that would have enabled purged every
+`app.*` entry from sys.modules mid-suite to rebind the app to a test database.
+That is the NR-126 state-leak class: modules imported earlier keep stale
+references while later imports get fresh ones, and the suite becomes
+order-dependent. FastAPI already has the mechanism for this -- override the
+`get_db` dependency -- so the database is swapped without touching the import
+system at all.
 """
 from __future__ import annotations
 
+import os
+import tempfile
 import uuid
 
 import pytest
@@ -15,29 +30,73 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+# app.core.database reads this at import time and app.main opens the database
+# while being imported, so it has to be set before either is imported -- which
+# is here, since conftest is imported before any test module. Without it the
+# import writes ./nhop.db into whatever directory the suite was started from.
+os.environ.setdefault(
+    "NHOP_DATABASE_URL",
+    "sqlite:///" + tempfile.mkdtemp(prefix="nhop-conftest-") + "/import-time.db",
+)
+
 
 @pytest.fixture()
-def app_client(tmp_path, monkeypatch):
-    db_path = tmp_path / "nhop_test.db"
-    monkeypatch.setenv("NHOP_DATABASE_URL", f"sqlite:///{db_path}")
+def test_engine(tmp_path):
+    """A database of this test's own, with the full schema on it."""
+    import app.models
+    from app.core.database import Base
 
-    # Force a re-import so the app binds to the test DB URL.
-    for mod in list(sys.modules):
-        if mod.startswith("app.") or mod == "app":
-            sys.modules.pop(mod)
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'nhop_test.db'}",
+        connect_args={"check_same_thread": False},
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    try:
+        yield engine
+    finally:
+        Base.metadata.drop_all(engine)
+        engine.dispose()
 
-    from app import models
-    from app.core.database import Base, engine
+
+@pytest.fixture()
+def session_factory(test_engine):
+    return sessionmaker(bind=test_engine, autoflush=False, autocommit=False)
+
+
+@pytest.fixture()
+def db_session(session_factory):
+    """A plain session for service-level tests that never go through HTTP."""
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture()
+def app_client(test_engine, session_factory):
+    """The real application, with only its database redirected.
+
+    Nothing else is substituted: the middleware, the router wiring and the
+    dependencies are the ones production serves, so a test cannot pass against
+    a shape the deployed app does not have.
+    """
+    from app.core.database import get_db
     from app.main import app
 
-    Base.metadata.create_all(engine)
+    def _override():
+        db = session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
 
-    TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
-    client = TestClient(app)
-    yield client, TestingSession
-
-    Base.metadata.drop_all(engine)
+    app.dependency_overrides[get_db] = _override
+    try:
+        yield TestClient(app), session_factory
+    finally:
+        app.dependency_overrides.pop(get_db, None)
 
 
 @pytest.fixture()
@@ -115,7 +174,3 @@ def make_result():
 
     return _make
 
-
-@pytest.fixture()
-def doctor_headers():
-    return {"X-Actor-Role": "DOCTOR", "X-Actor-Id": "dr-001"}

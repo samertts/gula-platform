@@ -5,36 +5,35 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app._compat import UTC
 from app.identity.base import IdentityBaseEntity
 from app.identity.governance.models import (
-    IdentityAuthority,
     DigitalIdentityCouncil,
-    PolicyApprovalWorkflow,
     IdentityAppeal,
-    IdentitySuspension,
-    IdentityRestoration,
-    NationalIdentityRegistry,
+    IdentityAuthority,
     IdentityCertificationRegistry,
+    IdentityRestoration,
     IdentityReviewBoard,
+    IdentitySuspension,
+    NationalIdentityRegistry,
+    PolicyApprovalWorkflow,
 )
 from app.identity.governance.services import (
+    AppealService,
     GovernanceService,
     PolicyApprovalService,
-    AppealService,
-    SuspensionService,
     RegistryService,
+    SuspensionService,
 )
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
 def mock_session():
     session = MagicMock()
     session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.execute = AsyncMock()
+    session.flush = MagicMock()
+    session.execute = MagicMock()
     return session
 
 
@@ -615,12 +614,14 @@ class TestComplianceModels:
 
 
 class TestGovernanceServices:
-    """Verify governance services instantiation."""
+    """Verify governance services instantiation.
 
-    @pytest.mark.asyncio
-    async def test_governance_service_create_authority(self, mock_session):
+    Synchronous since NR-044.3 converted `identity/governance/services.py`.
+    """
+
+    def test_governance_service_create_authority(self, mock_session):
         svc = GovernanceService(mock_session)
-        result = await svc.create_authority(
+        result = svc.create_authority(
             authority_id="IA-TEST",
             name_en="Test Authority",
             name_ar="هيئة اختبار",
@@ -630,19 +631,17 @@ class TestGovernanceServices:
         mock_session.add.assert_called_once()
         assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_policy_approval_service_submit(self, mock_session):
+    def test_policy_approval_service_submit(self, mock_session):
         svc = PolicyApprovalService(mock_session)
-        result = await svc.submit_policy(
+        result = svc.submit_policy(
             policy_id="POL-001",
             submitted_by="admin",
         )
         assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_appeal_service_submit(self, mock_session):
+    def test_appeal_service_submit(self, mock_session):
         svc = AppealService(mock_session)
-        result = await svc.submit_appeal(
+        result = svc.submit_appeal(
             appeal_id="APL-TEST-001",
             appellant_person_id="p1",
             identity_id="id1",
@@ -651,10 +650,9 @@ class TestGovernanceServices:
         )
         assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_suspension_service_suspend(self, mock_session):
+    def test_suspension_service_suspend(self, mock_session):
         svc = SuspensionService(mock_session)
-        result = await svc.suspend_identity(
+        result = svc.suspend_identity(
             person_id="p1",
             identity_id="id1",
             reason="Security breach",
@@ -665,10 +663,9 @@ class TestGovernanceServices:
         assert result is not None
         assert result.severity == "high"
 
-    @pytest.mark.asyncio
-    async def test_registry_service_register(self, mock_session):
+    def test_registry_service_register(self, mock_session):
         svc = RegistryService(mock_session)
-        result = await svc.register_identity(
+        result = svc.register_identity(
             person_id="p1",
             identity_id="id1",
             registry_type="citizen",
@@ -681,8 +678,7 @@ class TestGovernanceServices:
 class TestAuditHashChain:
     """Verify cryptographic hash chain integrity."""
 
-    @pytest.mark.asyncio
-    async def test_audit_service_with_hash_chain(self, mock_session):
+    def test_audit_service_with_hash_chain(self, mock_session):
         from app.identity.models.audit import AuditAction
         from app.identity.services.audit_service import AuditService
         svc = AuditService(mock_session)
@@ -691,7 +687,7 @@ class TestAuditHashChain:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
 
-        entry = await svc.record(
+        entry = svc.record(
             action=AuditAction.person_created,
             actor_id="admin",
             target_type="person",
@@ -702,8 +698,7 @@ class TestAuditHashChain:
         assert len(entry.entry_hash) == 64
         assert entry.previous_hash is None
 
-    @pytest.mark.asyncio
-    async def test_audit_hash_chain_linked(self, mock_session):
+    def test_audit_hash_chain_linked(self, mock_session):
         from app.identity.models.audit import AuditAction
         from app.identity.services.audit_service import AuditService
         svc = AuditService(mock_session)
@@ -712,7 +707,7 @@ class TestAuditHashChain:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
 
-        entry1 = await svc.record(
+        entry1 = svc.record(
             action=AuditAction.person_created,
             actor_id="admin",
             target_type="person",
@@ -721,7 +716,7 @@ class TestAuditHashChain:
 
         mock_result.scalar_one_or_none.return_value = entry1.entry_hash
 
-        entry2 = await svc.record(
+        entry2 = svc.record(
             action=AuditAction.account_created,
             actor_id="admin",
             target_type="account",

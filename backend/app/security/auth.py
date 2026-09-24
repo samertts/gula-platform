@@ -76,12 +76,26 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return cast(bool, _shared_verify_password(plain_password, hashed_password))
 
 
-def build_token_payload(user: _TokenUser) -> JWTClaims:
+# NR-035. `user_id` alone is ambiguous: `users` and `lab_users` are two identity
+# tables with independent integer primary keys, so a claim of `user_id = N` does
+# not say which table it means. `act` (account type) is the discriminator the
+# rest of the platform already models — `get_perm_version` takes
+# account_kind="user"|"lab", and LegacyAccountLinkSource is exactly
+# {user, lab_user} — it was simply never carried in the token.
+ACCOUNT_KIND_LAB = "lab"
+ACCOUNT_KIND_USER = "user"
+ACCOUNT_KINDS = frozenset({ACCOUNT_KIND_LAB, ACCOUNT_KIND_USER})
+
+
+def build_token_payload(user: _TokenUser, account_kind: str = ACCOUNT_KIND_LAB) -> JWTClaims:
+    if account_kind not in ACCOUNT_KINDS:
+        raise ValueError(f"Unknown account kind: {account_kind!r}")
     return {
         "user_id": user.id,
         "lab_id": user.lab_id,
         "role": user.role,
         "perm_ver": user.perm_version if user.perm_version is not None else 1,
+        "act": account_kind,
     }
 
 

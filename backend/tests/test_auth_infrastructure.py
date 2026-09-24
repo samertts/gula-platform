@@ -40,6 +40,35 @@ def token(client):
 _AUTH_HEADER_TEMPLATE = "Bearer {}"
 
 
+@pytest.fixture
+def national_token(db):
+    """A caller with national scope in the patient index (NR-148).
+
+    The `token` fixture above is role="admin" -- lab-scoped, holding no
+    platform:view_stats -- so the MPI's national operations are not open to it.
+
+    Minted directly rather than through /login, because ministry_admin is a
+    privileged account and login refuses it until MFA is enrolled. That policy
+    is real and correct; coupling this fixture to it would make an MPI
+    authorization test fail for an unrelated reason.
+    """
+    from app.models.lab_user import LabUser
+    from app.security.auth import create_token
+    from app.security.auth import hash_password as _hash
+
+    email = "ministry@mfa.gula"
+    user = db.query(LabUser).filter(LabUser.email == email).first()
+    if user is None:
+        user = LabUser(lab_id=1, email=email, name="Ministry User",
+                       password_hash=_hash("password123"),
+                       role="ministry_admin", is_active=True)
+        db.add(user)
+        db.commit()
+    return create_token(
+        {"user_id": user.id, "lab_id": user.lab_id, "role": "ministry_admin"},
+    )
+
+
 # ── MFA: TOTP ──
 
 
@@ -316,15 +345,28 @@ def test_get_canonical_patient(client, token):
     assert resp.json()["id"] == pid
 
 
-def test_search_canonical_patients(client, token):
+def test_search_canonical_patients(client, token, national_token):
+    """NR-148: searching the national index needs national scope.
+
+    This asserted only that search returns rows, using a lab-scoped admin token
+    -- which is the defect, not the contract. The plumbing assertion is kept
+    and moved to a caller entitled to make it; the lab-scoped denial is now
+    asserted too, so the control cannot regress silently.
+    """
     client.post(
         "/api/v1/canonical-patients",
         json={"full_name": "Searchable Person", "date_of_birth": "1985-05-05", "gender": "M"},
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
     )
-    resp = client.get(
+    denied = client.get(
         "/api/v1/canonical-patients?q=Searchable",
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert denied.status_code == 403, denied.text
+
+    resp = client.get(
+        "/api/v1/canonical-patients?q=Searchable",
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(national_token)},
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -333,7 +375,8 @@ def test_search_canonical_patients(client, token):
     assert any("Searchable" in i.get("full_name", "") for i in body["items"])
 
 
-def test_merge_canonical_patients(client, token):
+def test_merge_canonical_patients(client, token, national_token):
+    """NR-148: merging two identities is a national judgement, not a lab's."""
     a = client.post(
         "/api/v1/canonical-patients",
         json={"full_name": "Merge A", "date_of_birth": "1980-01-01", "gender": "M"},
@@ -348,12 +391,106 @@ def test_merge_canonical_patients(client, token):
     )
     assert b.status_code == 201, b.text
     b_data = b.json()
-    resp = client.post(
+    denied = client.post(
         "/api/v1/canonical-patients/merge",
         json={"target_id": a_data["id"], "source_id": b_data["id"]},
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
     )
+    assert denied.status_code == 403, denied.text
+
+    resp = client.post(
+        "/api/v1/canonical-patients/merge",
+        json={"target_id": a_data["id"], "source_id": b_data["id"]},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(national_token)},
+    )
     assert resp.status_code == 200, resp.text
+
+
+def test_mpi_mutations_land_an_audit_row(client, token, national_token, db):
+    """NR-151, proved by execution rather than by reading the source.
+
+    The MPI mutation surface wrote nothing at all: not a creation, not a link,
+    not a merge. CLAUDE.md invariant 2 requires every mutation to be audited,
+    and NR-148 hardened who may merge two people's identities while leaving
+    whether it was written down untouched.
+    """
+    from app.models.audit_log import AuditLog
+
+    def _actions():
+        return {
+            row.action for row in db.query(AuditLog)
+            .filter(AuditLog.resource_type == "canonical_patient").all()
+        }
+
+    assert "canonical_patient.create" not in _actions()
+
+    created = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Audited Person", "gender": "F"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert created.status_code == 201, created.text
+    assert "canonical_patient.create" in _actions(), (
+        "creating a canonical patient left no audit row (NR-151)"
+    )
+
+    second = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Audited Person Two", "gender": "F"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert second.status_code == 201, second.text
+
+    merged = client.post(
+        "/api/v1/canonical-patients/merge",
+        json={"target_id": created.json()["id"], "source_id": second.json()["id"]},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(national_token)},
+    )
+    assert merged.status_code == 200, merged.text
+
+    rows = (
+        db.query(AuditLog)
+        .filter(AuditLog.action == "canonical_patient.merge")
+        .all()
+    )
+    assert len(rows) == 1, "a merge of two identities left no audit row (NR-151)"
+    row = rows[0]
+    assert row.resource_id == created.json()["id"]
+    assert row.user_role == "ministry_admin", (
+        "the audit records the wrong actor; it must be the authenticated caller"
+    )
+    assert str(second.json()["id"]) in (row.details or ""), (
+        "the merge audit does not record which record was absorbed (NR-151)"
+    )
+
+
+def test_a_denied_mutation_leaves_no_audit_row(client, token, db):
+    """A refusal must not look like an act in the trail.
+
+    The mirror of the test above: a lab-scoped caller's merge is refused by
+    NR-148, and no audit row may claim it happened.
+    """
+    from app.models.audit_log import AuditLog
+
+    a = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Refused Merge A", "gender": "M"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    b = client.post(
+        "/api/v1/canonical-patients",
+        json={"full_name": "Refused Merge B", "gender": "M"},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    denied = client.post(
+        "/api/v1/canonical-patients/merge",
+        json={"target_id": a.json()["id"], "source_id": b.json()["id"]},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert denied.status_code == 403, denied.text
+    assert not db.query(AuditLog).filter(
+        AuditLog.action == "canonical_patient.merge",
+    ).all(), "a refused merge wrote an audit row claiming it happened (NR-151)"
 
 
 # ── Auth required on protected endpoints ──

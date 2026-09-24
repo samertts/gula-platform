@@ -9,7 +9,7 @@ class IdentityRepository(IdentityRepositoryBase[IdentityRecord]):
 
     model_class = IdentityRecord
 
-    async def find_by_person_id(self, person_id: str) -> list[IdentityRecord]:
+    def find_by_person_id(self, person_id: str) -> list[IdentityRecord]:
         stmt = (
             select(self.model_class)
             .where(
@@ -17,10 +17,10 @@ class IdentityRepository(IdentityRepositoryBase[IdentityRecord]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_by_type(self, identity_type: IdentityType) -> list[IdentityRecord]:
+    def find_by_type(self, identity_type: IdentityType) -> list[IdentityRecord]:
         stmt = (
             select(self.model_class)
             .where(
@@ -28,10 +28,10 @@ class IdentityRepository(IdentityRepositoryBase[IdentityRecord]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_primary(self, person_id: str) -> IdentityRecord | None:
+    def find_primary(self, person_id: str) -> IdentityRecord | None:
         stmt = (
             select(self.model_class)
             .where(
@@ -41,5 +41,5 @@ class IdentityRepository(IdentityRepositoryBase[IdentityRecord]):
             )
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()

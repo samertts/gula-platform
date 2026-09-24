@@ -1,0 +1,181 @@
+{
+  "document": "GULA Canonical Architecture Decisions",
+  "batch": "BATCH-2.7",
+  "generated": "2026-09-10T15:50:26Z",
+  "head_commit": "0eb52d0e2da648ae18692e62629dd0465019aab6",
+  "decisions": [
+    {
+      "id": "D-11",
+      "subject": "NR-023 safe architecture",
+      "status": "BLOCKED",
+      "options_evaluated": {
+        "A_single_canonical_metadata": {
+          "verdict": "correct in principle, unsafe today",
+          "measured": "All 363 cross-MetaData FK references resolve and sort_tables_and_constraints succeeds over 651 tables. But compare_metadata against a database at head emits 5101 operations including 76 DROP TABLE.",
+          "note": "Resolving the foreign keys does not make autogenerate safe; it makes a second, larger problem reachable."
+        },
+        "B_multi_metadata_orchestration": {
+          "verdict": "rejected on evidence",
+          "why": "Does not avoid the national_facilities collision, multiplies the exclusion surface by 18, and cannot see cross-base drift."
+        },
+        "C_combined_metadata_with_explicit_guarded_resolution": {
+          "verdict": "RECOMMENDED target architecture",
+          "why": "Preserves canonical ownership, FK integrity and determinism; fails closed; excludes nothing silently."
+        }
+      },
+      "blocking_dependencies": [
+        {
+          "finding": "NR-006",
+          "measured": "1 table-name collision (national_facilities)",
+          "kind": "ownership decision"
+        },
+        {
+          "finding": "NR-030",
+          "measured": "12 physical tables mapped by no ORM class",
+          "kind": "registry completeness"
+        },
+        {
+          "finding": "NR-029",
+          "measured": "2 FK targets, 3 declarations, naming tables that exist nowhere",
+          "kind": "model defect"
+        }
+      ],
+      "exact_dependency": "A single canonical MetaData requires one table-name namespace (NR-006), a complete ORM registry (NR-030), and no dangling foreign keys (NR-029). All three are proven; none is infrastructure-only.",
+      "implemented": "env.py imports the 14 model modules no other import reached. DROP-TABLE hazard falls 76 -> 12 (84%). Verified with upgrade head / downgrade -1 / upgrade head on a fresh database with PYTHONPATH unset. Does not fix NR-023."
+    },
+    {
+      "id": "D-12",
+      "subject": "Registered is not complete",
+      "status": "VERIFIED",
+      "measured": "IdentityBase was registered holding 39 tables while 48 of its own were never imported. 64 physical tables were mapped by no registered metadata.",
+      "invariant": "Every physical table is mapped by a registered metadata, or explicitly and namedly excluded.",
+      "guard": "backend/tests/test_alembic_metadata_registry.py — reads the import graph out of env.py rather than restating it; fail-closed proven by deleting one import."
+    },
+    {
+      "id": "D-13",
+      "subject": "NR-006 Facility architecture",
+      "status": "DOCUMENTED — implementation deferred to BATCH-3 item 1",
+      "operational_facility": {
+        "canonical_owner": "Core",
+        "physical_table": "facilities",
+        "identity": "INTEGER + UUID4",
+        "authoritative_for": "scheduling, staffing, operations, tenancy",
+        "fhir_role": "Location"
+      },
+      "national_facility_resource": {
+        "canonical_owner": "Core (national EHR directory)",
+        "physical_table": "national_facilities",
+        "physical_mapping": "app/models/clinical_scope.py::NationalFacility",
+        "identity": "String(26) — already physical, do not retype",
+        "authoritative_for": "national directory identity, facility_code",
+        "fhir_role": "Organization/Location directory",
+        "synchronisation": "registry is externally sourced; GULA does not write it back"
+      },
+      "relationship": "clinical_ehr_facility_bindings — a reviewed, physically enforced bridge",
+      "do_not_merge": "app/models/clinical_scope.py states in-source that these are separate resources and that no relationship may be inferred from identifier similarity.",
+      "duplicate_to_retire": "app/national/domain/facility.py::Facility — 18 columns, zero physical backing, extend_existing=True"
+    },
+    {
+      "id": "D-14",
+      "subject": "Encounter canonical owner",
+      "status": "RECOMMENDED — three sub-questions BLOCKED",
+      "recommendation": "OPTION B, realised by adopting the existing `visits` table rather than creating clinical_encounters",
+      "evidence": {
+        "visits_is_physical": "visits(id UUID PK, patient_id INTEGER FK->patients, visit_type, status, created_at, closed_at)",
+        "lab_orders_already_references_it": "lab_orders.visit_id UUID, constraint fk_lab_orders_visit_id -> visits.id",
+        "migration_states_the_architecture": "20260505_0003_sndhs_phase1_visits_table.py: 'Visit-based architecture: every clinical action is anchored to a visit.'",
+        "option_A_refused": "lab_orders has 8 inbound FK references, all internal to app.database.Base. No other domain references it, while 11 packages reference an encounter.",
+        "option_B_shape_right_new_table_wrong": "Creating clinical_encounters would be a FOURTH episode representation alongside lab_orders, visits and national_encounters.",
+        "episode_reference_types_in_use": {
+          "String(26)": 55,
+          "String(64)": 6,
+          "String(100)": 3,
+          "String(128)": 1,
+          "UUID": 1
+        },
+        "physical_episode_columns": 5,
+        "physical_episode_columns_with_a_foreign_key": 0
+      },
+      "disadvantages": [
+        "visits has only 6 columns and needs extension",
+        "visits carries no lab_id; tenancy is derived through patients.lab_id",
+        "visits is mapped by no ORM model (one of the 12 in NR-030)",
+        "gated off by SNDHS_ENABLE_VISITS; RUNBOOK must be read first"
+      ],
+      "affected_entities": [
+        "visits",
+        "lab_orders",
+        "billing_invoices.encounter_ref",
+        "blood_bank_patient_samples.encounter_id",
+        "blood_bank_reservations.encounter_id",
+        "blood_bank_reactions.encounter_id",
+        "pharmacy_sales.encounter_id",
+        "47 ORM FKs: care_continuum 16, ehr 14, nursing 12, national 5"
+      ],
+      "blocked_sub_questions": [
+        "Does visits gain an explicit lab_id, or does tenancy stay derived through patients?",
+        "Is visit_type extended, or replaced by the EncounterType enum the national layer defines?",
+        "Does adoption require enabling SNDHS_ENABLE_VISITS, and what is the backfill path?"
+      ],
+      "blocked_status": "BLOCKED — CLINICAL OWNER REQUIRED (sub-questions only; the shape is recommended)"
+    },
+    {
+      "id": "D-07",
+      "subject": "Practitioner ownership",
+      "status": "VERIFIED / CLOSED",
+      "decision": "NATIONAL canonical professional registry",
+      "lab_users": "authentication principal — Core, INTEGER, tenant-scoped; NOT a second Practitioner owner",
+      "future_relationship": "authentication principal (lab_users) -> practitioner identity (national_practitioners.id via a nullable lab_users.practitioner_id) -> professional/clinical authoring context (the actor recorded on clinical records)",
+      "legacy": "lab_orders.doctor_name String(200) is legacy free text and must not be mass-rewritten"
+    },
+    {
+      "id": "D-15",
+      "subject": "NR-029 naming error",
+      "status": "RESOLVED — VERIFIED",
+      "finding": "niam_identity_authorities and niam_user_sessions are class names, not table names. IdentityAuthority is niam_gov_authorities; UserSession is niam_sessions.",
+      "action": "Three ForeignKey target strings corrected. No migration, no schema change.",
+      "consequence": "One of NR-023's three blockers closed; NR-006 and NR-030 remain."
+    },
+    {
+      "id": "D-16",
+      "subject": "NR-030 classification",
+      "status": "PARTIALLY VERIFIED",
+      "classes": {
+        "KEEP_PHYSICAL_NO_ORM": 7,
+        "MAP_EXISTING_ORM": 2,
+        "CREATE_ORM": 1,
+        "BLOCKED": 2
+      },
+      "rule": "The seven permanent exclusions mean a combined MetaData can never simply map everything; it must carry an explicit exclusion list, as Option C in D-11 specified."
+    },
+    {
+      "id": "D-17",
+      "subject": "NR-026 severity",
+      "status": "P0 LIVE DEFECT",
+      "finding": "ClinicalChecklist and EscalationRecord name tables no migration creates, and live HTTP routes query them, so two nursing features fail at runtime — one of them clinical escalation.",
+      "not_half_fixed": "Renaming __tablename__ alone would take these from failing loudly to succeeding with wrong types; EscalationRecord.escalated_to is String(26) against a physical integer and sits in a live filter. Name and types land together."
+    },
+    {
+      "id": "D-18",
+      "subject": "Visit as clinical episode anchor",
+      "status": "ESTABLISHED; 3 sub-questions BLOCKED",
+      "evidence": [
+        "migration 20260505_0003 states it",
+        "lab_orders.visit_id -> visits.id enforced today",
+        "no competing physical episode table"
+      ],
+      "roles": {
+        "transactional_owner": "visits",
+        "projection": "national_encounters",
+        "projection_implementation": "CanonicalEncounter"
+      },
+      "correction_to_D14": "visits has NO code consumers; BATCH-2.6 reported otherwise on substring false positives. Adoption is lower risk — no live usage to migrate."
+    },
+    {
+      "id": "D-19",
+      "subject": "NR-006 unchanged",
+      "status": "DOCUMENTED — BATCH-3 item 1",
+      "rule": "Operational facility and national facility resource are separate, bridged by review through clinical_ehr_facility_bindings. Not merged. No migration in this batch."
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import os
 import time
 
 import requests
+from fail_closed import FailClosedMiddleware
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
@@ -49,6 +50,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+# NR-142: refuse every request this service cannot attribute to a caller.
+# Added last, so Starlette runs it outermost -- before CORS and before any
+# handler touches labdb. See services/fail_closed.py.
+app.add_middleware(FailClosedMiddleware)
 
 # Prometheus metrics
 REQUEST_COUNT   = Counter("ai_requests_total", "Total AI requests", ["tier", "status"])

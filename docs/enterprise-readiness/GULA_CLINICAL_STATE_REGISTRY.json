@@ -1,0 +1,362 @@
+{
+  "document": "GULA Clinical State Registry — NR-007",
+  "batch": "BATCH-2.5",
+  "generated": "2026-09-10T10:45:31Z",
+  "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
+  "subject": "backend/app/blood_bank/domain/state_machine.py",
+  "method": "enum reflection and exact string matching against _TRANSITIONS",
+  "state_machine_modified": false,
+  "shape": {
+    "transition_table_keys": 39,
+    "distinct_state_vocabulary": 43,
+    "lifecycle_enums": 5,
+    "colliding_states": 4,
+    "synthetic_keys": 28,
+    "enum_values_without_a_key": 18,
+    "distinct_entity_values_at_call_sites": 2,
+    "entity_values_at_call_sites": [
+      "blood_unit",
+      "transfusion"
+    ]
+  },
+  "lifecycle_enums": {
+    "blood_unit": {
+      "enum": "ComponentStatus",
+      "values": [
+        "available",
+        "discarded",
+        "expired",
+        "issued",
+        "pending_processing",
+        "processing",
+        "quarantined",
+        "recalled",
+        "reserved",
+        "transfused"
+      ]
+    },
+    "donation": {
+      "enum": "DonationStatus",
+      "values": [
+        "completed",
+        "discarded",
+        "in_progress",
+        "registered",
+        "rejected",
+        "screened"
+      ]
+    },
+    "donor": {
+      "enum": "DonorStatus",
+      "values": [
+        "active",
+        "deferred",
+        "expired",
+        "inactive",
+        "permanently_deferred"
+      ]
+    },
+    "crossmatch": {
+      "enum": "CrossmatchStatus",
+      "values": [
+        "compatible",
+        "incompatible",
+        "partially_compatible",
+        "pending",
+        "waived"
+      ]
+    },
+    "transfusion": {
+      "enum": "TransfusionStatus",
+      "values": [
+        "cancelled",
+        "completed",
+        "dispensed",
+        "in_progress",
+        "ordered",
+        "reacted",
+        "verified"
+      ]
+    }
+  },
+  "collisions": [
+    {
+      "state": "completed",
+      "entities": [
+        "donation",
+        "transfusion"
+      ],
+      "is_table_key": true,
+      "shared_row": "set() — terminal",
+      "meaning_today": "Terminal for both. Correct for a transfusion. A completed donation also cannot advance, but it is the input to component processing.",
+      "clinical_significance": "HIGH",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    },
+    {
+      "state": "in_progress",
+      "entities": [
+        "donation",
+        "transfusion"
+      ],
+      "is_table_key": true,
+      "shared_row": "{completed, reaction_suspected}",
+      "meaning_today": "A donation in progress is validated against transfusion rules and may transition to reaction_suspected, a transfusion-reaction state meaningless for a collection.",
+      "clinical_significance": "HIGH",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    },
+    {
+      "state": "expired",
+      "entities": [
+        "blood_unit",
+        "donor"
+      ],
+      "is_table_key": true,
+      "shared_row": "{discarded}",
+      "meaning_today": "Correct for a blood unit. A donor whose eligibility expires would be 'discarded', which is not a thing that happens to a person.",
+      "clinical_significance": "HIGH",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    },
+    {
+      "state": "discarded",
+      "entities": [
+        "blood_unit",
+        "donation"
+      ],
+      "is_table_key": false,
+      "shared_row": "absent — terminal by omission",
+      "meaning_today": "Probably correct for both, but by accident rather than by statement.",
+      "clinical_significance": "MEDIUM",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    }
+  ],
+  "synthetic_keys": [
+    "classification",
+    "clinical_assessment",
+    "collected",
+    "compatibility_pending",
+    "crossmatch_requested",
+    "draft",
+    "identified",
+    "investigation",
+    "issued_order",
+    "ordered_transfusion",
+    "reaction_suspected",
+    "ready",
+    "received",
+    "received_at_bedside",
+    "received_sample",
+    "released",
+    "requested",
+    "resolution",
+    "returned",
+    "reviewed",
+    "sample_received",
+    "sample_required",
+    "started",
+    "testing",
+    "testing_crossmatch",
+    "transfusion_stopped",
+    "validated",
+    "verification"
+  ],
+  "synthetic_key_note": "Four are explicit <state>_<entity> compounds — issued_order, received_sample, testing_crossmatch, ordered_transfusion — which is (entity, state) keying implemented by hand inside the string.",
+  "enum_values_without_a_key": {
+    "blood_unit": [
+      "discarded",
+      "pending_processing",
+      "processing",
+      "recalled"
+    ],
+    "donation": [
+      "discarded",
+      "registered",
+      "rejected",
+      "screened"
+    ],
+    "donor": [
+      "active",
+      "deferred",
+      "inactive",
+      "permanently_deferred"
+    ],
+    "crossmatch": [
+      "partially_compatible",
+      "pending",
+      "waived"
+    ],
+    "transfusion": [
+      "cancelled",
+      "dispensed",
+      "ordered",
+      "reacted"
+    ]
+  },
+  "vocabulary_drift": {
+    "in_BloodBankState_not_a_table_key": [
+      "cancelled",
+      "crossmatch_testing",
+      "discarded",
+      "rejected",
+      "sample_expired",
+      "sample_rejected"
+    ],
+    "table_keys_absent_from_BloodBankState": [
+      "available",
+      "issued_order",
+      "ordered_transfusion",
+      "received_sample",
+      "testing_crossmatch",
+      "verified"
+    ]
+  },
+  "target_model": {
+    "signature": "_TRANSITIONS: dict[tuple[str, str], frozenset[str]]  # (entity, state) -> targets",
+    "entity_default_removed": true,
+    "applied": false,
+    "why_not_applied": "Applying the keying without the attribution would convert every currently-permitted transition into a refusal at runtime — a clinical regression dressed as a correctness fix."
+  },
+  "blocked": {
+    "status": "BLOCKED — CLINICAL OWNER REQUIRED",
+    "questions": [
+      "For each of the 4 colliding states, which entity owns it and what are that entity's legal transitions out of it?",
+      "For each of the 28 synthetic keys, which entity owns it, and does its real name differ from the collision-dodging one?"
+    ]
+  },
+  "sequencing": "The mechanical keying must land in the same change as the attribution, never before it.",
+  "batch_2_6": {
+    "generated": "2026-09-10T14:08:33Z",
+    "head_commit": "0eb52d0e2da648ae18692e62629dd0465019aab6",
+    "correction_to_batch_2_5": "Section 4 said a shared row means 'a donation in progress is validated against transfusion rules'. Measured, that does not happen: donations are never passed to transition(). NR-007 is a latent trap that fires when a new entity is wired up (as in NR-004 and NR-020), not an active mis-validation.",
+    "transition_call_sites": {
+      "blood_unit": 11,
+      "transfusion": 2,
+      "crossmatch": 0,
+      "donation": 0,
+      "donor": 0
+    },
+    "attribution": [
+      {
+        "state": "completed",
+        "claimants": [
+          "donation",
+          "transfusion"
+        ],
+        "reaches_transition": "transfusion",
+        "owner": "transfusion",
+        "live_outgoing": [],
+        "migration_needed": false
+      },
+      {
+        "state": "in_progress",
+        "claimants": [
+          "donation",
+          "transfusion"
+        ],
+        "reaches_transition": "transfusion",
+        "owner": "transfusion",
+        "live_outgoing": [
+          "completed",
+          "reaction_suspected"
+        ],
+        "migration_needed": false
+      },
+      {
+        "state": "expired",
+        "claimants": [
+          "blood_unit",
+          "donor"
+        ],
+        "reaches_transition": "blood_unit",
+        "owner": "blood_unit",
+        "live_outgoing": [
+          "discarded"
+        ],
+        "migration_needed": false
+      },
+      {
+        "state": "discarded",
+        "claimants": [
+          "blood_unit",
+          "donation"
+        ],
+        "reaches_transition": "blood_unit",
+        "owner": "blood_unit",
+        "live_outgoing": "not a key — terminal by absence",
+        "migration_needed": false
+      }
+    ],
+    "attribution_status": "ATTRIBUTED — all four collisions, by call-site evidence, not judgement",
+    "no_migration_required": "No colliding value appears as a server_default on a Blood Bank table. completed/in_progress appear as defaults in pharmacy_sales, national_trust_platform and nursing_platform — different domains, different state machines.",
+    "still_blocked": {
+      "subject": "the 28 synthetic keys",
+      "status": "BLOCKED — CLINICAL OWNER REQUIRED",
+      "why": "They describe order, sample, crossmatch and reaction lifecycles, and none of those entities is ever passed to transition(). Three have enums but no call site; order, sample and reaction have no lifecycle enum at all. Attributing them means deciding what those lifecycles are.",
+      "consequence": "Those 28 rows govern nothing today. They would begin governing the moment the corresponding entity is wired up, and would collide with blood_unit and transfusion on the four attributed states."
+    },
+    "guard": {
+      "file": "backend/tests/blood_bank/test_state_registry_guard.py",
+      "assertions": 4,
+      "state_machine_modified": false
+    }
+  },
+  "batch_2_7": {
+    "generated": "2026-09-10T15:49:08Z",
+    "head_commit": "7319dc0d0be92d1c90280152f801342b8d33fa02",
+    "method": "For each synthetic key: is it written by code outside state_machine.py, and can any transition arrive at it?",
+    "summary": {
+      "LIVE": 7,
+      "DEAD_SYNTHETIC": 6,
+      "UNRESOLVED": 15
+    },
+    "LIVE": {
+      "keys": [
+        "collected",
+        "identified",
+        "received",
+        "released",
+        "returned",
+        "testing",
+        "validated"
+      ],
+      "evidence": "written by Blood Bank code; all are blood_unit or patient-sample states, and blood_unit is a transition() participant",
+      "action": "keep; they belong to the attributed entities"
+    },
+    "DEAD_SYNTHETIC": {
+      "keys": [
+        "crossmatch_requested",
+        "draft",
+        "issued_order",
+        "ordered_transfusion",
+        "received_sample",
+        "testing_crossmatch"
+      ],
+      "evidence": "no code writes them AND no transition can arrive at them — unreachable in both directions",
+      "note": "four are the explicit <state>_<entity> compounds invented to dodge collisions",
+      "action": "RETIRE candidates; they govern nothing and can never be entered"
+    },
+    "UNRESOLVED": {
+      "keys": [
+        "classification",
+        "clinical_assessment",
+        "compatibility_pending",
+        "investigation",
+        "reaction_suspected",
+        "ready",
+        "received_at_bedside",
+        "requested",
+        "resolution",
+        "reviewed",
+        "sample_received",
+        "sample_required",
+        "started",
+        "transfusion_stopped",
+        "verification"
+      ],
+      "evidence": "reachable as a transition target but no code writes them; they describe order, sample, crossmatch and reaction lifecycles whose entities are never passed to transition()",
+      "status": "BLOCKED — CLINICAL OWNER REQUIRED",
+      "why": "Attributing them means first deciding what those entities' lifecycles are. Order, sample and reaction have no lifecycle enum at all."
+    },
+    "state_machine_modified": false,
+    "states_renamed": false
+  }
+}

@@ -132,7 +132,7 @@ class HospitalService:
 
     @staticmethod
     def _get_entity(db: Session, model, entity_id: int, lab_id: int, parent_filter=None):
-        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, not model.is_deleted)
+        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, ~model.is_deleted)
         if parent_filter is not None:
             q = q.filter(parent_filter)
         entity = q.first()
@@ -282,6 +282,7 @@ class HospitalService:
         bed_id: int,
         patient_id: int,
         *,
+        actor_role: str,
         expected_version: int,
         reason: str | None = None,
         diagnosis: str | None = None,
@@ -320,7 +321,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=actor_role,
             lab_id=lab_id,
             details={
                 "patient_id": patient_id,
@@ -339,6 +340,7 @@ class HospitalService:
         user_id: int,
         bed_id: int,
         *,
+        actor_role: str,
         expected_version: int,
         discharge_reason: str | None = None,
     ) -> Bed:
@@ -372,7 +374,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=actor_role,
             lab_id=lab_id,
             details={
                 "discharge_reason": discharge_reason,
@@ -391,6 +393,7 @@ class HospitalService:
         from_bed_id: int,
         to_bed_id: int,
         *,
+        actor_role: str,
         from_expected_version: int,
         to_expected_version: int,
         reason: str | None = None,
@@ -444,7 +447,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(from_bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=actor_role,
             lab_id=lab_id,
             details={
                 "to_bed_id": to_bed_id,
@@ -471,6 +474,7 @@ class HospitalService:
         user_id: int,
         ot_id: int,
         *,
+        actor_role: str,
         expected_version: int,
         next_status: str,
         surgery_id: int | None = None,
@@ -512,7 +516,7 @@ class HospitalService:
             resource_type="hospital_operation_theater",
             resource_id=str(ot_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=actor_role,
             lab_id=lab_id,
             details={
                 "state_before": state_before,
@@ -529,6 +533,8 @@ class HospitalService:
         lab_id: int,
         user_id: int,
         data: dict[str, Any],
+        *,
+        actor_role: str,
     ) -> SurgicalSafetyChecklist:
         theater_id = int(data["operation_theater_id"])
         theater = db.query(OperationTheater).filter(
@@ -582,7 +588,7 @@ class HospitalService:
             resource_type="hospital_surgical_safety_checklist",
             resource_id=str(checklist.id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=actor_role,
             lab_id=lab_id,
             details={
                 "operation_theater_id": theater_id,

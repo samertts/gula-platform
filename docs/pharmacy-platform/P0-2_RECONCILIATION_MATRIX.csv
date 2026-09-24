@@ -1,0 +1,868 @@
+table,column,orm_type,pg_type,nullable_orm,nullable_pg,default_orm,default_pg,pk_orm,pk_pg,fk_orm,fk_pg,unique_orm,unique_pg,index_orm,index_pg,orm_only,db_only,rename_pair,rename_status,classification,reason
+pharmacy_allergy_rules,allergen,,VARCHAR(200),,False,,,,False,,,,False,,True,False,True,allergen_system,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'allergen_system'; rename the ORM attribute, do not add a second column"
+pharmacy_allergy_rules,allergen_code,VARCHAR(50),VARCHAR(50),False,True,,,False,False,,,False,False,True,False,False,False,,,RECONCILE,nullable False != True
+pharmacy_allergy_rules,allergen_system,VARCHAR(20),,True,,,,False,,,,False,,False,,True,False,allergen,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'allergen' (VARCHAR(200))
+pharmacy_allergy_rules,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_allergy_rules,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_allergy_rules,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_allergy_rules,description,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_allergy_rules,drug_code,VARCHAR(50),,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_allergy_rules,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_allergy_rules,evidence_level,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_allergy_rules,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_allergy_rules,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_allergy_rules,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_allergy_rules_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_allergy_rules,is_active,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_allergy_rules,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_allergy_rules,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_allergy_rules,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_allergy_rules,reaction,VARCHAR(500),,True,,,,False,,,,False,,False,,True,False,reaction_type,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'reaction_type' (VARCHAR(100))
+pharmacy_allergy_rules,reaction_type,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,reaction,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'reaction'; rename the ORM attribute, do not add a second column"
+pharmacy_allergy_rules,recommendation,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_allergy_rules,severity,interactionseverity,VARCHAR(20),False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTERACTIONSEVERITY != VARCHAR(20)
+pharmacy_allergy_rules,source,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_allergy_rules,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_allergy_rules,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_allergy_rules,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_allergy_rules,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,algorithms,,JSON,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_clinical_guidelines,condition,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_clinical_guidelines,condition_codes,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_clinical_guidelines,content,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_clinical_guidelines,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,drug_codes,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_clinical_guidelines,drug_recommendations,,JSON,,True,,,,False,,,,False,,False,False,True,recommendations,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'recommendations'; rename the ORM attribute, do not add a second column"
+pharmacy_clinical_guidelines,effective_from,,DATE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_clinical_guidelines,effective_until,,DATE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_clinical_guidelines,evidence_level,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_clinical_guidelines,fhir_id,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,fhir_resource_type,VARCHAR(32),VARCHAR(32),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,guideline_code,VARCHAR(50),VARCHAR(50),False,False,,,False,False,,,True,True,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,guideline_type,,VARCHAR(50),,False,,,,False,,,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_clinical_guidelines,icd_code,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_clinical_guidelines,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_clinical_guidelines_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_clinical_guidelines,is_active,BOOLEAN,BOOLEAN,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_clinical_guidelines,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_clinical_guidelines,recommendations,JSON,,True,,,,False,,,,False,,False,,True,False,drug_recommendations,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_recommendations' (JSON)
+pharmacy_clinical_guidelines,source,VARCHAR(200),VARCHAR(200),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,summary,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_clinical_guidelines,title,VARCHAR(300),VARCHAR(300),False,False,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,title_ar,VARCHAR(300),VARCHAR(300),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_clinical_guidelines,version,VARCHAR(20),VARCHAR(20),True,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,nullable True != False
+pharmacy_contraindication_rules,clinical_consequence,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_contraindication_rules,condition_code,VARCHAR(50),,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_contraindication_rules,condition_system,VARCHAR(20),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_contraindication_rules,contraindication_type,,VARCHAR(50),,False,,,,False,,,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_contraindication_rules,contraindication_value,,VARCHAR(300),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_contraindication_rules,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,description,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,drug_code,VARCHAR(50),,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_contraindication_rules,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_contraindication_rules,evidence_level,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_contraindication_rules,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_contraindication_rules,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_contraindication_rules,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_contraindication_rules_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_contraindication_rules,is_active,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_contraindication_rules,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_contraindication_rules,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_contraindication_rules,recommendation,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,severity,interactionseverity,VARCHAR(20),False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTERACTIONSEVERITY != VARCHAR(20)
+pharmacy_contraindication_rules,source,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_contraindication_rules,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_contraindication_rules,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_contraindication_rules,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,assigned_to,VARCHAR(26),INTEGER,True,True,,,False,False,national_practitioners.id,lab_users.id,False,False,False,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; fk national_practitioners.id != lab_users.id
+pharmacy_dispense_queue,completed_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_queue,completion_time,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_queue,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,entered_at,,TIMESTAMP WITH TIME ZONE,,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_dispense_queue,estimated_wait_minutes,,INTEGER,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_queue,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_queue,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_queue,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_dispense_queue_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_dispense_queue,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_dispense_queue,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_queue,notes,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,patient_id,,INTEGER,,True,,,,False,,patients.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_queue,pickup_time,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_queue,prescription_id,VARCHAR(26),INTEGER,False,False,,,False,False,pharmacy_prescriptions.id,pharmacy_prescriptions.id,False,False,True,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_dispense_queue,prescription_item_id,,INTEGER,,True,,,,False,,pharmacy_prescription_items.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_queue,priority,VARCHAR(20),INTEGER,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(20) != INTEGER
+pharmacy_dispense_queue,queue_number,,VARCHAR(20),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_dispense_queue,queued_at,TIMESTAMP WITH TIME ZONE,,False,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_queue,ready_time,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_queue,started_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_queue,status,dispensestatus,VARCHAR(20),False,False,python-default,'waiting'::character varying,False,False,,,False,False,False,True,False,False,,,RECONCILE,type DISPENSESTATUS != VARCHAR(20)
+pharmacy_dispense_queue,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_queue,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_queue,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,batch_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_drug_batches.id,pharmacy_drug_batches.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_dispense_records,cost_price,"NUMERIC(12, 2)",,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,counseling_provided,BOOLEAN,,True,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,counselled_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,counselled_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,days_supply,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,discount,"NUMERIC(12, 2)",,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,dispense_number,,VARCHAR(30),,False,,,,False,,,,True,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_dispense_records,dispensed_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,False,python-default,,False,False,,,False,False,False,True,False,False,,,RECONCILE,nullable True != False
+pharmacy_dispense_records,dispensed_by,VARCHAR(26),INTEGER,True,False,,,False,False,national_practitioners.id,lab_users.id,False,False,True,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; nullable True != False; fk national_practitioners.id != lab_users.id
+pharmacy_dispense_records,dosage_dispensed,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_dispense_records,expiry_date,DATE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,fhir_id,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,fhir_resource_type,VARCHAR(32),VARCHAR(32),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_dispense_records_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_dispense_records,instructions,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,is_counselled,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,is_verified,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_dispense_records,label_notes,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,lot_number,VARCHAR(100),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,patient_id,VARCHAR(26),INTEGER,False,True,,,False,False,national_patients.id,patients.id,False,False,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; nullable False != True; fk national_patients.id != patients.id
+pharmacy_dispense_records,patient_signature,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,pharmacist_notes,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,prescription_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_prescriptions.id,pharmacy_prescriptions.id,False,False,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_dispense_records,prescription_item_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_prescription_items.id,pharmacy_prescription_items.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_dispense_records,quantity_dispensed,INTEGER,DOUBLE PRECISION,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT
+pharmacy_dispense_records,quantity_unit,VARCHAR(50),VARCHAR(20),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_dispense_records,selling_price,"NUMERIC(12, 2)",,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,status,dispensestatus,,False,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,total_amount,"NUMERIC(12, 2)",,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dispense_records,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dispense_records,verified_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dispense_records,verified_by,VARCHAR(26),INTEGER,True,True,,,False,False,national_practitioners.id,lab_users.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; fk national_practitioners.id != lab_users.id
+pharmacy_dispense_records,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,age_max_months,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,age_max_years,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,age_min_months,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,age_min_years,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,breastfeeding_note,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,dose_max,VARCHAR(50),DOUBLE PRECISION,True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(50) != FLOAT
+pharmacy_dose_guidelines,dose_min,VARCHAR(50),DOUBLE PRECISION,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(50) != FLOAT
+pharmacy_dose_guidelines,dose_unit,VARCHAR(50),VARCHAR(30),False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(30)
+pharmacy_dose_guidelines,drug_code,VARCHAR(50),,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_dose_guidelines,duration,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,evidence_level,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,frequency,VARCHAR(200),VARCHAR(100),True,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(200) != VARCHAR(100); nullable True != False
+pharmacy_dose_guidelines,geriatric_note,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,hepatic_adjustment,JSON,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type JSON != TEXT
+pharmacy_dose_guidelines,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_dose_guidelines_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_dose_guidelines,indication,,VARCHAR(300),,True,,,,False,,,,False,,True,False,True,indication_code,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'indication_code'; rename the ORM attribute, do not add a second column"
+pharmacy_dose_guidelines,indication_code,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,indication,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'indication' (VARCHAR(300))
+pharmacy_dose_guidelines,is_active,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,max_daily_dose,VARCHAR(50),DOUBLE PRECISION,True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(50) != FLOAT
+pharmacy_dose_guidelines,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,pediatric_note,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,pregnancy_category,,VARCHAR(10),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,pregnancy_note,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_dose_guidelines,renal_adjustment,JSON,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type JSON != TEXT
+pharmacy_dose_guidelines,route,VARCHAR(100),VARCHAR(50),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(100) != VARCHAR(50)
+pharmacy_dose_guidelines,source,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_dose_guidelines,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,weight_max_kg,FLOAT,DOUBLE PRECISION,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_dose_guidelines,weight_min_kg,FLOAT,DOUBLE PRECISION,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,batch_number,VARCHAR(100),VARCHAR(100),False,False,,,False,False,,,False,True,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,cost_price,"NUMERIC(12, 2)",,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_batches,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,drug_catalog_id,VARCHAR(26),,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_drug_batches,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,True,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_batches,expiry_date,DATE,DATE,False,False,,,False,False,,,False,False,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,fhir_id,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,fhir_resource_type,VARCHAR(32),VARCHAR(32),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_drug_batches_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_drug_batches,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,is_quarantined,BOOLEAN,BOOLEAN,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_drug_batches,location,VARCHAR(200),VARCHAR(100),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(200) != VARCHAR(100)
+pharmacy_drug_batches,manufacturer_batch,VARCHAR(100),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_batches,manufacturing_date,DATE,DATE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_batches,quantity_initial,INTEGER,,False,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_batches,quantity_received,,DOUBLE PRECISION,,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_batches,quantity_remaining,INTEGER,DOUBLE PRECISION,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT
+pharmacy_drug_batches,quarantine_reason,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_batches,received_by,VARCHAR(26),INTEGER,True,True,,,False,False,,lab_users.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; fk None != lab_users.id
+pharmacy_drug_batches,received_date,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,nullable True != False
+pharmacy_drug_batches,selling_price,"NUMERIC(12, 2)","NUMERIC(12, 4)",True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,"length/precision NUMERIC(12, 2) != NUMERIC(12, 4)"
+pharmacy_drug_batches,status,,VARCHAR(20),,False,,'active'::character varying,,False,,,,False,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_batches,storage_condition,storagecondition,VARCHAR(100),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type STORAGECONDITION != VARCHAR(100)
+pharmacy_drug_batches,supplier,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_batches,supplier_id,,INTEGER,,True,,,,False,,pharmacy_drug_suppliers.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_batches,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_batches,unit_cost,,"NUMERIC(12, 4)",,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_batches,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_batches,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,atc_code,VARCHAR(20),VARCHAR(20),True,True,,,False,False,,,False,False,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,atc_description,VARCHAR(300),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,barcode_gs1,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,barcode_type,VARCHAR(20),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,brand_name,VARCHAR(300),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,category,drugcategory,,True,,,,False,,,,False,,False,,True,False,therapeutic_category,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'therapeutic_category' (VARCHAR(100))
+pharmacy_drug_catalog,code,VARCHAR(50),,False,,,,False,,,,True,,False,,True,False,drug_code,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_code' (VARCHAR(50))
+pharmacy_drug_catalog,controlled_substance_schedule,,VARCHAR(10),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,country_of_origin,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,dosage_form,,VARCHAR(50),,False,,,,False,,,,False,,False,False,True,form,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'form'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_catalog,drug_class,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,drug_code,,VARCHAR(50),,False,,,,False,,,,True,,True,False,True,code,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'code'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_catalog,drug_id,,UUID,,False,,,,False,,,,True,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_catalog,drug_images,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,drug_name,,VARCHAR(300),,False,,,,False,,,,False,,False,False,True,name,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_catalog,drug_name_ar,,VARCHAR(300),,True,,,,False,,,,False,,False,False,True,name_ar,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name_ar'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_catalog,fhir_id,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,fhir_resource_type,VARCHAR(32),VARCHAR(32),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,form,dosageform,,True,,,,False,,,,False,,False,,True,False,dosage_form,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'dosage_form' (VARCHAR(50))
+pharmacy_drug_catalog,generic_name,VARCHAR(300),VARCHAR(300),True,True,,,False,False,,,False,False,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_drug_catalog_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_drug_catalog,ingredients,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,is_active,BOOLEAN,BOOLEAN,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,is_antibiotic,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,is_controlled,BOOLEAN,,True,,python-default,,False,,,,False,,False,,True,False,is_controlled_substance,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'is_controlled_substance' (BOOLEAN)
+pharmacy_drug_catalog,is_controlled_substance,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,is_controlled,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'is_controlled'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_catalog,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,is_narcotic,BOOLEAN,,True,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,is_refrigerated,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,lactation_category,VARCHAR(10),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,manufacturer,VARCHAR(200),VARCHAR(200),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,manufacturer_code,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,max_daily_dosage,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,max_daily_dosage_mg,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,max_daily_dose,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,min_age,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,name,VARCHAR(300),,False,,,,False,,,,False,,False,,True,False,drug_name,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_name' (VARCHAR(300))
+pharmacy_drug_catalog,name_ar,VARCHAR(300),,True,,,,False,,,,False,,False,,True,False,drug_name_ar,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_name_ar' (VARCHAR(300))
+pharmacy_drug_catalog,package_description,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,pregnancy_category,VARCHAR(10),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,requires_prescription,BOOLEAN,BOOLEAN,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,route,routeofadministration,,True,,,,False,,,,False,,False,,True,False,route_of_administration,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'route_of_administration' (VARCHAR(50))
+pharmacy_drug_catalog,route_of_administration,,VARCHAR(50),,True,,,,False,,,,False,,False,False,True,route,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'route'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_catalog,side_effects,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,strength,,VARCHAR(50),,True,,,,False,,,,False,,False,False,True,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_drug_catalog,strength_unit,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_drug_catalog,strength_value,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_drug_catalog,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,therapeutic_category,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,category,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'category'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_catalog,therapeutic_class,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_catalog,unit,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_catalog,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_catalog,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,clinical_consequence,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_interaction_rules,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,description,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,drug_a_code,VARCHAR(50),,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,drug_b_code,VARCHAR(50),,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,drug_id_a,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,True,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_interaction_rules,drug_id_b,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,True,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_interaction_rules,evidence_level,VARCHAR(50),VARCHAR(20),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_drug_interaction_rules,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_drug_interaction_rules_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_drug_interaction_rules,is_active,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_interaction_rules,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,mechanism,VARCHAR(500),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,recommendation,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,reference,VARCHAR(500),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_interaction_rules,severity,interactionseverity,VARCHAR(20),False,False,,,False,False,,,False,False,False,True,False,False,,,RECONCILE,type INTERACTIONSEVERITY != VARCHAR(20)
+pharmacy_drug_interaction_rules,source,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_interaction_rules,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_interaction_rules,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_interaction_rules,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,action_taken,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,adverse_reaction,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,drug_code,VARCHAR(50),,False,,,,False,,,,True,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_monitoring,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_monitoring,fhir_id,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,fhir_resource_type,VARCHAR(32),VARCHAR(32),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_drug_monitoring_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_drug_monitoring,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,is_within_range,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_drug_monitoring,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_monitoring,monitoring_date,,TIMESTAMP WITH TIME ZONE,,False,,,,False,,,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_monitoring,monitoring_frequency,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_monitoring,monitoring_type,,VARCHAR(50),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_monitoring,next_monitoring_date,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,notes,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,patient_id,,INTEGER,,False,,,,False,,patients.id,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_monitoring,performed_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,prescription_id,,INTEGER,,True,,,,False,,pharmacy_prescriptions.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,required_tests,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_monitoring,severity,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,therapeutic_range,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_monitoring,therapeutic_range_high,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,therapeutic_range_low,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,toxic_level,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_monitoring,unit,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_monitoring,value,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,value_numeric,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_monitoring,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,approved_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_returns,approved_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_returns,batch_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_drug_batches.id,pharmacy_drug_batches.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_drug_returns,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,disposition,VARCHAR(50),VARCHAR(30),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(30)
+pharmacy_drug_returns,disposition_notes,,TEXT,,True,,,,False,,,,False,,False,False,True,notes,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'notes'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_returns,drug_catalog_id,VARCHAR(26),,True,,,,False,,pharmacy_drug_catalog.id,,False,,False,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_drug_returns,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_returns,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_returns,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_returns,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_drug_returns_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_drug_returns,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_drug_returns,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_returns,notes,TEXT,,True,,,,False,,,,False,,False,,True,False,disposition_notes,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'disposition_notes' (TEXT)
+pharmacy_drug_returns,patient_id,VARCHAR(26),INTEGER,True,True,,,False,False,national_patients.id,patients.id,False,False,True,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; fk national_patients.id != patients.id
+pharmacy_drug_returns,prescription_id,VARCHAR(26),,True,,,,False,,pharmacy_prescriptions.id,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_returns,quantity,INTEGER,DOUBLE PRECISION,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT
+pharmacy_drug_returns,return_reason,VARCHAR(500),TEXT,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(500) != TEXT
+pharmacy_drug_returns,return_type,,VARCHAR(30),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_returns,returned_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,returned_by,VARCHAR(26),INTEGER,True,True,,,False,False,,lab_users.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; fk None != lab_users.id
+pharmacy_drug_returns,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_returns,unit,,VARCHAR(20),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_drug_returns,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_returns,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,alternative_drug_catalog_id,VARCHAR(26),VARCHAR(26),False,False,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,approval_level,VARCHAR(32),VARCHAR(32),False,False,python-default,'pharmacist'::character varying,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,approved_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,approved_by,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,citizen_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,consumed_sale_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,pharmacy_sales.id,pharmacy_sales.id,False,False,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_substitution_requests,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_substitution_requests,id,VARCHAR(26),VARCHAR(26),False,False,python-default,,True,True,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,false,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_drug_substitution_requests,metadata,JSON,JSON,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,original_drug_catalog_id,VARCHAR(26),VARCHAR(26),False,False,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,patient_consent,BOOLEAN,BOOLEAN,False,False,python-default,false,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,patient_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,patient_notified_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,prescription_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,quantity,INTEGER,INTEGER,False,False,python-default,1,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,reason,VARCHAR(500),VARCHAR(500),False,False,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,rule_id,VARCHAR(26),VARCHAR(26),False,False,,,False,False,pharmacy_drug_substitution_rules.id,pharmacy_drug_substitution_rules.id,False,False,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,status,VARCHAR(32),VARCHAR(32),False,False,python-default,'pending'::character varying,False,False,,,False,False,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_requests,version,INTEGER,INTEGER,False,False,python-default,1,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,alternative_drug_catalog_id,INTEGER,INTEGER,False,False,,,False,False,pharmacy_drug_catalog.id,pharmacy_drug_catalog.id,False,True,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,approval_level,VARCHAR(32),VARCHAR(32),False,False,python-default,'pharmacist'::character varying,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,equivalence_type,VARCHAR(32),VARCHAR(32),False,False,python-default,'generic'::character varying,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_substitution_rules,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_substitution_rules,id,VARCHAR(26),VARCHAR(26),False,False,python-default,,True,True,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,is_active,BOOLEAN,BOOLEAN,False,False,python-default,true,False,False,,,False,False,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,false,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_drug_substitution_rules,metadata,JSON,JSON,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,notes,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,original_drug_catalog_id,INTEGER,INTEGER,False,False,,,False,False,pharmacy_drug_catalog.id,pharmacy_drug_catalog.id,False,True,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,requires_patient_consent,BOOLEAN,BOOLEAN,False,False,python-default,true,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_substitution_rules,version,INTEGER,INTEGER,False,False,python-default,1,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,address,TEXT,VARCHAR(500),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type TEXT != VARCHAR(500)
+pharmacy_drug_suppliers,code,VARCHAR(50),,False,,,,False,,,,True,,False,,True,False,supplier_code,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'supplier_code' (VARCHAR(50))
+pharmacy_drug_suppliers,contact_person,VARCHAR(200),VARCHAR(200),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,contract_end,,DATE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_suppliers,contract_start,,DATE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_suppliers,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,email,VARCHAR(200),VARCHAR(100),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(200) != VARCHAR(100)
+pharmacy_drug_suppliers,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_suppliers,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_suppliers,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_drug_suppliers_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_drug_suppliers,is_active,BOOLEAN,BOOLEAN,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_drug_suppliers,license_number,VARCHAR(100),VARCHAR(100),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_drug_suppliers,name,VARCHAR(200),,False,,,,False,,,,False,,False,,True,False,supplier_name,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'supplier_name' (VARCHAR(200))
+pharmacy_drug_suppliers,name_ar,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,supplier_name_ar,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'supplier_name_ar' (VARCHAR(200))
+pharmacy_drug_suppliers,payment_terms,VARCHAR(500),VARCHAR(200),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(500) != VARCHAR(200)
+pharmacy_drug_suppliers,phone,VARCHAR(50),VARCHAR(20),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_drug_suppliers,supplier_code,,VARCHAR(50),,False,,,,False,,,,True,,True,False,True,code,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'code'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_suppliers,supplier_name,,VARCHAR(200),,False,,,,False,,,,False,,False,False,True,name,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_suppliers,supplier_name_ar,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,name_ar,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name_ar'; rename the ORM attribute, do not add a second column"
+pharmacy_drug_suppliers,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_drug_suppliers,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_drug_suppliers,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_forecasts,actual_consumption,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_forecasts,confidence_lower,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,confidence_score,FLOAT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_forecasts,confidence_upper,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_forecasts,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_forecasts,current_stock,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,days_until_stockout,,INTEGER,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_forecasts,drug_catalog_id,VARCHAR(26),,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_inventory_forecasts,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_inventory_forecasts,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_forecasts,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_forecasts,forecast_date,,DATE,,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_inventory_forecasts,forecast_period_end,,DATE,,False,,,,False,,,,False,,False,False,True,period_end,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'period_end'; rename the ORM attribute, do not add a second column"
+pharmacy_inventory_forecasts,forecast_period_start,,DATE,,False,,,,False,,,,False,,True,False,True,period_start,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'period_start'; rename the ORM attribute, do not add a second column"
+pharmacy_inventory_forecasts,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_inventory_forecasts_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_inventory_forecasts,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_forecasts,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_inventory_forecasts,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_forecasts,model_used,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,notes,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,period_end,DATE,,False,,,,False,,,,False,,False,,True,False,forecast_period_end,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'forecast_period_end' (DATE)
+pharmacy_inventory_forecasts,period_start,DATE,,False,,,,False,,,,False,,False,,True,False,forecast_period_start,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'forecast_period_start' (DATE)
+pharmacy_inventory_forecasts,predicted_consumption,INTEGER,DOUBLE PRECISION,True,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT; nullable True != False
+pharmacy_inventory_forecasts,predicted_consumption_unit,,VARCHAR(20),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_inventory_forecasts,recommendation_quantity,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_forecasts,recommended_reorder_quantity,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,reorder_recommendation,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_forecasts,seasonal_factor,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,trend_factor,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_forecasts,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_forecasts,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_forecasts,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfer_items,batch_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_drug_batches.id,pharmacy_drug_batches.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_inventory_transfer_items,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfer_items,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfer_items,deleted_at,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfer_items,drug_catalog_id,VARCHAR(26),,False,,,,False,,pharmacy_drug_catalog.id,,False,,False,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_inventory_transfer_items,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_inventory_transfer_items,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfer_items,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfer_items,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_inventory_transfer_items_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_inventory_transfer_items,is_deleted,BOOLEAN,,False,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfer_items,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfer_items,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfer_items,notes,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfer_items,quantity,,DOUBLE PRECISION,,False,,,,False,,,,False,,False,False,True,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_inventory_transfer_items,quantity_received,INTEGER,,True,,,,False,,,,False,,False,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_inventory_transfer_items,quantity_requested,INTEGER,,False,,,,False,,,,False,,False,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_inventory_transfer_items,quantity_shipped,INTEGER,,True,,,,False,,,,False,,False,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_inventory_transfer_items,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfer_items,transfer_id,VARCHAR(26),INTEGER,False,False,,,False,False,pharmacy_inventory_transfers.id,pharmacy_inventory_transfers.id,False,False,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_inventory_transfer_items,unit,,VARCHAR(20),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_inventory_transfer_items,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfer_items,updated_by,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfer_items,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,approved_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,approved_by,VARCHAR(26),INTEGER,True,True,,,False,False,,lab_users.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; fk None != lab_users.id
+pharmacy_inventory_transfers,cancelled_reason,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,dispatch_date,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfers,dispatched_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,dispatched_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfers,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfers,from_store_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_stores.id,pharmacy_stores.id,False,False,False,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_inventory_transfers,from_warehouse_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_warehouses.id,pharmacy_warehouses.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_inventory_transfers,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_inventory_transfers_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_inventory_transfers,initiated_by,VARCHAR(26),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfers,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_inventory_transfers,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfers,notes,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,received_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,received_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,received_date,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_inventory_transfers,requested_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,requested_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,status,VARCHAR(50),VARCHAR(20),False,False,python-default,'draft'::character varying,False,False,,,False,False,False,True,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_inventory_transfers,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_inventory_transfers,to_store_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_stores.id,pharmacy_stores.id,False,False,False,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_inventory_transfers,to_warehouse_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_warehouses.id,pharmacy_warehouses.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_inventory_transfers,transfer_number,,VARCHAR(30),,False,,,,False,,,,True,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_inventory_transfers,transfer_type,,VARCHAR(30),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_inventory_transfers,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_inventory_transfers,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,batch_id,,INTEGER,,True,,,,False,,pharmacy_drug_batches.id,,False,,False,False,True,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_prescription_items,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,dosage,,VARCHAR(100),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_prescription_items,dose_quantity,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,dose_unit,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,drug_batch_id,VARCHAR(26),,True,,,,False,,pharmacy_drug_batches.id,,False,,False,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_prescription_items,drug_catalog_id,VARCHAR(26),,True,,,,False,,pharmacy_drug_catalog.id,,False,,True,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_prescription_items,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_prescription_items,drug_name,,VARCHAR(300),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_prescription_items,duration,INTEGER,VARCHAR(100),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != VARCHAR(100)
+pharmacy_prescription_items,duration_unit,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,form,VARCHAR(100),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,frequency,VARCHAR(200),VARCHAR(100),True,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(200) != VARCHAR(100); nullable True != False
+pharmacy_prescription_items,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_prescription_items_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_prescription_items,instructions,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,is_substitution_allowed,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,substitution_allowed,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'substitution_allowed'; rename the ORM attribute, do not add a second column"
+pharmacy_prescription_items,lab_id,INTEGER,,False,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,medication_code,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,medication_name,VARCHAR(300),,False,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,notes,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,patient_education,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescription_items,prescription_id,VARCHAR(26),INTEGER,False,False,,,False,False,pharmacy_prescriptions.id,pharmacy_prescriptions.id,False,False,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_prescription_items,quantity,INTEGER,DOUBLE PRECISION,True,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT; nullable True != False
+pharmacy_prescription_items,quantity_unit,VARCHAR(50),VARCHAR(20),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_prescription_items,refill_quantity,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescription_items,refills,INTEGER,,True,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,refills_used,INTEGER,,True,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,route,VARCHAR(100),VARCHAR(50),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(100) != VARCHAR(50)
+pharmacy_prescription_items,status,VARCHAR(50),VARCHAR(20),False,False,python-default,'pending'::character varying,False,False,,,False,False,False,True,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_prescription_items,strength_unit,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,strength_value,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescription_items,substitution_allowed,BOOLEAN,,True,,python-default,,False,,,,False,,False,,True,False,is_substitution_allowed,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'is_substitution_allowed' (BOOLEAN)
+pharmacy_prescription_items,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescription_items,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescription_items,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,authored_on,TIMESTAMP WITH TIME ZONE,,False,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,clinical_notes,,TEXT,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,diagnosis,VARCHAR(500),,True,,,,False,,,,False,,False,,True,False,diagnosis_description,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'diagnosis_description' (TEXT)
+pharmacy_prescriptions,diagnosis_code,VARCHAR(50),VARCHAR(20),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_prescriptions,diagnosis_description,,TEXT,,True,,,,False,,,,False,,False,False,True,diagnosis,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'diagnosis'; rename the ORM attribute, do not add a second column"
+pharmacy_prescriptions,diagnosis_system,VARCHAR(20),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,dispense_interval,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,encounter_id,VARCHAR(26),,True,,,,False,,national_encounters.id,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,fhir_id,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,fhir_resource_type,VARCHAR(32),VARCHAR(32),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_prescriptions_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_prescriptions,intent,VARCHAR(50),,False,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,is_emergency,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,is_stat,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,is_verbal,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_prescriptions,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,note,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,patient_id,VARCHAR(26),INTEGER,False,True,,,False,False,national_patients.id,patients.id,False,False,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; nullable False != True; fk national_patients.id != patients.id
+pharmacy_prescriptions,prescribed_at,,TIMESTAMP WITH TIME ZONE,,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_prescriptions,prescribed_by,,VARCHAR(200),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_prescriptions,prescriber_id,VARCHAR(26),,True,,,,False,,national_practitioners.id,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,prescriber_license,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,prescription_number,VARCHAR(50),VARCHAR(30),False,False,,,False,False,,,True,True,False,True,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(30)
+pharmacy_prescriptions,prescription_type,,VARCHAR(30),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,priority,VARCHAR(20),,True,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,refills_allowed,,INTEGER,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,refills_used,,INTEGER,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,signed_at,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,signed_by,VARCHAR(26),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,status,prescriptionstatus,VARCHAR(20),False,False,python-default,'active'::character varying,False,False,,,False,False,False,True,False,False,,,RECONCILE,type PRESCRIPTIONSTATUS != VARCHAR(20)
+pharmacy_prescriptions,substitution_allowed,BOOLEAN,,True,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_prescriptions,valid_from,DATE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,valid_to,DATE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_prescriptions,valid_until,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_prescriptions,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,actions_taken,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,affected_patients,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_recalls,affected_quantity,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_recalls,batch_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_drug_batches.id,pharmacy_drug_batches.id,False,False,False,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_recalls,completed_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_recalls,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,drug_catalog_id,VARCHAR(26),,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_recalls,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_recalls,fhir_id,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,fhir_resource_type,VARCHAR(32),VARCHAR(32),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_recalls_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_recalls,initiated_at,,TIMESTAMP WITH TIME ZONE,,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_recalls,initiated_by,VARCHAR(26),INTEGER,True,True,,,False,False,,lab_users.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; fk None != lab_users.id
+pharmacy_recalls,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_recalls,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_recalls,notes,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,notified_patients_count,,INTEGER,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_recalls,patient_notification_required,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_recalls,recall_date,TIMESTAMP WITH TIME ZONE,,False,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_recalls,recall_number,,VARCHAR(50),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_recalls,recall_reason,VARCHAR(500),TEXT,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(500) != TEXT
+pharmacy_recalls,recall_source,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_recalls,recovered_quantity,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_recalls,severity,VARCHAR(50),VARCHAR(20),False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_recalls,status,VARCHAR(50),VARCHAR(20),False,False,python-default,'active'::character varying,False,False,,,False,False,False,True,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(20)
+pharmacy_recalls,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_recalls,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_recalls,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,barcode,VARCHAR(64),VARCHAR(64),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,batch_id,VARCHAR(26),VARCHAR(26),False,False,,,False,False,pharmacy_drug_batches.id,,False,False,True,False,False,False,,,RECONCILE,fk pharmacy_drug_batches.id != None
+pharmacy_sale_lines,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,discount,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,drug_catalog_id,VARCHAR(26),VARCHAR(26),False,False,,,False,False,pharmacy_drug_catalog.id,,False,False,True,True,False,False,,,RECONCILE,fk pharmacy_drug_catalog.id != None
+pharmacy_sale_lines,expiry_date,DATE,DATE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_sale_lines,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_sale_lines,id,VARCHAR(26),VARCHAR(26),False,False,python-default,,True,True,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,false,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,False,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_sale_lines,line_cost,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,line_number,INTEGER,INTEGER,False,False,,,False,False,,,False,True,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,line_total,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,lot_number,VARCHAR(100),VARCHAR(100),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,medication_dispense_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,medication_name,VARCHAR(300),VARCHAR(300),False,False,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,medication_name_ar,VARCHAR(300),VARCHAR(300),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,metadata,JSON,JSON,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,prescription_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,pharmacy_prescriptions.id,,False,False,True,False,False,False,,,RECONCILE,fk pharmacy_prescriptions.id != None
+pharmacy_sale_lines,quantity,INTEGER,INTEGER,False,False,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,quantity_unit,VARCHAR(50),VARCHAR(50),True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,sale_id,VARCHAR(26),VARCHAR(26),False,False,,,False,False,pharmacy_sales.id,pharmacy_sales.id,False,True,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,unit_cost,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,unit_price,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sale_lines,version,INTEGER,INTEGER,False,False,python-default,1,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,billing_invoice_id,INTEGER,INTEGER,True,True,,,False,False,,billing_invoices.id,False,False,True,False,False,False,,,RECONCILE,fk None != billing_invoices.id
+pharmacy_sales,billing_patient_id,INTEGER,INTEGER,True,True,,,False,False,,patients.id,False,False,True,False,False,False,,,RECONCILE,fk None != patients.id
+pharmacy_sales,citizen_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,cost_amount,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,currency,VARCHAR(3),VARCHAR(3),False,False,python-default,'IQD'::character varying,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,discount,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,encounter_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_sales,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_sales,gross_profit,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,id,VARCHAR(26),VARCHAR(26),False,False,python-default,,True,True,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,idempotency_key,VARCHAR(128),VARCHAR(128),True,True,,,False,False,,,False,True,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,false,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_sales,metadata,JSON,JSON,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,patient_id,VARCHAR(26),VARCHAR(26),True,True,,,False,False,,,False,False,True,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,payment_method,VARCHAR(40),VARCHAR(40),False,False,python-default,'synthetic_settlement'::character varying,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,payment_status,VARCHAR(24),VARCHAR(24),False,False,python-default,'paid'::character varying,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,sale_number,VARCHAR(50),VARCHAR(50),False,False,,,False,False,,,False,True,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,sold_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,True,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,status,VARCHAR(24),VARCHAR(24),False,False,python-default,'completed'::character varying,False,False,,,False,False,False,True,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,subtotal,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,total_amount,"NUMERIC(12, 2)","NUMERIC(12, 2)",False,False,python-default,'0'::numeric,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_sales,version,INTEGER,INTEGER,False,False,python-default,1,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,available_quantity,INTEGER,,False,,python-default,,False,,,,False,,False,,True,False,quantity_available,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'quantity_available' (DOUBLE PRECISION)
+pharmacy_stock_levels,batch_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_drug_batches.id,pharmacy_drug_batches.id,False,True,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_stock_levels,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,drug_catalog_id,VARCHAR(26),,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_stock_levels,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,True,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_stock_levels,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_levels,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_levels,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_stock_levels_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_stock_levels,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_stock_levels,last_count_date,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_levels,last_counted_at,,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_levels,last_counted_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_levels,location,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_levels,max_level,INTEGER,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_levels,maximum_level,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_levels,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_levels,quantity,INTEGER,,False,,python-default,,False,,,,False,,False,,True,False,,AMBIGUOUS_RENAME,DEFER,"more than one plausible counterpart; fail-closed, must be resolved from per-column evidence before any ORM change"
+pharmacy_stock_levels,quantity_available,,DOUBLE PRECISION,,False,,,,False,,,,False,,True,False,True,available_quantity,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'available_quantity'; rename the ORM attribute, do not add a second column"
+pharmacy_stock_levels,quantity_on_hand,,DOUBLE PRECISION,,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_stock_levels,quantity_on_order,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_levels,quantity_reserved,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,reserved_quantity,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'reserved_quantity'; rename the ORM attribute, do not add a second column"
+pharmacy_stock_levels,reorder_point,INTEGER,DOUBLE PRECISION,True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT
+pharmacy_stock_levels,reorder_quantity,INTEGER,DOUBLE PRECISION,True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT
+pharmacy_stock_levels,reserved_quantity,INTEGER,,False,,python-default,,False,,,,False,,False,,True,False,quantity_reserved,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'quantity_reserved' (DOUBLE PRECISION)
+pharmacy_stock_levels,storage_condition,storagecondition,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_levels,store_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_stores.id,pharmacy_stores.id,False,True,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_stock_levels,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_levels,unit,,VARCHAR(20),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_stock_levels,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_levels,warehouse_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_warehouses.id,pharmacy_warehouses.id,False,False,True,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_stock_movements,batch_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_drug_batches.id,pharmacy_drug_batches.id,False,False,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_stock_movements,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,drug_catalog_id,VARCHAR(26),,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_stock_movements,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_stock_movements,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_movements,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_movements,from_location,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_movements,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_stock_movements_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_stock_movements,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_stock_movements,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_movements,movement_date,TIMESTAMP WITH TIME ZONE,,False,,python-default,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_movements,movement_type,stockmovementtype,VARCHAR(30),False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type STOCKMOVEMENTTYPE != VARCHAR(30)
+pharmacy_stock_movements,notes,TEXT,TEXT,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,performed_at,,TIMESTAMP WITH TIME ZONE,,False,,,,False,,,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_stock_movements,performed_by,VARCHAR(26),INTEGER,True,False,,,False,False,,lab_users.id,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; nullable True != False; fk None != lab_users.id
+pharmacy_stock_movements,quantity,INTEGER,DOUBLE PRECISION,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT
+pharmacy_stock_movements,reason,VARCHAR(500),VARCHAR(200),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(500) != VARCHAR(200)
+pharmacy_stock_movements,reference_id,VARCHAR(26),INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_stock_movements,reference_type,VARCHAR(50),VARCHAR(50),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,store_id,VARCHAR(26),,True,,,,False,,pharmacy_stores.id,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stock_movements,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_movements,to_location,,VARCHAR(100),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stock_movements,unit,,VARCHAR(20),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_stock_movements,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stock_movements,warehouse_id,VARCHAR(26),,True,,,,False,,pharmacy_warehouses.id,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stores,code,VARCHAR(50),,False,,,,False,,,,False,,False,,True,False,store_code,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'store_code' (VARCHAR(30))
+pharmacy_stores,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stores,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stores,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_stores_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_stores,is_active,BOOLEAN,BOOLEAN,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_stores,location,VARCHAR(200),VARCHAR(300),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(200) != VARCHAR(300)
+pharmacy_stores,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_stores,name,VARCHAR(200),,False,,,,False,,,,False,,False,,True,False,store_name,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'store_name' (VARCHAR(200))
+pharmacy_stores,name_ar,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,store_name_ar,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'store_name_ar' (VARCHAR(200))
+pharmacy_stores,store_code,,VARCHAR(30),,False,,,,False,,,,True,,True,False,True,code,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'code'; rename the ORM attribute, do not add a second column"
+pharmacy_stores,store_name,,VARCHAR(200),,False,,,,False,,,,False,,False,False,True,name,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name'; rename the ORM attribute, do not add a second column"
+pharmacy_stores,store_name_ar,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,name_ar,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name_ar'; rename the ORM attribute, do not add a second column"
+pharmacy_stores,store_type,VARCHAR(50),VARCHAR(30),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(50) != VARCHAR(30)
+pharmacy_stores,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_stores,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_stores,warehouse_id,VARCHAR(26),INTEGER,False,True,,,False,False,pharmacy_warehouses.id,pharmacy_warehouses.id,False,False,True,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER; nullable False != True
+pharmacy_warehouses,address,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_warehouses,capacity,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,capacity_unit,,VARCHAR(20),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,code,VARCHAR(50),,False,,,,False,,,,True,,False,,True,False,warehouse_code,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'warehouse_code' (VARCHAR(30))
+pharmacy_warehouses,contact_person,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_warehouses,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_warehouses,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_warehouses,humidity_max,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,humidity_min,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_warehouses_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_warehouses,is_active,BOOLEAN,BOOLEAN,True,True,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,is_controlled_substance_storage,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,is_refrigerated,,BOOLEAN,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,True,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_warehouses,location,VARCHAR(200),VARCHAR(300),True,True,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,length/precision VARCHAR(200) != VARCHAR(300)
+pharmacy_warehouses,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_warehouses,name,VARCHAR(200),,False,,,,False,,,,False,,False,,True,False,warehouse_name,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'warehouse_name' (VARCHAR(200))
+pharmacy_warehouses,name_ar,VARCHAR(200),,True,,,,False,,,,False,,False,,True,False,warehouse_name_ar,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'warehouse_name_ar' (VARCHAR(200))
+pharmacy_warehouses,phone,VARCHAR(50),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_warehouses,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,temperature_max,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,temperature_min,,DOUBLE PRECISION,,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_warehouses,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_warehouses,warehouse_code,,VARCHAR(30),,False,,,,False,,,,True,,True,False,True,code,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'code'; rename the ORM attribute, do not add a second column"
+pharmacy_warehouses,warehouse_name,,VARCHAR(200),,False,,,,False,,,,False,,False,False,True,name,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name'; rename the ORM attribute, do not add a second column"
+pharmacy_warehouses,warehouse_name_ar,,VARCHAR(200),,True,,,,False,,,,False,,False,False,True,name_ar,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'name_ar'; rename the ORM attribute, do not add a second column"
+pharmacy_warehouses,warehouse_type,,VARCHAR(30),,True,,,,False,,,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_waste_records,batch_id,VARCHAR(26),INTEGER,True,True,,,False,False,pharmacy_drug_batches.id,pharmacy_drug_batches.id,False,False,False,True,False,False,,,RECONCILE,type VARCHAR(26) != INTEGER
+pharmacy_waste_records,created_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,created_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,deleted_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,disposal_date,TIMESTAMP WITH TIME ZONE,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_waste_records,disposal_method,VARCHAR(100),VARCHAR(100),True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,drug_catalog_id,VARCHAR(26),,True,,,,False,,pharmacy_drug_catalog.id,,False,,True,,True,False,drug_id,ORM_NAME_OF_PHYSICAL_COLUMN,RECONCILE,same field under a different ORM name; physical column is 'drug_id' (INTEGER)
+pharmacy_waste_records,drug_id,,INTEGER,,False,,,,False,,pharmacy_drug_catalog.id,,False,,True,False,True,drug_catalog_id,PHYSICAL_NAME_OF_ORM_COLUMN,RECONCILE,"physical name of the ORM column 'drug_catalog_id'; rename the ORM attribute, do not add a second column"
+pharmacy_waste_records,fhir_id,VARCHAR(64),,True,,,,False,,,,False,,True,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_waste_records,fhir_resource_type,VARCHAR(32),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_waste_records,id,VARCHAR(26),INTEGER,False,False,python-default,nextval('pharmacy_waste_records_id_seq'::regclass),True,True,,,False,False,False,False,False,False,,,REPLACE,primary key type conflict: ORM VARCHAR(26) vs physical INTEGER
+pharmacy_waste_records,is_deleted,BOOLEAN,BOOLEAN,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,lab_id,INTEGER,INTEGER,False,False,,,False,False,,labs.id,False,False,True,True,False,False,,,RECONCILE,fk None != labs.id
+pharmacy_waste_records,metadata,JSON,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_waste_records,notes,TEXT,,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_waste_records,quantity,INTEGER,DOUBLE PRECISION,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type INTEGER != FLOAT
+pharmacy_waste_records,sync_id,,VARCHAR(26),,True,,,,False,,,,True,,True,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted
+pharmacy_waste_records,unit,,VARCHAR(20),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_waste_records,updated_at,TIMESTAMP WITH TIME ZONE,TIMESTAMP WITH TIME ZONE,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,updated_by,INTEGER,INTEGER,True,True,,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,version,INTEGER,INTEGER,False,False,python-default,,False,False,,,False,False,False,False,False,False,,,KEEP,ORM matches physical schema
+pharmacy_waste_records,waste_reason,VARCHAR(500),TEXT,False,False,,,False,False,,,False,False,False,False,False,False,,,RECONCILE,type VARCHAR(500) != TEXT
+pharmacy_waste_records,waste_type,,VARCHAR(30),,False,,,,False,,,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_waste_records,wasted_at,,TIMESTAMP WITH TIME ZONE,,False,,,,False,,,,False,,True,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_waste_records,wasted_by,,INTEGER,,False,,,,False,,lab_users.id,,False,,False,False,True,,,RECONCILE,physical NOT NULL column with no default is unknown to the ORM; any INSERT will fail
+pharmacy_waste_records,witness_by,VARCHAR(26),,True,,,,False,,,,False,,False,,True,False,,,REMOVE_FROM_ORM,ORM declares a column with no physical counterpart
+pharmacy_waste_records,witnessed_by,,INTEGER,,True,,,,False,,lab_users.id,,False,,False,False,True,,,DEFER,physical column absent from the ORM but nullable or defaulted

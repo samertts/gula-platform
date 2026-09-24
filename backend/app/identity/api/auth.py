@@ -1,7 +1,6 @@
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.services.authentication_service import AuthenticationService
@@ -25,16 +24,16 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login")
-async def login(
+def login(
     body: LoginRequest,
     request: Request,
     ip_address: str | None = None,
     user_agent: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     rate_limit_auth(request, identifier=body.login)
     service = AuthenticationService(db)
-    result = await service.login(
+    result = service.login(
         login=body.login,
         password=body.password,
         ip_address=ip_address,
@@ -46,24 +45,24 @@ async def login(
 
 
 @router.post("/refresh")
-async def refresh(
+def refresh(
     refresh_token: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     rate_limit_auth(request, max_per_minute=20)
     service = AuthenticationService(db)
-    result = await service.refresh_session(refresh_token)
+    result = service.refresh_session(refresh_token)
     if not result:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
     return result
 
 
 @router.post("/logout")
-async def logout(
+def logout(
     session_uuid: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     service = AuthenticationService(db)
-    await service.logout(session_uuid)
+    service.logout(session_uuid)
     return {"success": True}

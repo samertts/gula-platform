@@ -4,12 +4,10 @@ Every mutation of a citizen record, plus sensitive reads (summary view),
 must produce a row here. Rows are never updated or deleted from application
 code.
 """
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import JSON, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
-
-from backend.app._compat import UTC
 
 from ..core.database import Base
 

@@ -46,6 +46,34 @@ def test_state_machine_rejects_completion_without_start() -> None:
         transition("verified", "completed", entity="transfusion")
 
 
+def test_verified_transfusion_can_be_started() -> None:
+    """NR-020 regression: the transfusion lifecycle must be walkable.
+
+    "verified" was absent from the shared transition table, so
+    start_transfusion_safely could never succeed: it requires
+    status == TransfusionStatus.VERIFIED and then asks the table to validate
+    verified -> in_progress, which failed closed on an unknown state. The
+    bedside-verification workflow was unreachable end to end.
+    """
+    assert transition("verified", "in_progress", entity="transfusion") == "in_progress"
+    assert transition("in_progress", "completed", entity="transfusion") == "completed"
+
+
+def test_verified_transfusion_cannot_skip_or_reverse() -> None:
+    """The fix adds exactly one edge and no more.
+
+    Nothing may transition *into* verified through this table, and verified
+    still cannot jump straight to completed -- which the test above this one
+    has always asserted.
+    """
+    for illegal in ("completed", "ordered", "verified", "transfused", "cancelled"):
+        with pytest.raises(BloodBankWorkflowError):
+            transition("verified", illegal, entity="transfusion")
+    for state in ("ordered", "in_progress", "completed"):
+        with pytest.raises(BloodBankWorkflowError):
+            transition(state, "verified", entity="transfusion")
+
+
 def test_reserved_unit_can_return_to_the_available_pool() -> None:
     """Regression: the shared transition table must not shadow the unit lifecycle.
 

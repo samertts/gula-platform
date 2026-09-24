@@ -50,9 +50,14 @@ describe("MobileBottomNav", () => {
       screen.getByRole("link", { name: "Orders — Current page" }),
     ).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Patients" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open all sections" }),
-    ).toHaveAttribute("aria-expanded", "false");
+    // Queried by accessible name, which is the aria-label ("More"), not the
+    // tooltip title. The component is correct: the visible text is "More", so
+    // an accessible name of "Open all sections" would break WCAG 2.5.3 Label
+    // in Name. The title remains a supplementary description.
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 
   it("keeps live-mode navigation hidden until server-reflected permissions exist", () => {
@@ -83,8 +88,22 @@ describe("MobileBottomNav", () => {
       </MemoryRouter>,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Open all sections" }),
-    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("keeps the descriptive tooltip on the menu trigger", () => {
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <MobileBottomNav onOpenMenu={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+      "title",
+      "Open all sections",
+    );
   });
 });

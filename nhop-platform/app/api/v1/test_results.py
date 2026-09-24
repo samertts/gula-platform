@@ -13,16 +13,16 @@ Route order matters: static segments (``/validate``) are declared before
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, asc, desc
 from sqlalchemy.orm import Session
 
-from backend.app._compat import UTC
-
 from ...core.database import get_db
+from ...core.rbac import Role
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab import Lab
 from ...models.notification import NotificationPriority, NotificationType
@@ -39,7 +39,6 @@ from ...schemas.test_result import (
     TestResultRead,
     TestResultValidateRequest,
     TestResultValidateResponse,
-    TestResultVerifyRequest,
     TimelinePoint,
     TimelineSeries,
     ValidationWarning,
@@ -57,7 +56,9 @@ router = APIRouter(prefix="/test-results", tags=["test-results"])
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
 def _actor_id(request: Request) -> str | None:
-    return request.headers.get("X-Actor-Id")
+    # NR-127. This read the actor off the wire. Identity now comes from
+    # the server-established context; see app/core/trusted_context.py.
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:
@@ -169,6 +170,38 @@ def validate_payload(payload: TestResultValidateRequest) -> TestResultValidateRe
 
 # ─── POST /test-results/ ────────────────────────────────────────────────────
 
+#: Roles whose authority is national rather than confined to one laboratory.
+#: They are the only callers that may file a result for a lab they are not.
+_CROSS_TENANT_ROLES = frozenset({Role.ADMIN.value, Role.MINISTRY.value})
+
+
+def _require_lab_scope(request: Request, lab_id: UUID) -> None:
+    """NR-092/F2. The caller must BE the laboratory it is filing a result for.
+
+    create_test_result took lab_id from the request BODY and checked only that
+    such a lab existed and was active. Nothing established that the caller was
+    that laboratory, so a result could be filed against any real lab, for any
+    citizen, and would be indistinguishable downstream from a genuine one.
+
+    The tenant comes from the server-established context and nothing else. A
+    client cannot present a lab_id, a role or an actor id and have any of them
+    widen its scope: the body's lab_id is the RESOURCE being claimed, and this
+    compares it against the caller's own tenant rather than trusting it.
+
+    National roles keep their existing reach. Every other caller must match
+    exactly, and a caller carrying no laboratory at all matches nothing --
+    `None == None` is not "the same lab".
+    """
+    context = current_context(request)
+    if context.role in _CROSS_TENANT_ROLES:
+        return
+    if context.lab_id is None or str(context.lab_id) != str(lab_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="لا يمكن تسجيل نتيجة باسم مختبر آخر.",
+        )
+
+
 @router.post(
     "/",
     response_model=TestResultRead,
@@ -179,6 +212,11 @@ def create_test_result(
     request: Request,
     db: Session = Depends(get_db),
 ) -> TestResultRead:
+    # Authorization BEFORE any lookup: a caller that may not act for this lab
+    # must not be able to probe which health_ids or lab_ids exist by reading
+    # the difference between 403, 404 and 400.
+    _require_lab_scope(request, payload.lab_id)
+
     citizen = _require_citizen(db, payload.health_id)
 
     lab = db.query(Lab).filter(Lab.id == payload.lab_id).first()
@@ -425,10 +463,17 @@ def get_test_result(
 @router.put("/{result_id}/verify", response_model=TestResultRead)
 def verify_test_result(
     result_id: UUID,
-    payload: TestResultVerifyRequest,
     request: Request,
     db: Session = Depends(get_db),
 ) -> TestResultRead:
+    """Mark a result verified. NR-144: the verifier is the caller, not a field.
+
+    The request body named the verifying clinician, so the attestation recorded
+    against a clinical result was a client-supplied string. It is now taken
+    from the trusted context, exactly as NR-128 did for the filing laboratory a
+    few lines above. The request carries nothing; a body sent by an old client
+    is ignored rather than trusted.
+    """
     row = _require_result(db, result_id)
 
     if row.status == ResultStatus.verified:
@@ -443,7 +488,7 @@ def verify_test_result(
         )
 
     row.status = ResultStatus.verified
-    row.verified_by = payload.verified_by
+    row.verified_by = current_context(request).actor_id
     row.verified_at = datetime.now(UTC)
 
     log_action(
@@ -453,7 +498,7 @@ def verify_test_result(
         target_id=str(row.id),
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"verified_by": payload.verified_by},
+        metadata={"verified_by": row.verified_by},
     )
     db.commit()
     db.refresh(row)

@@ -1,6 +1,6 @@
 """Batch operations - process multiple orders/results efficiently."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip
+from ..services import idempotency
 from ..services.order_service import create_order
 
 router = APIRouter(prefix="/batch", tags=["batch"])
@@ -37,12 +38,35 @@ class BatchOrderRequest(BaseModel):
 def create_batch_orders(
     data: BatchOrderRequest,
     request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Create multiple orders at once."""
+    """Create multiple orders at once.
+
+    Idempotency is claimed for the batch as a whole, because the batch is one
+    HTTP request: a retry after a timeout must reproduce the same outcome for
+    all of it, including the per-item `errors`. Claiming per item instead would
+    leave the caller unable to retry the request they actually sent.
+
+    This is why `create_order` below is still called with
+    `idempotency_key=None` -- not because the items are unprotected, but
+    because the envelope around them already is, and a second claim per item
+    would refuse the replay this one is serving.
+    """
     if len(data.orders) > 50:
         raise HTTPException(status_code=400, detail="Maximum 50 orders per batch")
+
+    idem = idempotency.begin(
+        scope="batch-orders",
+        tenant_id=current_user.lab_id,
+        key=idempotency_key,
+        payload=data.model_dump(mode="json"),
+    )
+    if idem.conflict:
+        raise HTTPException(status_code=idem.conflict["status_code"], detail=idem.conflict["error"])
+    if idem.replay is not None:
+        return idem.replay
 
     # Pre-validate all patient IDs in a single query
     patient_ids = list({o.patient_id for o in data.orders})
@@ -85,6 +109,7 @@ def create_batch_orders(
                 for item in order_data.results
             ],
             ip_address=get_client_ip(request),
+            # Covered by the batch-level claim above; see the docstring.
             idempotency_key=None,
         )
 
@@ -103,7 +128,7 @@ def create_batch_orders(
     db.commit()
 
     total_critical = sum(o["critical_count"] for o in created_orders)
-    return {
+    response = {
         "message": f"Batch processed: {len(created_orders)} orders created",
         "message_ar": f"تمت المعالجة الدفعية: تم إنشاء {len(created_orders)} طلب",
         "created": created_orders,
@@ -117,3 +142,5 @@ def create_batch_orders(
         "critical_alert": total_critical > 0,
         "critical_alerts": all_critical_alerts or None,
     }
+    idem.complete(response)
+    return response

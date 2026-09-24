@@ -5,9 +5,10 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.identity.services.verification_service import AssuranceLevel
 
 from .models import (
     AAL1,
@@ -31,10 +32,10 @@ from .models import (
 
 class TrustFrameworkService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def create_framework(
+    def create_framework(
         self,
         framework_id: str,
         name_en: str,
@@ -61,37 +62,37 @@ class TrustFrameworkService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def get_framework(self, framework_id: str) -> TrustFramework | None:
+    def get_framework(self, framework_id: str) -> TrustFramework | None:
         stmt = select(TrustFramework).where(
             TrustFramework.framework_id == framework_id,
             TrustFramework.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def activate_framework(self, framework_id: str) -> TrustFramework | None:
-        entity = await self.get_framework(framework_id)
+    def activate_framework(self, framework_id: str) -> TrustFramework | None:
+        entity = self.get_framework(framework_id)
         if not entity:
             return None
         entity.status = "active"
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def supersede_framework(
+    def supersede_framework(
         self, framework_id: str, superseded_by_id: str,
     ) -> TrustFramework | None:
-        entity = await self.get_framework(framework_id)
+        entity = self.get_framework(framework_id)
         if not entity:
             return None
         entity.status = "superseded"
         entity.supersedes_framework_id = superseded_by_id
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def list_frameworks(
+    def list_frameworks(
         self, skip: int = 0, limit: int = 100,
     ) -> list[TrustFramework]:
         stmt = (
@@ -100,84 +101,125 @@ class TrustFrameworkService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def update_framework(
+    def update_framework(
         self, framework_id: str, **kwargs: Any,
     ) -> TrustFramework | None:
-        entity = await self.get_framework(framework_id)
+        entity = self.get_framework(framework_id)
         if not entity:
             return None
         for key, value in kwargs.items():
             if hasattr(entity, key) and value is not None:
                 setattr(entity, key, value)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
 
 class AssuranceService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def assign_profile(
+    # NR-038. This method used to take `ial`, `aal`, `fal` and `assessed_by` from
+    # its caller and write them through, so a client named its own assurance and
+    # its own assessor. There is now nothing a caller can say that changes the
+    # answer: the profile is derived from the account's verification records,
+    # which only a trusted server-side verifier can create.
+    _IAL_FOR_IDENTITY_ASSURANCE = {
+        AssuranceLevel.L0: IAL1,
+        AssuranceLevel.L1: IAL1,   # a delivered code is not identity proofing
+        AssuranceLevel.L2: IAL2,   # an authoritative source was consulted
+        AssuranceLevel.L3: IAL3,   # in-person or government-attested
+    }
+
+    def derive_profile(
         self,
+        *,
+        account_id: str,
         person_id: str,
         identity_id: str,
-        ial: str = IAL1,
-        aal: str = AAL1,
-        fal: str = FAL1,
-        assessed_by: str | None = None,
-        evidence: dict | None = None,
+        assessed_by: str,
     ) -> IdentityAssuranceProfile:
-        overall = self._calculate_overall(ial, aal, fal)
+        """Compute the profile from evidence; accept no assurance from the caller.
+
+        `assessed_by` is supplied by the route from the authenticated actor, never
+        from the request body.
+        """
+        from app.identity.services.verification_service import (
+            AssuranceEngine,
+            VerificationPurpose,
+        )
+
+        results = self._verification_results(account_id)
+        profile = AssuranceEngine.profile_for(results)
+        identity_level = profile.level_for(VerificationPurpose.identity)
+        ial = self._IAL_FOR_IDENTITY_ASSURANCE[identity_level]
+
+        # AAL and FAL describe how the holder authenticated and how the identity
+        # federated. Neither is derivable from verification records, and guessing
+        # upward is exactly the substitution AUTH-004 removed, so both sit at the
+        # floor until the platform collects evidence for them.
         entity = IdentityAssuranceProfile(
             uuid=str(uuid.uuid4()),
             person_id=person_id,
             identity_id=identity_id,
             ial=ial,
-            aal=aal,
-            fal=fal,
-            overall_assurance=overall,
-            profile_version="1.0",
+            aal=AAL1,
+            fal=FAL1,
+            overall_assurance=self._calculate_overall(ial, AAL1, FAL1),
+            profile_version="2.0",
             assessed_by=assessed_by,
             assessed_at=datetime.now(UTC),
             status="active",
-            evidence=evidence,
+            evidence={
+                "derived_from": "niam_verification_records",
+                "identity_assurance": identity_level.value,
+                "contact_assurance": profile.level_for(VerificationPurpose.contact).value,
+                "professional_assurance": profile.level_for(VerificationPurpose.professional).value,
+                "organization_assurance": profile.level_for(VerificationPurpose.organization).value,
+            },
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    def _calculate_overall(self, ial: str, aal: str, fal: str) -> str:
-        levels = {IAL1: 1, IAL2: 2, IAL3: 3, IAL4: 4}
-        aal_map = {AAL1: 1, AAL2: 2, AAL3: 3}
-        fal_map = {FAL1: 1, FAL2: 2, FAL3: 3}
-        scores = [
-            levels.get(ial, 0),
-            aal_map.get(aal, 0),
-            fal_map.get(fal, 0),
-        ]
-        avg = sum(scores) / len(scores)
-        if avg >= 4:
-            return IAL4
-        if avg >= 3:
-            return IAL3
-        if avg >= 2:
-            return IAL2
-        return IAL1
+    def _verification_results(self, account_id: str) -> list:
+        from sqlalchemy import select as _select
 
-    async def get_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
+        from app.identity.models.verification_record import VerificationRecord
+        from app.identity.services.identity_link_policy import result_from_record
+
+        rows = self.session.execute(
+            _select(VerificationRecord).where(VerificationRecord.account_id == account_id),
+        )
+        return [result_from_record(record) for record in rows.scalars().all()]
+
+    def _calculate_overall(self, ial: str, aal: str, fal: str) -> str:
+        """The weakest of the three axes, never their average.
+
+        AUTH-004 measured the previous behaviour: averaging let AAL3 and FAL3
+        lift an unproofed IAL1 identity to an overall IAL2, so authentication
+        strength substituted for identity proofing. Independent axes do not
+        average — an assurance claim is only as good as its weakest component.
+        """
+        ial_rank = {IAL1: 1, IAL2: 2, IAL3: 3, IAL4: 4}
+        aal_rank = {AAL1: 1, AAL2: 2, AAL3: 3}
+        fal_rank = {FAL1: 1, FAL2: 2, FAL3: 3}
+        weakest = min(ial_rank.get(ial, 0), aal_rank.get(aal, 0), fal_rank.get(fal, 0))
+        return {1: IAL1, 2: IAL2, 3: IAL3, 4: IAL4}.get(weakest, IAL1)
+
+    def get_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
         stmt = select(IdentityAssuranceProfile).where(
             IdentityAssuranceProfile.uuid == profile_id,
             IdentityAssuranceProfile.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_profiles_for_identity(
+    def get_profiles_for_identity(
         self, identity_id: str,
     ) -> list[IdentityAssuranceProfile]:
         stmt = (
@@ -188,18 +230,18 @@ class AssuranceService:
             )
             .order_by(IdentityAssuranceProfile.created_at.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def revoke_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
-        entity = await self.get_profile(profile_id)
+    def revoke_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
+        entity = self.get_profile(profile_id)
         if not entity:
             return None
         entity.status = "revoked"
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def list_profiles(
+    def list_profiles(
         self, skip: int = 0, limit: int = 100,
     ) -> list[IdentityAssuranceProfile]:
         stmt = (
@@ -208,16 +250,16 @@ class AssuranceService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
 
 class TrustAnchorService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def create_anchor(
+    def create_anchor(
         self,
         anchor_id: str,
         name: str,
@@ -246,30 +288,30 @@ class TrustAnchorService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def get_anchor(self, anchor_id: str) -> TrustAnchor | None:
+    def get_anchor(self, anchor_id: str) -> TrustAnchor | None:
         stmt = select(TrustAnchor).where(
             TrustAnchor.anchor_id == anchor_id,
             TrustAnchor.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def revoke_anchor(
+    def revoke_anchor(
         self, anchor_id: str, reason: str,
     ) -> TrustAnchor | None:
-        entity = await self.get_anchor(anchor_id)
+        entity = self.get_anchor(anchor_id)
         if not entity:
             return None
         entity.status = "revoked"
         entity.revoked_at = datetime.now(UTC)
         entity.revocation_reason = reason
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def list_anchors(
+    def list_anchors(
         self, skip: int = 0, limit: int = 100,
     ) -> list[TrustAnchor]:
         stmt = (
@@ -278,11 +320,11 @@ class TrustAnchorService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def validate_chain(self, anchor_id: str) -> dict[str, Any]:
-        entity = await self.get_anchor(anchor_id)
+    def validate_chain(self, anchor_id: str) -> dict[str, Any]:
+        entity = self.get_anchor(anchor_id)
         if not entity:
             return {"valid": False, "reason": "anchor_not_found"}
         if entity.status == "revoked":
@@ -292,7 +334,7 @@ class TrustAnchorService:
         if entity.valid_to and entity.valid_to < datetime.now(UTC):
             return {"valid": False, "reason": "certificate_expired"}
         if entity.signed_by:
-            parent = await self.get_anchor(entity.signed_by)
+            parent = self.get_anchor(entity.signed_by)
             if not parent or parent.status == "revoked":
                 return {"valid": False, "reason": "signer_not_trusted"}
         return {"valid": True, "reason": None}
@@ -300,10 +342,10 @@ class TrustAnchorService:
 
 class FederationTrustService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def create_trust(
+    def create_trust(
         self,
         trust_id: str,
         source_org_id: str,
@@ -332,34 +374,34 @@ class FederationTrustService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def get_trust(self, trust_id: str) -> FederationTrust | None:
+    def get_trust(self, trust_id: str) -> FederationTrust | None:
         stmt = select(FederationTrust).where(
             FederationTrust.trust_id == trust_id,
             FederationTrust.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def suspend_trust(self, trust_id: str) -> FederationTrust | None:
-        entity = await self.get_trust(trust_id)
+    def suspend_trust(self, trust_id: str) -> FederationTrust | None:
+        entity = self.get_trust(trust_id)
         if not entity:
             return None
         entity.status = "suspended"
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def terminate_trust(self, trust_id: str) -> FederationTrust | None:
-        entity = await self.get_trust(trust_id)
+    def terminate_trust(self, trust_id: str) -> FederationTrust | None:
+        entity = self.get_trust(trust_id)
         if not entity:
             return None
         entity.status = "terminated"
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def list_for_org(self, org_id: str) -> list[FederationTrust]:
+    def list_for_org(self, org_id: str) -> list[FederationTrust]:
         stmt = (
             select(FederationTrust)
             .where(
@@ -369,10 +411,10 @@ class FederationTrustService:
             )
             .order_by(FederationTrust.created_at.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_all(
+    def list_all(
         self, skip: int = 0, limit: int = 100,
     ) -> list[FederationTrust]:
         stmt = (
@@ -381,16 +423,16 @@ class FederationTrustService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
 
 class IdentityProofingService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def create_proofing(
+    def create_proofing(
         self,
         proofing_id: str,
         person_id: str,
@@ -415,42 +457,42 @@ class IdentityProofingService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def verify_proofing(
+    def verify_proofing(
         self, proofing_id: str, verified_by: str,
     ) -> IdentityProofing | None:
-        entity = await self.get_proofing(proofing_id)
+        entity = self.get_proofing(proofing_id)
         if not entity:
             return None
         entity.status = "verified"
         entity.verified_by = verified_by
         entity.verified_at = datetime.now(UTC)
         entity.valid_from = datetime.now(UTC)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def reject_proofing(
+    def reject_proofing(
         self, proofing_id: str, reason: str,
     ) -> IdentityProofing | None:
-        entity = await self.get_proofing(proofing_id)
+        entity = self.get_proofing(proofing_id)
         if not entity:
             return None
         entity.status = "rejected"
         entity.rejection_reason = reason
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def get_proofing(self, proofing_id: str) -> IdentityProofing | None:
+    def get_proofing(self, proofing_id: str) -> IdentityProofing | None:
         stmt = select(IdentityProofing).where(
             IdentityProofing.proofing_id == proofing_id,
             IdentityProofing.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_for_person(
+    def list_for_person(
         self, person_id: str,
     ) -> list[IdentityProofing]:
         stmt = (
@@ -461,10 +503,10 @@ class IdentityProofingService:
             )
             .order_by(IdentityProofing.created_at.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_all(
+    def list_all(
         self, skip: int = 0, limit: int = 100,
     ) -> list[IdentityProofing]:
         stmt = (
@@ -473,16 +515,16 @@ class IdentityProofingService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
 
 class TrustEvaluationService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def create_evaluation(
+    def create_evaluation(
         self,
         evaluation_id: str,
         target_type: str,
@@ -512,18 +554,18 @@ class TrustEvaluationService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def get_evaluation(self, evaluation_id: str) -> TrustEvaluation | None:
+    def get_evaluation(self, evaluation_id: str) -> TrustEvaluation | None:
         stmt = select(TrustEvaluation).where(
             TrustEvaluation.evaluation_id == evaluation_id,
             TrustEvaluation.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_for_target(
+    def list_for_target(
         self, target_type: str, target_id: str,
     ) -> list[TrustEvaluation]:
         stmt = (
@@ -535,10 +577,10 @@ class TrustEvaluationService:
             )
             .order_by(TrustEvaluation.evaluated_at.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_all(
+    def list_all(
         self, skip: int = 0, limit: int = 100,
     ) -> list[TrustEvaluation]:
         stmt = (
@@ -547,5 +589,5 @@ class TrustEvaluationService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())

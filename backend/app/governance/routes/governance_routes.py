@@ -318,7 +318,11 @@ def add_board_certification(worker_id: int, board_name: str, specialty: str, iss
     return board
 
 
-@router.post("/workers/{worker_id}/trainings")
+# NR-108. elevated_dep was omitted here while every sibling in this
+# credentialing family carries it -- licenses and board-certifications both
+# do. Measured unauthenticated against the served app: this answered the
+# request and committed, so anyone could assert a clinician's training.
+@router.post("/workers/{worker_id}/trainings", dependencies=[elevated_dep])
 def add_training(worker_id: int, training_name: str, training_type: str, completed: bool = False, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     training = svc.add_training(worker_id, training_name, training_type, completed=completed)
@@ -326,7 +330,9 @@ def add_training(worker_id: int, training_name: str, training_type: str, complet
     return training
 
 
-@router.post("/workers/{worker_id}/competencies")
+# NR-108. Same omission: an anonymous caller could set a competency LEVEL
+# for any worker, which is a clinical credentialing assertion.
+@router.post("/workers/{worker_id}/competencies", dependencies=[elevated_dep])
 def assess_competency(worker_id: int, competency_name: str, level: str, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     from ..enums import CompetencyLevel
@@ -335,7 +341,8 @@ def assess_competency(worker_id: int, competency_name: str, level: str, db: Sess
     return assessment
 
 
-@router.post("/workers/{worker_id}/productivity")
+# NR-108. Same omission.
+@router.post("/workers/{worker_id}/productivity", dependencies=[elevated_dep])
 def record_productivity(
     worker_id: int,
     period: ProductivityPeriod,
@@ -561,7 +568,11 @@ def create_break_glass_policy(policy_code: str, title_ar: str, allowed_reasons: 
     return bg
 
 
-@router.post("/audit-events")
+# NR-108. admin_dep was omitted while the handler immediately above it
+# carries it. The parameters include actor_id, so an unauthenticated caller
+# could write a national audit event attributed to anyone -- forging the
+# trail rather than merely bypassing it.
+@router.post("/audit-events", dependencies=[admin_dep])
 def log_audit_event(event_type: str, actor_id: str, action: str, severity: ThreatSeverity = ThreatSeverity.LOW, db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
     event = svc.log_audit_event(event_type, actor_id=actor_id, action=action, severity=severity)

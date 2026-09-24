@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
-from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
 from app.database import get_db
 from app.identity.services.account_request_service import (
     AccountRequestConfigurationError,
@@ -45,7 +44,7 @@ class AccountRequestAccepted(BaseModel):
     response_model=AccountRequestAccepted,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def submit_account_request(
+def submit_account_request(
     body: AccountRequestCreate,
     request: Request,
     idempotency_key: str = Header(..., alias="Idempotency-Key", min_length=16, max_length=200),
@@ -54,7 +53,7 @@ async def submit_account_request(
     """Receive a review request only; this route never creates or activates an account."""
     rate_limit_auth(request, max_per_minute=5)
     try:
-        result = await AccountRequestService(SyncSessionAsyncFacade(db)).submit(
+        result = AccountRequestService(db).submit(
             email=body.email,
             phone=body.phone,
             display_name=body.display_name,

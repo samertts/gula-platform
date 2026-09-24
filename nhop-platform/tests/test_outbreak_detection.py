@@ -1,5 +1,5 @@
 """Unit tests for the outbreak detection service."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from app.models.antibiotic_sensitivity import AntibioticSensitivity
@@ -11,8 +11,6 @@ from app.services.outbreak_detection import (
     get_disease_heatmap,
     get_resistance_report,
 )
-
-from backend.app._compat import UTC
 
 FROZEN_NOW = datetime(2026, 4, 19, 12, 0, tzinfo=UTC)
 

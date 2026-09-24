@@ -171,7 +171,7 @@ services:
       sentinel parallel-syncs gula-redis 1' > /tmp/sentinel.conf
       && redis-sentinel /tmp/sentinel.conf"
     ports:
-      - "26379:26379"
+      - "127.0.0.1:26379:26379"
     depends_on:
       - redis
       - redis-replica
@@ -188,8 +188,8 @@ services:
     container_name: gula-clickhouse
     restart: always
     ports:
-      - "8123:8123"
-      - "9001:9000"
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9001:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
       - ./config/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -280,8 +280,8 @@ services:
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: kafka
     ports:
-      - "9092:9092"
-      - "9101:9101"
+      - "127.0.0.1:9092:9092"
+      - "127.0.0.1:9101:9101"
     volumes:
       - kafka-data:/var/lib/kafka/data
     networks:
@@ -302,7 +302,7 @@ services:
     container_name: gula-ollama
     restart: always
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama-data:/root/.ollama
     networks:
@@ -312,6 +312,7 @@ services:
         reservations:
           memory: 1G
 
+  # NR-142: loopback-bound with the rest of the services tree; see lab-service.
   ai-service:
     build:
       context: ./services
@@ -326,7 +327,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/gula
     ports:
-      - "9000:9000"
+      - "127.0.0.1:9000:9000"
     depends_on:
       - ollama
       - redis
@@ -352,8 +353,8 @@ services:
       MINIO_PROMETHEUS_AUTH_TYPE: public
       MINIO_UPDATE: "off"
     ports:
-      - "9003:9000"
-      - "9002:9002"
+      - "127.0.0.1:9003:9000"
+      - "127.0.0.1:9002:9002"
     volumes:
       - minio-data:/data
     networks:
@@ -379,7 +380,7 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     ports:
-      - "9100:9100"
+      - "127.0.0.1:9100:9100"
     networks:
       - gula-net
 
@@ -402,7 +403,7 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -425,7 +426,7 @@ services:
       VAULT_ADDR: http://0.0.0.0:8200
       VAULT_LOG_LEVEL: warn
     ports:
-      - "8200:8200"
+      - "127.0.0.1:8200:8200"
     volumes:
       - vault-data:/vault/data
       - ./config/vault/vault.hcl:/vault/config/vault.hcl
@@ -442,6 +443,17 @@ services:
   # MONITORING & OBSERVABILITY
   # ===========================================================================
 
+  # NR-143. Everything from here down published on every interface of the
+  # host while docker-compose.yml states the opposite rule for the same
+  # services -- "MONITORING (Prometheus + Alertmanager + Grafana) / Internal
+  # only -- no external port exposure. Access via SSH tunnel: ssh -L
+  # 9090:localhost:9090 ..." -- and gives Prometheus `expose: "9090"` with no
+  # host publish at all. That tunnel forwards to localhost ON THE REMOTE HOST,
+  # so a loopback binding is precisely what the documented workflow needs.
+  # Nothing else broke either: every scrape target in config/prometheus is an
+  # in-network service name, and the host-side consumers that do exist
+  # (scripts/setup-ollama.sh, scripts/integration_test.sh,
+  # config/quality-gates/performance-gate.py) all connect via `localhost`.
   prometheus:
     image: prom/prometheus:v2.56.0
     container_name: gula-prometheus
@@ -452,7 +464,7 @@ services:
       - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
@@ -468,7 +480,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./config/grafana/provisioning:/etc/grafana/provisioning
@@ -484,7 +496,7 @@ services:
     restart: always
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     volumes:
       - ./config/loki/loki-config.yml:/etc/loki/local-config.yaml
       - loki-data:/loki
@@ -510,10 +522,10 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
-      - "16686:16686"
-      - "14268:14268"
-      - "4317:4317"
-      - "4318:4318"
+      - "127.0.0.1:16686:16686"
+      - "127.0.0.1:14268:14268"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
     networks:
       - gula-net
 
@@ -545,6 +557,15 @@ services:
     networks:
       - gula-net
 
+  # NR-142. These eight services published their ports on every interface of
+  # the host while requiring no authentication at all: `GET /patients` with no
+  # lab_id returns every patient row in `labdb`, across every tenant. They sit
+  # outside the gateway -- config/nginx/conf.d/api.conf proxies only to
+  # gula_backend and gula_frontend -- so the published port WAS the perimeter.
+  # Binding them to loopback matches api-gateway above and the rule the
+  # platform already states: nothing reaches an application service except
+  # through the gateway. It is containment, not the control: the services still
+  # have no caller identity. See docs/adr/ADR-028-services-tree-disposition.md.
   lab-service:
     build:
       context: ./services
@@ -561,7 +582,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: lab-service
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -585,7 +606,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: patient-service
     ports:
-      - "8002:8000"
+      - "127.0.0.1:8002:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -609,7 +630,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: order-service
     ports:
-      - "8003:8000"
+      - "127.0.0.1:8003:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -635,7 +656,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: result-service
     ports:
-      - "8004:8000"
+      - "127.0.0.1:8004:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -657,7 +678,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: sample-service
     ports:
-      - "8005:8000"
+      - "127.0.0.1:8005:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -678,7 +699,7 @@ services:
       JAEGER_ENDPOINT: http://jaeger:14268/api/traces
       SERVICE_NAME: notification-service
     ports:
-      - "8006:8000"
+      - "127.0.0.1:8006:8000"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -702,7 +723,7 @@ services:
     # volumes:
     #   - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "8010:8000"
+      - "127.0.0.1:8010:8000"
     depends_on:
       postgres-primary:
         condition: service_healthy

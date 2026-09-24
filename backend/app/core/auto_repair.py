@@ -156,10 +156,33 @@ class RepairEngine:
             return False
 
     def _repair_redis_reconnect(self) -> bool:
-        """Force Redis client to reconnect."""
+        """Report whether the cache is genuinely Redis-backed.
+
+        This used to call cache.ping() and record "Redis ping OK" on success.
+        `_MemoryStore.ping()` returns True unconditionally -- it is a liveness
+        check on the object, not on Redis -- so when Redis was unreachable at
+        import and the process fell back to the in-memory store, this action
+        reported a SUCCESSFUL Redis repair while Redis was down and nothing had
+        been repaired. Executed: with REDIS_URL pointing at a closed port,
+        cache is _MemoryStore and cache.ping() is True.
+
+        It is named "reconnect" but cannot reconnect: `cache` is bound once at
+        import and no code rebinds it. Rebuilding it here would be worse than
+        not trying, because five modules -- services/idempotency.py,
+        security/session.py, security/rate_limit.py, routes/verification.py and
+        firewall/api_firewall.py -- bind `cache` at module level and would keep
+        the old store, leaving revocation recovered while rate limiting and
+        idempotency silently were not. So this reports the truth and leaves the
+        repair to a restart. See NR-103.
+        """
         if not _guard_repair("redis_reconnect"):
             return False
         try:
+            from app.security.redis_client import degraded_reason, is_shared
+
+            if not is_shared():
+                self._record("redis_reconnect", degraded_reason(), False)
+                return False
             from app.security.redis_client import cache
 
             cache.ping()

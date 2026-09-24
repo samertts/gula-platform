@@ -17,7 +17,7 @@ from .emergency_contact import EmergencyContact
 from .employee import Employee
 from .encounter import Encounter
 from .episode_of_care import EpisodeOfCare
-from .facility import Facility
+from .facility import national_facilities
 from .family import Family, FamilyMember
 from .foreigner import Foreigner
 from .guardian import Guardian
@@ -60,7 +60,6 @@ __all__ = [
     "Employee",
     "Encounter",
     "EpisodeOfCare",
-    "Facility",
     "Family",
     "FamilyMember",
     "Foreigner",
@@ -86,4 +85,5 @@ __all__ = [
     "Visit",
     "Visitor",
     "Ward",
+    "national_facilities",
 ]

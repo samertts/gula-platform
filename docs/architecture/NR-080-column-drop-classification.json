@@ -1,0 +1,131 @@
+{
+ "finding": "NR-080",
+ "measured_at_head": "after NR-089 (TrustSoftDeleteMixin mixed in)",
+ "migration_head": "20260915_0003",
+ "method": "alembic autogenerate against PostgreSQL 16 at migration head, under the same single-MetaData merge test_autogenerate_is_safe.py performs inside the gate; DropColumnOp operations bucketed by table-name prefix",
+ "total_drop_column_ops": 365,
+ "by_domain": {
+  "radiology": 231,
+  "nhdw": 111,
+  "fin": 10,
+  "core/other": 9,
+  "blood_bank": 2,
+  "ecosystem": 1,
+  "niam": 1
+ },
+ "blocked_on_domain_owner": {
+  "domains": [
+   "radiology",
+   "nhdw"
+  ],
+  "columns": 342,
+  "share": "94% of all proposed column drops",
+  "findings": [
+   "NR-082",
+   "NR-074"
+  ]
+ },
+ "decidable_groups": {
+  "financial_engine_phase_a": {
+   "columns": 10,
+   "tables": 3,
+   "detail": "fin_providers (5), fin_transactions (3), fin_subscriptions (2). CLAUDE.md states Phase A is schema-only with routes and services deferred, so unmapped columns here are the documented state rather than drift.",
+   "disposition": "EXPLAINED \u2014 no action while ENABLE_FINANCIAL_ENGINE stays off"
+  },
+  "sndhs_phase_1": {
+   "columns": 5,
+   "detail": "patients.national_id, sndhs_health_id, identity_level, consent_flags and lab_orders.visit_id \u2014 already pinned by DECLARED_PROTECTED_DROP_COLUMNS. Exposure question answered: no Patient serialisation uses attribute passthrough, so mapping them costs nothing in exposure.",
+   "disposition": "DECISION PENDING \u2014 map (recommended) or record why not; never drop"
+  },
+  "singletons": {
+   "columns": 8,
+   "items": [
+    "ai_embeddings.embedding",
+    "blood_bank_crossmatches.policy_version",
+    "blood_bank_crossmatches.sample_id",
+    "ecosystem_partner_agreements.agreement_version",
+    "niam_audit_entries.is_active",
+    "oauth2_clients.created_by",
+    "service_accounts.api_key_prefix",
+    "service_accounts.updated_at"
+   ],
+   "detail": "ecosystem_partner_agreements.agreement_version is NR-083's document-version-vs-optimistic-lock question, reaching the same column by a second instrument. oauth2_clients.created_by and service_accounts.api_key_prefix sit on credential tables and deserve individual dispositions.",
+   "dispositions": {
+    "method": "physical type and nullability from information_schema; a rename candidate is a mapper column absent from the physical table",
+    "pure_ADD_to_mapper": {
+     "count": 7,
+     "items": {
+      "ai_embeddings.embedding": "ARRAY, nullable",
+      "blood_bank_crossmatches.policy_version": "VARCHAR(80), nullable",
+      "blood_bank_crossmatches.sample_id": "VARCHAR(100), nullable",
+      "niam_audit_entries.is_active": "BOOLEAN, NOT NULL",
+      "oauth2_clients.created_by": "INTEGER, nullable",
+      "service_accounts.api_key_prefix": "VARCHAR(20), nullable",
+      "service_accounts.updated_at": "TIMESTAMP, nullable"
+     },
+     "disposition": "map them \u2014 no mapper column could be a rename of any of these, so there is no ambiguity to resolve and no migration required"
+    },
+    "genuine_rename_pair": {
+     "count": 1,
+     "item": "ecosystem_partner_agreements.agreement_version (VARCHAR(20), NOT NULL) against the mapper's `version`",
+     "disposition": "BLOCKED \u2014 NR-083's document-version-versus-optimistic-lock question, reached here by a third instrument. Mapping `version` onto `agreement_version` quietly confirms the entity has no optimistic lock; adding an integer `version` contradicts the mapper."
+    }
+   }
+  },
+  "trust_soft_delete_RESOLVED": {
+   "columns": 0,
+   "tables": 6,
+   "detail": "every trust_* table is physically carrying deleted_at and is_deleted; no trust mapper declares either. One uniform decision, not six.",
+   "tables_list": [
+    "trust_compliance_checks",
+    "trust_compliance_evidence",
+    "trust_consent_records",
+    "trust_retention_policies",
+    "trust_service_logs",
+    "trust_sovereignty_rules"
+   ],
+   "disposition": "FIXED by NR-089 \u2014 mixin mixed in, all twelve columns now mapped, no migration required"
+  }
+ },
+ "protected_column_drops": {
+  "total": 67,
+  "radiology": 52,
+  "nhdw": 14,
+  "core/other": 1,
+  "note": "counted as lab_id/created_by/updated_by/sync_id/tenant_id/organization_id. NR-082 separately recorded 43 protected radiology columns using a different definition; 52 and 43 are not claimed to confirm each other.",
+  "outside_the_blocked_domains": [
+   "oauth2_clients.created_by"
+  ]
+ },
+ "instrument_cross_check": "all five entries of the independently maintained DECLARED_PROTECTED_DROP_COLUMNS ledger appear in this proposal and none is missing",
+ "guard": "backend/tests/test_autogenerate_is_safe.py::test_no_domain_grows_its_share_of_the_column_drops",
+ "previous_total": {
+  "value": 377,
+  "reduced_by": 12,
+  "reason": "NR-089 \u2014 the trust soft-delete pair was declared by a mixin that was never mixed in; mixing it in mapped all twelve columns"
+ },
+ "global_operation_recount": {
+  "measured_at": "head b70d1a04, PostgreSQL 16 at migration head 20260915_0003",
+  "total_operations": 5039,
+  "total_destructive": 1367,
+  "by_type": {
+   "CreateIndexOp": 2372,
+   "ModifyTableOps": 585,
+   "DropConstraintOp": 538,
+   "DropIndexOp": 454,
+   "DropColumnOp": 365,
+   "AddColumnOp": 293,
+   "CreateTableOp": 303,
+   "AlterColumnOp": 85,
+   "CreateForeignKeyOp": 27,
+   "DropTableOp": 10,
+   "CreateUniqueConstraintOp": 7
+  },
+  "corrections_to_the_previously_published_figure": [
+   "The earlier published block headlined 5060 operations but its printed breakdown sums to 5053. The missing 7 are CreateUniqueConstraintOp, which the breakdown omitted. The headline was right; the itemisation was incomplete.",
+   "Only ONE delta is attributable to a single change and was measured immediately before and after it: DropColumnOp 377 -> 365, from NR-089 mixing TrustSoftDeleteMixin in. The movement in AddColumnOp (314 -> 293) and AlterColumnOp (73 -> 85) spans several commits \u2014 the NR-083 migrations 20260915_0001/_0002 and the NR-085 enum repair 20260915_0003 all landed between the two measurements \u2014 so it is NOT attributed to NR-089 and no per-commit cause is claimed for it.",
+   "Destructive total 1379 -> 1367 is exactly the 12 trust columns, and reconciles."
+  ],
+  "ratchet_health": "all four declared destructive counts measured EXACT against DECLARED_DESTRUCTIVE_BUDGET \u2014 538/454/365/10 \u2014 so the ledger carries no slack. A ratchet that only forbids growth would let a silent shrink leave the declared value overstated; this was checked rather than assumed."
+ }
+}

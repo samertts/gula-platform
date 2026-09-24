@@ -41,11 +41,23 @@ class EvaluationResult:
 
 class ModelRegistry:
 
-    def __init__(self):
-        self._models: dict[str, ModelRegistryEntry] = {}
-        self._load_defaults()
+    def __init__(self, *, sync: bool = False):
+        """Build the in-memory registry.
 
-    def _load_defaults(self) -> None:
+        ``sync`` is opt-in and defaults to False because this class is
+        constructed at module scope in five places, so seeding from the
+        constructor made *importing* ``app.ai`` write to whatever DATABASE_URL
+        happened to name. Import is not initialisation. Callers that want the
+        row in ``ai_model_registry`` ask for it explicitly. Recorded as NR-019.
+        """
+        self._models: dict[str, ModelRegistryEntry] = {}
+        self._load_defaults(sync=sync)
+
+    def sync_to_db(self) -> None:
+        """Persist the default registry. The explicit form of the old import-time write."""
+        self._sync_to_db(list(self._models.values()))
+
+    def _load_defaults(self, *, sync: bool = False) -> None:
         defaults = [
             ModelRegistryEntry(name="gemini-2.0-flash", provider="gemini", model_type="chat", version="2.0", capabilities=["chat", "clinical_interpretation", "arabic", "arabic_english"], config={"temperature": 0.5, "max_tokens": 600, "safety": True}, is_active=True, max_tokens=8192),
             ModelRegistryEntry(name="gemini-2.0-flash-thinking", provider="gemini", model_type="reasoning", version="2.0", capabilities=["reasoning", "analysis", "complex_queries"], config={"temperature": 0.3, "max_tokens": 1000}, is_active=True, max_tokens=8192),
@@ -55,7 +67,8 @@ class ModelRegistry:
         ]
         for m in defaults:
             self._models[m.name] = m
-        self._sync_to_db(defaults)
+        if sync:
+            self._sync_to_db(defaults)
 
     def _sync_to_db(self, entries: list[ModelRegistryEntry]) -> None:
         try:
@@ -68,10 +81,10 @@ class ModelRegistry:
                 config_json = json.dumps(m.config, ensure_ascii=False)
                 caps_json = json.dumps(m.capabilities, ensure_ascii=False)
                 if existing:
-                    db.execute(text("UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=:caps::jsonb, config=:cfg::jsonb, is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name"),
+                    db.execute(text("UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=CAST(:caps AS jsonb), config=CAST(:cfg AS jsonb), is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name"),
                                {"name": m.name, "p": m.provider, "mt": m.model_type, "v": m.version, "caps": caps_json, "cfg": config_json, "active": 1 if m.is_active else 0, "mtok": m.max_tokens, "cpi": m.cost_per_1k_input, "cpo": m.cost_per_1k_output})
                 else:
-                    db.execute(text("INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, :caps::jsonb, :cfg::jsonb, :active, :mtok, :cpi, :cpo)"),
+                    db.execute(text("INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, CAST(:caps AS jsonb), CAST(:cfg AS jsonb), :active, :mtok, :cpi, :cpo)"),
                                {"name": m.name, "p": m.provider, "mt": m.model_type, "v": m.version, "caps": caps_json, "cfg": config_json, "active": 1 if m.is_active else 0, "mtok": m.max_tokens, "cpi": m.cost_per_1k_input, "cpo": m.cost_per_1k_output})
             db.commit()
         except Exception as exc:
@@ -221,7 +234,7 @@ class Evaluator:
         try:
             metrics_json = json.dumps(result.metrics, ensure_ascii=False)
             db.execute(
-                text("INSERT INTO ai_evaluations (eval_type, prompt, response, score, metrics, model, duration_ms) VALUES (:et, :prompt, :resp, :score, :metrics::jsonb, :model, :dur)"),
+                text("INSERT INTO ai_evaluations (eval_type, prompt, response, score, metrics, model, duration_ms) VALUES (:et, :prompt, :resp, :score, CAST(:metrics AS jsonb), :model, :dur)"),
                 {"et": "governance", "prompt": result.prompt, "resp": result.response, "score": result.score, "metrics": metrics_json, "model": result.model, "dur": result.duration_ms},
             )
             db.commit()

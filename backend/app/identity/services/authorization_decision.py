@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus
@@ -185,26 +185,26 @@ class AuthorizationDecisionService:
         },
     )
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = AuditService(session)
 
-    async def authorize(
+    def authorize(
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
     ) -> AuthorizationDecision:
         """Evaluate in a fixed order and fail closed on every unresolved condition."""
         try:
-            decision = await self._evaluate(actor, request)
+            decision = self._evaluate(actor, request)
         except Exception:
             decision = AuthorizationDecision.deny(AuthorizationReason.internal_failure)
 
         if self._should_audit(request, decision):
-            decision = await self._audit_decision(actor, request, decision)
+            decision = self._audit_decision(actor, request, decision)
         return decision
 
-    async def _evaluate(
+    def _evaluate(
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
@@ -242,10 +242,10 @@ class AuthorizationDecisionService:
         if request.resource_status in {"ARCHIVED", "REVOKED", "DELETED"} and request.action not in {"read", "audit"}:
             return AuthorizationDecision.deny(AuthorizationReason.resource_state_denied)
 
-        management_authority = await self._has_management_authority(actor, request)
+        management_authority = self._has_management_authority(actor, request)
         if self._requires_management_authority(request) and not management_authority:
             return AuthorizationDecision.deny(AuthorizationReason.organization_authority_required)
-        membership = await self._resolve_membership(actor, request)
+        membership = self._resolve_membership(actor, request)
         if membership is None and not management_authority and request.resource_type not in self.NON_ORGANIZATIONAL_READS:
             return AuthorizationDecision.deny(AuthorizationReason.membership_unresolved)
 
@@ -259,12 +259,12 @@ class AuthorizationDecisionService:
             return AuthorizationDecision.deny(resource_failure)
 
         if request.relationship_type is not None:
-            if not await self._relationship_allows(actor, request):
+            if not self._relationship_allows(actor, request):
                 return AuthorizationDecision.deny(AuthorizationReason.relationship_denied)
         elif request.resource_context.get("relationship_required"):
             return AuthorizationDecision.deny(AuthorizationReason.relationship_required)
 
-        if request.resource_context.get("professional_verification_required") and not await self._professional_verification_exists(
+        if request.resource_context.get("professional_verification_required") and not self._professional_verification_exists(
             account.id,
             account.identity_id,
         ):
@@ -279,7 +279,7 @@ class AuthorizationDecisionService:
         permission_key = request.effective_permission
         permissions = set()
         if membership is not None and request.organization_id:
-            permissions = await RolePermissionService(self.session).effective_permissions(
+            permissions = RolePermissionService(self.session).effective_permissions(
                 account.id,
                 request.organization_id,
                 facility_id=request.facility_id,
@@ -288,12 +288,12 @@ class AuthorizationDecisionService:
                 workspace_id=request.workspace_id,
             )
         if request.resource_type not in self.NON_ORGANIZATIONAL_READS and not management_authority:
-            if not await self._permission_exists(permission_key):
+            if not self._permission_exists(permission_key):
                 return AuthorizationDecision.deny(AuthorizationReason.permission_unknown)
             if permission_key not in permissions:
                 return AuthorizationDecision.deny(AuthorizationReason.permission_missing)
 
-        policy = await self._matching_policy(actor, request, membership)
+        policy = self._matching_policy(actor, request, membership)
         if policy is not None and policy.effect.lower() == "deny":
             return AuthorizationDecision.deny(
                 AuthorizationReason.policy_denied,
@@ -317,21 +317,21 @@ class AuthorizationDecisionService:
             "reactivate",
         }
 
-    async def _has_management_authority(
+    def _has_management_authority(
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
     ) -> bool:
         if not self._requires_management_authority(request) or not request.organization_id:
             return False
-        return await self._can_manage_organization(actor.account.id, request.organization_id)
+        return self._can_manage_organization(actor.account.id, request.organization_id)
 
-    async def _can_manage_organization(self, account_id: str, organization_id: str) -> bool:
+    def _can_manage_organization(self, account_id: str, organization_id: str) -> bool:
         from app.identity.services.membership_service import MembershipService
 
-        return await MembershipService(self.session)._can_manage_organization(account_id, organization_id)
+        return MembershipService(self.session)._can_manage_organization(account_id, organization_id)
 
-    async def _resolve_membership(
+    def _resolve_membership(
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
@@ -348,7 +348,7 @@ class AuthorizationDecisionService:
         ]
         if request.membership_id:
             conditions.append(Membership.id == request.membership_id)
-        result = await self.session.execute(select(Membership).where(*conditions))
+        result = self.session.execute(select(Membership).where(*conditions))
         memberships = [item for item in result.scalars().all() if not item.expires_at or item.expires_at > datetime.now(UTC)]
         matching = [item for item in memberships if self._check_scope(request, item) is None]
         if not matching:
@@ -398,8 +398,8 @@ class AuthorizationDecisionService:
                 return AuthorizationReason.scope_mismatch
         return None
 
-    async def _permission_exists(self, permission_key: str) -> bool:
-        permission = await self.session.scalar(
+    def _permission_exists(self, permission_key: str) -> bool:
+        permission = self.session.scalar(
             select(Permission.id).where(
                 Permission.permission_key == permission_key,
                 Permission.status == CatalogStatus.active.value,
@@ -407,7 +407,7 @@ class AuthorizationDecisionService:
         )
         return permission is not None
 
-    async def _relationship_allows(
+    def _relationship_allows(
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
@@ -422,7 +422,7 @@ class AuthorizationDecisionService:
             CitizenRelationship.relationship_type == request.relationship_type,
             CitizenRelationship.status == "active",
         )
-        result = await self.session.execute(statement)
+        result = self.session.execute(statement)
         for relationship in result.scalars().all():
             if not relationship.is_active_at():
                 continue
@@ -439,7 +439,7 @@ class AuthorizationDecisionService:
                 return True
         return False
 
-    async def _professional_verification_exists(self, account_id: str, identity_id: str) -> bool:
+    def _professional_verification_exists(self, account_id: str, identity_id: str) -> bool:
         now = datetime.now(UTC)
         statement = select(VerificationRecord.id).where(
             VerificationRecord.account_id == account_id,
@@ -450,7 +450,7 @@ class AuthorizationDecisionService:
             or_(VerificationRecord.valid_from.is_(None), VerificationRecord.valid_from <= now),
             or_(VerificationRecord.expires_at.is_(None), VerificationRecord.expires_at > now),
         )
-        result = await self.session.scalar(statement)
+        result = self.session.scalar(statement)
         return result is not None
 
     def _requires_step_up(self, request: AuthorizationRequest) -> bool:
@@ -462,13 +462,13 @@ class AuthorizationDecisionService:
             )
         )
 
-    async def _matching_policy(
+    def _matching_policy(
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
         membership: Membership | None,
     ) -> IdentityPolicy | None:
-        policies = await self.session.execute(
+        policies = self.session.execute(
             select(IdentityPolicy).where(
                 IdentityPolicy.is_active.is_(True),
                 IdentityPolicy.is_enabled.is_(True),
@@ -527,7 +527,7 @@ class AuthorizationDecisionService:
     def _should_audit(self, request: AuthorizationRequest, decision: AuthorizationDecision) -> bool:
         return decision.decision is AuthorizationDecisionValue.deny or request.sensitivity in {"high", "critical"} or request.action in self.SENSITIVE_ACTIONS
 
-    async def _audit_decision(
+    def _audit_decision(
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
@@ -557,7 +557,7 @@ class AuthorizationDecisionService:
             "authentication_assurance": "MFA" if actor.session.mfa_used else "SESSION",
         }
         try:
-            entry = await self.audit.record_event(
+            entry = self.audit.record_event(
                 action=action,
                 actor_id=actor.account.id,
                 target_type=request.resource_type,

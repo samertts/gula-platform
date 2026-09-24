@@ -5,6 +5,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir fastapi uvicorn[standard] pika prometheus-client pydantic
 
 COPY notification/main.py .
+COPY fail_closed.py .
 COPY shared /app/shared
 
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app

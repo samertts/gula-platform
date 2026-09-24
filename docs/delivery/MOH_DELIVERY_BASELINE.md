@@ -98,14 +98,158 @@ buildings, floors, clinics, rooms, beds, units, medical equipment, cost centres,
 bed assignments) still have no migration. They block nothing and were
 deliberately left out of a minimal repair. Tracked as **P1-6**.
 
-**P0-2. Pharmacy ORM ↔ physical schema divergence.**
-All 23 pharmacy tables shared between the ORM and the migrations diverge:
-roughly 190 ORM-only columns, ~200 database-only columns, ~150 type mismatches,
-including `id: VARCHAR != INTEGER`. The ORM cannot execute against the migrated
-schema, so all 63 pharmacy endpoints would fail at runtime. NR-003's identity
-model is now correct in the database; the ORM/API layer is not yet reconciled.
-Classification of every artifact (KEEP / RECONCILE / REPLACE) is recorded in the
-NR-003 analysis.
+**P0-2. Pharmacy ORM ↔ physical schema divergence — Phase 2A COMPLETE, M1 and M2 VERIFIED.**
+The exact delta is now measured against the migration-built PostgreSQL schema
+(103 revisions) and recorded column by column in
+`docs/pharmacy-platform/P0-2_RECONCILIATION_MATRIX.md` with machine-readable
+`.json` and `.csv` alongside it. No code has been changed.
+
+27 ORM tables, all present physically, **867 column records**: 299 KEEP,
+219 RECONCILE, 173 REMOVE_FROM_ORM, 153 DEFER, 23 REPLACE. The 23-entity figure
+is confirmed exactly — 23 tables carry a primary-key type conflict
+(`VARCHAR(26)` vs `INTEGER`); the four without one are the KEEP+RECONCILE set.
+**54 columns** are `VARCHAR(26)` against a physical `INTEGER`: 23 primary keys
+and 31 internal foreign keys.
+
+**62 physical `NOT NULL` columns with no default are unknown to the ORM**, so an
+ORM `INSERT` into those tables fails outright; 49 remain after accounting for
+renames. The ORM/API layer is not yet reconciled and the 63 pharmacy endpoints
+remain non-functional against the migrated schema.
+
+Two false-positive classes were eliminated during measurement: reflected
+timestamp timezone flags (84 spurious rows) and string-similarity rename
+matching. Both are documented in the matrix, §6.
+
+**M1 (Base + DrugCatalog) — VERIFIED.** `DrugCatalog` now matches the
+migration-built PostgreSQL schema exactly: **34 of 34 columns**, no ORM-only
+column, no unmapped physical column, no type or nullability mismatch. It moved
+off the Generation B `String(26)` base onto a new `GlobalCatalogEntity`
+(`INTEGER` key, no inherited tenant column); the legacy base remains, marked
+deprecated, for the 23 entities still to be reconciled in M2–M4.
+
+`drug_id` (UUID4) is now mapped, server-generated, unique and immutable, and
+`drug_code` stays mutable. The catalog is global in code as well as in the
+schema — every `lab_id` filter was removed from the catalog service surface.
+**No migration was required**: the physical column, its `NOT NULL`, its unique
+constraint and its index already existed from NR-003, which was verified before
+any migration was considered.
+
+Proven against a disposable migrated PostgreSQL database: 15 focused M1 tests,
+plus 12 existing pharmacy tests still passing. Clean `upgrade head` exit 0 at
+103 revisions; a repeated `upgrade head` applies 0 revisions and regenerates no
+identity; integer primary keys and `drug_code` values are unchanged.
+
+**Operational warning (new).** `alembic downgrade` past `20260909_0001` drops
+the `drug_id` column, which **destroys the public drug identity permanently** —
+a later re-upgrade mints new UUIDs, so any external reference to a `drug_id`
+becomes dangling. Verified by measurement: the integer key and `drug_code`
+survived a downgrade/re-upgrade cycle, `drug_id` did not. Treat that downgrade
+as destructive in any runbook.
+
+**P0-2-SUBBLOCKER-A.** The six physical `varchar(26)` columns with no FK on
+`pharmacy_sale_lines` and `pharmacy_drug_substitution_requests` (matrix §9a) are
+untouched by M1 and block M3/Phase 2E only. M1 surfaces one visible consequence:
+a sale line stores the catalog's integer key as text, which
+`test_pharmacy_pos.py` now asserts on explicitly rather than hiding.
+
+**Functional gaps opened by matching the real schema** — both are contract
+consequences, not regressions, and neither invents a column:
+
+- **P0-2-GAP-BARCODE.** The catalog has no barcode column; a GS1 GTIN
+  identifies a package, not a drug (contract §5), and the package entity is
+  deferred to Generation C. Barcode-only POS lookup therefore resolves to no
+  drug and falls through to the existing "drug not found" path.
+- **P0-2-GAP-BRAND.** `brand_name` has no physical column; brand is a
+  product/package attribute. The dispense record now carries no brand.
+
+**Not done in M1, by design:** the other 26 pharmacy models, the clinical-rule
+FK adoption (M2), sales/substitution (M3), inventory/dispensing (M4), and the
+public API identity switch (M5/P1-1). The catalog service exposes
+`get_drug_by_public_id()` for `drug_id` lookups, but no route was changed.
+
+**M2 (Clinical rules) — VERIFIED.** The five clinical-rule models now match the
+migration-built schema exactly — **115 columns across 5 tables**, no ORM-only
+column, no unmapped physical column, no type or nullability mismatch — and the
+services resolve a drug through the catalog foreign key rather than a business
+code. No migration and no data migration were required: the integer `drug_id`
+foreign keys already existed, so there was nothing to transform.
+
+| Table                             | Scope             | Authoritative link                   |
+| --------------------------------- | ----------------- | ------------------------------------ |
+| `pharmacy_contraindication_rules` | global            | `drug_id` → catalog                  |
+| `pharmacy_allergy_rules`          | global            | `drug_id` → catalog                  |
+| `pharmacy_dose_guidelines`        | global            | `drug_id` → catalog                  |
+| `pharmacy_drug_interaction_rules` | global            | `drug_id_a`, `drug_id_b` → catalog   |
+| `pharmacy_drug_monitoring`        | **tenant-scoped** | `drug_id` → catalog, `lab_id` → labs |
+
+**The §7 invariant is now proven end to end, not just structurally.** A test
+renames a drug's `drug_code` with a contraindication attached and asserts the
+rule is still reachable through the foreign key and through the drug's new
+code, while the old code matches nothing. The ORM's rule-level `drug_code`
+fields were removed: they never existed physically, so no data was touched.
+
+**Two semantic corrections found by following the schema.** `DrugMonitoring`
+was modelled as a per-drug monitoring _rule_ (`required_tests`,
+`therapeutic_range`, `toxic_level`); the physical table records monitoring
+_events_ for a patient — a date, a measured value, a laboratory. The model and
+`get_monitoring_records()` now read what the table holds, replacing
+`check_therapeutic_monitoring(drug_code)`. Dose guidelines bound age in
+**years** as `double precision`, not months as integers, and doses are numeric
+rather than strings; the caller's months are converted rather than the column
+being reinterpreted. `renal_adjustment` is `TEXT`, so banded guidance is read
+when the text holds JSON and free text is surfaced as the recommendation. No
+clinical banding rule was changed.
+
+Verified against a disposable migrated PostgreSQL database: **22 focused M2
+tests**, including foreign-key integrity (a rule against a nonexistent drug is
+rejected), cascade behaviour, both column orders for an interaction pair,
+tenant isolation on monitoring records, and global visibility of national
+rules from any tenant context. 37 PostgreSQL tests pass across M1 and M2, plus
+12 pharmacy regression tests and 66 security and tenant-isolation tests.
+Changed-files MyPy moved 53 → **51** (two errors removed, none added).
+
+**CI artifact workflow — APPLIED.** The four evidence-upload steps in
+`iam-hardening.yml` now carry `continue-on-error: true`. The diff is **20
+insertions, zero deletions**, confined to those steps; `pytest`, `ruff`,
+`mypy`, `alembic`, `compileall` and the security and tenant-isolation tests
+remain blocking. Archival no longer fails the gate it merely documents.
+
+**Not done in M2, by design:** inventory, dispensing, sales, the remaining
+Generation C entities and the public API. `ClinicalGuideline` is untouched —
+it is a separate table, not one of the five rule domains.
+
+**GULA-SCHEMA-002 — IMPLEMENTED (was deferred).** The Intelligent Core now
+detects ORM ↔ migration-built schema drift: the exact defect class of P0-2.
+It reflects a real migrated PostgreSQL database and compares every mapped
+column, rendering **both sides through the same dialect** — the normalisation
+that made this detector hard, and without which it fabricated 84 false
+timestamp mismatches during Phase 2A.
+
+Without a database it reports `DETECTOR_RAN_EVIDENCE_UNAVAILABLE`, never
+"clean": an ORM cannot be checked against a schema that is not there, and
+reporting no findings would turn UNKNOWN into VERIFIED.
+
+Against the migrated schema it reports **27 mapped pharmacy tables: 6 match
+exactly, 21 drift, 243 column-level findings**. The six that match are exactly
+the M1 and M2 set — `pharmacy_drug_catalog` plus the five clinical-rule tables
+— which is independent confirmation that both milestones landed, from a
+detector with no knowledge of which tables were reconciled. The 243 findings
+are the true, already-tracked remainder of P0-2 (M3 and M4), now measured
+rather than estimated.
+
+Run it with `GULA_INTEL_DATABASE_URL` pointing at a migrated database.
+
+**Two defects found and fixed while building it:**
+
+- The detector could terminate the run it was reporting on. Importing the
+  application evaluates its configuration, and a missing production setting
+  raises `SystemExit`, which does not derive from `Exception`. Now caught
+  explicitly.
+- `test_engine_reproduces_the_known_pharmacy_fk_blocker` asserted the NR-003
+  blocker was **present**. That is a detector-development test, not a
+  regression guard: once NR-003 was fixed it failed on every healthy
+  repository and would have passed again only if the defect returned. It was
+  failing on `main` before this change. Rewritten to assert the fix holds.
 
 ### P1 — required for delivery
 
@@ -122,7 +266,9 @@ NR-003 analysis.
   is ambiguous; the fix is subsumed by P0-2. This corrects an earlier
   characterisation of it as a live clinical-safety risk.
 - **P1-3.** No migration-built schema test harness. Pharmacy tests build schema
-  from ORM metadata on SQLite, which is how P0-2 survived undetected.
+  from ORM metadata on SQLite, which is how P0-2 survived undetected. Phase 2A
+  now compares against real PostgreSQL, but no ORM query has yet been executed
+  against the migration-built schema — that is Phase 2H.
 - **P1-4.** `scripts/constitution_enforcer.py` crashes on `ast.Str` (removed in
   Python 3.12) while its workflow pins 3.14; the governance gate is red on
   `main` itself. One-line fix, not applied here.
@@ -131,8 +277,12 @@ NR-003 analysis.
 ### P2 — important
 
 - **P2-1.** GULA-ARCH-001: `national_facilities` mapped by two app packages.
-- **P2-2.** `pharmacy_drug_substitution_requests` carries two `String(26)`
-  catalog references with no FK, inconsistent with the corrected rules table.
+- **P2-2.** Superseded and enlarged by Phase 2A: **six** physical `varchar(26)`
+  columns carry no FK and name targets whose primary key is `integer` — three on
+  `pharmacy_drug_substitution_requests` and three on `pharmacy_sale_lines`.
+  They sit on the KEEP+RECONCILE tables, so the ORM replacement cannot reach
+  them, and Phase 2E is fail-closed on them pending a schema decision. See the
+  matrix, §9a.
 - **P2-3.** GitHub Actions artifact storage quota exhausted account-wide, so CI
   evidence cannot be archived.
 - **P2-4.** Repository security controls not enabled: code scanning and

@@ -18,8 +18,20 @@ from app.pilot_platform.exceptions import (
     PilotNotFoundError,
     ReadinessAssessmentNotFoundError,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/pilot-platform", tags=["National Pilot Deployment & Readiness"])
+# NR-108. This router was mounted with no dependency and its route module
+# contained no reference to get_current_user, require_permission or
+# require_role, so every one of its mutating routes answered an
+# unauthenticated request -- measured against the served app, not read off
+# the decorators. system:admin matches the neighbouring platform-operations
+# routers (app/ems, app/command_center, app/critical_care, app/biomedical)
+# and is held only by master_admin.
+router = APIRouter(
+    prefix="/pilot-platform",
+    tags=["National Pilot Deployment & Readiness"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> PilotPlatformService:

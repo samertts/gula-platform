@@ -130,14 +130,21 @@ def _next_doc_id() -> str:
     return f"CLN-DOC-{_DOC_COUNTER:06d}"
 
 
-def _store_document(doc_type: str, data: dict) -> dict:
+def _store_document(doc_type: str, data: dict, current_user: LabUser) -> dict:
+    """Record a clinical document, stamped with the lab that owns it.
+
+    lab_id is applied here rather than at each of the six create handlers so a
+    seventh cannot forget it. Before this the field was not recorded at all, so
+    no reader could have scoped by it even in principle.
+    """
     doc_id = _next_doc_id()
     now = datetime.now(UTC).isoformat()
     doc = {
         "id": doc_id,
         "document_type": doc_type,
         **{k: v for k, v in data.items() if v is not None},
-        "created_by": data.get("created_by"),
+        "lab_id": current_user.lab_id,
+        "created_by": current_user.id,
         "created_at": now,
         "updated_at": now,
         "is_signed": False,
@@ -148,6 +155,41 @@ def _store_document(doc_type: str, data: dict) -> dict:
         {"version": 1, "timestamp": now, "action": "created", "content": doc},
     ]
     return doc
+
+
+def _owned_doc(document_id: str, current_user: LabUser) -> dict[str, Any]:
+    """Fetch a document the caller's lab owns, or 404.
+
+    404 rather than 403: a caller who may not see a clinical document must not
+    learn that it exists. Before this, get/sign/versions matched on id alone --
+    executed, lab 901 read and electronically SIGNED lab 902's operation note.
+    """
+    doc = _DOCUMENTS.get(document_id)
+    if not doc or doc.get("lab_id") != current_user.lab_id:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+
+def _require_enabled() -> None:
+    """Refuse the whole surface unless a deployment opts in.
+
+    These endpoints are the medical record -- SOAP, nursing, consultation,
+    operation and emergency notes, and their electronic signatures. The backing
+    store is a module-level dict: per-process, lost on restart, invisible to the
+    other workers, and never written to the database. A signed operation note
+    that disappears on the next deploy is a clinical and legal records problem,
+    not a missing feature.
+    """
+    from app.config import ENABLE_CLINICAL_DOCUMENTATION_STUB
+
+    if not ENABLE_CLINICAL_DOCUMENTATION_STUB:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Clinical documentation is not available on this deployment: "
+                "documents written here are not persisted."
+            ),
+        )
 
 
 # ==============================================================================
@@ -161,7 +203,8 @@ def create_soap_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("soap_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    _require_enabled()
+    return _store_document("soap_note", data.model_dump(exclude_none=True), current_user)
 
 
 # ==============================================================================
@@ -175,7 +218,8 @@ def create_progress_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("progress_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    _require_enabled()
+    return _store_document("progress_note", data.model_dump(exclude_none=True), current_user)
 
 
 # ==============================================================================
@@ -189,7 +233,8 @@ def create_nursing_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("nursing_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    _require_enabled()
+    return _store_document("nursing_note", data.model_dump(exclude_none=True), current_user)
 
 
 # ==============================================================================
@@ -203,7 +248,8 @@ def create_consultation_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("consultation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    _require_enabled()
+    return _store_document("consultation_note", data.model_dump(exclude_none=True), current_user)
 
 
 # ==============================================================================
@@ -217,7 +263,8 @@ def create_operation_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("operation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    _require_enabled()
+    return _store_document("operation_note", data.model_dump(exclude_none=True), current_user)
 
 
 # ==============================================================================
@@ -231,7 +278,8 @@ def create_emergency_note(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _store_document("emergency_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
+    _require_enabled()
+    return _store_document("emergency_note", data.model_dump(exclude_none=True), current_user)
 
 
 # ==============================================================================
@@ -249,7 +297,10 @@ def list_documents(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    items = list(_DOCUMENTS.values())
+    _require_enabled()
+    # Every document now records the lab that created it; nothing read it
+    # until now, so one lab listed every other lab's clinical documents.
+    items = [d for d in _DOCUMENTS.values() if d.get("lab_id") == current_user.lab_id]
     if patient_id:
         items = [d for d in items if d.get("patient_id") == patient_id]
     if document_type:
@@ -261,23 +312,6 @@ def list_documents(
     return {"items": items[skip:skip + limit], "total": total, "skip": skip, "limit": limit}
 
 
-@router.get("/{document_id}")
-def get_document(
-    document_id: str,
-    current_user: LabUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    doc = _DOCUMENTS.get(document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    return doc
-
-
-# ==============================================================================
-# Structured Templates
-# ==============================================================================
-
-
 @router.get("/templates")
 def list_structured_templates(
     document_type: str | None = None,
@@ -285,12 +319,28 @@ def list_structured_templates(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    items = list(_TEMPLATES.values())
+    _require_enabled()
+    items = [t for t in _TEMPLATES.values() if t.get("lab_id") == current_user.lab_id]
     if document_type:
         items = [t for t in items if t.get("document_type") == document_type]
     if department:
         items = [t for t in items if t.get("department") == department]
     return {"items": items, "total": len(items)}
+
+
+@router.get("/{document_id}")
+def get_document(
+    document_id: str,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_enabled()
+    return _owned_doc(document_id, current_user)
+
+
+# ==============================================================================
+# Structured Templates
+# ==============================================================================
 
 
 @router.post("/templates", status_code=201)
@@ -299,6 +349,7 @@ def create_structured_template(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _require_enabled()
     if data.document_type not in _DOCUMENT_TYPES and data.document_type != "general":
         raise HTTPException(
             status_code=422,
@@ -327,9 +378,8 @@ def sign_document(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    doc = _DOCUMENTS.get(data.document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    _require_enabled()
+    doc = _owned_doc(data.document_id, current_user)
     if doc.get("is_signed"):
         raise HTTPException(status_code=422, detail="Document is already signed")
 
@@ -363,7 +413,7 @@ def get_document_version_history(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if document_id not in _DOCUMENTS:
-        raise HTTPException(status_code=404, detail="Document not found")
+    _require_enabled()
+    _owned_doc(document_id, current_user)
     history = _VERSION_HISTORY.get(document_id, [])
     return {"document_id": document_id, "versions": history, "total": len(history)}

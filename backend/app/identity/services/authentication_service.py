@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.account import Account
@@ -18,13 +18,13 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 class AuthenticationService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.account_service = AccountService(session)
         self.account_repo = AccountRepository(session)
         self.session_repo = SessionRepository(session)
 
-    async def login(
+    def login(
         self,
         login: str,
         password: str,
@@ -34,11 +34,11 @@ class AuthenticationService:
         location_city: str | None = None,
         location_country: str | None = None,
     ) -> dict | None:
-        account = await self.account_service.authenticate(login, password)
+        account = self.account_service.authenticate(login, password)
         if not account:
             return None
 
-        return await self._create_session(
+        return self._create_session(
             account=account,
             ip_address=ip_address,
             user_agent=user_agent,
@@ -47,7 +47,7 @@ class AuthenticationService:
             location_country=location_country,
         )
 
-    async def _create_session(
+    def _create_session(
         self,
         account: Account,
         ip_address: str | None = None,
@@ -90,10 +90,10 @@ class AuthenticationService:
             expires_at=datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
             mfa_used=False,
         )
-        await self.session_repo.create(session)
+        self.session_repo.create(session)
         from app.identity.services.workspace_service import WorkspaceService
 
-        await WorkspaceService(self.session).ensure_citizen_workspace(account)
+        WorkspaceService(self.session).ensure_citizen_workspace(account)
 
         return {
             "access_token": access_token,
@@ -104,7 +104,7 @@ class AuthenticationService:
             "account_uuid": account.uuid,
         }
 
-    async def refresh_session(self, refresh_token: str) -> dict | None:
+    def refresh_session(self, refresh_token: str) -> dict | None:
         from app.security.auth import blacklist_token, decode_refresh_token
 
         payload = decode_refresh_token(refresh_token)
@@ -114,35 +114,35 @@ class AuthenticationService:
         if not refresh_jti:
             return None
 
-        session = await self.session_repo.find_by_refresh_token_jti(refresh_jti)
+        session = self.session_repo.find_by_refresh_token_jti(refresh_jti)
         if not session or not session.is_active or session.expires_at < datetime.now(UTC):
             return None
 
-        account = await self.account_repo.get_by_id(session.account_id)
+        account = self.account_repo.get_by_id(session.account_id)
         if not account or not account.is_active:
             return None
 
         remaining_seconds = max(1, int((session.expires_at - datetime.now(UTC)).total_seconds()))
         blacklist_token(refresh_jti, remaining_seconds)
-        await self.session_repo.soft_delete(session.id)
-        return await self._create_session(
+        self.session_repo.soft_delete(session.id)
+        return self._create_session(
             account=account,
             ip_address=session.ip_address,
             user_agent=session.user_agent,
             device_id=session.device_id,
         )
 
-    async def logout(self, session_uuid: str) -> None:
-        session = await self.session_repo.get_by_uuid(session_uuid)
+    def logout(self, session_uuid: str) -> None:
+        session = self.session_repo.get_by_uuid(session_uuid)
         if session:
-            await self.session_repo.terminate_session(
+            self.session_repo.terminate_session(
                 session_id=session.id,
                 reason="user_logout",
                 terminated_by="user",
             )
 
-    async def logout_all_sessions(self, account_id: str) -> None:
-        await self.session_repo.terminate_all_for_account(
+    def logout_all_sessions(self, account_id: str) -> None:
+        self.session_repo.terminate_all_for_account(
             account_id=account_id,
             reason="user_logout_all",
         )

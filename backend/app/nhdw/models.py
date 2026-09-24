@@ -28,6 +28,32 @@ from .enums import (
     ShiftType,
 )
 
+# NR-073. The cross-registry `relationship()` declarations that used to sit on
+# these models have been removed.
+#
+# `NHDWBaseEntity` is its own declarative base. `Patient`, `HospitalDepartment`,
+# `HospitalMaster`, `Room`, `Bed` and `Clinic` live in other bases
+# (`app.models.patient`, `app.hospital.models`), so their registries never
+# contained those names and the strings could not resolve. SQLAlchemy defers
+# that resolution to mapper configuration, and mapper configuration is global:
+# the first ORM use of ANY nhdw model raised
+#
+#     InvalidRequestError: When initializing mapper Mapper[Admission(nhdw_admissions)],
+#     expression 'Patient' failed to locate a name ('Patient')
+#
+# `nhdw_admissions` IS built, so this was not the unbuilt-table class NR-067
+# tracks -- it was a built table whose ORM could not be used at all, behind a
+# registered router (`factory.py:733`). `routes.py` queries `Admission` with a
+# tenant filter and would 500 on every call.
+#
+# None of the attributes were referenced anywhere, so removing them restores the
+# mappers without changing behaviour that existed. The foreign key COLUMNS are
+# untouched: the data and the referential intent are still recorded, and joining
+# across bases is an explicit query rather than a lazy attribute. Re-adding a
+# relationship here requires the target to live in this registry -- which, for
+# `Patient`, is the NR-022 canonical-subject decision and not a detail to settle
+# with a string.
+
 
 class Admission(NHDWBaseEntity):
     __tablename__ = "nhdw_admissions"
@@ -54,11 +80,6 @@ class Admission(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    hospital = relationship("HospitalMaster", foreign_keys=[hospital_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
-    room = relationship("Room", foreign_keys=[room_id])
-    bed = relationship("Bed", foreign_keys=[bed_id])
 
     __table_args__ = (
         Index("ix_nhdw_admissions_patient", "patient_id"),
@@ -87,7 +108,6 @@ class Discharge(NHDWBaseEntity):
     metadata_ = Column("metadata", JSON, nullable=True)
 
     admission = relationship("Admission", foreign_keys=[admission_id])
-    patient = relationship("Patient", foreign_keys=[patient_id])
 
     __table_args__ = (
         Index("ix_nhdw_discharges_admission", "admission_id"),
@@ -116,7 +136,6 @@ class Transfer(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
 
     __table_args__ = (
         Index("ix_nhdw_transfers_patient", "patient_id"),
@@ -143,9 +162,6 @@ class QueueEntry(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
-    clinic = relationship("Clinic", foreign_keys=[clinic_id])
 
     __table_args__ = (
         Index("ix_nhdw_queue_dept_date", "department_id", "queue_date"),
@@ -168,8 +184,6 @@ class WaitingListEntry(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
 
     __table_args__ = (
         Index("ix_nhdw_waiting_patient", "patient_id"),
@@ -197,7 +211,6 @@ class ClinicalTask(NHDWBaseEntity):
     is_recurring = Column(Boolean, default=False, nullable=False)
     recurrence_rule = Column(String(500), nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
 
     __table_args__ = (
         Index("ix_nhdw_tasks_patient", "patient_id"),
@@ -225,8 +238,6 @@ class WardRound(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
 
     __table_args__ = (
         Index("ix_nhdw_rounds_patient", "patient_id"),
@@ -252,7 +263,6 @@ class CarePlan(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
 
     __table_args__ = (
         Index("ix_nhdw_care_plans_patient", "patient_id"),
@@ -277,8 +287,6 @@ class HospitalAlert(NHDWBaseEntity):
     acknowledged_by = Column(JSON, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    source_department = relationship("HospitalDepartment", foreign_keys=[source_department_id])
-    patient = relationship("Patient", foreign_keys=[patient_id])
 
     __table_args__ = (
         Index("ix_nhdw_alerts_severity", "severity"),
@@ -301,7 +309,6 @@ class HospitalMessage(NHDWBaseEntity):
     has_attachments = Column(Boolean, default=False, nullable=False)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
     parent = relationship("HospitalMessage", remote_side="HospitalMessage.id", foreign_keys=[parent_message_id])
 
     __table_args__ = (
@@ -327,7 +334,6 @@ class TelemedicineSession(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
 
     __table_args__ = (
         Index("ix_nhdw_telemed_patient", "patient_id"),
@@ -351,7 +357,6 @@ class ResourceSchedule(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    booked_for_patient = relationship("Patient", foreign_keys=[booked_for_patient_id])
 
     __table_args__ = (
         Index("ix_nhdw_resource_type_date", "resource_type", "scheduled_date"),
@@ -393,7 +398,6 @@ class ShiftReport(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
 
     __table_args__ = (
         Index("ix_nhdw_shift_reports_dept_date", "department_id", "shift_date"),

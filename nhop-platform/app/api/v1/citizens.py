@@ -19,6 +19,7 @@ from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab_test import LabTest
 from ...schemas.citizen import (
@@ -38,13 +39,13 @@ router = APIRouter(prefix="/citizens", tags=["citizens"])
 
 
 def _actor_id(request: Request) -> str | None:
-    """Best-effort actor identifier for audit log entries.
+    """The actor recorded on audit log entries.
 
-    In the full integration this will read the authenticated user from the
-    request; for now we pass through an optional ``X-Actor-Id`` header so the
-    endpoints are testable standalone.
+    The identity is established by the server, never supplied by the caller.
     """
-    return request.headers.get("X-Actor-Id")
+    # NR-127. This read the actor off the wire. Identity now comes from
+    # the server-established context; see app/core/trusted_context.py.
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:

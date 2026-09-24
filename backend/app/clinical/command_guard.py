@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.clinical.observability import clinical_safety_metrics, reason_code
 from app.models.clinical_command import ClinicalCommandReceipt
-from app.services.audit_service import log_action
+from app.services.audit_service import log_action, normalize_resource_id
 
 
 class ClinicalCommandGuard:
@@ -177,13 +177,14 @@ class ClinicalCommandGuard:
 
     @staticmethod
     def _audit_resource_id(resource_id: str | int | None) -> int | None:
-        """Map legacy integer audit IDs without losing string resource identity."""
-        if resource_id is None:
-            return None
-        try:
-            return int(resource_id)
-        except (TypeError, ValueError):
-            return None
+        """Map legacy integer audit IDs without losing string resource identity.
+
+        Delegates to the canonical normalise in audit_service. This method kept
+        its own copy of the logic, and so did the blood bank service; NR-105 was
+        caused by exactly that kind of duplicate diverging. Behaviour is
+        unchanged -- the delegate is byte-for-byte the same rule.
+        """
+        return normalize_resource_id(resource_id)
 
     def reject(
         self,

@@ -355,6 +355,33 @@ def list_hospitals(
     )
 
 
+@router.get("/occupancy", summary="Bed occupancy dashboard")
+def occupancy_stats(
+    hospital_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    return HospitalService.bed_occupancy_stats(db, current_user.lab_id, hospital_id)
+
+
+@router.get("/appointments", summary="List hospital appointments")
+def list_appointments(
+    hospital_id: int | None = Query(None),
+    patient_id: int | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    appointments = HospitalService.list_appointments(
+        db, current_user.lab_id, hospital_id, patient_id, skip, limit,
+    )
+    return _paginated_response(
+        [_model_to_dict(a) for a in appointments],
+        len(appointments), skip, limit,
+    )
+
+
 @router.get("/{hospital_id}", summary="Get hospital")
 def get_hospital(
     hospital_id: int,
@@ -650,6 +677,7 @@ def assign_bed(
                 current_user.id,
                 bed_id,
                 body.patient_id,
+                actor_role=current_user.role,
                 expected_version=bed.version,
                 reason=body.reason,
                 diagnosis=body.diagnosis,
@@ -687,6 +715,7 @@ def discharge_bed(
                 current_user.lab_id,
                 current_user.id,
                 bed_id,
+                actor_role=current_user.role,
                 expected_version=bed.version,
                 discharge_reason=body.discharge_reason,
             ),
@@ -731,6 +760,7 @@ def transfer_bed(
                 current_user.id,
                 bed_id,
                 body.to_bed_id,
+                actor_role=current_user.role,
                 from_expected_version=source.version,
                 to_expected_version=target.version,
                 reason=body.reason,
@@ -742,15 +772,6 @@ def transfer_bed(
 
 
 # ── Occupancy ──────────────────────────────────────────────────────────────────
-
-
-@router.get("/occupancy", summary="Bed occupancy dashboard")
-def occupancy_stats(
-    hospital_id: int | None = Query(None),
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
-):
-    return HospitalService.bed_occupancy_stats(db, current_user.lab_id, hospital_id)
 
 
 # ── Unit CRUD ──────────────────────────────────────────────────────────────────
@@ -835,6 +856,7 @@ def complete_surgical_safety_checklist(
                 current_user.lab_id,
                 current_user.id,
                 {"operation_theater_id": ot_id, **body.model_dump()},
+                actor_role=current_user.role,
             ),
             theater.status,
             theater.version,
@@ -871,6 +893,7 @@ def update_ot_status(
                 current_user.lab_id,
                 current_user.id,
                 ot_id,
+                actor_role=current_user.role,
                 expected_version=theater.version,
                 next_status=body.status,
                 surgery_id=body.surgery_id,
@@ -954,24 +977,6 @@ def create_cost_center(
 
 
 # ── Appointment management ─────────────────────────────────────────────────────
-
-
-@router.get("/appointments", summary="List hospital appointments")
-def list_appointments(
-    hospital_id: int | None = Query(None),
-    patient_id: int | None = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
-):
-    appointments = HospitalService.list_appointments(
-        db, current_user.lab_id, hospital_id, patient_id, skip, limit,
-    )
-    return _paginated_response(
-        [_model_to_dict(a) for a in appointments],
-        len(appointments), skip, limit,
-    )
 
 
 @router.post("/appointments", summary="Create hospital appointment", status_code=201)

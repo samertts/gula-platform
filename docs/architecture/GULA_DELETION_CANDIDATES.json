@@ -1,0 +1,211 @@
+{
+  "document": "GULA Reduction Map — Deletion / Retirement Candidates",
+  "batch": "BATCH-2.8",
+  "generated": "2026-09-10T16:13:03Z",
+  "head_commit": "ae3e1f5650cd1fdfb43a64cfbdce270c07f82eff",
+  "deletions_executed": 0,
+  "methodology_finding": {
+    "naive_scan_result": 629,
+    "corrected_scan_result": 68,
+    "cause": "relative imports were not resolved; factory.py registers routers with `from .blood_bank.api.routes import router`, recorded by an AST walk as blood_bank.api.routes rather than app.blood_bank.api.routes",
+    "false_positives_demonstrated": [
+      "app/blood_bank/api/routes.py (21 live endpoints)",
+      "app/nursing/routes.py",
+      "app/radiology/routes.py"
+    ],
+    "rule": "Any reduction work using import reachability on this repository MUST resolve relative imports. Even at 68, zero inbound references is not proof — dynamic registration, entry points and string dispatch defeat it."
+  },
+  "candidates": [
+    {
+      "item": "6 Blood Bank transition keys",
+      "paths": [
+        "backend/app/blood_bank/domain/state_machine.py"
+      ],
+      "keys": [
+        "crossmatch_requested",
+        "draft",
+        "issued_order",
+        "ordered_transfusion",
+        "received_sample",
+        "testing_crossmatch"
+      ],
+      "type": "B domain",
+      "evidence": "no code writes them and no transition can reach them — unreachable in both directions",
+      "dependents": [],
+      "replacement": null,
+      "risk": "editing a clinical state machine",
+      "reversibility": "high",
+      "recommendation": "RETIRE",
+      "confidence": "HIGH",
+      "why_not_delete_now": "The NR-007 (entity, state) rewrite will rewrite this table anyway; deleting now spends risk in a clinical path for no gain."
+    },
+    {
+      "item": "5 Blood Bank service methods",
+      "paths": [
+        "backend/app/blood_bank/application/service.py"
+      ],
+      "methods": [
+        "record_transfusion",
+        "start_transfusion",
+        "complete_transfusion",
+        "issue_units",
+        "perform_crossmatch"
+      ],
+      "type": "B domain",
+      "evidence": "zero callers anywhere; each strictly weaker than an existing *_safely counterpart",
+      "dependents": [],
+      "replacement": "the *_safely methods",
+      "risk": "low",
+      "reversibility": "high",
+      "recommendation": "RETIRE",
+      "confidence": "HIGH"
+    },
+    {
+      "item": "app/national/task_engine/",
+      "type": "C ORM",
+      "evidence": "15 tables, none physical, no reachable operation",
+      "dependents": [],
+      "replacement": null,
+      "risk": "low",
+      "reversibility": "high",
+      "recommendation": "RETIRE",
+      "confidence": "HIGH"
+    },
+    {
+      "item": "app/national/domain/facility.py::Facility",
+      "type": "C ORM",
+      "evidence": "18 columns, zero physical backing, duplicate claim on a table name app.database.Base owns physically",
+      "dependents": [
+        "9 sibling FKs inside the national domain"
+      ],
+      "replacement": "app/models/clinical_scope.py::NationalFacility",
+      "risk": "medium — 9 FKs follow the rename",
+      "reversibility": "high",
+      "recommendation": "RETIRE",
+      "confidence": "HIGH",
+      "finding": "NR-006"
+    },
+    {
+      "item": "CitizenPlatformBase registration",
+      "paths": [
+        "backend/migrations/env.py"
+      ],
+      "type": "D migration",
+      "evidence": "registered for autogenerate, maps zero tables, no concrete model inherits its abstract entities",
+      "dependents": [],
+      "replacement": null,
+      "risk": "none",
+      "reversibility": "high",
+      "recommendation": "REMOVE_REGISTRATION",
+      "confidence": "HIGH",
+      "note": "Registration only. The abstract entities may still become a citizen platform; no physical table is touched."
+    },
+    {
+      "item": "app/insurance/",
+      "type": "B/C",
+      "evidence": "13 tables, none physical, no reachable operation",
+      "dependents": [],
+      "replacement": null,
+      "risk": "product decision",
+      "reversibility": "high",
+      "recommendation": "DEFER",
+      "confidence": "MEDIUM"
+    },
+    {
+      "item": "68 modules with zero resolved inbound references",
+      "type": "A/B",
+      "evidence": "import reachability only — not proof",
+      "dependents": "unknown",
+      "replacement": null,
+      "risk": "high if deleted on this evidence alone",
+      "reversibility": "high",
+      "recommendation": "DEFER",
+      "confidence": "LOW"
+    }
+  ],
+  "duplicate_ownership": {
+    "Person": {
+      "canonical": "National national_citizens (unbuilt)"
+    },
+    "Patient": {
+      "canonical": "Core patients",
+      "projection": "national_patients"
+    },
+    "Practitioner": {
+      "canonical": "National national_practitioners (unbuilt)",
+      "legacy": "lab_orders.doctor_name free text",
+      "not_a_duplicate": "lab_users is an authentication principal"
+    },
+    "Organization": {
+      "canonical": "National (unbuilt)"
+    },
+    "Facility_operational": {
+      "canonical": "Core facilities"
+    },
+    "Facility_national_resource": {
+      "canonical": "Core national_facilities via clinical_scope",
+      "duplicate": "national.domain.facility.Facility"
+    },
+    "Visit_Encounter": {
+      "canonical": "Core visits",
+      "projection": "national_encounters",
+      "implementation": "CanonicalEncounter",
+      "legacy": "5 unconstrained string columns"
+    },
+    "Drug": {
+      "canonical": "Core pharmacy_drug_catalog",
+      "note": "resolved in P0-2"
+    },
+    "Identity_User": {
+      "canonical": "Core lab_users + NIAM"
+    },
+    "Clinical_episode": {
+      "canonical": "Core visits",
+      "legacy": "lab_orders as anchor"
+    },
+    "Orders_Results": {
+      "canonical": "Core lab_orders / lab_results"
+    }
+  },
+  "remaining_duplicate_transactional_owner": "national_facilities only",
+  "section_8": {
+    "A_national_domain_facility": "RETIRE",
+    "B_clinical_encounters": "DO-NOT-CREATE / ARCHITECTURE-REJECTED",
+    "C_blood_bank_legacy": {
+      "process_component": "ACTIVE",
+      "record_transfusion": "UNREACHABLE → RETIRE_CANDIDATE",
+      "start_transfusion": "UNREACHABLE → RETIRE_CANDIDATE",
+      "complete_transfusion": "UNREACHABLE → RETIRE_CANDIDATE"
+    },
+    "D_synthetic_keys": {
+      "LIVE": 7,
+      "DEAD_SYNTHETIC": 6,
+      "UNRESOLVED": 15
+    },
+    "E_empty_metadata_bases": {
+      "CitizenPlatformBase": "REMOVE_REGISTRATION"
+    }
+  },
+  "dormant_and_future": {
+    "citizen_platform": "DORMANT",
+    "national/*": "FUTURE",
+    "research_platform": "FUTURE",
+    "insurance": "DEFER",
+    "engineering/productivity": "PRESERVE_FOR_GLOBAL_VISION",
+    "knowledge_graph": "PRESERVE_FOR_GLOBAL_VISION",
+    "certification": "PRESERVE_FOR_GLOBAL_VISION",
+    "simulation_edge_digital_twin": "FUTURE"
+  },
+  "must_not_delete": [
+    "tools/gula_intel/",
+    "scripts/enterprise_readiness/",
+    "docs/enterprise-readiness/",
+    "docs/architecture/",
+    "every guard under backend/tests/ that pins a finding",
+    "any migration",
+    "any audit path",
+    "any authorization path",
+    "any identity model",
+    "any physical table"
+  ]
+}

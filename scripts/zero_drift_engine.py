@@ -1023,7 +1023,9 @@ def generate_drift_report(inventory: dict[str, Any], frontend: dict[str, Any], g
             if not page_exists:
                 missing_flags.append("missing page")
             if missing_flags:
-                drift_entries.append(f"- **{module_title}** ({module_name}): {', '.join(missing_flags)}")
+                total_drifts += 1
+                label = DOMAIN_LABELS.get(module_name, {}).get("en", module_name)
+                lines.append(f"- **{label}** ({module_name}): {', '.join(missing_flags)}")
             continue
 
         route_exists = dir_path in frontend.get("routes", set())

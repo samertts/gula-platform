@@ -17,7 +17,6 @@ from app.clinical_gateway.contracts import (
 )
 from app.clinical_gateway.rollout import ClinicalGatewayRollout
 from app.clinical_gateway.service import ClinicalGatewayAuditFailure, ClinicalGatewayService
-from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor_sync
 from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
@@ -69,27 +68,23 @@ def _audit_block(
     correlation_id: UUID,
     reason_code: str,
 ) -> None:
-    audit = CanonicalAuditService(SyncSessionAsyncFacade(db))
-    import asyncio
-
-    asyncio.run(
-        audit.record(
-            AuditEventInput(
-                event_type="clinical_gateway_access",
-                category="clinical_access",
-                action=f"{resource}.read",
-                actor_id=actor.account.id,
-                actor_identity_id=actor.account.identity_id,
-                target_type=f"clinical_{resource[:-1] if resource.endswith('s') else resource}",
-                decision="deny",
-                reason_code=reason_code,
-                request_id=str(request_id),
-                correlation_id=str(correlation_id),
-                session_id=actor.session.id,
-                source="clinical_gateway",
-                data_classification="CLINICAL_SENSITIVE",
-                outcome="denied",
-            ),
+    audit = CanonicalAuditService(db)
+    audit.record(
+        AuditEventInput(
+            event_type="clinical_gateway_access",
+            category="clinical_access",
+            action=f"{resource}.read",
+            actor_id=actor.account.id,
+            actor_identity_id=actor.account.identity_id,
+            target_type=f"clinical_{resource[:-1] if resource.endswith('s') else resource}",
+            decision="deny",
+            reason_code=reason_code,
+            request_id=str(request_id),
+            correlation_id=str(correlation_id),
+            session_id=actor.session.id,
+            source="clinical_gateway",
+            data_classification="CLINICAL_SENSITIVE",
+            outcome="denied",
         ),
     )
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.certificates.services import (
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/certificates", tags=["NIAM Certificates"])
 
 
 @router.post("/issue")
-async def issue_certificate(
+def issue_certificate(
     cert_type: str,
     subject: str,
     issuer: str | None = None,
@@ -26,10 +26,10 @@ async def issue_certificate(
     validity_days: int = 365,
     rotation_period_days: int | None = None,
     issuer_ca_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateService(db)
-    cert = await svc.issue_certificate(
+    cert = svc.issue_certificate(
         cert_type=cert_type,
         subject=subject,
         issuer=issuer,
@@ -46,64 +46,64 @@ async def issue_certificate(
 
 
 @router.post("/{certificate_id}/revoke")
-async def revoke_certificate(
+def revoke_certificate(
     certificate_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateService(db)
-    cert = await svc.revoke_certificate(certificate_id, reason)
+    cert = svc.revoke_certificate(certificate_id, reason)
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
     return {"status": "revoked", "certificate_id": certificate_id}
 
 
 @router.post("/{certificate_id}/rotate")
-async def rotate_certificate(
+def rotate_certificate(
     certificate_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateService(db)
-    cert = await svc.rotate_certificate(certificate_id)
+    cert = svc.rotate_certificate(certificate_id)
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
     return cert.to_dict()
 
 
 @router.get("/{thumbprint}")
-async def get_certificate(
+def get_certificate(
     thumbprint: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateService(db)
-    cert = await svc.get_certificate(thumbprint)
+    cert = svc.get_certificate(thumbprint)
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
     return cert.to_dict()
 
 
 @router.get("/organization/{org_id}")
-async def list_org_certificates(
+def list_org_certificates(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateService(db)
-    certs = await svc.list_for_organization(org_id)
+    certs = svc.list_for_organization(org_id)
     return [c.to_dict() for c in certs]
 
 
 @router.get("/expiring")
-async def list_expiring_certificates(
+def list_expiring_certificates(
     days: int = 30,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateService(db)
-    certs = await svc.list_expiring(days)
+    certs = svc.list_expiring(days)
     return [c.to_dict() for c in certs]
 
 
 @router.post("/authorities")
-async def register_ca(
+def register_ca(
     name: str,
     ca_type: str,
     organization_id: str | None = None,
@@ -112,10 +112,10 @@ async def register_ca(
     validity_days: int = 3650,
     path_length_constraint: int | None = None,
     parent_ca_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateAuthorityService(db)
-    ca = await svc.register_ca(
+    ca = svc.register_ca(
         name=name,
         ca_type=ca_type,
         organization_id=organization_id,
@@ -129,28 +129,28 @@ async def register_ca(
 
 
 @router.get("/authorities")
-async def list_cas(
-    db: AsyncSession = Depends(get_db),
+def list_cas(
+    db: Session = Depends(get_db),
 ):
     svc = CertificateAuthorityService(db)
-    cas = await svc.list_cas()
+    cas = svc.list_cas()
     return [ca.to_dict() for ca in cas]
 
 
 @router.post("/authorities/{ca_id}/crl")
-async def generate_crl(
+def generate_crl(
     ca_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = CertificateAuthorityService(db)
-    crl = await svc.generate_crl(ca_id)
+    crl = svc.generate_crl(ca_id)
     if not crl:
         raise HTTPException(status_code=404, detail="CA not found")
     return crl.to_dict()
 
 
 @router.post("/api-keys")
-async def generate_api_key(
+def generate_api_key(
     name: str,
     organization_id: str,
     enterprise_account_id: str | None = None,
@@ -162,14 +162,14 @@ async def generate_api_key(
     rate_limit: int | None = None,
     created_by: str | None = None,
     expires_at: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = APIKeyService(db)
     expires = None
     if expires_at:
         from datetime import datetime
         expires = datetime.fromisoformat(expires_at)
-    ak, raw_key = await svc.generate_key(
+    ak, raw_key = svc.generate_key(
         name=name,
         organization_id=organization_id,
         enterprise_account_id=enterprise_account_id,
@@ -188,34 +188,34 @@ async def generate_api_key(
 
 
 @router.get("/api-keys/organization/{org_id}")
-async def list_org_api_keys(
+def list_org_api_keys(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = APIKeyService(db)
-    keys = await svc.list_for_organization(org_id)
+    keys = svc.list_for_organization(org_id)
     return [k.to_dict() for k in keys]
 
 
 @router.post("/api-keys/{api_key_id}/revoke")
-async def revoke_api_key(
+def revoke_api_key(
     api_key_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = APIKeyService(db)
-    ak = await svc.revoke_key(api_key_id)
+    ak = svc.revoke_key(api_key_id)
     if not ak:
         raise HTTPException(status_code=404, detail="API key not found")
     return {"status": "revoked", "api_key_id": api_key_id}
 
 
 @router.post("/api-keys/{api_key_id}/rotate")
-async def rotate_api_key(
+def rotate_api_key(
     api_key_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     svc = APIKeyService(db)
-    result = await svc.rotate_key(api_key_id)
+    result = svc.rotate_key(api_key_id)
     if not result:
         raise HTTPException(status_code=404, detail="API key not found")
     new_ak, raw_key = result

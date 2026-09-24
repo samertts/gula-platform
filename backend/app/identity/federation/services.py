@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.federation.models import (
@@ -19,10 +19,10 @@ from app.identity.federation.models import (
 
 class FederationService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def register_provider(
+    def register_provider(
         self,
         provider_id: str,
         name_en: str,
@@ -65,42 +65,42 @@ class FederationService:
             is_active=True,
         )
         self.session.add(provider)
-        await self.session.flush()
+        self.session.flush()
         return provider
 
-    async def get_provider(self, provider_id: str) -> FederatedProvider | None:
+    def get_provider(self, provider_id: str) -> FederatedProvider | None:
         stmt = select(FederatedProvider).where(
             FederatedProvider.provider_id == provider_id,
             FederatedProvider.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_provider(
+    def update_provider(
         self,
         provider_id: str,
         **kwargs: Any,
     ) -> FederatedProvider | None:
-        provider = await self.get_provider(provider_id)
+        provider = self.get_provider(provider_id)
         if not provider:
             return None
         for key, value in kwargs.items():
             if hasattr(provider, key) and value is not None:
                 setattr(provider, key, value)
-        await self.session.flush()
+        self.session.flush()
         return provider
 
-    async def list_providers(
+    def list_providers(
         self,
         status: str | None = None,
     ) -> list[FederatedProvider]:
         stmt = select(FederatedProvider).where(FederatedProvider.is_active.is_(True))
         if status:
             stmt = stmt.where(FederatedProvider.status == status)
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def link_identity(
+    def link_identity(
         self,
         person_id: str,
         provider_id: str,
@@ -108,13 +108,13 @@ class FederationService:
         external_attributes: dict[str, Any] | None = None,
         identity_id: str | None = None,
     ) -> FederatedIdentity:
-        existing = await self.find_by_external_id(provider_id, external_subject_id)
+        existing = self.find_by_external_id(provider_id, external_subject_id)
         if existing:
             existing.status = "active"
             existing.unlinked_at = None
             existing.unlink_reason = None
             existing.is_active = True
-            await self.session.flush()
+            self.session.flush()
             return existing
 
         fed_id_val = f"fed_{uuid.uuid4().hex[:12]}"
@@ -131,15 +131,15 @@ class FederationService:
             is_active=True,
         )
         self.session.add(identity)
-        await self.session.flush()
+        self.session.flush()
         return identity
 
-    async def unlink_identity(self, fed_id: str, reason: str) -> FederatedIdentity | None:
+    def unlink_identity(self, fed_id: str, reason: str) -> FederatedIdentity | None:
         stmt = select(FederatedIdentity).where(
             FederatedIdentity.fed_id == fed_id,
             FederatedIdentity.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         identity = result.scalar_one_or_none()
         if not identity:
             return None
@@ -147,10 +147,10 @@ class FederationService:
         identity.unlinked_at = datetime.now(UTC)
         identity.unlink_reason = reason
         identity.is_active = False
-        await self.session.flush()
+        self.session.flush()
         return identity
 
-    async def find_by_external_id(
+    def find_by_external_id(
         self,
         provider_id: str,
         external_subject_id: str,
@@ -159,18 +159,18 @@ class FederationService:
             FederatedIdentity.provider_id == provider_id,
             FederatedIdentity.external_subject_id == external_subject_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_identities_for_person(self, person_id: str) -> list[FederatedIdentity]:
+    def get_identities_for_person(self, person_id: str) -> list[FederatedIdentity]:
         stmt = select(FederatedIdentity).where(
             FederatedIdentity.person_id == person_id,
             FederatedIdentity.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def create_session(
+    def create_session(
         self,
         account_id: str,
         provider_id: str,
@@ -196,30 +196,30 @@ class FederationService:
             is_active=True,
         )
         self.session.add(fed_session)
-        await self.session.flush()
+        self.session.flush()
         return fed_session
 
-    async def terminate_session(self, session_id: str) -> FederatedSession | None:
+    def terminate_session(self, session_id: str) -> FederatedSession | None:
         stmt = select(FederatedSession).where(
             FederatedSession.session_id == session_id,
             FederatedSession.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         fed_session = result.scalar_one_or_none()
         if not fed_session:
             return None
         fed_session.terminated_at = datetime.now(UTC)
         fed_session.is_active = False
-        await self.session.flush()
+        self.session.flush()
         return fed_session
 
 
 class CrossOrgTrustService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def establish_trust(
+    def establish_trust(
         self,
         source_org_id: str,
         target_org_id: str,
@@ -244,10 +244,10 @@ class CrossOrgTrustService:
             is_active=True,
         )
         self.session.add(trust)
-        await self.session.flush()
+        self.session.flush()
         return trust
 
-    async def get_trust_relationships(self, org_id: str) -> list[CrossOrganizationTrust]:
+    def get_trust_relationships(self, org_id: str) -> list[CrossOrganizationTrust]:
         stmt = select(CrossOrganizationTrust).where(
             CrossOrganizationTrust.is_active.is_(True),
             (
@@ -255,43 +255,43 @@ class CrossOrgTrustService:
                 | (CrossOrganizationTrust.target_org_id == org_id)
             ),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def suspend_trust(self, trust_id: str) -> CrossOrganizationTrust | None:
+    def suspend_trust(self, trust_id: str) -> CrossOrganizationTrust | None:
         stmt = select(CrossOrganizationTrust).where(
             CrossOrganizationTrust.trust_id == trust_id,
             CrossOrganizationTrust.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         trust = result.scalar_one_or_none()
         if not trust:
             return None
         trust.status = "suspended"
-        await self.session.flush()
+        self.session.flush()
         return trust
 
-    async def terminate_trust(self, trust_id: str) -> CrossOrganizationTrust | None:
+    def terminate_trust(self, trust_id: str) -> CrossOrganizationTrust | None:
         stmt = select(CrossOrganizationTrust).where(
             CrossOrganizationTrust.trust_id == trust_id,
             CrossOrganizationTrust.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         trust = result.scalar_one_or_none()
         if not trust:
             return None
         trust.status = "terminated"
         trust.is_active = False
-        await self.session.flush()
+        self.session.flush()
         return trust
 
 
 class FederationAgreementService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def create_agreement(
+    def create_agreement(
         self,
         name: str,
         parties: list[str],
@@ -319,10 +319,10 @@ class FederationAgreementService:
             is_active=True,
         )
         self.session.add(agreement)
-        await self.session.flush()
+        self.session.flush()
         return agreement
 
-    async def sign_agreement(
+    def sign_agreement(
         self,
         agreement_id: str,
         signed_by: list[dict[str, Any]],
@@ -330,7 +330,7 @@ class FederationAgreementService:
         stmt = select(FederationAgreement).where(
             FederationAgreement.agreement_id == agreement_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         agreement = result.scalar_one_or_none()
         if not agreement:
             return None
@@ -338,28 +338,28 @@ class FederationAgreementService:
         agreement.signed_at = datetime.now(UTC)
         if agreement.status == "draft":
             agreement.status = "active"
-        await self.session.flush()
+        self.session.flush()
         return agreement
 
-    async def get_active_agreements(self, org_id: str) -> list[FederationAgreement]:
+    def get_active_agreements(self, org_id: str) -> list[FederationAgreement]:
         stmt = select(FederationAgreement).where(
             FederationAgreement.is_active.is_(True),
             FederationAgreement.status == "active",
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return [
             a for a in result.scalars().all()
             if a.parties and org_id in a.parties
         ]
 
-    async def get_agreement(self, agreement_id: str) -> FederationAgreement | None:
+    def get_agreement(self, agreement_id: str) -> FederationAgreement | None:
         stmt = select(FederationAgreement).where(
             FederationAgreement.agreement_id == agreement_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_agreements(
+    def list_agreements(
         self,
         status: str | None = None,
         agreement_type: str | None = None,
@@ -369,5 +369,5 @@ class FederationAgreementService:
             stmt = stmt.where(FederationAgreement.status == status)
         if agreement_type:
             stmt = stmt.where(FederationAgreement.agreement_type == agreement_type)
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())

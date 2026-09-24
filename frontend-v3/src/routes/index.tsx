@@ -54,15 +54,7 @@ const NiamAdaptiveAuthPage = lazy(() => import("@/pages/niam/AdaptiveAuthPage"))
 const AiFabricPageLazy = lazy(() => import("@/pages/ai-fabric/AiFabricPage"));
 const BiomedicalApiPageLazy = lazy(() => import("@/pages/biomedical/BiomedicalApiPage"));
 const BloodBankApiPageLazy = lazy(() => import("@/pages/blood-bank/BloodBankApiPage"));
-const CapabilitiesClinicalFoundationPageLazy = lazy(() => import("@/pages/capabilities/clinical-foundation/CapabilitiesClinicalFoundationPage"));
-const CapabilitiesDocumentManagementPageLazy = lazy(() => import("@/pages/capabilities/document-management/CapabilitiesDocumentManagementPage"));
 const CapabilitiesEncounterManagementPageLazy = lazy(() => import("@/pages/capabilities/encounter-management/CapabilitiesEncounterManagementPage"));
-const CapabilitiesHealthcareConsentPageLazy = lazy(() => import("@/pages/capabilities/healthcare-consent/CapabilitiesHealthcareConsentPage"));
-const CapabilitiesProviderManagementPageLazy = lazy(() => import("@/pages/capabilities/provider-management/CapabilitiesProviderManagementPage"));
-const CapabilitiesReportingServicePageLazy = lazy(() => import("@/pages/capabilities/reporting-service/CapabilitiesReportingServicePage"));
-const CapabilitiesSearchServicePageLazy = lazy(() => import("@/pages/capabilities/search-service/CapabilitiesSearchServicePage"));
-const CapabilitiesStorageServicePageLazy = lazy(() => import("@/pages/capabilities/storage-service/CapabilitiesStorageServicePage"));
-const CapabilitiesWorkflowEnginePageLazy = lazy(() => import("@/pages/capabilities/workflow-engine/CapabilitiesWorkflowEnginePage"));
 const CertificationPageLazy = lazy(() => import("@/pages/certification/CertificationPage"));
 const CitizenPlatformPageLazy = lazy(() => import("@/pages/citizen-platform/CitizenPlatformPage"));
 const CitizenWorkspacePageLazy = lazy(() => import("@/pages/citizen-platform/CitizenWorkspacePage"));
@@ -185,15 +177,7 @@ export const router = createBrowserRouter([
       { path: "ai-fabric", element: <RoleGuard roles={adminRoles}><LazyPage><AiFabricPageLazy /></LazyPage></RoleGuard> },
       { path: "biomedical", element: <RoleGuard roles={adminRoles}><LazyPage><BiomedicalApiPageLazy /></LazyPage></RoleGuard> },
       { path: "blood-bank", element: <RoleGuard roles={adminRoles}><LazyPage><BloodBankApiPageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/clinical-foundation", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesClinicalFoundationPageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/document-management", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesDocumentManagementPageLazy /></LazyPage></RoleGuard> },
       { path: "capabilities/encounter-management", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesEncounterManagementPageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/healthcare-consent", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesHealthcareConsentPageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/provider-management", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesProviderManagementPageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/reporting-service", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesReportingServicePageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/search-service", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesSearchServicePageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/storage-service", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesStorageServicePageLazy /></LazyPage></RoleGuard> },
-      { path: "capabilities/workflow-engine", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesWorkflowEnginePageLazy /></LazyPage></RoleGuard> },
       { path: "certification", element: <RoleGuard roles={adminRoles}><LazyPage><CertificationPageLazy /></LazyPage></RoleGuard> },
       { path: "citizen", element: <RoleGuard roles={["citizen"]}><LazyPage><CitizenWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "citizen-platform", element: <RoleGuard roles={adminRoles}><LazyPage><CitizenPlatformPageLazy /></LazyPage></RoleGuard> },

@@ -51,6 +51,31 @@ class ToolResult:
     execution_error: str | None = None
 
     @property
+    def measured(self) -> bool:
+        """Whether this result is evidence of anything.
+
+        A tool that failed to start, crashed, or was invoked wrongly produces no
+        analysis. Its empty diagnostic list means "unknown", never "clean", and
+        every consumer below has to know the difference.
+        """
+        return self.execution_error is None
+
+    @property
+    def state(self) -> str:
+        """The explicit state, for consumers that read the report rather than stdout.
+
+        ``measured`` is a boolean and collapses two different unknowns into one.
+        DID_NOT_RUN means the process failed to produce analysis; UNMEASURED
+        means it produced an exit code outside the range the tool defines as a
+        completed run. Neither is CLEAN, and neither may be counted.
+        """
+        if self.execution_error is None:
+            return "CLEAN" if not self.diagnostics else "FINDINGS"
+        if self.returncode in (0, 1):
+            return "UNMEASURED"
+        return "DID_NOT_RUN"
+
+    @property
     def counts(self) -> Counter[str]:
         return Counter(diagnostic.path for diagnostic in self.diagnostics)
 
@@ -153,7 +178,12 @@ def run_ruff(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
     if not paths:
         return ToolResult("ruff", scope, 0, (), "", "")
     result = run(("ruff", "check", "--output-format", "json", *paths), repo)
-    execution_error = None if result.returncode in (0, 1) else result.stderr.strip()
+    # Ruff: 0 = clean, 1 = violations found, anything else = it did not run.
+    execution_error = (
+        None
+        if result.returncode in (0, 1)
+        else (result.stderr.strip() or result.stdout.strip() or f"ruff exited {result.returncode}")
+    )
     diagnostics = parse_ruff_json(repo, result.stdout) if execution_error is None else ()
     return ToolResult(
         "ruff",
@@ -173,8 +203,14 @@ def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
     # different worktrees and stale semantic caches can cause MyPy internal
     # errors or make the comparison depend on run order.  Imports remain
     # available so framework base classes preserve their type information.
+    # Invoke through THIS interpreter rather than a bare `mypy` on PATH. MyPy
+    # has to import the project's dependencies to load its SQLAlchemy and
+    # Pydantic plugins, so a `mypy` belonging to some other environment exits 2
+    # with "No module named 'sqlalchemy'" and analyses nothing.
     result = run(
         (
+            sys.executable,
+            "-m",
             "mypy",
             "--no-incremental",
             "--show-error-codes",
@@ -183,10 +219,22 @@ def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
         ),
         repo,
     )
-    execution_error = None if result.returncode in (0, 1) else result.stderr.strip()
-    diagnostics = limit_to_requested_paths(
-        parse_mypy_text(repo, f"{result.stdout}\n{result.stderr}"),
-        paths,
+    # MyPy: 0 = clean, 1 = type errors found, anything else = it did not
+    # complete (fatal error, bad configuration, missing plugin, crash).
+    execution_error = (
+        None
+        if result.returncode in (0, 1)
+        else (result.stderr.strip() or result.stdout.strip() or f"mypy exited {result.returncode}")
+    )
+    # Deliberately empty when the run failed: parsing the output of a tool that
+    # never completed would turn "we do not know" into "we found nothing".
+    diagnostics = (
+        limit_to_requested_paths(
+            parse_mypy_text(repo, f"{result.stdout}\n{result.stderr}"),
+            paths,
+        )
+        if execution_error is None
+        else ()
     )
     return ToolResult(
         "mypy",
@@ -222,17 +270,30 @@ def scope_paths(repo: Path, scopes: Sequence[str]) -> list[str]:
     return sorted(paths)
 
 
-def execution_error_regression(baseline: ToolResult, head: ToolResult) -> list[str]:
-    """Fail only when the candidate introduces or changes a tool execution error.
+def execution_blockers(baseline: ToolResult, head: ToolResult) -> list[str]:
+    """Report every run that produced no analysis, on either side.
 
-    The repository's historical baseline currently triggers a reproducible MyPy
-    formatter crash in SQLAlchemy analysis.  The changed-file gate remains a
-    non-regression control: an identical baseline failure is reported in the
-    JSON artifact but cannot hide a candidate diagnostic-count regression.
+    This used to fire only when the head's execution error *differed* from the
+    baseline's, so a tool that failed identically on both sides — the usual case,
+    since both sides run in the same environment — reported zero diagnostics and
+    the gate printed PASS. A tool that never ran had certified the change.
+
+    Zero diagnostics is only evidence when the tool actually ran. An unmeasured
+    baseline is no better: there is nothing to compare the candidate against, so
+    non-regression cannot be established either. Both are blockers.
     """
-    if head.execution_error and head.execution_error != baseline.execution_error:
-        return [f"{head.tool} [{head.scope}] execution error: {head.execution_error}"]
-    return []
+    blockers: list[str] = []
+    if not head.measured:
+        blockers.append(
+            f"{head.tool} [{head.scope}] did not run on the candidate, so it produced no "
+            f"analysis and cannot show the change is clean: {head.execution_error}"
+        )
+    if not baseline.measured:
+        blockers.append(
+            f"{baseline.tool} [{baseline.scope}] did not run on the baseline, so there is "
+            f"nothing to compare against: {baseline.execution_error}"
+        )
+    return blockers
 
 
 def compare_counts(
@@ -252,7 +313,11 @@ def result_payload(result: ToolResult) -> dict[str, object]:
         "tool": result.tool,
         "scope": result.scope,
         "returncode": result.returncode,
-        "diagnostic_count": len(result.diagnostics),
+        "state": result.state,
+        "measured": result.measured,
+        # Absent, not zero, when the tool did not run: a count would be read as
+        # a measurement.
+        "diagnostic_count": len(result.diagnostics) if result.measured else None,
         "counts": dict(sorted(result.counts.items())),
         "diagnostics": [asdict(diagnostic) for diagnostic in result.diagnostics],
         "execution_error": result.execution_error,
@@ -340,9 +405,10 @@ def main() -> int:
             "mypy_critical": run_mypy(repo, head_critical, "critical-scope"),
         }
 
+        blockers: list[str] = []
         for name in baseline_results:
-            failures.extend(
-                execution_error_regression(baseline_results[name], head_results[name]),
+            blockers.extend(
+                execution_blockers(baseline_results[name], head_results[name]),
             )
 
         failures.extend(
@@ -377,13 +443,32 @@ def main() -> int:
         report["baseline"] = {key: result_payload(value) for key, value in baseline_results.items()}
         report["head"] = {key: result_payload(value) for key, value in head_results.items()}
         report["failures"] = failures
-        report["status"] = "FAIL" if failures else "PASS"
+        report["blockers"] = blockers
+        # BLOCKED is its own outcome, distinct from FAIL: nothing is known to be
+        # wrong with the change, but nothing is known to be right either.
+        if blockers:
+            report["status"] = "BLOCKED"
+        elif failures:
+            report["status"] = "FAIL"
+        else:
+            report["status"] = "PASS"
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
         for section, results in (("baseline", baseline_results), ("head", head_results)):
             for name, result in results.items():
-                sys.stdout.write(f"{section}.{name}: {len(result.diagnostics)} diagnostics\n")
+                if result.measured:
+                    sys.stdout.write(f"{section}.{name}: {len(result.diagnostics)} diagnostics\n")
+                else:
+                    # Never print a diagnostic count for a run that did not happen.
+                    sys.stdout.write(f"{section}.{name}: DID NOT RUN\n")
+        if blockers:
+            sys.stdout.write("QUALITY_CHANGED_FILES_GATE: BLOCKED\n")
+            for blocker in blockers:
+                sys.stdout.write(f"- {blocker}\n")
+            for failure in failures:
+                sys.stdout.write(f"- {failure}\n")
+            return 1
         if failures:
             sys.stdout.write("QUALITY_CHANGED_FILES_GATE: FAIL\n")
             for failure in failures:

@@ -527,6 +527,7 @@ class DemoDataGenerator:
         self.stats["Sections"] = len(sections)
 
     def _create_users(self) -> None:
+        from app.models.lab import Lab
         from app.models.lab_user import LabUser
         from app.security.auth import hash_password
 
@@ -535,7 +536,6 @@ class DemoDataGenerator:
         ).all()
         if not labs:
             logger.error("No demo labs found — creating one")
-            from app.models.lab import Lab
             lab = Lab(
                 name=f"{DEMO_PREFIX} Central Laboratory",
                 lab_type="government",

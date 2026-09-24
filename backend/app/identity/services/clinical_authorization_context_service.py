@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.models.account import Account
 from app.identity.models.assignment import Assignment
@@ -70,12 +70,12 @@ class ClinicalAuthorizationContextService:
     resource under the returned operational facility resource ID.
     """
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = AuditService(session)
         self.scope_bridge = ClinicalScopeBridgeService(session)
 
-    async def resolve_for_legacy_lab_user(
+    def resolve_for_legacy_lab_user(
         self,
         *,
         legacy_lab_user_id: int,
@@ -89,9 +89,9 @@ class ClinicalAuthorizationContextService:
             )
 
         try:
-            link = await self._get_migrated_link(legacy_lab_user_id)
-            account, identity = await self._get_active_account_identity(link.canonical_account_id)
-            binding = await self.scope_bridge.resolve_active_binding(legacy_lab_id)
+            link = self._get_migrated_link(legacy_lab_user_id)
+            account, identity = self._get_active_account_identity(link.canonical_account_id)
+            binding = self.scope_bridge.resolve_active_binding(legacy_lab_id)
             if (
                 expected_niam_organization_id is not None
                 and binding.niam_organization_id != expected_niam_organization_id
@@ -110,7 +110,7 @@ class ClinicalAuthorizationContextService:
                 raise ClinicalFacilityScopeMismatch(
                     "The reviewed bridge has no canonical NIAM scope mapping"
                 )
-            facility, organization, tenant = await self._get_active_operational_scope(binding)
+            facility, organization, tenant = self._get_active_operational_scope(binding)
             if (
                 facility.id is None
                 or organization.id is None
@@ -124,7 +124,7 @@ class ClinicalAuthorizationContextService:
                 raise ClinicalLegacyIdentityUnresolved(
                     "The reviewed canonical account or identity has incomplete identifiers"
                 )
-            assignment = await self._get_matching_assignment(
+            assignment = self._get_matching_assignment(
                 person_id=identity.person_id,
                 facility_resource_id=facility.id,
                 organization_resource_id=organization.id,
@@ -146,7 +146,7 @@ class ClinicalAuthorizationContextService:
                 scope_mapping_version=binding.mapping_version,
             )
         except ClinicalAuthorizationContextError as exc:
-            await self._record_decision(
+            self._record_decision(
                 action="clinical_authorization_context_denied",
                 legacy_lab_user_id=legacy_lab_user_id,
                 legacy_lab_id=legacy_lab_id,
@@ -155,7 +155,7 @@ class ClinicalAuthorizationContextService:
             )
             raise
 
-        await self._record_decision(
+        self._record_decision(
             action="clinical_authorization_context_resolved",
             legacy_lab_user_id=legacy_lab_user_id,
             legacy_lab_id=legacy_lab_id,
@@ -168,14 +168,14 @@ class ClinicalAuthorizationContextService:
         )
         return context
 
-    async def _get_migrated_link(self, legacy_lab_user_id: int) -> LegacyAccountLink:
+    def _get_migrated_link(self, legacy_lab_user_id: int) -> LegacyAccountLink:
         stmt = select(LegacyAccountLink).where(
             LegacyAccountLink.source_kind == LegacyAccountLinkSource.lab_user.value,
             LegacyAccountLink.legacy_account_id == legacy_lab_user_id,
             LegacyAccountLink.status == LegacyAccountLinkStatus.migrated.value,
             LegacyAccountLink.canonical_account_id.isnot(None),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         links = list(result.scalars().all())
         if not links:
             raise ClinicalLegacyIdentityUnresolved(
@@ -187,7 +187,7 @@ class ClinicalAuthorizationContextService:
             )
         return links[0]
 
-    async def _get_active_account_identity(
+    def _get_active_account_identity(
         self, account_id: str | None
     ) -> tuple[Account, IdentityRecord]:
         if not account_id:
@@ -205,7 +205,7 @@ class ClinicalAuthorizationContextService:
                 IdentityRecord.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         rows = list(result.all())
         if len(rows) != 1:
             raise ClinicalLegacyIdentityUnresolved(
@@ -213,7 +213,7 @@ class ClinicalAuthorizationContextService:
             )
         return rows[0][0], rows[0][1]
 
-    async def _get_active_operational_scope(
+    def _get_active_operational_scope(
         self,
         binding: ClinicalLabFacilityBinding,
     ) -> tuple[Facility, Organization, Tenant]:
@@ -228,7 +228,7 @@ class ClinicalAuthorizationContextService:
                 Tenant.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         rows = list(result.all())
         if len(rows) != 1:
             raise ClinicalFacilityScopeMismatch(
@@ -236,7 +236,7 @@ class ClinicalAuthorizationContextService:
             )
         return rows[0][0], rows[0][1], rows[0][2]
 
-    async def _get_matching_assignment(
+    def _get_matching_assignment(
         self,
         *,
         person_id: str,
@@ -252,7 +252,7 @@ class ClinicalAuthorizationContextService:
             Assignment.start_date <= today,
             (Assignment.end_date.is_(None) | (Assignment.end_date >= today)),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         candidates = list(result.scalars().all())
         person_candidates = [
             assignment for assignment in candidates if assignment.person_id == person_id
@@ -280,7 +280,7 @@ class ClinicalAuthorizationContextService:
             )
         return scoped[0]
 
-    async def _record_decision(
+    def _record_decision(
         self,
         *,
         action: str,
@@ -293,7 +293,7 @@ class ClinicalAuthorizationContextService:
             "legacy_lab_id": legacy_lab_id,
             **metadata,
         }
-        await self.audit.record_event(
+        self.audit.record_event(
             action=action,
             target_type="legacy_lab_user",
             target_id=str(legacy_lab_user_id),

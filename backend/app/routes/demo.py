@@ -12,11 +12,23 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from ..config import DEMO_MODE, IS_PRODUCTION, JWT_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
+from ..config import (
+    DEMO_MODE,
+    IS_PRODUCTION,
+    JWT_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    USE_SECURE_COOKIES,
+)
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
-from ..security.auth import build_token_payload, create_refresh_token, create_token, hash_password
+from ..security.auth import (
+    ACCOUNT_KIND_LAB,
+    build_token_payload,
+    create_refresh_token,
+    create_token,
+    hash_password,
+)
 from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..services.audit_service import log_action
 
@@ -101,7 +113,8 @@ def start_demo_session(
         # its role changed outside the deterministic demo catalogue.
         raise HTTPException(status_code=503, detail="Demo account is not available")
 
-    payload = build_token_payload(user)
+    # NR-035: the synthetic demo identity is a `lab_users` row; say so.
+    payload = build_token_payload(user, account_kind=ACCOUNT_KIND_LAB)
     access_token = create_token(payload)
     refresh_token = create_refresh_token(payload)
     cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": USE_SECURE_COOKIES}

@@ -5,7 +5,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
+# NR-053: `app.` is the application's import root. `backend.app.` resolves only
+# where the repository root happens to be on sys.path — true under pytest and in
+# CI, false for a plain interpreter rooted at backend/ — and that ambiguity is
+# the same dual-root fragility NR-044.3 found in the national repositories.
+from app.engineering.generators.base import BaseGenerator, GenerateResult
 
 
 @dataclass
@@ -54,11 +58,19 @@ from uuid import uuid4
 
 @dataclass
 class {entity}:
+{required_fields}
     id: str = field(default_factory=lambda: str(uuid4()))
-{fields}
+{optional_fields}
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 """
+# NR-053: the required fields come first because a dataclass may not declare a
+# non-default field after a defaulted one. This template used to emit the
+# defaulted `id` first, so every capability that declared a required field
+# raised `TypeError: non-default argument 'document_id' follows default
+# argument 'id'` at class-creation time — which is why four of the ten packages
+# in app/capabilities/ are broken twice over. Field names, types and the
+# defaulted `id` are unchanged; only the order is.
 
 _DTO_TPL = """from __future__ import annotations
 
@@ -188,13 +200,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(prefix="/{prefix}", tags=["{tag}"])
 
 
 @router.get("/")
-async def list_{prefix}(
+async def list_{func}(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
@@ -203,7 +215,7 @@ async def list_{prefix}(
 
 
 @router.get("/{{id}}")
-async def get_{prefix}(
+async def get_{func}(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -211,7 +223,7 @@ async def get_{prefix}(
 
 
 @router.post("/")
-async def create_{prefix}(
+async def create_{func}(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -219,7 +231,7 @@ async def create_{prefix}(
 
 
 @router.put("/{{id}}")
-async def update_{prefix}(
+async def update_{func}(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
@@ -228,7 +240,7 @@ async def update_{prefix}(
 
 
 @router.delete("/{{id}}")
-async def delete_{prefix}(
+async def delete_{func}(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -424,7 +436,12 @@ class CapabilityGenerator(BaseGenerator):
 
         cap = spec.name.lower().replace(" ", "_")
         cap_cap = spec.name[0].upper() + spec.name[1:]
-        module_path = f"backend.app.capabilities.{cap}"
+        # NR-053: one string, three kinds of generated reference — the
+        # infrastructure repository's imports, the unit test's import, and the
+        # descriptor's `module_path` metadata. It said `backend.app.`, which
+        # resolves only where the repository root is on sys.path, so generated
+        # capabilities imported in one environment and not another.
+        module_path = f"app.capabilities.{cap}"
         prefix = cap.replace("_", "-")
 
         self.target_dir.mkdir(parents=True, exist_ok=True)
@@ -482,7 +499,7 @@ Layer: {spec.layer}
 Version: {spec.version}
 """
 
-from {cap}.capability import {cap_cap}Capability
+from .capability import {cap_cap}Capability
 
 __all__ = ["{cap_cap}Capability"]
 ''',
@@ -511,7 +528,7 @@ __all__ = ["{cap_cap}Capability"]
 import logging
 from typing import Any
 
-from backend.app.kernel.integration import get_kernel
+from app.kernel.integration import get_kernel
 
 logger = logging.getLogger("gula.capability.{cap}")
 
@@ -562,9 +579,18 @@ class {cap_cap}Capability:
     def _generate_domain(
         self, cap: str, cap_cap: str, spec: CapabilitySpec,
     ) -> None:
-        fields_str = "\n".join(
-            f"    {f.name}: {f.type}{'' if f.required else ' = None'}"
+        # NR-053: split by whether the field carries a default, so the template
+        # can put the required ones ahead of the defaulted `id`. Grouping is the
+        # whole fix — no field is renamed, retyped, added or dropped.
+        required_fields = "\n".join(
+            f"    {f.name}: {f.type}"
             for f in (spec.entities or [])
+            if f.required
+        )
+        optional_fields = "\n".join(
+            f"    {f.name}: {f.type} = None"
+            for f in (spec.entities or [])
+            if not f.required
         )
         entity_name = cap_cap
         self._write(
@@ -578,7 +604,8 @@ class {cap_cap}Capability:
             f"{cap}/domain/entities.py",
             _ENTITY_TPL.format(
                 entity=entity_name,
-                fields=fields_str,
+                required_fields=required_fields,
+                optional_fields=optional_fields,
             ),
         )
         self._write(
@@ -595,7 +622,7 @@ class {cap_cap}Capability:
         self._write(
             f"{cap}/infrastructure/repository.py",
             _REPOSITORY_IMPL_TPL.format(
-                module_path=f"backend.app.capabilities.{cap}",
+                module_path=f"app.capabilities.{cap}",
                 entity_name=entity_name,
                 repo=cap_cap,
             ),
@@ -775,7 +802,14 @@ class {qry_cap}Query:
     def _generate_routes(self, cap: str, cap_cap: str, spec: CapabilitySpec, prefix: str) -> None:
         self._write(
             f"{cap}/routes.py",
-            _ROUTES_TPL.format(prefix=prefix, tag=spec.name.replace("_", " ").title()),
+            # NR-055: the URL prefix is hyphenated and a Python identifier
+            # cannot be. This template used {prefix} for both, so it emitted
+            # `async def list_clinical-foundation(` — a SyntaxError. The route
+            # paths are unchanged; only the function names use the underscored
+            # form now.
+            _ROUTES_TPL.format(
+                prefix=prefix, func=cap, tag=spec.name.replace("_", " ").title(),
+            ),
         )
 
     def _generate_health(self, cap: str, cap_cap: str, prefix: str, spec: CapabilitySpec) -> None:

@@ -5,16 +5,16 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.national.workflow_runtime.application.service import (
+from app.national.workflow_runtime.application.service import (
     WorkflowRuntimeService,
 )
-from backend.app.national.workflow_runtime.domain.entities import (
+from app.national.workflow_runtime.domain.entities import (
     WorkflowDefinition,
     WorkflowStepDefinition,
     WorkflowTemplate,
 )
-from backend.app.national.workflow_runtime.domain.enums import WorkflowTrigger
-from backend.app.national.workflow_runtime.infrastructure.repository import (
+from app.national.workflow_runtime.domain.enums import WorkflowTrigger
+from app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowApprovalRepository,
     SQLAlchemyWorkflowCompensationRepository,
     SQLAlchemyWorkflowDefinitionRepository,
@@ -23,9 +23,17 @@ from backend.app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowTemplateRepository,
     SQLAlchemyWorkflowTimerRepository,
 )
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
-router = APIRouter(prefix="/national/workflows", tags=["National Workflows"])
+#: NR-070. Same canonical permission, same placement, as the thirteen
+#: national routers that already guard themselves -- including their own
+#: `/health` endpoints, which sit under the router dependency in all seven
+#: platform siblings. This one is not an exception.
+router = APIRouter(
+    prefix="/national/workflows",
+    tags=["National Workflows"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service() -> WorkflowRuntimeService:
@@ -43,7 +51,7 @@ def _get_service() -> WorkflowRuntimeService:
 
 
 @router.post("/definitions")
-async def create_definition(data: dict, current_user: Any = Depends(get_current_user)):
+def create_definition(data: dict, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
     steps = [WorkflowStepDefinition(**s) for s in data.get("steps", [])]
     definition = WorkflowDefinition(
@@ -58,12 +66,12 @@ async def create_definition(data: dict, current_user: Any = Depends(get_current_
         metadata=data.get("metadata", {}),
         created_by=current_user.id if hasattr(current_user, "id") else None,
     )
-    result = await svc.create_definition(definition)
+    result = svc.create_definition(definition)
     return {"success": True, "id": result.id, "version": result.version}
 
 
 @router.get("/definitions")
-async def list_definitions(
+def list_definitions(
     type: str | None = Query(None),
     status: str | None = Query(None),
     search: str | None = Query(None),
@@ -79,39 +87,39 @@ async def list_definitions(
         filters["status"] = status
     if search:
         filters["search"] = search
-    definitions = await svc.list_definitions(skip=skip, limit=limit, filters=filters)
+    definitions = svc.list_definitions(skip=skip, limit=limit, filters=filters)
     return {"items": definitions, "total": len(definitions), "skip": skip, "limit": limit}
 
 
 @router.get("/definitions/{definition_id}")
-async def get_definition(definition_id: str, current_user: Any = Depends(get_current_user)):
+def get_definition(definition_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    definition = await svc.get_definition(definition_id)
+    definition = svc.get_definition(definition_id)
     if not definition:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
     return definition
 
 
 @router.delete("/definitions/{definition_id}")
-async def delete_definition(definition_id: str, current_user: Any = Depends(get_current_user)):
+def delete_definition(definition_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    deleted = await svc.delete_definition(definition_id)
+    deleted = svc.delete_definition(definition_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
     return {"success": True}
 
 
 @router.post("/definitions/{definition_id}/execute")
-async def execute_workflow(
+def execute_workflow(
     definition_id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    definition = await svc.get_definition(definition_id)
+    definition = svc.get_definition(definition_id)
     if not definition:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
-    execution = await svc.start_execution(
+    execution = svc.start_execution(
         workflow_type=definition.type,
         input_data=data.get("input", {}),
         trigger=WorkflowTrigger.API,
@@ -122,12 +130,12 @@ async def execute_workflow(
 
 
 @router.post("/execute")
-async def execute_by_type(
+def execute_by_type(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    execution = await svc.start_execution(
+    execution = svc.start_execution(
         workflow_type=data["type"],
         input_data=data.get("input", {}),
         trigger=WorkflowTrigger.API,
@@ -138,7 +146,7 @@ async def execute_by_type(
 
 
 @router.get("/executions")
-async def list_executions(
+def list_executions(
     status: str | None = Query(None),
     workflow_id: str | None = Query(None),
     trigger: str | None = Query(None),
@@ -157,71 +165,71 @@ async def list_executions(
         filters["trigger"] = trigger
     if correlation_id:
         filters["correlation_id"] = correlation_id
-    executions = await svc.list_executions(skip=skip, limit=limit, filters=filters)
+    executions = svc.list_executions(skip=skip, limit=limit, filters=filters)
     return {"items": executions, "total": len(executions), "skip": skip, "limit": limit}
 
 
 @router.get("/executions/{execution_id}")
-async def get_execution(execution_id: str, current_user: Any = Depends(get_current_user)):
+def get_execution(execution_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    execution = await svc.get_execution(execution_id)
+    execution = svc.get_execution(execution_id)
     if not execution:
         raise HTTPException(status_code=404, detail="Workflow execution not found")
-    steps = await svc.get_execution_steps(execution_id)
+    steps = svc.get_execution_steps(execution_id)
     return {"execution": execution, "steps": steps}
 
 
 @router.post("/executions/{execution_id}/cancel")
-async def cancel_execution(
+def cancel_execution(
     execution_id: str,
     data: dict | None = None,
     current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    execution = await svc.cancel_execution(execution_id, (data or {}).get("reason"))
+    execution = svc.cancel_execution(execution_id, (data or {}).get("reason"))
     return {"success": True, "status": execution.status.value}
 
 
 @router.post("/executions/{execution_id}/pause")
-async def pause_execution(execution_id: str, current_user: Any = Depends(get_current_user)):
+def pause_execution(execution_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    execution = await svc.pause_execution(execution_id)
+    execution = svc.pause_execution(execution_id)
     return {"success": True, "status": execution.status.value}
 
 
 @router.post("/executions/{execution_id}/resume")
-async def resume_execution(execution_id: str, current_user: Any = Depends(get_current_user)):
+def resume_execution(execution_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    execution = await svc.resume_execution(execution_id)
+    execution = svc.resume_execution(execution_id)
     return {"success": True, "status": execution.status.value}
 
 
 @router.get("/executions/{execution_id}/steps")
-async def get_execution_steps(execution_id: str, current_user: Any = Depends(get_current_user)):
+def get_execution_steps(execution_id: str, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    steps = await svc.get_execution_steps(execution_id)
+    steps = svc.get_execution_steps(execution_id)
     return {"steps": steps}
 
 
 @router.get("/executions/{execution_id}/approvals")
-async def get_execution_approvals(
+def get_execution_approvals(
     execution_id: str, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
     if svc._approval_repo:
-        approvals = await svc._approval_repo.find_by_execution(execution_id)
+        approvals = svc._approval_repo.find_by_execution(execution_id)
         return {"approvals": approvals}
     return {"approvals": []}
 
 
 @router.post("/executions/{execution_id}/approve")
-async def approve_step(
+def approve_step(
     execution_id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    approval = await svc.approve_step(
+    approval = svc.approve_step(
         execution_id,
         data["step_id"],
         current_user.id if hasattr(current_user, "id") else "unknown",
@@ -231,13 +239,13 @@ async def approve_step(
 
 
 @router.post("/executions/{execution_id}/reject")
-async def reject_step(
+def reject_step(
     execution_id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    approval = await svc.reject_step(
+    approval = svc.reject_step(
         execution_id,
         data["step_id"],
         current_user.id if hasattr(current_user, "id") else "unknown",
@@ -247,15 +255,15 @@ async def reject_step(
 
 
 @router.get("/approvals/pending")
-async def get_pending_approvals(current_user: Any = Depends(get_current_user)):
+def get_pending_approvals(current_user: Any = Depends(get_current_user)):
     svc = _get_service()
     user_id = current_user.id if hasattr(current_user, "id") else "unknown"
-    approvals = await svc.get_pending_approvals(user_id)
+    approvals = svc.get_pending_approvals(user_id)
     return {"approvals": approvals}
 
 
 @router.post("/templates")
-async def create_template(data: dict, current_user: Any = Depends(get_current_user)):
+def create_template(data: dict, current_user: Any = Depends(get_current_user)):
     svc = _get_service()
     template = WorkflowTemplate(
         id=str(uuid.uuid4()),
@@ -267,12 +275,12 @@ async def create_template(data: dict, current_user: Any = Depends(get_current_us
         tags=data.get("tags", []),
         created_by=current_user.id if hasattr(current_user, "id") else None,
     )
-    result = await svc.create_template(template)
+    result = svc.create_template(template)
     return {"success": True, "id": result.id}
 
 
 @router.get("/templates")
-async def list_templates(
+def list_templates(
     category: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -282,18 +290,18 @@ async def list_templates(
     filters = {}
     if category:
         filters["category"] = category
-    templates = await svc.list_templates(skip=skip, limit=limit, filters=filters)
+    templates = svc.list_templates(skip=skip, limit=limit, filters=filters)
     return {"items": templates, "total": len(templates)}
 
 
 @router.post("/templates/{template_id}/instantiate")
-async def instantiate_template(
+def instantiate_template(
     template_id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    definition = await svc.instantiate_template(
+    definition = svc.instantiate_template(
         template_id,
         data.get("parameters", {}),
         current_user.id if hasattr(current_user, "id") else None,
@@ -302,23 +310,23 @@ async def instantiate_template(
 
 
 @router.get("/stats")
-async def get_stats(current_user: Any = Depends(get_current_user)):
+def get_stats(current_user: Any = Depends(get_current_user)):
     svc = _get_service()
-    return await svc.get_stats()
+    return svc.get_stats()
 
 
 @router.get("/definitions/{definition_id}/versions")
-async def list_definition_versions(
+def list_definition_versions(
     definition_id: str, current_user: Any = Depends(get_current_user),
 ):
     svc = _get_service()
-    definition = await svc.get_definition(definition_id)
+    definition = svc.get_definition(definition_id)
     if not definition:
         raise HTTPException(status_code=404, detail="Definition not found")
-    versions = await svc.list_versions(definition.type)
+    versions = svc.list_versions(definition.type)
     return {"versions": versions}
 
 
 @router.get("/health")
-async def health():
+def health():
     return {"status": "ok", "module": "workflow_runtime", "version": "1.0.0"}

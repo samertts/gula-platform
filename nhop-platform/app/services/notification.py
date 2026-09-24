@@ -8,13 +8,11 @@ insertion).
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
-
-from backend.app._compat import UTC
 
 from ..models.notification import (
     Notification,

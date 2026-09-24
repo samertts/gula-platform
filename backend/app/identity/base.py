@@ -8,8 +8,9 @@ from sqlalchemy import Column, DateTime, String
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
+from app.orm_topology import SHARED_METADATA
 
-IdentityBase = declarative_base()
+IdentityBase = declarative_base(metadata=SHARED_METADATA)
 
 
 def _ulid() -> str:

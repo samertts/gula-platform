@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from .config import DATABASE_URL, READ_REPLICA_ENABLED, READ_REPLICA_URL
+from .orm_topology import SHARED_METADATA
 
 logger = logging.getLogger("gula.database")
 
@@ -20,7 +21,9 @@ logger = logging.getLogger("gula.database")
 _request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
 _endpoint_var: contextvars.ContextVar[str] = contextvars.ContextVar("endpoint", default="")
 _user_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("user_id", default=None)
-_lab_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("lab_id", default=None)
+# NR-147: this is the one tenant variable, and it lives in shared.models so the
+# TenantMixin guard and this correlation context cannot drift apart.
+from shared.models.tenant_context import current_lab_id as _lab_id_var  # noqa: E402
 
 # ── Sliding window event tracker ─────────────────────────────────────────────
 
@@ -269,7 +272,7 @@ if READ_REPLICA_ENABLED and READ_REPLICA_URL:
 
 ReadSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=read_engine or engine)
 
-Base = declarative_base()
+Base = declarative_base(metadata=SHARED_METADATA)
 
 # Block edge_* table access from API/test/CLI runtimes. No-op inside worker.
 try:

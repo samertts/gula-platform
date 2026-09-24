@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.reference.domain.services import (
@@ -20,7 +20,7 @@ from app.reference.services.result_service import ResultService
 
 
 def get_patient_service(
-    session: AsyncSession = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> PatientService:
     repository = SQLPatientRepository(session)
     validation = PatientValidationService()
@@ -28,7 +28,7 @@ def get_patient_service(
 
 
 def get_order_service(
-    session: AsyncSession = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> OrderService:
     repository = SQLOrderRepository(session)
     patient_repo = SQLPatientRepository(session)
@@ -41,7 +41,7 @@ def get_order_service(
 
 
 def get_result_service(
-    session: AsyncSession = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> ResultService:
     repository = SQLResultRepository(session)
     order_repo = SQLOrderRepository(session)

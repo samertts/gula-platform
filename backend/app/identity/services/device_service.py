@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.models.device import Device
@@ -14,11 +14,11 @@ from app.identity.repositories.device_repository import DeviceRepository
 
 class DeviceService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.repo = DeviceRepository(session)
         self._session = session
 
-    async def register_device(
+    def register_device(
         self,
         person_id: str,
         device_fingerprint: str,
@@ -34,13 +34,13 @@ class DeviceService:
         account_id: str | None = None,
         ip_address: str | None = None,
     ) -> Device:
-        existing = await self.repo.find_by_fingerprint(device_fingerprint)
+        existing = self.repo.find_by_fingerprint(device_fingerprint)
         if existing:
             existing.last_seen_at = datetime.now(UTC)
             existing.last_ip = ip_address
             if account_id:
                 existing.account_id = account_id
-            await self.repo.session.flush()
+            self.repo.session.flush()
             return existing
 
         device = Device(
@@ -65,51 +65,51 @@ class DeviceService:
             is_active=True,
             is_locked=False,
         )
-        return await self.repo.create(device)
+        return self.repo.create(device)
 
-    async def trust_device(self, device_id: str) -> Device | None:
-        device = await self.repo.get_by_id(device_id)
+    def trust_device(self, device_id: str) -> Device | None:
+        device = self.repo.get_by_id(device_id)
         if not device:
             return None
         device.trusted = True
         device.trusted_at = datetime.now(UTC)
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return device
 
-    async def revoke_device(self, device_id: str) -> bool:
-        device = await self.repo.get_by_id(device_id)
+    def revoke_device(self, device_id: str) -> bool:
+        device = self.repo.get_by_id(device_id)
         if not device:
             return False
         device.is_active = False
-        await self.repo.session.flush()
+        self.repo.session.flush()
         return True
 
-    async def attest_device(self, device_id: str, attestation_data: str) -> MachineIdentity | None:
+    def attest_device(self, device_id: str, attestation_data: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         machine = result.scalar_one_or_none()
         if not machine:
             return None
         machine.device_attestation = attestation_data
         machine.attested_at = datetime.now(UTC)
         machine.health_status = "healthy"
-        await self._session.flush()
+        self._session.flush()
         return machine
 
-    async def report_health(self, device_id: str, health_status: str) -> MachineIdentity | None:
+    def report_health(self, device_id: str, health_status: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         machine = result.scalar_one_or_none()
         if not machine:
             return None
         machine.health_status = health_status
         machine.last_health_check = datetime.now(UTC)
-        await self._session.flush()
+        self._session.flush()
         return machine
 
-    async def calculate_risk_score(self, device_id: str) -> int | None:
+    def calculate_risk_score(self, device_id: str) -> int | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         machine = result.scalar_one_or_none()
         if not machine:
             return None
@@ -143,12 +143,12 @@ class DeviceService:
                 score += 10
         score = min(score, 100)
         machine.risk_score = score
-        await self._session.flush()
+        self._session.flush()
         return score
 
-    async def mark_compromised(self, device_id: str) -> MachineIdentity | None:
+    def mark_compromised(self, device_id: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         machine = result.scalar_one_or_none()
         if not machine:
             return None
@@ -156,28 +156,28 @@ class DeviceService:
         machine.compromised_at = datetime.now(UTC)
         machine.health_status = "compromised"
         machine.risk_score = 100
-        await self._session.flush()
+        self._session.flush()
         return machine
 
-    async def transfer_device(self, device_id: str, new_person_id: str) -> MachineIdentity | None:
+    def transfer_device(self, device_id: str, new_person_id: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         machine = result.scalar_one_or_none()
         if not machine:
             return None
         machine.assigned_to_person = new_person_id
         machine.assigned_at = datetime.now(UTC)
-        await self._session.flush()
+        self._session.flush()
         return machine
 
-    async def report_lost(self, device_id: str) -> MachineIdentity | None:
+    def report_lost(self, device_id: str) -> MachineIdentity | None:
         stmt = select(MachineIdentity).where(MachineIdentity.uuid == device_id)
-        result = await self._session.execute(stmt)
+        result = self._session.execute(stmt)
         machine = result.scalar_one_or_none()
         if not machine:
             return None
         machine.is_active = False
         machine.health_status = "lost"
         machine.notes = (machine.notes or "") + " [REPORTED LOST]"
-        await self._session.flush()
+        self._session.flush()
         return machine

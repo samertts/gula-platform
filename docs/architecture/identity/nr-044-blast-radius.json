@@ -1,0 +1,720 @@
+{
+ "generated_by": "AUTH/NR-044",
+ "head": "4935bf85",
+ "method": "AST; comments and string literals excluded",
+ "modules": {
+  "capabilities/document_management/infrastructure/repository.py": {
+   "async_defs": 6,
+   "async_for": 0,
+   "async_with": 6,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 8,
+   "await_db_methods": [
+    "commit",
+    "delete",
+    "execute",
+    "get"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "capabilities/encounter_management/infrastructure/repository.py": {
+   "async_defs": 6,
+   "async_for": 0,
+   "async_with": 6,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 8,
+   "await_db_methods": [
+    "commit",
+    "delete",
+    "execute",
+    "get"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "capabilities/provider_management/infrastructure/repository.py": {
+   "async_defs": 6,
+   "async_for": 0,
+   "async_with": 6,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 8,
+   "await_db_methods": [
+    "commit",
+    "delete",
+    "execute",
+    "get"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "capabilities/workflow_engine/infrastructure/repository.py": {
+   "async_defs": 6,
+   "async_for": 0,
+   "async_with": 6,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 8,
+   "await_db_methods": [
+    "commit",
+    "delete",
+    "execute",
+    "get"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/adaptive_auth/routes.py": {
+   "async_defs": 16,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 16,
+   "await_db_calls": 6,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 12,
+   "depends_get_db": 16,
+   "sync_session_annotations": 0
+  },
+  "identity/adaptive_auth/services.py": {
+   "async_defs": 21,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 2,
+   "await_db_calls": 31,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 16,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/admin/routes.py": {
+   "async_defs": 13,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 13,
+   "await_db_calls": 5,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 25,
+   "depends_get_db": 12,
+   "sync_session_annotations": 0
+  },
+  "identity/admin/services.py": {
+   "async_defs": 15,
+   "async_for": 0,
+   "async_with": 1,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 19,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 11,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/api/memberships.py": {
+   "async_defs": 10,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 10,
+   "await_db_calls": 5,
+   "await_db_methods": [
+    "get"
+   ],
+   "await_non_db": 16,
+   "depends_get_db": 9,
+   "sync_session_annotations": 0
+  },
+  "identity/api/roles.py": {
+   "async_defs": 7,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 7,
+   "await_db_calls": 3,
+   "await_db_methods": [
+    "execute",
+    "get"
+   ],
+   "await_non_db": 10,
+   "depends_get_db": 6,
+   "sync_session_annotations": 0
+  },
+  "identity/api/security.py": {
+   "async_defs": 5,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 5,
+   "await_db_calls": 2,
+   "await_db_methods": [
+    "execute",
+    "get"
+   ],
+   "await_non_db": 8,
+   "depends_get_db": 4,
+   "sync_session_annotations": 0
+  },
+  "identity/api/workspaces.py": {
+   "async_defs": 4,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 4,
+   "await_db_calls": 2,
+   "await_db_methods": [
+    "execute",
+    "get"
+   ],
+   "await_non_db": 6,
+   "depends_get_db": 5,
+   "sync_session_annotations": 1
+  },
+  "identity/bootstrap/seed.py": {
+   "async_defs": 2,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 2,
+   "await_db_calls": 2,
+   "await_db_methods": [
+    "flush"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/certificates/services.py": {
+   "async_defs": 18,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 3,
+   "await_db_calls": 23,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 4,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/compliance/services.py": {
+   "async_defs": 8,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 10,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 3,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/federation/services.py": {
+   "async_defs": 19,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 3,
+   "await_db_calls": 25,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 2,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/governance/services.py": {
+   "async_defs": 32,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 5,
+   "await_db_calls": 45,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/notifications/services.py": {
+   "async_defs": 11,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 16,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/account_repository.py": {
+   "async_defs": 6,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 6,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/assignment_repository.py": {
+   "async_defs": 4,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 4,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/base.py": {
+   "async_defs": 7,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 9,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/device_repository.py": {
+   "async_defs": 4,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 4,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/employment_repository.py": {
+   "async_defs": 3,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 3,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/identity_repository.py": {
+   "async_defs": 3,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 3,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/organization_repository.py": {
+   "async_defs": 4,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 4,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/person_repository.py": {
+   "async_defs": 5,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 5,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/policy_repository.py": {
+   "async_defs": 1,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 1,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/repositories/session_repository.py": {
+   "async_defs": 5,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 7,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 0,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/account_request_service.py": {
+   "async_defs": 1,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 5,
+   "await_db_methods": [
+    "commit",
+    "flush",
+    "scalar"
+   ],
+   "await_non_db": 2,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/account_service.py": {
+   "async_defs": 7,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 6,
+   "await_db_methods": [
+    "flush"
+   ],
+   "await_non_db": 7,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/audit_service.py": {
+   "async_defs": 4,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 4,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 2,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/authorization_decision.py": {
+   "async_defs": 10,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 5,
+   "await_db_methods": [
+    "execute",
+    "scalar"
+   ],
+   "await_non_db": 12,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/authorization_service_v2.py": {
+   "async_defs": 9,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 11,
+   "await_db_methods": [
+    "execute",
+    "flush",
+    "scalar"
+   ],
+   "await_non_db": 12,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/canonical_audit.py": {
+   "async_defs": 4,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 5,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 1,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/clinical_authorization_context_service.py": {
+   "async_defs": 6,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 4,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 8,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/consent_service_v2.py": {
+   "async_defs": 5,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 8,
+   "await_db_methods": [
+    "execute",
+    "flush",
+    "get"
+   ],
+   "await_non_db": 6,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/device_service.py": {
+   "async_defs": 9,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 3,
+   "await_db_methods": [
+    "flush"
+   ],
+   "await_non_db": 16,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/identity_service.py": {
+   "async_defs": 4,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 1,
+   "await_db_methods": [
+    "flush"
+   ],
+   "await_non_db": 4,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/incident_service.py": {
+   "async_defs": 3,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 4,
+   "await_db_methods": [
+    "execute",
+    "flush",
+    "get"
+   ],
+   "await_non_db": 2,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/legacy_mapping_service.py": {
+   "async_defs": 5,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 4,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 6,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/membership_service.py": {
+   "async_defs": 13,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 32,
+   "await_db_methods": [
+    "execute",
+    "flush",
+    "rollback",
+    "scalar"
+   ],
+   "await_non_db": 25,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/person_service.py": {
+   "async_defs": 8,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 1,
+   "await_db_methods": [
+    "flush"
+   ],
+   "await_non_db": 8,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/session_service.py": {
+   "async_defs": 8,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 6,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 6,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/services/workspace_service.py": {
+   "async_defs": 5,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 11,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 3,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/trust/routes.py": {
+   "async_defs": 32,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 32,
+   "await_db_calls": 1,
+   "await_db_methods": [
+    "execute"
+   ],
+   "await_non_db": 33,
+   "depends_get_db": 31,
+   "sync_session_annotations": 0
+  },
+  "identity/trust/services.py": {
+   "async_defs": 33,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 6,
+   "await_db_calls": 32,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 12,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "identity/workflows/engine.py": {
+   "async_defs": 10,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 1,
+   "await_db_calls": 13,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 5,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "national/task_engine/infrastructure/repository.py": {
+   "async_defs": 38,
+   "async_for": 0,
+   "async_with": 7,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 10,
+   "await_db_methods": [
+    "commit",
+    "delete",
+    "execute",
+    "get"
+   ],
+   "await_non_db": 7,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "national/workflow_runtime/infrastructure/repository.py": {
+   "async_defs": 39,
+   "async_for": 0,
+   "async_with": 13,
+   "asyncsession_annotations": 0,
+   "await_db_calls": 16,
+   "await_db_methods": [
+    "commit",
+    "delete",
+    "execute",
+    "get"
+   ],
+   "await_non_db": 6,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  },
+  "services/clinical_scope_bridge_service.py": {
+   "async_defs": 6,
+   "async_for": 0,
+   "async_with": 0,
+   "asyncsession_annotations": 2,
+   "await_db_calls": 6,
+   "await_db_methods": [
+    "execute",
+    "flush"
+   ],
+   "await_non_db": 4,
+   "depends_get_db": 0,
+   "sync_session_annotations": 0
+  }
+ },
+ "snapshot_note": "This is the measurement at head 4935bf85, before any conversion, and is kept as-is. NR-044.1 has since converted the ten app/identity/repositories/ modules and the actor dependency in app/identity/api/workspaces.py. The live count is the ledger DECLARED_UNREACHABLE_ASYNC_DB_MODULES in backend/tests/test_identity_platform_runtime.py, now 40 modules; do not read the totals below as current.",
+ "totals": {
+  "async_context_managers": 45,
+  "async_defs_in_those_modules": 506,
+  "async_defs_mechanical": 251,
+  "async_defs_needing_judgement": 96,
+  "async_defs_without_db_await": 159,
+  "asyncsession_annotations": 131,
+  "await_db_call_sites": 460,
+  "genuine_async_io_sites": 1,
+  "modules_awaiting_db": 50
+ }
+}

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -24,6 +24,18 @@ logger = logging.getLogger("gula.pharmacy.inventory")
 
 
 class StockAdjustmentService:
+    """Server-authoritative stock changes.
+
+    Every quantity change writes both the new :class:`StockLevel` state and an
+    append-only :class:`StockMovement`, in one transaction, so the movement log
+    always explains the level. Quantities are floats because the physical
+    columns are ``DOUBLE PRECISION``: a dispensed amount can be fractional
+    (half a tablet, millilitres) and an integer would silently truncate it.
+
+    Identifiers here are INTERNAL keys. Callers holding a public identifier
+    resolve it first; the internal key is never a public identity (contract §3).
+    """
+
     def __init__(self, db: Session, user_id: int | None = None, lab_id: int | None = None):
         self.db = db
         self.user_id = user_id
@@ -39,179 +51,260 @@ class StockAdjustmentService:
             details=details,
         )
 
+    def _actor(self) -> int:
+        """The user a movement is attributed to.
+
+        ``pharmacy_stock_movements.performed_by`` is NOT NULL: an inventory
+        change is always somebody's action. Failing here is better than letting
+        the database reject the write after the level has been recomputed.
+        """
+        if self.user_id is None:
+            raise ValueError("a stock movement requires an acting user")
+        return self.user_id
+
+    def _stock_row(
+        self, drug_id: int, batch_id: int | None, warehouse_id: int | None, store_id: int | None
+    ) -> StockLevel | None:
+        """Find the one stock row for this drug, batch and dispensing point.
+
+        The filter is the uniqueness key `uq_pharmacy_stock` and nothing more:
+        `(lab_id, drug_id, batch_id, store_id)`. `warehouse_id` is deliberately
+        NOT part of it, because the constraint does not include it — filtering
+        on a column the schema does not treat as identifying would let this
+        method miss a row that the database then refuses to let it insert.
+        `warehouse_id` stays in the signature because callers set it on a row
+        they create; see P0-2-M4-GAP-STOCK-WAREHOUSE.
+        """
+        query = self.db.query(StockLevel).filter(
+            StockLevel.drug_id == drug_id,
+            StockLevel.batch_id == batch_id,
+            StockLevel.store_id == store_id,
+            ~StockLevel.is_deleted,
+        )
+        if self.lab_id is not None:
+            query = query.filter(StockLevel.lab_id == self.lab_id)
+        # Serialise concurrent adjustments of the same row: two callers must not
+        # both read the same quantity and each write their own total back.
+        return cast(StockLevel | None, query.with_for_update().first())
+
+    def _record_movement(
+        self,
+        *,
+        drug_id: int,
+        batch_id: int | None,
+        movement_type: StockMovementType,
+        quantity: float,
+        unit: str,
+        reason: str,
+        reference_type: str | None = None,
+        reference_id: int | None = None,
+    ) -> StockMovement:
+        movement = StockMovement(
+            lab_id=self.lab_id,
+            drug_id=drug_id,
+            batch_id=batch_id,
+            movement_type=movement_type.value,
+            quantity=quantity,
+            unit=unit,
+            reason=reason,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            performed_by=self._actor(),
+            performed_at=datetime.now(UTC),
+        )
+        self.db.add(movement)
+        return movement
+
     def add_stock(
         self,
-        drug_catalog_id: str,
-        batch_id: str,
-        quantity: int,
-        warehouse_id: str | None = None,
-        store_id: str | None = None,
+        drug_id: int,
+        batch_id: int,
+        quantity: float,
+        warehouse_id: int | None = None,
+        store_id: int | None = None,
         reason: str = "Stock receipt",
+        unit: str = "unit",
     ) -> StockLevel:
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            StockLevel.batch_id == batch_id,
-            StockLevel.warehouse_id == warehouse_id,
-            StockLevel.store_id == store_id,
-        ).first()
+        if quantity <= 0:
+            raise ValueError("stock quantity must be positive")
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
 
+        stock = self._stock_row(drug_id, batch_id, warehouse_id, store_id)
         if stock:
-            stock.quantity += quantity
-            stock.available_quantity = stock.quantity - stock.reserved_quantity
+            stock.quantity_on_hand += quantity
+            stock.quantity_available = stock.quantity_on_hand - (stock.quantity_reserved or 0)
         else:
             stock = StockLevel(
-                drug_catalog_id=drug_catalog_id,
+                lab_id=self.lab_id,
+                drug_id=drug_id,
                 batch_id=batch_id,
                 warehouse_id=warehouse_id,
                 store_id=store_id,
-                quantity=quantity,
-                reserved_quantity=0,
-                available_quantity=quantity,
+                quantity_on_hand=quantity,
+                quantity_reserved=0,
+                quantity_available=quantity,
+                unit=unit,
             )
-            if self.lab_id:
-                stock.lab_id = self.lab_id
             self.db.add(stock)
-
         self.db.flush()
 
-        movement = StockMovement(
-            drug_catalog_id=drug_catalog_id,
+        self._record_movement(
+            drug_id=drug_id,
             batch_id=batch_id,
-            warehouse_id=warehouse_id,
-            store_id=store_id,
             movement_type=StockMovementType.RECEIVED,
             quantity=quantity,
+            unit=unit,
             reason=reason,
-            performed_by=str(self.user_id) if self.user_id else None,
         )
-        if self.lab_id:
-            movement.lab_id = self.lab_id
-        self.db.add(movement)
         self.db.flush()
 
-        batch = self.db.query(DrugBatch).filter(DrugBatch.id == batch_id).first()
+        batch = self._batch(batch_id)
         if batch:
             batch.quantity_remaining += quantity
             self.db.flush()
 
-        self._audit("inventory.add_stock", "stock_level", stock.id, f"Added {quantity} units: {reason}")
+        self._audit(
+            "inventory.add_stock", "stock_level", str(stock.id), f"Added {quantity} units: {reason}"
+        )
         return stock
 
     def remove_stock(
         self,
-        drug_catalog_id: str,
-        batch_id: str,
-        quantity: int,
-        warehouse_id: str | None = None,
-        store_id: str | None = None,
+        drug_id: int,
+        batch_id: int,
+        quantity: float,
+        warehouse_id: int | None = None,
+        store_id: int | None = None,
         reason: str = "Stock removal",
         movement_type: StockMovementType = StockMovementType.DISPENSED,
+        unit: str = "unit",
     ) -> StockLevel | None:
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            StockLevel.batch_id == batch_id,
-            StockLevel.warehouse_id == warehouse_id,
-            StockLevel.store_id == store_id,
-        ).first()
+        if quantity <= 0:
+            raise ValueError("stock quantity must be positive")
 
-        if not stock or stock.available_quantity < quantity:
-            logger.warning("Insufficient stock for removal: have %d, need %d", stock.available_quantity if stock else 0, quantity)
+        stock = self._stock_row(drug_id, batch_id, warehouse_id, store_id)
+        if not stock or stock.quantity_available < quantity:
+            logger.warning(
+                "Insufficient stock for removal: have %s, need %s",
+                stock.quantity_available if stock else 0,
+                quantity,
+            )
             return None
 
-        stock.quantity -= quantity
-        stock.available_quantity = stock.quantity - stock.reserved_quantity
+        stock.quantity_on_hand -= quantity
+        stock.quantity_available = stock.quantity_on_hand - (stock.quantity_reserved or 0)
         self.db.flush()
 
-        movement = StockMovement(
-            drug_catalog_id=drug_catalog_id,
+        self._record_movement(
+            drug_id=drug_id,
             batch_id=batch_id,
-            warehouse_id=warehouse_id,
-            store_id=store_id,
             movement_type=movement_type,
             quantity=quantity,
+            unit=stock.unit or unit,
             reason=reason,
-            performed_by=str(self.user_id) if self.user_id else None,
         )
-        if self.lab_id:
-            movement.lab_id = self.lab_id
-        self.db.add(movement)
         self.db.flush()
 
-        batch = self.db.query(DrugBatch).filter(DrugBatch.id == batch_id).first()
+        batch = self._batch(batch_id)
         if batch:
-            batch.quantity_remaining = max(0, batch.quantity_remaining - quantity)
+            batch.quantity_remaining = max(0.0, batch.quantity_remaining - quantity)
             self.db.flush()
 
-        self._audit("inventory.remove_stock", "stock_level", stock.id, f"Removed {quantity} units: {reason}")
+        self._audit(
+            "inventory.remove_stock", "stock_level", str(stock.id), f"Removed {quantity} units: {reason}"
+        )
         return stock
 
     def adjust_stock(
         self,
-        drug_catalog_id: str,
-        batch_id: str,
-        new_quantity: int,
-        warehouse_id: str | None = None,
-        store_id: str | None = None,
+        drug_id: int,
+        batch_id: int,
+        new_quantity: float,
+        warehouse_id: int | None = None,
+        store_id: int | None = None,
         reason: str = "Physical count adjustment",
+        unit: str = "unit",
     ) -> StockLevel:
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            StockLevel.batch_id == batch_id,
-            StockLevel.warehouse_id == warehouse_id,
-            StockLevel.store_id == store_id,
-        ).first()
+        if new_quantity < 0:
+            raise ValueError("counted stock cannot be negative")
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
 
+        stock = self._stock_row(drug_id, batch_id, warehouse_id, store_id)
         if stock:
-            delta = new_quantity - stock.quantity
-            stock.quantity = new_quantity
-            stock.available_quantity = new_quantity - stock.reserved_quantity
-            stock.last_count_date = datetime.now(UTC)
+            delta = new_quantity - stock.quantity_on_hand
+            stock.quantity_on_hand = new_quantity
+            stock.quantity_available = new_quantity - (stock.quantity_reserved or 0)
+            stock.last_counted_at = datetime.now(UTC)
+            stock.last_counted_by = self.user_id
         else:
             stock = StockLevel(
-                drug_catalog_id=drug_catalog_id,
+                lab_id=self.lab_id,
+                drug_id=drug_id,
                 batch_id=batch_id,
                 warehouse_id=warehouse_id,
                 store_id=store_id,
-                quantity=new_quantity,
-                reserved_quantity=0,
-                available_quantity=new_quantity,
+                quantity_on_hand=new_quantity,
+                quantity_reserved=0,
+                quantity_available=new_quantity,
+                unit=unit,
+                last_counted_at=datetime.now(UTC),
+                last_counted_by=self.user_id,
             )
-            if self.lab_id:
-                stock.lab_id = self.lab_id
             self.db.add(stock)
             delta = new_quantity
-
         self.db.flush()
 
         if delta != 0:
-            movement = StockMovement(
-                drug_catalog_id=drug_catalog_id,
+            self._record_movement(
+                drug_id=drug_id,
                 batch_id=batch_id,
-                warehouse_id=warehouse_id,
-                store_id=store_id,
                 movement_type=StockMovementType.ADJUSTED,
                 quantity=abs(delta),
+                unit=stock.unit or unit,
                 reason=reason,
-                performed_by=str(self.user_id) if self.user_id else None,
             )
-            if self.lab_id:
-                movement.lab_id = self.lab_id
-            self.db.add(movement)
             self.db.flush()
 
-            batch = self.db.query(DrugBatch).filter(DrugBatch.id == batch_id).first()
+            batch = self._batch(batch_id)
             if batch:
-                batch.quantity_remaining = max(0, batch.quantity_remaining + delta)
+                batch.quantity_remaining = max(0.0, batch.quantity_remaining + delta)
                 self.db.flush()
 
-        self._audit("inventory.adjust_stock", "stock_level", stock.id, f"Set to {new_quantity}: {reason}")
+        self._audit(
+            "inventory.adjust_stock", "stock_level", str(stock.id), f"Set to {new_quantity}: {reason}"
+        )
         return stock
+
+    def _batch(self, batch_id: int | None) -> DrugBatch | None:
+        if batch_id is None:
+            return None
+        query = self.db.query(DrugBatch).filter(DrugBatch.id == batch_id, ~DrugBatch.is_deleted)
+        if self.lab_id is not None:
+            query = query.filter(DrugBatch.lab_id == self.lab_id)
+        return cast(DrugBatch | None, query.with_for_update().first())
 
 
 class ExpiryMonitoringService:
     def __init__(self, db: Session, lab_id: int | None = None):
         self.db = db
         self.lab_id = lab_id
+
+    def _batch_summary(self, batch: DrugBatch) -> dict[str, Any]:
+        """Public shape of a batch. Identifiers are public, never internal keys."""
+        drug = batch.drug
+        return {
+            "batch_id": str(batch.batch_id),
+            "drug_catalog_id": str(drug.drug_id) if drug else None,
+            "drug_name": drug.drug_name if drug else "Unknown",
+            "drug_name_ar": drug.drug_name_ar if drug else None,
+            "batch_number": batch.batch_number,
+            "expiry_date": batch.expiry_date.isoformat(),
+            "quantity_remaining": batch.quantity_remaining,
+            "storage_condition": batch.storage_condition,
+            "is_quarantined": bool(batch.is_quarantined),
+        }
 
     def get_expiring_batches(self, within_days: int = 90) -> list[dict[str, Any]]:
         cutoff = date.today() + timedelta(days=within_days)
@@ -226,20 +319,9 @@ class ExpiryMonitoringService:
 
         results: list[dict[str, Any]] = []
         for batch in q.order_by(DrugBatch.expiry_date).all():
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-            results.append({
-                "batch_id": batch.id,
-                "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
-                "drug_name_ar": drug.name_ar if drug else None,
-                "batch_number": batch.batch_number,
-                "expiry_date": batch.expiry_date.isoformat(),
-                "days_remaining": (batch.expiry_date - date.today()).days,
-                "quantity_remaining": batch.quantity_remaining,
-                "storage_condition": batch.storage_condition.value if batch.storage_condition else None,
-                "is_quarantined": batch.is_quarantined,
-            })
-
+            summary = self._batch_summary(batch)
+            summary["days_remaining"] = (batch.expiry_date - date.today()).days
+            results.append(summary)
         return results
 
     def get_expired_batches(self) -> list[dict[str, Any]]:
@@ -253,24 +335,20 @@ class ExpiryMonitoringService:
 
         results: list[dict[str, Any]] = []
         for batch in q.order_by(DrugBatch.expiry_date).all():
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-            results.append({
-                "batch_id": batch.id,
-                "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
-                "batch_number": batch.batch_number,
-                "expiry_date": batch.expiry_date.isoformat(),
-                "days_expired": (date.today() - batch.expiry_date).days,
-                "quantity_remaining": batch.quantity_remaining,
-            })
-
+            summary = self._batch_summary(batch)
+            summary["days_expired"] = (date.today() - batch.expiry_date).days
+            results.append(summary)
         return results
 
     def auto_quarantine_expired(self) -> int:
         expired = self.db.query(DrugBatch).filter(
             DrugBatch.expiry_date < date.today(),
             ~DrugBatch.is_deleted,
-            not DrugBatch.is_quarantined,
+            # Previously `not DrugBatch.is_quarantined`, which is Python's `not`
+            # applied to a column object rather than a SQL predicate. The column
+            # is nullable, so `isnot(True)` is what selects "not quarantined",
+            # including the rows where the flag was never set.
+            DrugBatch.is_quarantined.isnot(True),
             DrugBatch.quantity_remaining > 0,
         )
         if self.lab_id:
@@ -279,15 +357,19 @@ class ExpiryMonitoringService:
         count = 0
         for batch in expired.all():
             batch.is_quarantined = True
+            batch.quarantine_reason = f"expired {batch.expiry_date.isoformat()}"
+            batch.status = "quarantined"
             self.db.flush()
 
-            stock = self.db.query(StockLevel).filter(
+            # Quarantined stock is not available to dispense, but it is still
+            # physically on hand: only the available figure drops.
+            levels = self.db.query(StockLevel).filter(
                 StockLevel.batch_id == batch.id,
                 ~StockLevel.is_deleted,
-            ).first()
-            if stock:
-                stock.available_quantity = 0
-                self.db.flush()
+            ).all()
+            for stock in levels:
+                stock.quantity_available = 0
+            self.db.flush()
 
             count += 1
             logger.info("Auto-quarantined batch %s (expired %s)", batch.batch_number, batch.expiry_date)
@@ -301,23 +383,36 @@ class ReorderService:
         self.db = db
         self.lab_id = lab_id
 
+    def _scoped(self, query: Any, model: Any) -> Any:
+        """Inventory is tenant data: never aggregate across laboratories."""
+        if self.lab_id is not None:
+            query = query.filter(model.lab_id == self.lab_id)
+        return query
+
     def calculate_reorder_quantity(
         self,
-        drug_catalog_id: str,
+        drug_id: int,
         lead_time_days: int = 7,
         safety_stock_days: int = 3,
-        average_daily_usage: int | None = None,
+        average_daily_usage: float | None = None,
     ) -> dict[str, Any]:
         if average_daily_usage is None:
-            average_daily_usage = self._calculate_average_usage(drug_catalog_id, days=90)
+            average_daily_usage = self._calculate_average_usage(drug_id, days=90)
 
-        stock = self.db.query(StockLevel).filter(
-            StockLevel.drug_catalog_id == drug_catalog_id,
-            ~StockLevel.is_deleted,
+        stock = self._scoped(
+            self.db.query(StockLevel).filter(
+                StockLevel.drug_id == drug_id,
+                ~StockLevel.is_deleted,
+            ),
+            StockLevel,
         ).first()
 
-        current_stock = stock.available_quantity if stock else 0
-        reorder_point = stock.reorder_point if stock and stock.reorder_point else (average_daily_usage * (lead_time_days + safety_stock_days))
+        current_stock = stock.quantity_available if stock else 0.0
+        reorder_point = (
+            stock.reorder_point
+            if stock and stock.reorder_point
+            else average_daily_usage * (lead_time_days + safety_stock_days)
+        )
 
         if current_stock <= reorder_point:
             reorder_qty = max(
@@ -326,55 +421,65 @@ class ReorderService:
             )
             needs_reorder = True
         else:
-            reorder_qty = 0
+            reorder_qty = 0.0
             needs_reorder = False
 
-        max_level = stock.max_level if stock and stock.max_level else (reorder_point * 2)
+        maximum_level = (
+            stock.maximum_level if stock and stock.maximum_level else reorder_point * 2
+        )
 
+        drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == drug_id).first()
         return {
-            "drug_catalog_id": drug_catalog_id,
+            # The drug's public identity, not the internal foreign key.
+            "drug_catalog_id": str(drug.drug_id) if drug else None,
             "current_stock": current_stock,
             "average_daily_usage": average_daily_usage,
             "lead_time_days": lead_time_days,
             "safety_stock_days": safety_stock_days,
             "reorder_point": reorder_point,
             "reorder_quantity": reorder_qty,
-            "max_level": max_level,
+            "max_level": maximum_level,
             "needs_reorder": needs_reorder,
         }
 
-    def _calculate_average_usage(self, drug_catalog_id: str, days: int = 90) -> int:
+    def _calculate_average_usage(self, drug_id: int, days: int = 90) -> float:
         start_date = datetime.now(UTC) - timedelta(days=days)
-        result = self.db.query(
-            func.coalesce(func.sum(StockMovement.quantity), 0),
-        ).filter(
-            StockMovement.drug_catalog_id == drug_catalog_id,
-            StockMovement.movement_type.in_([StockMovementType.DISPENSED, StockMovementType.WASTED]),
-            StockMovement.movement_date >= start_date,
+        result = self._scoped(
+            self.db.query(func.coalesce(func.sum(StockMovement.quantity), 0)).filter(
+                StockMovement.drug_id == drug_id,
+                StockMovement.movement_type.in_(
+                    [StockMovementType.DISPENSED.value, StockMovementType.WASTED.value]
+                ),
+                StockMovement.performed_at >= start_date,
+            ),
+            StockMovement,
         ).scalar()
 
-        return max(1, round(result / days)) if result else 1
+        return max(1.0, float(result) / days) if result else 1.0
 
     def generate_reorder_list(self) -> list[dict[str, Any]]:
         reorder_list: list[dict[str, Any]] = []
 
-        drug_ids_q = self.db.query(StockLevel.drug_catalog_id).filter(
-            ~~StockLevel.is_deleted,
-            StockLevel.reorder_point.isnot(None),
+        # Previously `~~StockLevel.is_deleted`: the double negation cancels, so
+        # the list was built from the soft-deleted rows and only those.
+        drug_ids_q = self._scoped(
+            self.db.query(StockLevel.drug_id).filter(
+                ~StockLevel.is_deleted,
+                StockLevel.reorder_point.isnot(None),
+            ),
+            StockLevel,
         )
-        if self.lab_id:
-            drug_ids_q = drug_ids_q.filter(StockLevel.lab_id == self.lab_id)
 
-        drug_ids = {row[0] for row in drug_ids_q.all()}
-        for drug_id in drug_ids:
+        for drug_id in {row[0] for row in drug_ids_q.all()}:
             try:
                 calc = self.calculate_reorder_quantity(drug_id)
-                if calc["needs_reorder"]:
-                    drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == drug_id).first()
-                    calc["drug_name"] = drug.name if drug else "Unknown"
-                    reorder_list.append(calc)
             except Exception as exc:
-                logger.warning("Failed to calculate reorder for %s: %s", drug_id, exc)
+                logger.warning("Failed to calculate reorder for drug %s: %s", drug_id, exc)
+                continue
+            if calc["needs_reorder"]:
+                drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == drug_id).first()
+                calc["drug_name"] = drug.drug_name if drug else "Unknown"
+                reorder_list.append(calc)
 
         return sorted(reorder_list, key=lambda r: r["current_stock"] / max(r["reorder_point"], 1))
 
@@ -387,13 +492,17 @@ class ColdChainService:
 
     def get_cold_chain_drugs(self) -> list[dict[str, Any]]:
         q = self.db.query(DrugBatch).filter(
+            # storage_condition is VARCHAR physically, so match on the enum's
+            # values rather than on the enum members.
             DrugBatch.storage_condition.in_([
-                StorageCondition.COLD_CHAIN,
-                StorageCondition.REFRIGERATED,
-                StorageCondition.FROZEN,
+                StorageCondition.COLD_CHAIN.value,
+                StorageCondition.REFRIGERATED.value,
+                StorageCondition.FROZEN.value,
             ]),
             ~DrugBatch.is_deleted,
-            not DrugBatch.is_quarantined,
+            # Previously `not DrugBatch.is_quarantined` — Python's `not` on a
+            # column, not a SQL predicate.
+            DrugBatch.is_quarantined.isnot(True),
             DrugBatch.quantity_remaining > 0,
         )
         if self.lab_id:
@@ -401,15 +510,15 @@ class ColdChainService:
 
         results: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for batch in q.all():
-            drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == batch.drug_catalog_id).first()
-            results[batch.storage_condition.value].append({
-                "batch_id": batch.id,
-                "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
+            drug = batch.drug
+            results[batch.storage_condition].append({
+                "batch_id": str(batch.batch_id),
+                "drug_catalog_id": str(drug.drug_id) if drug else None,
+                "drug_name": drug.drug_name if drug else "Unknown",
                 "batch_number": batch.batch_number,
                 "expiry_date": batch.expiry_date.isoformat() if batch.expiry_date else None,
                 "quantity_remaining": batch.quantity_remaining,
-                "storage_condition": batch.storage_condition.value,
+                "storage_condition": batch.storage_condition,
                 "location": batch.location,
             })
 
@@ -477,53 +586,65 @@ class RecallService:
 
     def initiate_recall(
         self,
-        drug_catalog_id: str,
+        drug_id: int,
         recall_reason: str,
         severity: str,
-        batch_id: str | None = None,
-        initiated_by: str | None = None,
+        batch_id: int | None = None,
+        recall_number: str | None = None,
+        recall_source: str | None = None,
         actions_taken: str | None = None,
         notes: str | None = None,
     ) -> Recall:
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
         recall = Recall(
-            drug_catalog_id=drug_catalog_id,
+            lab_id=self.lab_id,
+            drug_id=drug_id,
             batch_id=batch_id,
+            recall_number=recall_number or f"RECALL-{datetime.now(UTC):%Y%m%d%H%M%S}",
             recall_reason=recall_reason,
-            recall_date=datetime.now(UTC),
-            initiated_by=initiated_by or str(self.user_id) if self.user_id else None,
+            recall_source=recall_source,
             severity=severity,
             status="active",
+            # Previously `initiated_by or str(self.user_id) if self.user_id else None`,
+            # which binds as `(a or b) if self.user_id else None` — an explicitly
+            # supplied initiator was discarded whenever there was no session user.
+            initiated_by=self.user_id,
+            initiated_at=datetime.now(UTC),
             actions_taken=actions_taken,
             notes=notes,
         )
-        if self.lab_id:
-            recall.lab_id = self.lab_id
         self.db.add(recall)
         self.db.flush()
 
-        if batch_id:
-            batch = self.db.query(DrugBatch).filter(DrugBatch.id == batch_id).first()
+        if batch_id is not None:
+            batch = self.db.query(DrugBatch).filter(
+                DrugBatch.id == batch_id,
+                DrugBatch.lab_id == self.lab_id,
+            ).first()
             if batch:
                 batch.is_quarantined = True
+                batch.quarantine_reason = f"recall {recall.recall_number}: {recall_reason}"
+                batch.status = "quarantined"
                 self.db.flush()
 
-                stock = self.db.query(StockLevel).filter(
+                levels = self.db.query(StockLevel).filter(
                     StockLevel.batch_id == batch_id,
+                    StockLevel.lab_id == self.lab_id,
                     ~StockLevel.is_deleted,
-                ).first()
-                if stock:
-                    stock.available_quantity = 0
-                    self.db.flush()
+                ).all()
+                for stock in levels:
+                    stock.quantity_available = 0
+                self.db.flush()
 
         log_action(
             db=self.db,
             action="pharmacy.recall.initiate",
             resource_type="recall",
-            resource_id=recall.id,
+            resource_id=str(recall.id),
             user_id=self.user_id,
             details=f"Recall initiated: {recall_reason} (severity: {severity})",
         )
-
         return recall
 
     def get_active_recalls(self) -> list[Recall]:
@@ -533,28 +654,49 @@ class RecallService:
         )
         if self.lab_id:
             q = q.filter(Recall.lab_id == self.lab_id)
-        return q.order_by(Recall.recall_date.desc()).all()
+        return cast(list[Recall], q.order_by(Recall.initiated_at.desc()).all())
 
-    def resolve_recall(self, recall_id: str) -> Recall | None:
-        recall = self.db.query(Recall).filter(Recall.id == recall_id).first()
+    def resolve_recall(self, recall_id: int) -> Recall | None:
+        # Tenant-scoped: a recall belongs to one laboratory and must not be
+        # resolvable from another's session.
+        q = self.db.query(Recall).filter(Recall.id == recall_id, ~Recall.is_deleted)
+        if self.lab_id is not None:
+            q = q.filter(Recall.lab_id == self.lab_id)
+        recall = q.first()
         if not recall:
             return None
         recall.status = "resolved"
+        recall.completed_at = datetime.now(UTC)
         self.db.flush()
         log_action(
             db=self.db,
             action="pharmacy.recall.resolve",
             resource_type="recall",
-            resource_id=recall_id,
+            resource_id=str(recall_id),
             user_id=self.user_id,
         )
         return recall
 
-    def get_affected_patients(self, recall_id: str) -> list[dict[str, Any]]:
-        recall = self.db.query(Recall).filter(Recall.id == recall_id).first()
-        if not recall or not recall.affected_patients:
-            return []
-        return list(recall.affected_patients) if isinstance(recall.affected_patients, list) else []
+    def get_notification_status(self, recall_id: int) -> dict[str, Any]:
+        """What the schema actually records about patient notification.
+
+        The previous ``get_affected_patients`` read ``recall.affected_patients``,
+        a column that does not exist. The physical table records whether
+        notification is required and how many patients have been notified, not
+        a patient list, so that is what this returns.
+        """
+        q = self.db.query(Recall).filter(Recall.id == recall_id, ~Recall.is_deleted)
+        if self.lab_id is not None:
+            q = q.filter(Recall.lab_id == self.lab_id)
+        recall = q.first()
+        if not recall:
+            return {}
+        return {
+            "recall_number": recall.recall_number,
+            "patient_notification_required": bool(recall.patient_notification_required),
+            "notified_patients_count": recall.notified_patients_count or 0,
+            "status": recall.status,
+        }
 
 
 class ForecastingService:
@@ -562,40 +704,42 @@ class ForecastingService:
         self.db = db
         self.lab_id = lab_id
 
-    def predict_consumption(
-        self,
-        drug_catalog_id: str,
-        months_ahead: int = 3,
-    ) -> list[dict[str, Any]]:
-        historical = self._get_historical_usage(drug_catalog_id, days=180)
+    def predict_consumption(self, drug_id: int, months_ahead: int = 3) -> list[dict[str, Any]]:
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
+        historical = self._get_historical_usage(drug_id, days=180)
         if not historical:
             return []
 
         monthly_avg = sum(historical) / max(len(historical), 1)
-        monthly_avg * months_ahead
+        # Confidence widens as history thins: with one month of data the band is
+        # +/-50%, narrowing towards +/-10% once six months are available.
+        spread = max(0.1, 0.5 - (len(historical) - 1) * 0.08)
 
         forecasts: list[dict[str, Any]] = []
         for i in range(months_ahead):
-            period_start = date.today().replace(day=1) + timedelta(days=32 * i)
-            period_start = period_start.replace(day=1)
+            period_start = (date.today().replace(day=1) + timedelta(days=32 * i)).replace(day=1)
             if period_start.month == 12:
                 period_end = period_start.replace(year=period_start.year + 1, month=1, day=1) - timedelta(days=1)
             else:
                 period_end = period_start.replace(month=period_start.month + 1, day=1) - timedelta(days=1)
 
-            month_idx = (period_start.month - 1) % 12
-            seasonal_factor = self._seasonal_factor(month_idx)
-            predicted = max(1, round(monthly_avg * seasonal_factor))
+            seasonal_factor = self._seasonal_factor((period_start.month - 1) % 12)
+            predicted = max(1.0, monthly_avg * seasonal_factor)
 
             forecast = InventoryForecast(
-                drug_catalog_id=drug_catalog_id,
-                period_start=period_start,
-                period_end=period_end,
+                lab_id=self.lab_id,
+                drug_id=drug_id,
+                forecast_date=date.today(),
+                forecast_period_start=period_start,
+                forecast_period_end=period_end,
                 predicted_consumption=predicted,
-                confidence_score=min(0.95, 0.5 + (len(historical) / 30) * 0.1),
+                predicted_consumption_unit="unit",
+                confidence_lower=max(0.0, predicted * (1 - spread)),
+                confidence_upper=predicted * (1 + spread),
+                seasonal_factor=seasonal_factor,
+                model_used="seasonal-moving-average",
             )
-            if self.lab_id:
-                forecast.lab_id = self.lab_id
             self.db.add(forecast)
             self.db.flush()
 
@@ -603,52 +747,86 @@ class ForecastingService:
                 "period_start": period_start.isoformat(),
                 "period_end": period_end.isoformat(),
                 "predicted_consumption": predicted,
-                "confidence_score": forecast.confidence_score,
+                "confidence_lower": forecast.confidence_lower,
+                "confidence_upper": forecast.confidence_upper,
             })
 
         return forecasts
 
-    def _get_historical_usage(self, drug_catalog_id: str, days: int = 180) -> list[int]:
+    def _dispensed_between(self, drug_id: int, start: date, end: date) -> float:
+        """Quantity actually dispensed in a window, from the movement log."""
+        q = self.db.query(func.coalesce(func.sum(StockMovement.quantity), 0)).filter(
+            StockMovement.drug_id == drug_id,
+            StockMovement.movement_type == StockMovementType.DISPENSED.value,
+            func.date(StockMovement.performed_at) >= start,
+            func.date(StockMovement.performed_at) <= end,
+        )
+        if self.lab_id is not None:
+            q = q.filter(StockMovement.lab_id == self.lab_id)
+        return float(q.scalar() or 0.0)
+
+    def _get_historical_usage(self, drug_id: int, days: int = 180) -> list[float]:
         start_date = datetime.now(UTC) - timedelta(days=days)
-        movements = self.db.query(StockMovement).filter(
-            StockMovement.drug_catalog_id == drug_catalog_id,
-            StockMovement.movement_type == StockMovementType.DISPENSED,
-            StockMovement.movement_date >= start_date,
-        ).order_by(StockMovement.movement_date).all()
+        q = self.db.query(StockMovement).filter(
+            StockMovement.drug_id == drug_id,
+            StockMovement.movement_type == StockMovementType.DISPENSED.value,
+            StockMovement.performed_at >= start_date,
+        )
+        if self.lab_id is not None:
+            q = q.filter(StockMovement.lab_id == self.lab_id)
 
-        monthly: dict[str, int] = defaultdict(int)
-        for m in movements:
-            key = m.movement_date.strftime("%Y-%m")
-            monthly[key] += m.quantity
-
+        monthly: dict[str, float] = defaultdict(float)
+        for m in q.order_by(StockMovement.performed_at).all():
+            monthly[m.performed_at.strftime("%Y-%m")] += float(m.quantity)
         return list(monthly.values())
 
     def _seasonal_factor(self, month_idx: int) -> float:
         factors = [1.0, 0.95, 1.05, 1.0, 0.95, 0.9, 0.85, 0.9, 1.0, 1.1, 1.15, 1.2]
         return factors[month_idx % 12]
 
-    def get_prediction_accuracy(self, drug_catalog_id: str) -> dict[str, Any]:
-        forecasts = self.db.query(InventoryForecast).filter(
-            InventoryForecast.drug_catalog_id == drug_catalog_id,
-            InventoryForecast.actual_consumption.isnot(None),
-        ).all()
+    def get_prediction_accuracy(self, drug_id: int) -> dict[str, Any]:
+        """Compare past forecasts against what was actually dispensed.
+
+        There is no ``actual_consumption`` column — the previous implementation
+        read one that does not exist. The actual figure is derived from the
+        movement log, which is where dispensing is really recorded.
+        """
+        drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == drug_id).first()
+        public_id = str(drug.drug_id) if drug else None
+        today = date.today()
+
+        q = self.db.query(InventoryForecast).filter(
+            InventoryForecast.drug_id == drug_id,
+            InventoryForecast.forecast_period_end < today,
+            ~InventoryForecast.is_deleted,
+        )
+        if self.lab_id is not None:
+            q = q.filter(InventoryForecast.lab_id == self.lab_id)
+        forecasts = q.all()
 
         if not forecasts:
-            return {"drug_catalog_id": drug_catalog_id, "accuracy": None, "periods_analyzed": 0}
+            return {"drug_catalog_id": public_id, "accuracy": None, "periods_analyzed": 0}
 
         errors: list[float] = []
         for f in forecasts:
-            if f.predicted_consumption and f.predicted_consumption > 0:
-                error = abs(f.predicted_consumption - f.actual_consumption) / f.predicted_consumption
-                errors.append(error)
+            if not f.predicted_consumption or f.predicted_consumption <= 0:
+                continue
+            actual = self._dispensed_between(
+                drug_id, f.forecast_period_start, f.forecast_period_end
+            )
+            errors.append(abs(f.predicted_consumption - actual) / f.predicted_consumption)
 
         if not errors:
-            return {"drug_catalog_id": drug_catalog_id, "accuracy": None, "periods_analyzed": len(forecasts)}
+            return {
+                "drug_catalog_id": public_id,
+                "accuracy": None,
+                "periods_analyzed": len(forecasts),
+            }
 
         mape = (sum(errors) / len(errors)) * 100
         return {
-            "drug_catalog_id": drug_catalog_id,
-            "accuracy": max(0, 100 - mape),
+            "drug_catalog_id": public_id,
+            "accuracy": max(0.0, 100 - mape),
             "mean_absolute_percentage_error": round(mape, 2),
             "periods_analyzed": len(forecasts),
         }

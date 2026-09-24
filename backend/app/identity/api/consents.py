@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
@@ -56,13 +56,13 @@ def _serialize(consent: NiamConsent) -> dict[str, Any]:
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def grant_consent(
+def grant_consent(
     body: ConsentGrantRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     try:
-        consent = await NiamConsentService(db).grant(
+        consent = NiamConsentService(db).grant(
             actor_account_id=actor.account.id,
             subject_account_id=body.subject_account_id,
             grantee_account_id=body.grantee_account_id,
@@ -81,38 +81,38 @@ async def grant_consent(
 
 
 @router.get("/me")
-async def list_my_consents(
+def list_my_consents(
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    consents = await NiamConsentService(db).list_for_account(actor_account_id=actor.account.id, limit=limit, offset=offset)
+    consents = NiamConsentService(db).list_for_account(actor_account_id=actor.account.id, limit=limit, offset=offset)
     return {"consents": [_serialize(consent) for consent in consents], "limit": limit, "offset": offset}
 
 
 @router.get("/{consent_id}/check")
-async def check_consent(
+def check_consent(
     consent_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     try:
-        consent = await NiamConsentService(db).check(actor_account_id=actor.account.id, consent_id=consent_id)
+        consent = NiamConsentService(db).check(actor_account_id=actor.account.id, consent_id=consent_id)
     except NiamConsentAccessDenied as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Consent check denied") from exc
     return {"active": consent is not None, "consent": _serialize(consent) if consent else None}
 
 
 @router.post("/{consent_id}/withdraw")
-async def withdraw_consent(
+def withdraw_consent(
     consent_id: str,
     body: ConsentWithdrawRequest | None = None,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     try:
-        consent = await NiamConsentService(db).withdraw(
+        consent = NiamConsentService(db).withdraw(
             actor_account_id=actor.account.id,
             consent_id=consent_id,
             reason=body.reason if body else None,

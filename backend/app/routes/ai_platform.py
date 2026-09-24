@@ -254,6 +254,15 @@ async def execute_agent(
     current_user=Depends(get_current_user),
 ):
     _require_doctor(current_user)
+    # A caller-supplied session_id is an identifier, not an authorization.
+    # run_session resumes whatever conversation it names: it reads that
+    # conversation's history into the planning prompt sent to the external
+    # model, and appends this request to it. The two sibling endpoints that
+    # take a session_id already check ownership; this one did not.
+    if body.session_id:
+        _assert_session_owner(
+            await memory_store.get_session(body.session_id), current_user,
+        )
     start = time.monotonic()
     results = await agent_runtime.run_session(
         session_id=body.session_id or f"agent-{time.time()}",

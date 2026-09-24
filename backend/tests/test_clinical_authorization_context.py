@@ -42,7 +42,7 @@ class _ScriptedSession:
     def __init__(self, results):
         self.results = list(results)
 
-    async def execute(self, _statement):
+    def execute(self, _statement):
         return self.results.pop(0)
 
 
@@ -50,7 +50,7 @@ class _AuditRecorder:
     def __init__(self):
         self.events = []
 
-    async def record_event(self, **kwargs):
+    def record_event(self, **kwargs):
         self.events.append(kwargs)
 
 
@@ -58,7 +58,7 @@ class _ScopeBridge:
     def __init__(self, binding):
         self.binding = binding
 
-    async def resolve_active_binding(self, legacy_lab_id):
+    def resolve_active_binding(self, legacy_lab_id):
         assert legacy_lab_id == 21
         return self.binding
 
@@ -120,11 +120,10 @@ def _assignment(**overrides):
     return Assignment(**values)
 
 
-@pytest.mark.asyncio
-async def test_resolves_only_a_complete_account_person_assignment_facility_chain():
+def test_resolves_only_a_complete_account_person_assignment_facility_chain():
     service = _service_with(assignment=_assignment())
 
-    context = await service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
+    context = service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
 
     assert context.person_id == "PERSON-1"
     assert context.assignment_id == "ASSIGNMENT-1"
@@ -149,52 +148,48 @@ async def test_resolves_only_a_complete_account_person_assignment_facility_chain
     ]
 
 
-@pytest.mark.asyncio
-async def test_rejects_when_the_active_assignment_belongs_to_a_different_person():
+def test_rejects_when_the_active_assignment_belongs_to_a_different_person():
     service = _service_with(
         assignment=_assignment(),
         assignment_candidates=[_assignment(person_id="PERSON-OTHER")],
     )
 
     with pytest.raises(ClinicalIdentityAssignmentMismatch):
-        await service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
+        service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
 
     assert service.audit.events[0]["action"] == "clinical_authorization_context_denied"
     assert service.audit.events[0]["metadata"]["failure_code"] == "ClinicalIdentityAssignmentMismatch"
 
 
-@pytest.mark.asyncio
-async def test_rejects_when_the_person_assignment_has_a_different_operational_scope():
+def test_rejects_when_the_person_assignment_has_a_different_operational_scope():
     service = _service_with(
         assignment=_assignment(),
         assignment_candidates=[_assignment(clinical_facility_resource_id=999)],
     )
 
     with pytest.raises(ClinicalFacilityScopeMismatch):
-        await service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
+        service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
 
     assert service.audit.events[0]["action"] == "clinical_authorization_context_denied"
     assert service.audit.events[0]["metadata"]["failure_code"] == "ClinicalFacilityScopeMismatch"
 
 
-@pytest.mark.asyncio
-async def test_rejects_when_no_active_assignment_is_available_for_the_canonical_person():
+def test_rejects_when_no_active_assignment_is_available_for_the_canonical_person():
     service = _service_with(assignment=_assignment(), assignment_candidates=[])
 
     with pytest.raises(ClinicalActiveAssignmentUnavailable):
-        await service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
+        service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
 
     assert service.audit.events[0]["metadata"]["failure_code"] == "ClinicalActiveAssignmentUnavailable"
 
 
-@pytest.mark.asyncio
-async def test_rejects_more_than_one_active_assignment_in_the_same_scope():
+def test_rejects_more_than_one_active_assignment_in_the_same_scope():
     service = _service_with(
         assignment=_assignment(),
         assignment_candidates=[_assignment(), _assignment(id="ASSIGNMENT-2")],
     )
 
     with pytest.raises(ClinicalAuthorizationContextAmbiguous):
-        await service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
+        service.resolve_for_legacy_lab_user(legacy_lab_user_id=14, legacy_lab_id=21)
 
     assert service.audit.events[0]["metadata"]["failure_code"] == "ClinicalAuthorizationContextAmbiguous"

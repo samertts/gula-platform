@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, String
+from sqlalchemy import Column, Integer
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
@@ -12,32 +11,35 @@ from app.models.base import (
     AuditMixin,
     OptimisticLockMixin,
     SoftDeleteMixin,
-    TenantMixin,
-    TimestampMixin,
 )
 
 PharmacyBase = declarative_base()
 
 
-def _ulid() -> str:
-    return str(uuid.uuid4()).replace("-", "").upper()[:26]
+class CanonicalEntity(SoftDeleteMixin, OptimisticLockMixin, AuditMixin, PharmacyBase):
+    """Canonical Pharmacy identity: the internal key is the relational one.
 
+    ``id`` is ``INTEGER`` and database-assigned, matching every physical
+    Pharmacy primary key. It is an internal key and is never the public
+    identity of an entity (CANONICAL_DRUG_CONTRACT §3); an entity that has a
+    public identity declares it as its own column.
 
-class BaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, PharmacyBase):
+    Deliberately absent, unlike the Generation B base this replaced:
+
+    * no ``String(26)`` ``_ulid()`` key,
+    * no ``fhir_id`` / ``fhir_resource_type`` — those are separate external
+      identifiers (contract §11) and are declared only where the physical
+      table actually has them,
+    * no tenant column — tenancy is declared per entity, never inherited,
+      so a global table cannot silently acquire one.
+
+    P0-2 M4 removed the Generation B base entirely: every Pharmacy model now
+    inherits this class or one of its two subclasses.
+    """
+
     __abstract__ = True
 
-    id = Column(String(26), primary_key=True, default=_ulid)
-    fhir_id = Column(String(64), nullable=True, index=True)
-    fhir_resource_type = Column(String(32), nullable=True)
-
-    def to_dict(self) -> dict[str, Any]:
-        result = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
     def soft_delete(self) -> None:
         self.is_deleted = True
@@ -45,23 +47,41 @@ class BaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, PharmacyB
 
     def restore(self) -> None:
         self.is_deleted = False
-        self.deleted_at = None
+        # deleted_at is contributed by the untyped SoftDeleteMixin, so mypy
+        # reads it as a bare datetime and rejects clearing it.
+        self.deleted_at = None  # type: ignore[assignment]
 
-    @property
-    def is_active(self) -> bool:
-        return not self.is_deleted
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for col in self.__table__.columns:
+            val = getattr(self, col.name)
+            if isinstance(val, datetime):
+                val = val.isoformat()
+            result[col.name] = val
+        return result
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}>"
 
 
-class TenantEntity(TenantMixin, BaseEntity):
+class TenantScopedEntity(CanonicalEntity):
+    """A canonical entity that genuinely belongs to one tenant.
+
+    Unlike the legacy ``TenantAuditEntity``, tenancy here is a deliberate
+    declaration rather than something inherited by every model. ``lab_id`` is
+    declared by the subclass so it can carry the foreign key its physical
+    table actually has (contract §6).
+    """
+
     __abstract__ = True
 
 
-class AuditEntity(AuditMixin, BaseEntity):
-    __abstract__ = True
+class GlobalCatalogEntity(CanonicalEntity):
+    """A globally-scoped reference entity: national data, never tenant-scoped.
 
+    Contract §6: an entity is either global or tenant-scoped, never both.
+    Adding a tenant column to a subclass of this base is a contract
+    violation, not a feature.
+    """
 
-class TenantAuditEntity(TenantMixin, AuditMixin, BaseEntity):
     __abstract__ = True

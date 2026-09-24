@@ -5,9 +5,8 @@ Routes:
     GET  /notifications/unread-count      Unread count for caller
     PUT  /notifications/{id}/read         Mark a single notification read
 
-Authenticated-user identity is taken from the ``X-Actor-Id`` header. This is
-the same convention used by the rest of the v1 surface (see citizens.py) and
-will be swapped for the real auth dependency once it lands.
+Caller identity comes from the server-established trusted context, the same
+single source the rest of the v1 surface reads (see core/trusted_context.py).
 """
 from __future__ import annotations
 
@@ -17,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
+from ...core.trusted_context import current_context
 from ...schemas.notification import (
     NotificationListResponse,
     NotificationRead,
@@ -33,11 +33,13 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 def _require_user_id(request: Request) -> str:
-    user_id = request.headers.get("X-Actor-Id")
+    # NR-127. This read the actor off the wire. Identity now comes from
+    # the server-established context; see app/core/trusted_context.py.
+    user_id = current_context(request).actor_id
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="missing X-Actor-Id",
+            detail="a trusted caller identity is required",
         )
     return user_id
 

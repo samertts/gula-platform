@@ -1,7 +1,5 @@
 """Order and Result service - business logic layer for lab orders and results."""
 
-import hashlib
-import json
 import logging
 import secrets
 import urllib.parse
@@ -19,12 +17,12 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
 from ..models.organization import Facility
 from ..models.patient import Patient
-from ..security.redis_client import cache as _cache
 from ..services.audit_service import log_action
 from ..services.clinical_legacy_read_scope import ClinicalLegacyReadScope
 from ..services.critical_alerts import check_critical
 from ..services.interpretation import get_flag, interpret_result
 from ..services.pdf_report import generate_result_pdf
+from . import idempotency
 
 logger = logging.getLogger("gula.orders")
 
@@ -333,39 +331,23 @@ def create_order(
     idempotency_key: str | None = None,
 ) -> dict:
     """Create a new order with results. Returns response dict."""
-    # Server-side idempotency. The fingerprint prevents a caller from
-    # accidentally reusing a key for a different clinical payload.
-    cache_key = None
-    request_fingerprint = None
-    if idempotency_key:
-        cache_key = f"idempotency:order:{lab_id}:{idempotency_key}"
-        request_fingerprint = hashlib.sha256(
-            json.dumps(
-                {
-                    "patient_id": patient_id,
-                    "doctor_user_id": doctor_user_id,
-                    "results": results_data,
-                },
-                sort_keys=True,
-                default=str,
-            ).encode("utf-8"),
-        ).hexdigest()
-        cached = _cache.get(cache_key)
-        if cached:
-            envelope = json.loads(cached)
-            if envelope.get("fingerprint") != request_fingerprint:
-                return {"error": "Idempotency key was already used with a different payload", "status_code": 409}
-            if envelope.get("status") == "processing":
-                return {"error": "A request with this idempotency key is already processing", "status_code": 409}
-            return envelope["response"]
-        claim = json.dumps({"fingerprint": request_fingerprint, "status": "processing"})
-        if not _cache.set_if_absent(cache_key, claim, ex=300):
-            cached = _cache.get(cache_key)
-            if cached:
-                envelope = json.loads(cached)
-                if envelope.get("fingerprint") != request_fingerprint:
-                    return {"error": "Idempotency key was already used with a different payload", "status_code": 409}
-                return {"error": "A request with this idempotency key is already processing", "status_code": 409}
+    # Server-side idempotency, via the canonical claim in services/idempotency.py.
+    # The fingerprint prevents a caller from accidentally reusing a key for a
+    # different clinical payload; the tenant is in the key, not in a filter.
+    idem = idempotency.begin(
+        scope="order",
+        tenant_id=lab_id,
+        key=idempotency_key,
+        payload={
+            "patient_id": patient_id,
+            "doctor_user_id": doctor_user_id,
+            "results": results_data,
+        },
+    )
+    if idem.conflict:
+        return idem.conflict
+    if idem.replay is not None:
+        return idem.replay
 
     # Validate patient exists
     patient = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
@@ -463,15 +445,7 @@ def create_order(
     }
 
     # Cache the completed response under the claimed idempotency key.
-    if cache_key and request_fingerprint:
-        _cache.set(
-            cache_key,
-            json.dumps(
-                {"fingerprint": request_fingerprint, "status": "completed", "response": response_body},
-                default=str,
-            ),
-            ex=86400,
-        )
+    idem.complete(response_body)
 
     # Emit events
     _emit_order_events(

@@ -12,6 +12,7 @@ from app.identity.services.verification_service import (
     NotConnectedProvider,
     VerificationMethod,
     VerificationPolicy,
+    VerificationPurpose,
     VerificationRequest,
     VerificationResult,
     VerificationStatus,
@@ -47,7 +48,7 @@ def test_provider_result_can_establish_verified_only_after_in_progress():
     item = record(VerificationRecordStatus.in_progress.value)
     result = VerificationResult(
         status=VerificationStatus.verified,
-        assurance=AssuranceLevel.L5,
+        assurance=AssuranceLevel.L3,  # the provider grades itself; the policy overrides
         provider="official-test-provider",
         method=VerificationMethod.official_identity,
         provider_reference="opaque-reference",
@@ -80,12 +81,17 @@ def test_assurance_engine_is_centralized_and_deny_by_default():
     results = [
         VerificationResult(
             status=VerificationStatus.verified,
-            assurance=AssuranceLevel.L5,
+            assurance=AssuranceLevel.L3,  # the provider grades itself; the policy overrides
             provider="professional-test-provider",
             method=VerificationMethod.professional_registry,
         ),
     ]
-    assert AssuranceEngine.level_for(results) == AssuranceLevel.L3
-    AssuranceEngine.require(results, AssuranceLevel.L3)
+    # A registry attests to a licence, so it answers the professional question
+    # at L2 — not the provider's self-declared L3, and not the identity
+    # question at any level.
+    assert AssuranceEngine.level_for(results, VerificationPurpose.professional) == AssuranceLevel.L2
+    AssuranceEngine.require(results, VerificationPurpose.professional, AssuranceLevel.L2)
     with pytest.raises(PermissionError):
-        AssuranceEngine.require([], AssuranceLevel.L1)
+        AssuranceEngine.require(results, VerificationPurpose.identity, AssuranceLevel.L1)
+    with pytest.raises(PermissionError):
+        AssuranceEngine.require([], VerificationPurpose.contact, AssuranceLevel.L1)

@@ -5,6 +5,9 @@ from typing import Any
 
 from backend.app._compat import UTC
 from sqlalchemy import Boolean, Column, DateTime, Integer
+from sqlalchemy.orm import validates
+
+from .tenant_context import check_tenant_write
 
 
 class TimestampMixin:
@@ -24,6 +27,17 @@ class AuditMixin(TimestampMixin):
 
 class TenantMixin:
     lab_id = Column(Integer, nullable=False, index=True)
+
+    @validates("lab_id")
+    def _validate_lab_id(self, _key: str, value: Any) -> Any:
+        """NR-147: the request body does not get to choose the laboratory.
+
+        Defence in depth, not authorization -- see tenant_context for why that
+        distinction matters and how a legitimate cross-tenant write declares
+        itself. Inert outside a request, where there is no authenticated tenant
+        to contradict.
+        """
+        return check_tenant_write(type(self).__name__, value)
 
 
 class OptimisticLockMixin:

@@ -1,40 +1,39 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Index, String, Text
-from sqlalchemy import Enum as SAEnum
+"""NR-006 / NR-086 — ``national_facilities`` has one definition, and it is not here.
 
-from app.national.base import AuditEntity
-from app.national.enums import FacilityType
+``app.models.clinical_scope.NationalFacility`` maps this table, and migration
+``20260813_0004_clinical_ehr_scope_bridge`` creates it with exactly that model's
+six columns.
 
+A second mapped class used to live here. It declared 28 columns, 24 of which the
+migration never creates -- including ``facility_type`` NOT NULL -- while omitting
+two that do exist (``facility_code``, ``status``). It had no consumer anywhere in
+the repository, and the dangerous half was ``create_all``: three test modules
+build this package's metadata directly, so the suite was creating a
+``national_facilities`` that production cannot have.
 
-class Facility(AuditEntity):
-    __tablename__ = "national_facilities"
+NR-006 replaced it with a bare ``Table`` -- a foreign-key anchor, not an entity --
+because seventeen models in this package carry ``ForeignKey("national_facilities.id")``
+and SQLAlchemy resolves a foreign key inside the ``MetaData`` that owns the
+*referring* table. ``NationalBase`` had its own ``MetaData``, so it needed its own
+copy of the target.
 
-    facility_type = Column(SAEnum(FacilityType), nullable=False)
-    name = Column(String(200), nullable=False)
-    name_ar = Column(String(200), nullable=True)
-    code = Column(String(20), nullable=True, unique=True, index=True)
+**It no longer does.** NR-086 gave ``NationalBase`` and ``Base`` one shared
+``MetaData`` (see ``app.orm_topology``), so those seventeen foreign keys resolve
+against the canonical model directly. A second declaration under one namespace is
+not merely redundant, it is illegal -- SQLAlchemy raises ``InvalidRequestError``
+on the duplicate key -- so the anchor is gone and this module re-exports the one
+remaining definition.
 
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
-    directorate_id = Column(String(26), ForeignKey("national_directorates.id", ondelete="RESTRICT"), nullable=True, index=True)
-    parent_facility_id = Column(String(26), nullable=True, index=True)
+Do not re-add a mapped class or a ``Table`` here. Facilities are written through
+``app.models.clinical_scope.NationalFacility``.
+"""
 
-    phone = Column(String(20), nullable=True)
-    email = Column(String(255), nullable=True)
+from __future__ import annotations
 
-    address_line = Column(String(500), nullable=True)
-    city = Column(String(100), nullable=True)
-    governorate = Column(String(100), nullable=True)
-    district = Column(String(100), nullable=True)
+from app.models.clinical_scope import NationalFacility
 
-    latitude = Column(String(20), nullable=True)
-    longitude = Column(String(20), nullable=True)
+#: The canonical table object, re-exported so that importers of this module keep
+#: working. There is exactly one, and `NationalFacility` owns it.
+national_facilities = NationalFacility.__table__
 
-    is_active = Column(Boolean, default=True)
-    is_emergency_available = Column(Boolean, default=False)
-    operating_hours = Column(Text, nullable=True)
-
-    __table_args__ = (
-        Index("ix_national_facilities_type", "facility_type"),
-        Index("ix_national_facilities_org", "organization_id"),
-        Index("ix_national_facilities_directorate", "directorate_id"),
-        {"extend_existing": True},
-    )
+__all__ = ["national_facilities"]

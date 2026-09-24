@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 import secrets
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     JSON,
@@ -25,8 +25,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from backend.app._compat import UTC
 
 from .base import Base
 

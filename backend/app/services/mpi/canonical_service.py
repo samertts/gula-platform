@@ -98,11 +98,38 @@ def merge_canonicals(
 ) -> CanonicalPatient:
     """Merge two canonical records into one.
 
-    The source canonical's links are reassigned to the target.
-    The source record is NOT deleted — it remains orphaned for audit trail.
+    The source canonical's links are reassigned to the target. The source
+    record is NOT deleted -- it remains orphaned for audit trail, and NR-153 is
+    the reason that sentence is now true.
+
+    WHAT IS BLANKED ON THE SOURCE, AND WHY THE LIST IS SHORTER THAN IT WAS
+    ---------------------------------------------------------------------
+    `national_id_hash` and `health_id` are IDENTITY CLAIMS. After a merge the
+    target owns them, and leaving them on the orphan would leave two records
+    asserting the same national identity -- which is the exact confusion a
+    Master Patient Index exists to prevent. They are cleared, as before.
+
+    `lab_id` is not a claim of that kind. It is PROVENANCE: which laboratory
+    contributed this record. Clearing it used to do three incompatible things
+    at once -- it contradicted the promise in the line above (provenance IS the
+    audit value the orphan was being kept for), it contradicted the premise
+    NR-148's whole scope policy rests on (services/mpi/scope.py argues lab_id
+    outlives the laboratory), and it permanently revoked the contributing
+    laboratory's sight of its own contribution. Proven end to end by an
+    independent review: after one national merge, the lab that created a record
+    could no longer see it.
+
+    So provenance survives the merge. The orphan keeps saying where it came
+    from, which is what makes it an audit trail rather than a husk.
     """
+    # NR-149. This import used to live inside the branch below, which always
+    # raises -- so the two `raise NotFoundError` after it referenced an unbound
+    # local and merge answered 500 (UnboundLocalError) instead of 404 for every
+    # id that does not exist. Both not-found branches were unreachable as
+    # written.
+    from app.domain.exceptions import ConflictError, NotFoundError
+
     if target_id == source_id:
-        from app.domain.exceptions import ConflictError, NotFoundError
         raise ConflictError("cannot merge a canonical into itself")
 
     target = db.query(CanonicalPatient).filter(CanonicalPatient.id == target_id).first()
@@ -120,7 +147,9 @@ def merge_canonicals(
         {"canonical_id": target_id},
     )
 
-    source.lab_id = None
+    # NR-153: `source.lab_id = None` used to be here. See the docstring -- it is
+    # provenance, not an identity claim, and blanking it contradicted both this
+    # function's own promise and the policy in services/mpi/scope.py.
     source.national_id_hash = None
     source.health_id = None
     source.full_name = f"{source.full_name} (merged into {target_id})"

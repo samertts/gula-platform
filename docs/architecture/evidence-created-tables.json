@@ -1,0 +1,1274 @@
+{
+ "abac_policies": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "accessibility_profiles": [
+  "20260815_0020_phase21_user_preferences.py"
+ ],
+ "ai_agent_executions": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_conversation_messages": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_conversations": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_embeddings": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_evaluations": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_feedback": [
+  "20260511_0001_ai_interactions_dataset.py"
+ ],
+ "ai_interactions": [
+  "20260511_0001_ai_interactions_dataset.py"
+ ],
+ "ai_knowledge_edges": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_knowledge_nodes": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_model_registry": [
+  "20260719_0001_ai_platform_tables.py"
+ ],
+ "ai_retrieval_refs": [
+  "20260511_0001_ai_interactions_dataset.py"
+ ],
+ "ai_unresolved_questions": [
+  "20260511_0001_ai_interactions_dataset.py"
+ ],
+ "audit_logs": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "authorization_audit": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "billing_audit_events": [
+  "20260814_0009_billing_insurance_projection.py"
+ ],
+ "billing_invoice_lines": [
+  "20260814_0009_billing_insurance_projection.py"
+ ],
+ "billing_invoices": [
+  "20260814_0009_billing_insurance_projection.py"
+ ],
+ "billing_payments": [
+  "20260814_0009_billing_insurance_projection.py"
+ ],
+ "biomed_calibrations": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_devices": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_incidents": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_maintenance_schedules": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_performance_verifications": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_recalls": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_safety_inspections": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_service_contracts": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_spare_parts": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_technicians": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_vendors": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "biomed_work_orders": [
+  "20260716_0008_national_biomedical_engineering_platform_tables.py"
+ ],
+ "blood_bank_components": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_crossmatches": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_discards": [
+  "20260901_0002_blood_bank_return_discard.py"
+ ],
+ "blood_bank_donations": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_donor_deferrals": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_donors": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_inventory": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_inventory_movements": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_patient_samples": [
+  "20260901_0001_blood_bank_phase2_operational.py"
+ ],
+ "blood_bank_reactions": [
+  "20260901_0001_blood_bank_phase2_operational.py"
+ ],
+ "blood_bank_requests": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_reservations": [
+  "20260901_0001_blood_bank_phase2_operational.py"
+ ],
+ "blood_bank_returns": [
+  "20260901_0002_blood_bank_return_discard.py"
+ ],
+ "blood_bank_screening_results": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_traceability_events": [
+  "20260901_0001_blood_bank_phase2_operational.py"
+ ],
+ "blood_bank_transfusions": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "blood_bank_units": [
+  "20260716_0006_national_blood_bank_and_transfusion_platform_tables.py"
+ ],
+ "break_glass_sessions": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "canonical_patients": [
+  "20260716_0016_canonical_patient_unification.py"
+ ],
+ "cc_after_action_reports": [
+  "20260716_0010_national_health_command_center_tables.py"
+ ],
+ "cc_emergency_declarations": [
+  "20260716_0010_national_health_command_center_tables.py"
+ ],
+ "cc_resource_requests": [
+  "20260716_0010_national_health_command_center_tables.py"
+ ],
+ "cc_situation_reports": [
+  "20260716_0010_national_health_command_center_tables.py"
+ ],
+ "citizen_links": [
+  "20260716_0016_canonical_patient_unification.py"
+ ],
+ "citizens": [
+  "20260413_0001_mpi_citizen_registry.py"
+ ],
+ "claim_items": [
+  "20260407_0001_claims_tables.py"
+ ],
+ "claims": [
+  "20260407_0001_claims_tables.py"
+ ],
+ "clinical_command_receipts": [
+  "20260908_0002_clinical_command_receipts.py"
+ ],
+ "clinical_ehr_facility_bindings": [
+  "20260813_0004_clinical_ehr_scope_bridge.py"
+ ],
+ "clinical_lab_facility_bindings": [
+  "20260813_0002_clinical_scope_bridge.py"
+ ],
+ "clinical_research_cohorts": [
+  "20260819_0003_research_entities.py"
+ ],
+ "clinical_research_registries": [
+  "20260819_0003_research_entities.py"
+ ],
+ "consents": [
+  "20260417_0001_consent_table.py"
+ ],
+ "critical_care_admissions": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_alerts": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_assessments": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_beds": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_daily_checklists": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_device_integrations": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_early_warning_scores": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_fluid_balance": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_infusions": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_rounds": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_scores": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_ventilator_settings": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "critical_care_vital_signs": [
+  "20260716_0007_national_critical_care_platform_tables.py"
+ ],
+ "delegations": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "device_connectors": [
+  "20260815_0012_device_adapter_registry.py"
+ ],
+ "device_events": [
+  "20260814_0011_device_integration.py"
+ ],
+ "device_gateway_alerts": [
+  "20260815_0014_device_monitoring_alerting.py"
+ ],
+ "device_gateway_metric_snapshots": [
+  "20260815_0014_device_monitoring_alerting.py"
+ ],
+ "device_gateways": [
+  "20260815_0018_device_gateway_registry.py"
+ ],
+ "device_outbox_messages": [
+  "20260815_0017_device_outbox.py"
+ ],
+ "device_print_jobs": [
+  "20260814_0011_device_integration.py"
+ ],
+ "device_protocol_profiles": [
+  "20260815_0012_device_adapter_registry.py"
+ ],
+ "ecosystem_partner_agreements": [
+  "20260715_0001_national_ecosystem_partners.py"
+ ],
+ "ecosystem_partner_audit_logs": [
+  "20260715_0001_national_ecosystem_partners.py"
+ ],
+ "ecosystem_partner_certificates": [
+  "20260715_0001_national_ecosystem_partners.py"
+ ],
+ "ecosystem_partner_credentials": [
+  "20260715_0001_national_ecosystem_partners.py"
+ ],
+ "ecosystem_partner_rate_limits": [
+  "20260715_0001_national_ecosystem_partners.py"
+ ],
+ "ecosystem_partners": [
+  "20260715_0001_national_ecosystem_partners.py"
+ ],
+ "edge_devices": [
+  "20260428_0001_edge_platform.py"
+ ],
+ "edge_events": [
+  "20260428_0001_edge_platform.py"
+ ],
+ "edge_model_assignments": [
+  "20260428_0001_edge_platform.py"
+ ],
+ "edge_models": [
+  "20260428_0001_edge_platform.py"
+ ],
+ "edge_policies": [
+  "20260428_0001_edge_platform.py"
+ ],
+ "edge_tasks": [
+  "20260428_0001_edge_platform.py"
+ ],
+ "edge_telemetry": [
+  "20260428_0001_edge_platform.py"
+ ],
+ "ems_ambulance_crew": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_ambulances": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_crew_shifts": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_disaster_events": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_dispatch_assignments": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_epcr": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_hospital_status": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_incident_commands": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_incidents": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_mass_casualty_incidents": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_shelters": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "ems_triage_assessments": [
+  "20260716_0005_national_ems_and_disaster_response_platform_tables.py"
+ ],
+ "facilities": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "feature_flags": [
+  "20250322_0000_create_base_schema.py",
+  "20260329_0011_subscription_tiers_feature_flags.py"
+ ],
+ "fhir_resource_records": [
+  "20260815_0019_fhir_resource_registry.py"
+ ],
+ "field_security": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "fin_ads_campaigns": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_ads_clicks": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_ads_conversions": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_clinical_behavior": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_fraud_logs": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_market_benchmarks": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_providers": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_subscriptions": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "fin_transactions": [
+  "20260506_0001_financial_engine_phase_a.py"
+ ],
+ "gov_break_glass_accesses": [
+  "20260716_0014_governance_identity_persistence.py"
+ ],
+ "gov_guardians": [
+  "20260716_0014_governance_identity_persistence.py"
+ ],
+ "gov_identity_records": [
+  "20260716_0014_governance_identity_persistence.py"
+ ],
+ "gov_merge_proposals": [
+  "20260716_0014_governance_identity_persistence.py"
+ ],
+ "gov_qr_codes": [
+  "20260716_0014_governance_identity_persistence.py"
+ ],
+ "gov_recovery_requests": [
+  "20260716_0014_governance_identity_persistence.py"
+ ],
+ "health_preferences": [
+  "20260815_0020_phase21_user_preferences.py"
+ ],
+ "hospital_departments": [
+  "20260820_0003_hospital_core_schema.py"
+ ],
+ "hospital_operation_theaters": [
+  "20260820_0003_hospital_core_schema.py"
+ ],
+ "hospital_surgical_safety_checklists": [
+  "20260820_0004_surgical_safety_checklists.py"
+ ],
+ "hospitals": [
+  "20260820_0003_hospital_core_schema.py"
+ ],
+ "idempotency_keys": [
+  "20250322_0000_create_base_schema.py",
+  "20250323_0004_core_enforcement.py"
+ ],
+ "identity_claims": [
+  "20260413_0001_mpi_citizen_registry.py"
+ ],
+ "insurance_coverages": [
+  "20260814_0009_billing_insurance_projection.py"
+ ],
+ "integrated_devices": [
+  "20260814_0011_device_integration.py"
+ ],
+ "integration_inbox_events": [
+  "20260813_0005_integration_inbox.py"
+ ],
+ "lab_orders": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "lab_results": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "lab_subscriptions": [
+  "20250322_0000_create_base_schema.py",
+  "20260329_0011_subscription_tiers_feature_flags.py"
+ ],
+ "lab_users": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "labs": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "lc_compatibility_matrix": [
+  "20260716_0012_national_platform_lifecycle_and_governance_tables.py"
+ ],
+ "lc_component_registry": [
+  "20260716_0012_national_platform_lifecycle_and_governance_tables.py"
+ ],
+ "lc_deprecation_notices": [
+  "20260716_0012_national_platform_lifecycle_and_governance_tables.py"
+ ],
+ "lc_releases": [
+  "20260716_0012_national_platform_lifecycle_and_governance_tables.py"
+ ],
+ "lc_upgrade_paths": [
+  "20260716_0012_national_platform_lifecycle_and_governance_tables.py"
+ ],
+ "lims_auto_validation_rules": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_calibrations": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_chain_of_custody": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_consumables": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_containers": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_delta_check_rules": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_departments": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_electronic_signatures": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_eqa": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_equipment_logs": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_instrument_models": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_instruments": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_iqc": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_lots": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_maintenance": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_manufacturers": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_orders": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_panel_tests": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_panels": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_qc_programs": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_reagents": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_reference_ranges": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_report_attachments": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_reports": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_result_releases": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_result_validations": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_results": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_sections": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_specimen_catalog": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_specimens": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_storage": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_suppliers": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_temperature_logs": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_transportation": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "lims_workstations": [
+  "20260714_0001_national_lims_tables.py"
+ ],
+ "medical_terminology_normalized": [
+  "20260511_0001_ai_interactions_dataset.py"
+ ],
+ "mfa_devices": [
+  "20260716_0015_auth_security_tables.py"
+ ],
+ "mfa_sessions": [
+  "20260716_0015_auth_security_tables.py"
+ ],
+ "mpi_merge_audit": [
+  "20260413_0001_mpi_citizen_registry.py"
+ ],
+ "national_facilities": [
+  "20260813_0004_clinical_ehr_scope_bridge.py"
+ ],
+ "national_search_results": [
+  "20260819_0004_national_search_tenant_scope.py"
+ ],
+ "national_search_saved_searches": [
+  "20260819_0004_national_search_tenant_scope.py"
+ ],
+ "nhdw_admissions": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_care_plans": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_clinical_tasks": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_dashboard_configurations": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_discharges": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_hospital_alerts": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_hospital_messages": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_queue_entries": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_resource_schedules": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_shift_reports": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_telemedicine_sessions": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_transfers": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_waiting_list_entries": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "nhdw_ward_rounds": [
+  "20260716_0001_nhdw_platform.py"
+ ],
+ "niam_account_creation_requests": [
+  "20260814_0008_account_request_intake.py"
+ ],
+ "niam_accounts": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_adaptive_mfa_sessions": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_adaptive_risk_events": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_adaptive_risk_policies": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_adaptive_session_policies": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_adaptive_travel_events": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_audit_logs": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_branches": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_departments": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_facilities": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_fhir_connections": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_portals": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_subscriptions": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_admin_units": [
+  "20260814_0002_organization_structure.py"
+ ],
+ "niam_assignments": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_audit_entries": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_cert_api_keys": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_cert_authorities": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_cert_certificates": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_cert_crls": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_citizen_relationships": [
+  "20260811_0002_citizen_relationship_foundation.py"
+ ],
+ "niam_comp_checks": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_comp_frameworks": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_comp_reports": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_consents": [
+  "20260814_0006_security_audit_governance.py"
+ ],
+ "niam_credentials": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_devices": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_employments": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_enterprise_accounts": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_fed_agreements": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_fed_cross_org_trust": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_fed_identities": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_fed_links": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_fed_providers": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_fed_sessions": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_appeals": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_authorities": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_certifications": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_councils": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_policy_approvals": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_registry": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_restorations": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_review_boards": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_gov_suspensions": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_identities": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_legacy_account_links": [
+  "20260811_0001_wave3_identity_mapping.py"
+ ],
+ "niam_licenses": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_lifecycle_citizen": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_lifecycle_consents": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_lifecycle_enterprise_reg": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_lifecycle_enterprise_steps": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_lifecycle_family_links": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_lifecycle_gov_appointments": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_lifecycle_guardians": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_lifecycle_workforce_requests": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_machine_identities": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_membership_applications": [
+  "20260814_0004_membership_relationship_engine.py"
+ ],
+ "niam_membership_invitations": [
+  "20260814_0004_membership_relationship_engine.py"
+ ],
+ "niam_memberships": [
+  "20260814_0004_membership_relationship_engine.py"
+ ],
+ "niam_notif_preferences": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_notif_queue": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_notif_templates": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_organization_ownerships": [
+  "20260814_0002_organization_structure.py"
+ ],
+ "niam_organization_representatives": [
+  "20260814_0002_organization_structure.py"
+ ],
+ "niam_organizations": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_permissions": [
+  "20260814_0005_role_permission_engine.py"
+ ],
+ "niam_persons": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_policies": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_role_assignments": [
+  "20260814_0005_role_permission_engine.py"
+ ],
+ "niam_role_permissions": [
+  "20260814_0005_role_permission_engine.py"
+ ],
+ "niam_roles": [
+  "20260814_0005_role_permission_engine.py"
+ ],
+ "niam_security_incidents": [
+  "20260814_0006_security_audit_governance.py"
+ ],
+ "niam_sessions": [
+  "20260723_0001_niam_identity_platform_tables.py"
+ ],
+ "niam_trust_anchors": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_trust_assurance_profiles": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_trust_evaluations": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_trust_federation": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_trust_frameworks": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_trust_proofing": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_verification_records": [
+  "20260814_0001_verification_records.py"
+ ],
+ "niam_wf_approvals": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_wf_definitions": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_wf_instances": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_wf_notifications": [
+  "20260723_0002_niam_completion_tables.py"
+ ],
+ "niam_workspace_contexts": [
+  "20260814_0003_workspace_architecture.py"
+ ],
+ "niam_workspaces": [
+  "20260814_0003_workspace_architecture.py"
+ ],
+ "nursing_care_plans": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_clinical_checklists": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_delegations": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_escalation_records": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_fall_risk_assessments": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_fluid_balance": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_notes": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_nutrition_assessments": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_pain_assessments": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_patient_assignments": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_pressure_injury_assessments": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_shift_handovers": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_shifts": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_tasks": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "nursing_vital_signs": [
+  "20260716_0002_nursing_platform.py"
+ ],
+ "oauth2_clients": [
+  "20260716_0015_auth_security_tables.py"
+ ],
+ "oauth2_tokens": [
+  "20260716_0015_auth_security_tables.py"
+ ],
+ "organizations": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "outbox_events": [
+  "20250322_0000_create_base_schema.py",
+  "20250323_0004_core_enforcement.py"
+ ],
+ "patient_links": [
+  "20260716_0016_canonical_patient_unification.py"
+ ],
+ "patients": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "pay_audit_events": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_cash_shifts": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_currency_definitions": [
+  "20260812_0003_fx_quote_engine.py"
+ ],
+ "pay_financial_control_requests": [
+  "20260814_0010_financial_control_plane.py"
+ ],
+ "pay_fx_fee_policies": [
+  "20260812_0003_fx_quote_engine.py"
+ ],
+ "pay_fx_quotes": [
+  "20260812_0003_fx_quote_engine.py"
+ ],
+ "pay_fx_rate_snapshots": [
+  "20260812_0003_fx_quote_engine.py"
+ ],
+ "pay_invoice_lines": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_invoices": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_ledger_accounts": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_ledger_entries": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_ledger_lines": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_payment_attempts": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_payment_entities": [
+  "20260812_0004_multi_rail_orchestration.py"
+ ],
+ "pay_payment_intents": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_payment_rails": [
+  "20260812_0004_multi_rail_orchestration.py"
+ ],
+ "pay_payment_routing_decisions": [
+  "20260812_0004_multi_rail_orchestration.py"
+ ],
+ "pay_payment_routing_rules": [
+  "20260812_0004_multi_rail_orchestration.py"
+ ],
+ "pay_platform_subscriptions": [
+  "20260812_0005_institutional_subscriptions.py"
+ ],
+ "pay_providers": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_reconciliation_cases": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_refunds": [
+  "20260812_0002_gula_health_payments_foundation.py"
+ ],
+ "pay_risk_assessments": [
+  "20260812_0003_fx_quote_engine.py"
+ ],
+ "pay_subscription_audit_events": [
+  "20260812_0005_institutional_subscriptions.py"
+ ],
+ "pay_subscription_billing_cycles": [
+  "20260812_0005_institutional_subscriptions.py"
+ ],
+ "pay_subscription_plans": [
+  "20260812_0005_institutional_subscriptions.py"
+ ],
+ "pay_subscription_usage_counters": [
+  "20260812_0005_institutional_subscriptions.py"
+ ],
+ "pay_subscription_usage_events": [
+  "20260812_0005_institutional_subscriptions.py"
+ ],
+ "permissions": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "ph_disease_cases": [
+  "20260716_0009_national_public_health_and_disease_surveillance_platform_tables.py"
+ ],
+ "ph_environmental_health": [
+  "20260716_0009_national_public_health_and_disease_surveillance_platform_tables.py"
+ ],
+ "ph_immunization_records": [
+  "20260716_0009_national_public_health_and_disease_surveillance_platform_tables.py"
+ ],
+ "ph_outbreak_alerts": [
+  "20260716_0009_national_public_health_and_disease_surveillance_platform_tables.py"
+ ],
+ "ph_reports": [
+  "20260716_0009_national_public_health_and_disease_surveillance_platform_tables.py"
+ ],
+ "ph_surveillance_signals": [
+  "20260716_0009_national_public_health_and_disease_surveillance_platform_tables.py"
+ ],
+ "pharmacy_allergy_rules": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_clinical_guidelines": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_contraindication_rules": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_dispense_queue": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_dispense_records": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_dose_guidelines": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_drug_batches": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_drug_catalog": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_drug_interaction_rules": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_drug_monitoring": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_drug_returns": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_drug_substitution_requests": [
+  "20260815_0023_drug_substitution.py"
+ ],
+ "pharmacy_drug_substitution_rules": [
+  "20260815_0023_drug_substitution.py"
+ ],
+ "pharmacy_drug_suppliers": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_inventory_forecasts": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_inventory_transfer_items": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_inventory_transfers": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_prescription_items": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_prescriptions": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_recalls": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_sale_lines": [
+  "20260815_0022_pharmacy_pos_sales.py"
+ ],
+ "pharmacy_sales": [
+  "20260815_0022_pharmacy_pos_sales.py"
+ ],
+ "pharmacy_stock_levels": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_stock_movements": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_stores": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_warehouses": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pharmacy_waste_records": [
+  "20260716_0003_pharmacy_platform.py"
+ ],
+ "pilot_deployment_records": [
+  "20260716_0011_national_pilot_deployment_and_readiness_platform_tables.py"
+ ],
+ "pilot_facilities": [
+  "20260716_0011_national_pilot_deployment_and_readiness_platform_tables.py"
+ ],
+ "pilot_go_no_go_gates": [
+  "20260716_0011_national_pilot_deployment_and_readiness_platform_tables.py"
+ ],
+ "pilot_programs": [
+  "20260716_0011_national_pilot_deployment_and_readiness_platform_tables.py"
+ ],
+ "pilot_readiness_checklists": [
+  "20260716_0011_national_pilot_deployment_and_readiness_platform_tables.py"
+ ],
+ "quality_controls": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "radiology_ai_analysis_jobs": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_appointments": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_critical_findings": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_dicom_storage": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_dicom_studies": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_exams": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_image_annotations": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_image_measurements": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_image_shares": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_images": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_modality_devices": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_mpps": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_orders": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_protocols": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_report_templates": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_reports": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_series": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "radiology_worklist_entries": [
+  "20260716_0004_radiology_platform.py"
+ ],
+ "role_assignments": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "role_group_members": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "role_groups": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "role_permissions": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "roles": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "samples": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "service_accounts": [
+  "20260716_0015_auth_security_tables.py"
+ ],
+ "sndhs_audit_logs": [
+  "20260505_0005_sndhs_phase1_audit_logs_v2.py"
+ ],
+ "tenants": [
+  "20260722_0001_authorization_expansion.py"
+ ],
+ "test_types": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "trust_compliance_checks": [
+  "20260716_0013_national_trust_platform_tables.py"
+ ],
+ "trust_compliance_evidence": [
+  "20260716_0013_national_trust_platform_tables.py"
+ ],
+ "trust_consent_records": [
+  "20260716_0013_national_trust_platform_tables.py"
+ ],
+ "trust_retention_policies": [
+  "20260716_0013_national_trust_platform_tables.py"
+ ],
+ "trust_service_logs": [
+  "20260716_0013_national_trust_platform_tables.py"
+ ],
+ "trust_sovereignty_rules": [
+  "20260716_0013_national_trust_platform_tables.py"
+ ],
+ "upgrade_demand_scores": [
+  "20250322_0000_create_base_schema.py",
+  "20260329_0011_subscription_tiers_feature_flags.py"
+ ],
+ "upgrade_requests": [
+  "20250322_0000_create_base_schema.py",
+  "20260329_0011_subscription_tiers_feature_flags.py"
+ ],
+ "users": [
+  "20250322_0000_create_base_schema.py"
+ ],
+ "visits": [
+  "20260505_0003_sndhs_phase1_visits_table.py"
+ ],
+ "wearable_measurements": [
+  "20260819_0002_wearable_measurements.py"
+ ]
+}

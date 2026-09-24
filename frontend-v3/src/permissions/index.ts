@@ -158,15 +158,12 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "nav.notifications", path: "/notifications", icon: "Bell" },
   ],
   clinical: [
-    { label: "الأسس السريرية", path: "/capabilities/clinical-foundation", icon: "Heart", permissions: ["dashboard:read"] },
-    { label: "إدارة المستندات", path: "/capabilities/document-management", icon: "FileText", permissions: ["dashboard:read"] },
-    { label: "إدارة الزيارات", path: "/capabilities/encounter-management", icon: "CalendarDays", permissions: ["dashboard:read"] },
-    { label: "الموافقة الصحية", path: "/capabilities/healthcare-consent", icon: "FileCheck", permissions: ["dashboard:read"] },
-    { label: "إدارة المزودين", path: "/capabilities/provider-management", icon: "Building2", permissions: ["dashboard:read"] },
-    { label: "خدمة التقارير", path: "/capabilities/reporting-service", icon: "BarChart3", permissions: ["dashboard:read"] },
-    { label: "خدمة البحث", path: "/capabilities/search-service", icon: "Search", permissions: ["dashboard:read"] },
-    { label: "خدمة التخزين", path: "/capabilities/storage-service", icon: "HardDrive", permissions: ["dashboard:read"] },
-    { label: "محرك سير العمل", path: "/capabilities/workflow-engine", icon: "Workflow", permissions: ["dashboard:read"] }
+    // NR-054: gated on patients:read because that is what the backend actually
+    // enforces — national_data.py::list_canonical_encounters depends on
+    // require_permission("patients:read"). The nav gate is a usability filter,
+    // never the security boundary; it is set here so the entry is not offered to
+    // a role whose request the server would refuse.
+    { label: "إدارة الزيارات", path: "/capabilities/encounter-management", icon: "CalendarDays", permissions: ["patients:read"] },
   ],
   national: [
     { label: "الخلفية الوطنية", path: "/national/background-platform", icon: "Clock", permissions: ["dashboard:read"] },

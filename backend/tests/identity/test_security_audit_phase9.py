@@ -38,7 +38,7 @@ class _AuditSession:
         self.entries = []
         self._counter = 0
 
-    async def execute(self, statement):
+    def execute(self, statement):
         sql = str(statement)
         if "SELECT niam_audit_entries.entry_hash" in sql or (
             "niam_audit_entries.entry_hash" in sql and "LIMIT" in sql
@@ -52,7 +52,7 @@ class _AuditSession:
             entry.id = f"AUDIT9{self._counter:020d}"[:26]
             self.entries.append(entry)
 
-    async def flush(self):
+    def flush(self):
         return None
 
 
@@ -61,7 +61,7 @@ class _IncidentSession:
         self.incident = incident
         self.added = []
 
-    async def get(self, model, identifier, **kwargs):
+    def get(self, model, identifier, **kwargs):
         del model, identifier, kwargs
         return self.incident
 
@@ -71,48 +71,45 @@ class _IncidentSession:
             entry.id = "INCIDENT9TEST00000000000001"[:26]
             self.incident = entry
 
-    async def flush(self):
+    def flush(self):
         return None
 
-    async def execute(self, statement):
+    def execute(self, statement):
         del statement
         return _Result(scalar=None)
 
 
-@pytest.mark.asyncio
-async def test_canonical_audit_chain_is_linked_and_verifiable():
+def test_canonical_audit_chain_is_linked_and_verifiable():
     session = _AuditSession()
     service = CanonicalAuditService(session)
-    first = await service.record(
+    first = service.record(
         AuditEventInput(event_type="LOGIN", category="AUTHENTICATION", action="login", actor_id="a1"),
     )
-    second = await service.record(
+    second = service.record(
         AuditEventInput(event_type="AUTHZ_DENY", category="AUTHORIZATION", action="read", actor_id="a1", decision="DENY"),
     )
     assert first.previous_hash is None
     assert second.previous_hash == first.entry_hash
-    result = await service.verify()
+    result = service.verify()
     assert result["status"] == IntegrityStatus.valid.value
     assert result["entries_checked"] == 2
 
 
-@pytest.mark.asyncio
-async def test_canonical_audit_detects_payload_tampering():
+def test_canonical_audit_detects_payload_tampering():
     session = _AuditSession()
     service = CanonicalAuditService(session)
-    entry = await service.record(
+    entry = service.record(
         AuditEventInput(event_type="ROLE_CHANGE", category="AUTHORIZATION", action="role.assign", actor_id="a1"),
     )
     entry.action = "role.revoke"
-    result = await service.verify()
+    result = service.verify()
     assert result["status"] == IntegrityStatus.invalid.value
     assert any(item["reason"] == "event_hash_mismatch" for item in result["violations"])
 
 
-@pytest.mark.asyncio
-async def test_canonical_audit_redacts_secret_metadata():
+def test_canonical_audit_redacts_secret_metadata():
     session = _AuditSession()
-    entry = await CanonicalAuditService(session).record(
+    entry = CanonicalAuditService(session).record(
         AuditEventInput(
             event_type="LOGIN_FAILURE",
             category="AUTHENTICATION",
@@ -132,8 +129,7 @@ def test_consent_rejects_unknown_purpose_and_long_expiry():
     assert "created_by" not in ConsentGrantRequest.model_fields
 
 
-@pytest.mark.asyncio
-async def test_incident_state_machine_and_version_guard():
+def test_incident_state_machine_and_version_guard():
     incident = SecurityIncident(
         id="incident-1",
         uuid="incident-uuid",
@@ -149,12 +145,12 @@ async def test_incident_state_machine_and_version_guard():
     session = _IncidentSession(incident)
     service = IncidentService(session)
     with pytest.raises(IncidentError, match="stale"):
-        await service.transition(actor_id="account-1", incident_id="incident-1", target_status="TRIAGED", expected_version=2)
-    updated = await service.transition(actor_id="account-1", incident_id="incident-1", target_status="TRIAGED", expected_version=1)
+        service.transition(actor_id="account-1", incident_id="incident-1", target_status="TRIAGED", expected_version=2)
+    updated = service.transition(actor_id="account-1", incident_id="incident-1", target_status="TRIAGED", expected_version=1)
     assert updated.status == IncidentStatus.triaged.value
     assert updated.version == 2
     with pytest.raises(IncidentError, match="invalid transition"):
-        await service.transition(actor_id="account-1", incident_id="incident-1", target_status="CLOSED", expected_version=2)
+        service.transition(actor_id="account-1", incident_id="incident-1", target_status="CLOSED", expected_version=2)
 
 
 def test_phase9_routes_expose_no_audit_mutation_endpoints():

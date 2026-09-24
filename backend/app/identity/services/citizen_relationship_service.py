@@ -17,10 +17,11 @@ from app.identity.models.citizen_relationship import (
     CitizenRelationshipStatus,
     CitizenRelationshipType,
 )
+from app.identity.models.legacy_account_link import LegacyAccountLinkSource
+from app.identity.models.person import Person
+from app.identity.services.identity_link_policy import can_link_health_identity
 from app.models.lab_user import LabUser
 from app.models.user import User
-from app.national.domain.citizen import Citizen
-from app.national.domain.patient import Patient
 from app.services.audit_service import log_action
 
 
@@ -131,6 +132,16 @@ class CitizenRelationshipWorkflow:
             raise CitizenRelationshipUnsupported("C2 currently supports self relationships only")
         if purpose != "citizen_workspace":
             raise CitizenRelationshipUnsupported("Unsupported relationship purpose")
+        if patient_id is not None:
+            # NR-064. This used to resolve against `national_patients`, which no
+            # migration builds. The column is String(26) while the built clinical
+            # patient table keys on INTEGER, so there is no target to resolve to
+            # until NR-022 decides the clinical subject. Refusing the input is
+            # honest; querying an absent table was not.
+            raise CitizenRelationshipUnsupported(
+                "Linking a relationship to a clinical patient record is not supported yet; "
+                "omit patient_id"
+            )
         if not 16 <= len(idempotency_key) <= 128:
             raise CitizenRelationshipConflict("Idempotency-Key must be 16 to 128 characters")
 
@@ -139,24 +150,15 @@ class CitizenRelationshipWorkflow:
         if source is None or not source.is_active or source.role != "citizen":
             raise CitizenRelationshipConflict("Source account is not an active citizen account")
 
-        citizen = self.db.query(Citizen).filter(Citizen.id == citizen_id).first()
-        if citizen is None:
+        # NR-064 / NR-022. The subject of a citizen relationship is a natural
+        # person, and the canonical natural person is `niam_persons`. This read
+        # named `national_citizens`, which no migration builds, so every create
+        # raised UndefinedTable and surfaced as a generic 500.
+        person = self.db.query(Person).filter(Person.id == citizen_id).first()
+        if person is None:
             raise CitizenRelationshipNotFound("Citizen record not found")
-        if citizen.is_deceased or citizen.merged_into_id:
+        if person.is_deceased or not person.is_active:
             raise CitizenRelationshipConflict("Citizen record is not linkable")
-
-        patient = None
-        if patient_id is not None:
-            patient = self.db.query(Patient).filter(Patient.id == patient_id).first()
-            if (
-                patient is None
-                or patient.citizen_id != citizen_id
-                or not patient.is_active
-                or patient.is_merged
-            ):
-                raise CitizenRelationshipConflict(
-                    "Patient record is not linked to the selected citizen"
-                )
 
         payload = {
             "source_kind": source_kind,
@@ -254,9 +256,38 @@ class CitizenRelationshipWorkflow:
                 f"Cannot activate relationship from {relationship.status}"
             )
         source = self.db.query(User).filter(User.id == relationship.legacy_user_id).first()
-        if source is None or not source.is_active or not source.is_verified:
+        if source is None or not source.is_active:
+            raise CitizenRelationshipConflict("Source account must be active before activation")
+
+        # NR-039. This gate used to read `source.is_verified`, which an emailed
+        # six-digit code sets, while its message said "verified" and its effect
+        # was to expose a person's health data. Account control and identity are
+        # different facts: the ministry actor above authorizes the *operation*,
+        # and the verification evidence below establishes the *person*. Both are
+        # required, and neither substitutes for the other.
+        decision = can_link_health_identity(
+            self.db,
+            legacy_account_id=relationship.legacy_user_id,
+            source_kind=LegacyAccountLinkSource.user.value,
+            target_citizen_id=relationship.citizen_id,
+        )
+        if not decision.allowed:
+            log_action(
+                self.db,
+                action="citizen_relationship_link_denied",
+                resource_type="citizen_relationship",
+                resource_id=None,
+                user_id=self.actor.id,
+                user_role=self.actor.role,
+                ip_address=self.request_ip,
+                details=(
+                    f"relationship_id={relationship.id};reason={decision.reason_code};"
+                    f"identity_assurance={decision.identity_assurance.value}"
+                ),
+            )
+            self.db.commit()
             raise CitizenRelationshipConflict(
-                "Source account must be active and verified before activation"
+                f"Identity evidence is insufficient for health-identity linkage: {decision.detail}"
             )
         old_status = relationship.status
         if relationship.version is None:
@@ -270,6 +301,11 @@ class CitizenRelationshipWorkflow:
                 f"verification:{verification_reference.strip()}"
             ),
             "verified_by_legacy_user_id": self.actor.id,
+            # What the platform actually established, separate from who
+            # authorized the operation.
+            "identity_assurance": decision.identity_assurance.value,
+            "identity_evidence_ids": list(decision.evidence_ids),
+            "canonical_account_id": decision.canonical_account_id,
         }
         self.db.flush()
         log_action(

@@ -198,7 +198,22 @@ class TestDuplicateDetection:
         assert result.is_duplicate is False
 
     def test_same_key_different_lab_is_not_duplicate(self, db):
-        """Keys are scoped per lab — lab 2 cannot replay lab 1's response."""
+        """Lab 2's LOOKUP does not match lab 1's row.
+
+        Scope note, because the previous wording of this docstring claimed more
+        than the test checks. It said "lab 2 cannot replay lab 1's response",
+        which reads as a tenant-isolation guarantee for the module. It is not
+        one: this exercises `idempotency_check` only. The write half,
+        `IdempotencyResult.cache()`, runs `UPDATE idempotency_keys SET
+        status_code, response_body WHERE key = :key` with no lab_id, over a
+        table whose PRIMARY KEY is (key) alone -- so lab 2 proceeding, as it
+        does here, then overwrites lab 1's row and lab 1 replays lab 2's body.
+        That is NR-091, proved by execution against PostgreSQL.
+
+        The lookup behaviour asserted below is real and worth pinning. The
+        guarantee is not, and `test_idempotency_wiring_precondition.py` is what
+        keeps this module unreachable until it is.
+        """
         from app.core.idempotency import idempotency_check
 
         _insert_key(db, "shared-key", lab_id=1, age_hours=1, status_code=200, body='{"lab": 1}')

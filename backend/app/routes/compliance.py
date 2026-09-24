@@ -20,13 +20,13 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
-from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, NID_HMAC_KEY
+from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, MAX_REQUEST_BODY_MB, NID_HMAC_KEY
 from ..database import get_db
 from ..models.audit_log import AuditLog
 from ..models.lab import Lab
@@ -35,6 +35,9 @@ from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.dependencies import get_current_user
+from ..security.rbac import ROLE_PERMISSIONS
+from ..services import compliance_measurements as measure
+from ..services import idempotency
 from ..services.audit_service import get_latest_anchor, log_action, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
@@ -43,6 +46,26 @@ router = APIRouter(prefix="/compliance", tags=["government compliance"])
 
 
 _COMPLIANCE_ROLES = {"admin", "master_admin", "province_admin", "lab_admin"}
+
+
+def _rbac_claim() -> str:
+    """The RBAC line of the audit reports, derived from the enforced model.
+
+    This read "PASS - 4 roles: master_admin, admin, staff, technician" as a
+    string literal, in a document whose stated audience is government and
+    ISO 27001 auditors. `ROLE_PERMISSIONS` carries sixteen. The twelve it did
+    not mention include `ministry_admin` and `province_admin`, which reach
+    beyond a single lab, and the six-role financial separation-of-duties set
+    (`cashier`, `finance_operator`, `finance_controller`, `finance_auditor`,
+    `reconciler`, `refund_reviewer`). An auditor reading that line was told the
+    access-control model was a quarter of its real size.
+
+    Deriving it means the sentence cannot go stale the next time a role is
+    added, which is the only reason it was wrong: nobody edits a literal when
+    they add a role.
+    """
+    roles = sorted(ROLE_PERMISSIONS)
+    return f"PASS - {len(roles)} roles: {', '.join(roles)}"
 
 
 @router.get("/info", summary="System information for government audit")
@@ -698,17 +721,23 @@ def audit_integrity(
 
     result = verify_audit_chain(db, limit=min(limit, 5000))
     result["lab_id"] = current_user.lab_id
+    result["scope"] = "platform"
     result["checked_at"] = datetime.now(UTC).isoformat()
     result["note"] = (
         "Hash chain verification: each entry's chain_hash = "
         "SHA-256(previous_chain_hash + record_data). "
-        "A broken chain indicates record tampering or deletion."
+        "A broken chain indicates record tampering or deletion. "
+        "SCOPE: the chain links every lab's entries in one id-ordered sequence "
+        "(see audit_service._get_last_chain_hash), so it can only be verified "
+        "platform-wide. entries_checked and broken_entries therefore cover all "
+        "labs, not lab_id above -- lab_id identifies the caller, not the data."
     )
     return result
 
 
 @router.get("/security-report", summary="Security posture report for government audit")
 def security_report(
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -733,7 +762,9 @@ def security_report(
         SELECT COUNT(*) FROM audit_logs
         WHERE action = 'login_failed'
           AND created_at >= NOW() - INTERVAL '24 hours'
+          AND lab_id = :lab_id
     """),
+            {"lab_id": current_user.lab_id},
         ).scalar()
         or 0
     )
@@ -768,14 +799,23 @@ def security_report(
             "password_hashing": "PASS - bcrypt with random salt",
         },
         "access_control": {
-            "rbac": "PASS - 4 roles: master_admin, admin, staff, technician",
-            "multi_tenant": "PASS - per-lab data isolation enforced at query level",
-            "object_level_auth": "PASS - patient/order/result access checked per lab_id",
+            "rbac": _rbac_claim(),
+            "multi_tenant": measure.enforced_by_gate(
+                "per-lab data isolation on ORM and raw-SQL read paths",
+                "tests/test_patient_sql_is_tenant_scoped.py and "
+                "tests/test_idempotency_keys_are_tenant_scoped.py",
+            ),
+            "object_level_auth": measure.enforced_by_gate(
+                "patient/order/result access scoped by lab_id",
+                "tests/test_tenant_isolation_matrix.py",
+            ),
             "failed_logins_24h": failed_logins_24h,
             "active_users_this_lab": total_users,
         },
         "encryption": {
-            "data_in_transit": "PASS - HTTPS/TLS via nginx (production)",
+            "data_in_transit": measure.unobservable(
+                "HTTPS/TLS termination", "the host nginx configuration",
+            ),
             "data_at_rest": "PARTIAL - Fernet encryption for sensitive fields",
             "national_id_storage": "PASS - HMAC-SHA256 one-way hash (not reversible)",
             "key_management": "Env var injection (Vault recommended for enterprise)",
@@ -784,16 +824,43 @@ def security_report(
             "status": chain_result["status"],
             "entries_verified": chain_result["entries_checked"],
             "chain_intact": chain_result["verified"],
-            "tamper_detection": "PASS - SHA-256 hash chain (immutable trigger + chain hash)",
-            "immutability": "PASS - PostgreSQL trigger blocks UPDATE/DELETE",
+            "tamper_detection": measure.audit_immutability(db),
+            "immutability": measure.audit_immutability(db),
             "coverage": "All login, patient, order, result, admin actions logged",
         },
         "api_security": {
-            "rate_limiting": "PASS - nginx: API 100/min, Auth 10/min, Upload 20/min",
-            "request_body_limit": "PASS - 10MB max request body enforced",
-            "security_headers": "PASS - CSP, X-Frame-Options, HSTS, Permissions-Policy",
-            "server_disclosure": "PASS - proxy_hide_header X-Powered-By/Server",
-            "attack_path_blocking": "PASS - wp-admin, phpMyAdmin, .env, .git blocked",
+            # MEASURED, not asserted: replay protection is only effective when
+            # the claim store is shared by every worker. redis_client falls back
+            # to a per-process store when REDIS_URL is unset or Redis is
+            # unreachable -- including in production, where it logs CRITICAL and
+            # continues. Reporting that as PASS would be the exact defect this
+            # report was fixed for.
+            "idempotency_store": (
+                "MEASURED_PASS - shared across workers"
+                if idempotency.is_shared()
+                else "MEASURED_FAIL - per-worker in-memory store: a retry handled "
+                     "by another worker is not recognised as a replay. Set REDIS_URL."
+            ),
+            "rate_limiting": measure.unobservable(
+                "API 100/min, Auth 10/min, Upload 20/min",
+                "the host nginx configuration",
+            ),
+            "request_body_limit": measure.middleware_verdict(
+                request.app, "MaxBodySizeMiddleware",
+                f"{MAX_REQUEST_BODY_MB}MB maximum request body",
+            ),
+            "security_headers": measure.middleware_verdict(
+                request.app, "SecurityHeadersMiddleware",
+                "CSP, X-Frame-Options, HSTS, Permissions-Policy",
+            ),
+            "server_disclosure": measure.unobservable(
+                "proxy_hide_header X-Powered-By/Server",
+                "the host nginx configuration",
+            ),
+            "attack_path_blocking": measure.unobservable(
+                "wp-admin, phpMyAdmin, .env and .git request paths blocked",
+                "the host nginx configuration",
+            ),
             "intrusion_detection": "PASS - IP blocking after repeated failures",
         },
         "compliance_standards": {
@@ -810,7 +877,9 @@ def security_report(
         "runtime": {
             "python_version": python_ver,
             "container_user": "appuser (non-root)",
-            "no_new_privileges": "PASS - security_opt in docker-compose",
+            "no_new_privileges": measure.unobservable(
+                "no-new-privileges", "the container runtime (docker-compose security_opt)",
+            ),
         },
         "recommendations": [
             "Obtain ISO 27001:2022 formal certification",
@@ -980,8 +1049,10 @@ def system_status(
         db.execute(
             sql_text(
                 "SELECT COUNT(*) FROM audit_logs "
-                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'",
+                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours' "
+                "AND lab_id = :lab_id",
             ),
+            {"lab_id": current_user.lab_id},
         ).scalar()
         or 0
     )
@@ -1100,8 +1171,8 @@ def system_status(
         "compliance_checklist": {
             "fhir_r4": "PASS",
             "dhis2_export": "PASS",
-            "audit_immutability": "PASS - DB trigger + hash chain + external anchor",
-            "rbac": "PASS - 4 roles enforced",
+            "audit_immutability": measure.audit_immutability(db),
+            "rbac": _rbac_claim(),
             "secure_cookies": "PASS" if IS_PRODUCTION else "DEV - Secure=False in development",
             "docs_protected": "PASS" if IS_PRODUCTION else "DEV - /docs open in development",
             "disaster_recovery": (

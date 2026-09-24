@@ -60,8 +60,14 @@ services:
     volumes:
       - ./config/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
+      # The load balancer's front door stays bindable: it is the listener the
+      # deployment exists to expose, and LB_PORT is deliberately configurable.
       - "${LB_PORT:-8080}:80"       # main traffic
-      - "8404:8404"                  # HAProxy stats (internal only in production)
+      # NR-145. The comment on this line said "internal only in production"
+      # while the binding published it on every interface, and the stats page
+      # behind it carries `stats auth admin:${HAPROXY_STATS_PASS:-gulaadmin}` --
+      # a default credential. The binding now matches what the comment claimed.
+      - "127.0.0.1:8404:8404"       # HAProxy stats (internal only)
     networks:
       - gula-net
     depends_on:

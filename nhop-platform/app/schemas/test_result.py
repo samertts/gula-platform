@@ -83,8 +83,20 @@ class TestResultListResponse(BaseModel):
 
 
 class TestResultVerifyRequest(BaseModel):
+    """Verification takes nothing from the caller (NR-144).
+
+    It used to carry ``verified_by``, so the request named the clinician
+    attesting the result. That is the most authority-bearing field on the row --
+    it is the whole point of a verification -- and it was whatever string the
+    client sent. The verifier is now read from the trusted context in
+    ``api/v1/test_results.py``, which leaves this request with nothing to say.
+
+    The model is kept rather than deleted so that a future field has an obvious
+    place to land, and so ``extra="forbid"`` keeps rejecting the old shape
+    instead of accepting and ignoring it.
+    """
+
     model_config = ConfigDict(extra="forbid")
-    verified_by: str = Field(..., min_length=1, max_length=80)
 
 
 class TimelinePoint(BaseModel):

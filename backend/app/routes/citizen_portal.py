@@ -43,6 +43,7 @@ from ..models.lab_order import LabOrder
 from ..models.patient import Patient
 from ..models.user import User
 from ..security.auth import (
+    ACCOUNT_KIND_USER,
     blacklist_token,
     create_refresh_token,
     create_token,
@@ -208,6 +209,9 @@ def citizen_login(
         "lab_id": None,
         "role": "citizen",
         "perm_ver": 1,
+        # NR-035: a citizen is a `users` row. Without this discriminator the
+        # claim is indistinguishable from a `lab_users` id of the same number.
+        "act": ACCOUNT_KIND_USER,
     }
     access_token = create_token(payload)
     refresh_token = create_refresh_token(payload)

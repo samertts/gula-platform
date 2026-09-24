@@ -52,8 +52,15 @@ class CitizenRelationship(IdentityBaseEntity):
         Integer, ForeignKey("lab_users.id", ondelete="RESTRICT"), nullable=True, index=True,
     )
 
+    # NR-064 / NR-022. The subject of a citizen relationship is a natural person,
+    # and the canonical natural person is `niam_persons`. This named
+    # `national_citizens`, which no migration builds -- so the declared foreign
+    # key could never be created (the foundation migration guards it on
+    # `_has_table`) and the only write path raised UndefinedTable. `patient_id`
+    # below still names an unbuilt table and is refused at the API until NR-022
+    # decides the clinical subject; the column stays so the decision stays open.
     citizen_id = Column(
-        String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=False, index=True,
+        String(26), ForeignKey("niam_persons.id", ondelete="RESTRICT"), nullable=False, index=True,
     )
     patient_id = Column(
         String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=True, index=True,

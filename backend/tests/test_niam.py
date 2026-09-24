@@ -5,9 +5,8 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app._compat import UTC
+from app.identity.events import IdentityEventBus, event_bus
 from app.identity.models.account import Account, AccountStatus, AccountType
 from app.identity.models.assignment import Assignment, AssignmentStatus
 from app.identity.models.audit import AuditAction, IdentityAuditEntry
@@ -18,31 +17,31 @@ from app.identity.models.enterprise_account import EnterpriseAccount
 from app.identity.models.identity import IdentityRecord, IdentityType
 from app.identity.models.license import LicenseStatus, ProfessionalLicense
 from app.identity.models.machine_identity import MachineIdentity
-from app.identity.models.niam_organization import NIAMOrganization, ORG_TYPES
+from app.identity.models.niam_organization import ORG_TYPES, NIAMOrganization
 from app.identity.models.person import Person
 from app.identity.models.policy import IdentityPolicy
 from app.identity.models.session import UserSession
-from app.identity.services.person_service import PersonService
-from app.identity.services.account_service import AccountService
-from app.identity.services.authentication_service import AuthenticationService
-from app.identity.services.session_service import SessionService
-from app.identity.services.device_service import DeviceService
-from app.identity.services.audit_service import AuditService
-from app.identity.repositories.person_repository import PersonRepository
+from app.identity.policy_engine import PolicyContext, PolicyEngine
 from app.identity.repositories.account_repository import AccountRepository
-from app.identity.repositories.session_repository import SessionRepository
 from app.identity.repositories.device_repository import DeviceRepository
 from app.identity.repositories.organization_repository import OrganizationRepository
-from app.identity.policy_engine import PolicyEngine, PolicyContext
-from app.identity.events import IdentityEventBus, event_bus
+from app.identity.repositories.person_repository import PersonRepository
+from app.identity.repositories.session_repository import SessionRepository
+from app.identity.services.account_service import AccountService
+from app.identity.services.audit_service import AuditService
+from app.identity.services.authentication_service import AuthenticationService
+from app.identity.services.device_service import DeviceService
+from app.identity.services.person_service import PersonService
+from app.identity.services.session_service import SessionService
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
 def mock_session():
     session = MagicMock()
     session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.execute = AsyncMock()
+    session.flush = MagicMock()
+    session.execute = MagicMock()
     return session
 
 
@@ -303,10 +302,9 @@ class TestModels:
 class TestServices:
     """Verify service layer methods exist and accept correct types."""
 
-    @pytest.mark.asyncio
-    async def test_person_service_create(self, mock_session):
+    def test_person_service_create(self, mock_session):
         svc = PersonService(mock_session)
-        result = await svc.create_person(
+        result = svc.create_person(
             given_name="Test",
             family_name="User",
             phone="+964771234567",
@@ -314,31 +312,28 @@ class TestServices:
         assert isinstance(result, Person)
         mock_session.add.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_person_service_get(self, mock_session):
+    def test_person_service_get(self, mock_session):
         svc = PersonService(mock_session)
         mock_session.execute.return_value = _make_mock_execute(None)
-        result = await svc.get_person("nonexistent")
+        result = svc.get_person("nonexistent")
         assert result is None
 
-    @pytest.mark.asyncio
-    async def test_person_service_deactivate(self, mock_session):
+    def test_person_service_deactivate(self, mock_session):
         svc = PersonService(mock_session)
         mock_session.execute.return_value = _make_mock_execute(None)
-        with patch.object(PersonRepository, "get_by_id", new_callable=AsyncMock) as mock_get:
+        with patch.object(PersonRepository, "get_by_id", new_callable=MagicMock) as mock_get:
             mock_get.return_value = Person(
                 uuid=str(uuid.uuid4()),
                 id="test-id",
                 given_name="X",
                 family_name="Y",
             )
-            await svc.deactivate_person("test-id")
+            svc.deactivate_person("test-id")
             assert True
 
-    @pytest.mark.asyncio
-    async def test_account_service_create(self, mock_session):
+    def test_account_service_create(self, mock_session):
         svc = AccountService(mock_session)
-        result = await svc.create_account(
+        result = svc.create_account(
             identity_id="id-1",
             email="test@gula.iq",
             password="SecurePass123!@#",
@@ -346,25 +341,22 @@ class TestServices:
         assert isinstance(result, Account)
         assert result.email == "test@gula.iq"
 
-    @pytest.mark.asyncio
-    async def test_account_service_lookup(self, mock_session):
+    def test_account_service_lookup(self, mock_session):
         svc = AccountService(mock_session)
         mock_session.execute.return_value = _make_mock_execute(None)
-        result = await svc.find_by_email("nonexistent@test.com")
+        result = svc.find_by_email("nonexistent@test.com")
         assert result is None
 
-    @pytest.mark.asyncio
-    async def test_authentication_service_login_failure(self, mock_session):
+    def test_authentication_service_login_failure(self, mock_session):
         svc = AuthenticationService(mock_session)
         mock_session.execute.return_value = _make_mock_execute(None)
-        result = await svc.login(login="bad@user.com", password="wrongpass")
+        result = svc.login(login="bad@user.com", password="wrongpass")
         assert result is None
 
-    @pytest.mark.asyncio
-    async def test_session_service_terminate(self, mock_session):
+    def test_session_service_terminate(self, mock_session):
         svc = SessionService(mock_session)
         mock_session.execute.return_value = _make_mock_execute(None)
-        with patch.object(SessionRepository, "get_by_id", new_callable=AsyncMock) as mock_get:
+        with patch.object(SessionRepository, "get_by_id", new_callable=MagicMock) as mock_get:
             mock_get.return_value = UserSession(
                 uuid=str(uuid.uuid4()),
                 id="sess-1",
@@ -375,14 +367,13 @@ class TestServices:
                 last_activity_at=datetime.now(UTC),
                 expires_at=datetime.now(UTC) + timedelta(hours=1),
             )
-            await svc.terminate("sess-1", "test")
+            svc.terminate("sess-1", "test")
             assert True
 
-    @pytest.mark.asyncio
-    async def test_device_service_register(self, mock_session):
+    def test_device_service_register(self, mock_session):
         svc = DeviceService(mock_session)
         mock_session.execute.return_value = _make_mock_execute(None)
-        result = await svc.register_device(
+        result = svc.register_device(
             person_id="p1",
             device_fingerprint="fp-new-device",
             device_name="iPhone 15",
@@ -391,13 +382,12 @@ class TestServices:
         assert isinstance(result, Device)
         assert result.device_fingerprint == "fp-new-device"
 
-    @pytest.mark.asyncio
-    async def test_audit_service_record(self, mock_session):
+    def test_audit_service_record(self, mock_session):
         svc = AuditService(mock_session)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
-        result = await svc.record(
+        result = svc.record(
             action=AuditAction.person_created,
             actor_id="admin-1",
             target_type="person",
@@ -411,8 +401,7 @@ class TestServices:
 class TestPolicyEngine:
     """Verify fail-closed compatibility behavior."""
 
-    @pytest.mark.asyncio
-    async def test_policy_evaluate_without_trusted_actor_denies_by_default(self):
+    def test_policy_evaluate_without_trusted_actor_denies_by_default(self):
         engine = PolicyEngine()
         ctx = PolicyContext(
             subject_id="u1",
@@ -420,7 +409,7 @@ class TestPolicyEngine:
             action="read",
             resource_type="lab_result",
         )
-        result = await engine.evaluate(ctx)
+        result = engine.evaluate(ctx)
         assert result is False
 
     def test_policy_context_defaults(self):
@@ -468,46 +457,46 @@ class TestEventBus:
 class TestRepositoryBase:
     """Verify repository base class."""
 
-    @pytest.mark.asyncio
-    async def test_base_create(self, mock_session):
+    def test_base_create(self, mock_session):
         from app.identity.repositories.base import IdentityRepositoryBase
 
         repo = IdentityRepositoryBase(mock_session)
         entity = MagicMock()
-        result = await repo.create(entity)
+        result = repo.create(entity)
         assert result == entity
         mock_session.add.assert_called_once_with(entity)
         mock_session.flush.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_base_soft_delete(self, mock_session):
+    def test_base_soft_delete(self, mock_session):
         from app.identity.repositories.person_repository import PersonRepository
 
         repo = PersonRepository(mock_session)
         mock_session.execute.return_value = _make_mock_execute(None)
-        await repo.soft_delete("entity-id")
+        repo.soft_delete("entity-id")
         mock_session.execute.assert_called_once()
         mock_session.flush.assert_called_once()
 
 
 class TestBootstrap:
-    """Verify bootstrap seed functions."""
+    """Verify bootstrap seed functions.
 
-    @pytest.mark.asyncio
-    async def test_seed_master_admin(self, mock_session):
+    Synchronous since NR-044.3 converted `identity/bootstrap/seed.py`: the
+    seeders execute against the session the application actually supplies.
+    """
+
+    def test_seed_master_admin(self, mock_session):
         from app.identity.bootstrap.seed import seed_master_admin
 
-        result = await seed_master_admin(mock_session)
+        result = seed_master_admin(mock_session)
         assert isinstance(result, str)
         assert len(result) > 0
         mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_seed_platform_organization(self, mock_session):
+    def test_seed_platform_organization(self, mock_session):
         from app.identity.bootstrap.seed import seed_platform_organization
 
-        result = await seed_platform_organization(mock_session)
+        result = seed_platform_organization(mock_session)
         assert isinstance(result, str)
         assert len(result) > 0
 
@@ -517,27 +506,27 @@ class TestModelsImports:
 
     def test_models_init_exports(self):
         from app.identity.models import (
-            Person,
-            IdentityType,
-            IdentityRecord,
-            NIAMOrganization,
-            EnterpriseAccount,
             Account,
             AccountStatus,
             AccountType,
-            Employment,
-            EmploymentStatus,
             Assignment,
             AssignmentStatus,
-            ProfessionalLicense,
-            LicenseStatus,
             Credential,
             CredentialType,
-            UserSession,
             Device,
-            MachineIdentity,
-            IdentityPolicy,
+            Employment,
+            EmploymentStatus,
+            EnterpriseAccount,
             IdentityAuditEntry,
+            IdentityPolicy,
+            IdentityRecord,
+            IdentityType,
+            LicenseStatus,
+            MachineIdentity,
+            NIAMOrganization,
+            Person,
+            ProfessionalLicense,
+            UserSession,
         )
         assert Person is not None
         assert IdentityType is not None
@@ -548,14 +537,14 @@ class TestModelsImports:
 
     def test_services_init_exports(self):
         from app.identity.services import (
-            PersonService,
-            IdentityService,
             AccountService,
-            AuthenticationService,
-            SessionService,
-            DeviceService,
-            AuthorizationService,
             AuditService,
+            AuthenticationService,
+            AuthorizationService,
+            DeviceService,
+            IdentityService,
+            PersonService,
+            SessionService,
         )
         assert PersonService is not None
         assert AuthenticationService is not None
@@ -563,14 +552,14 @@ class TestModelsImports:
 
     def test_repositories_init_exports(self):
         from app.identity.repositories import (
-            PersonRepository,
+            AccountRepository,
+            AssignmentRepository,
+            DeviceRepository,
+            EmploymentRepository,
             IdentityRepository,
             OrganizationRepository,
-            AccountRepository,
-            EmploymentRepository,
-            AssignmentRepository,
+            PersonRepository,
             SessionRepository,
-            DeviceRepository,
         )
         assert PersonRepository is not None
         assert OrganizationRepository is not None

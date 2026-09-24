@@ -7,7 +7,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.admin.models import (
@@ -30,11 +30,11 @@ class _AdminRepository(IdentityRepositoryBase[EnterprisePortal]):
 
 class EnterprisePortalService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = CanonicalAuditService(session)
 
-    async def _record_admin_event(
+    def _record_admin_event(
         self,
         *,
         event_type: str,
@@ -46,7 +46,7 @@ class EnterprisePortalService:
         metadata: dict[str, Any] | None = None,
         outcome: str = "success",
     ) -> None:
-        await self.audit.record(
+        self.audit.record(
             AuditEventInput(
                 event_type=event_type,
                 category="ADMINISTRATION",
@@ -66,7 +66,7 @@ class EnterprisePortalService:
 
     # --- Portals ---
 
-    async def create_portal(
+    def create_portal(
         self,
         org_id: str,
         name: str,
@@ -87,8 +87,8 @@ class EnterprisePortalService:
             is_active=True,
         )
         self.session.add(portal)
-        await self.session.flush()
-        await self._record_admin_event(
+        self.session.flush()
+        self._record_admin_event(
             event_type="ADMIN_PORTAL_CREATED",
             action="admin.portal.create",
             actor_id=created_by,
@@ -98,15 +98,15 @@ class EnterprisePortalService:
         )
         return portal
 
-    async def get_portal(self, portal_id: str) -> EnterprisePortal | None:
+    def get_portal(self, portal_id: str) -> EnterprisePortal | None:
         stmt = select(EnterprisePortal).where(
             EnterprisePortal.portal_id == portal_id,
             EnterprisePortal.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_portals_for_org(self, org_id: str) -> list[EnterprisePortal]:
+    def get_portals_for_org(self, org_id: str) -> list[EnterprisePortal]:
         stmt = (
             select(EnterprisePortal)
             .where(
@@ -114,12 +114,12 @@ class EnterprisePortalService:
                 EnterprisePortal.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
     # --- Branches ---
 
-    async def add_branch(
+    def add_branch(
         self,
         portal_id: str,
         org_id: str,
@@ -146,8 +146,8 @@ class EnterprisePortalService:
             is_active=True,
         )
         self.session.add(branch)
-        await self.session.flush()
-        await self._record_admin_event(
+        self.session.flush()
+        self._record_admin_event(
             event_type="ADMIN_BRANCH_CREATED",
             action="admin.branch.create",
             actor_id=actor_id,
@@ -159,7 +159,7 @@ class EnterprisePortalService:
 
     # --- Facilities ---
 
-    async def add_facility(
+    def add_facility(
         self,
         branch_id: str,
         org_id: str,
@@ -188,8 +188,8 @@ class EnterprisePortalService:
             is_active=True,
         )
         self.session.add(facility)
-        await self.session.flush()
-        await self._record_admin_event(
+        self.session.flush()
+        self._record_admin_event(
             event_type="ADMIN_FACILITY_CREATED",
             action="admin.facility.create",
             actor_id=actor_id,
@@ -201,7 +201,7 @@ class EnterprisePortalService:
 
     # --- Departments ---
 
-    async def add_department(
+    def add_department(
         self,
         facility_id: str,
         name_en: str,
@@ -223,8 +223,8 @@ class EnterprisePortalService:
             is_active=True,
         )
         self.session.add(dept)
-        await self.session.flush()
-        await self._record_admin_event(
+        self.session.flush()
+        self._record_admin_event(
             event_type="ADMIN_DEPARTMENT_CREATED",
             action="admin.department.create",
             actor_id=actor_id,
@@ -236,7 +236,7 @@ class EnterprisePortalService:
 
     # --- Subscriptions ---
 
-    async def manage_subscription(
+    def manage_subscription(
         self,
         org_id: str,
         plan_type: str,
@@ -262,7 +262,7 @@ class EnterprisePortalService:
             )
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         existing = result.scalar_one_or_none()
 
         if existing:
@@ -279,8 +279,8 @@ class EnterprisePortalService:
             existing.currency = currency
             existing.payment_method = payment_method
             existing.auto_renew = auto_renew
-            await self.session.flush()
-            await self._record_admin_event(
+            self.session.flush()
+            self._record_admin_event(
                 event_type="ADMIN_SUBSCRIPTION_UPDATED",
                 action="admin.subscription.update",
                 actor_id=actor_id,
@@ -311,8 +311,8 @@ class EnterprisePortalService:
             is_active=True,
         )
         self.session.add(sub)
-        await self.session.flush()
-        await self._record_admin_event(
+        self.session.flush()
+        self._record_admin_event(
             event_type="ADMIN_SUBSCRIPTION_CREATED",
             action="admin.subscription.create",
             actor_id=actor_id,
@@ -322,7 +322,7 @@ class EnterprisePortalService:
         )
         return sub
 
-    async def get_subscription(self, org_id: str) -> PortalSubscription | None:
+    def get_subscription(self, org_id: str) -> PortalSubscription | None:
         stmt = (
             select(PortalSubscription)
             .where(
@@ -330,10 +330,10 @@ class EnterprisePortalService:
                 PortalSubscription.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_subscription(
+    def update_subscription(
         self,
         sub_id: str,
         *,
@@ -344,15 +344,15 @@ class EnterprisePortalService:
             PortalSubscription.sub_id == sub_id,
             PortalSubscription.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         sub = result.scalar_one_or_none()
         if not sub:
             return None
         for key, value in kwargs.items():
             if hasattr(sub, key):
                 setattr(sub, key, value)
-        await self.session.flush()
-        await self._record_admin_event(
+        self.session.flush()
+        self._record_admin_event(
             event_type="ADMIN_SUBSCRIPTION_UPDATED",
             action="admin.subscription.update",
             actor_id=actor_id,
@@ -383,7 +383,7 @@ class EnterprisePortalService:
             raise ValueError("FHIR base_url host is not in the configured allowlist")
         return parsed.geturl().rstrip("/")
 
-    async def create_fhir_connection(
+    def create_fhir_connection(
         self,
         org_id: str,
         name: str,
@@ -407,8 +407,8 @@ class EnterprisePortalService:
             is_active=True,
         )
         self.session.add(conn)
-        await self.session.flush()
-        await self._record_admin_event(
+        self.session.flush()
+        self._record_admin_event(
             event_type="ADMIN_FHIR_CONNECTION_CREATED",
             action="admin.fhir_connection.create",
             actor_id=actor_id,
@@ -418,7 +418,7 @@ class EnterprisePortalService:
         )
         return conn
 
-    async def get_fhir_connections_for_org(self, org_id: str) -> list[FHIRConnection]:
+    def get_fhir_connections_for_org(self, org_id: str) -> list[FHIRConnection]:
         stmt = (
             select(FHIRConnection)
             .where(
@@ -426,7 +426,7 @@ class EnterprisePortalService:
                 FHIRConnection.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def test_fhir_connection(self, conn_id: str, *, actor_id: str | None = None) -> dict[str, Any]:
@@ -434,7 +434,7 @@ class EnterprisePortalService:
             FHIRConnection.conn_id == conn_id,
             FHIRConnection.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         conn = result.scalar_one_or_none()
         if not conn:
             return {"success": False, "error": "connection_not_found"}
@@ -452,8 +452,8 @@ class EnterprisePortalService:
                 conn.last_test_at = datetime.now(UTC)
                 conn.last_test_result = "success" if success else f"HTTP {resp.status_code}"
                 conn.status = "active" if success else "error"
-                await self.session.flush()
-                await self._record_admin_event(
+                self.session.flush()
+                self._record_admin_event(
                     event_type="ADMIN_FHIR_CONNECTION_TESTED",
                     action="admin.fhir_connection.test",
                     actor_id=actor_id,
@@ -472,12 +472,12 @@ class EnterprisePortalService:
             conn.last_test_at = datetime.now(UTC)
             conn.last_test_result = f"error: {exc}"
             conn.status = "error"
-            await self.session.flush()
+            self.session.flush()
             return {"success": False, "error": str(exc)}
 
     # --- Audit Log ---
 
-    async def log_audit_event(
+    def log_audit_event(
         self,
         org_id: str,
         action: str,
@@ -507,10 +507,10 @@ class EnterprisePortalService:
             is_active=True,
         )
         self.session.add(entry)
-        await self.session.flush()
+        self.session.flush()
         return entry
 
-    async def get_audit_log(self, org_id: str, limit: int = 100) -> list[PortalAuditLog]:
+    def get_audit_log(self, org_id: str, limit: int = 100) -> list[PortalAuditLog]:
         stmt = (
             select(PortalAuditLog)
             .where(
@@ -520,5 +520,5 @@ class EnterprisePortalService:
             .order_by(PortalAuditLog.timestamp.desc())
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())

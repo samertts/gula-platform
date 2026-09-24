@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
@@ -34,12 +34,27 @@ def _raw_niam_token(request: Request, credentials: HTTPAuthorizationCredentials 
     return raw_token
 
 
-def get_current_niam_actor_sync(
+def get_current_niam_actor(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),
 ) -> NiamActor:
-    """Canonical actor dependency for the sync clinical gateway."""
+    """The canonical actor dependency for every NIAM route (NR-044.1).
+
+    There used to be two of these, differing only in colour. The async one
+    guarded the whole `/niam/*` router and could never execute: `get_db` yields
+    a synchronous `Session`, so `await db.execute(...)` raised
+    ``TypeError: object ChunkedIteratorResult can't be used in 'await'
+    expression`` before any statement reached PostgreSQL. The sync one was
+    written for the clinical gateway because that path had to work.
+
+    This is that sync implementation, now serving both. One consequence is
+    deliberate and worth stating: it also checks ``Account.is_locked``, which
+    the async version omitted. A locked account could not authenticate through
+    it before only because the function could not run at all; the check is kept
+    rather than dropped, so the conversion strengthens the gate rather than
+    preserving a gap.
+    """
     raw_token = _raw_niam_token(request, credentials)
     payload = decode_token(raw_token)
     if not payload or not payload.get("account_uuid") or not payload.get("jti"):
@@ -54,6 +69,17 @@ def get_current_niam_actor_sync(
             Account.is_locked.is_(False),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
+            # NR-046. expires_at is NOT NULL and is set at login, but this
+            # filter never consulted it, so a session row that expired weeks
+            # ago still authenticated for as long as the bearer token lived.
+            # Nothing reaps is_active on expiry, so the row stays is_active=True
+            # indefinitely. Two other call sites already enforce this --
+            # authentication_service.py:118 and authorization_decision.py:220 --
+            # which made this a control-coverage gap rather than a missing
+            # control: the one place that guards the whole /niam/* router and
+            # the clinical gateway was the one place not applying it.
+            # `>` matches authorization_decision's reject-on-`<=`.
+            UserSession.expires_at > datetime.now(UTC),
         )
         .first()
     )
@@ -62,31 +88,9 @@ def get_current_niam_actor_sync(
     return NiamActor(account=actor[0], session=actor[1])
 
 
-async def get_current_niam_actor(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    db: AsyncSession = Depends(get_db),
-) -> NiamActor:
-    raw_token = _raw_niam_token(request, credentials)
-    payload = decode_token(raw_token)
-    if not payload or not payload.get("account_uuid") or not payload.get("jti"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")
-
-    result = await db.execute(
-        select(Account, UserSession)
-        .join(UserSession, UserSession.account_id == Account.id)
-        .where(
-            Account.uuid == payload["account_uuid"],
-            Account.status == AccountStatus.active.value,
-            Account.is_active.is_(True),
-            UserSession.token_jti == payload["jti"],
-            UserSession.is_active.is_(True),
-        ),
-    )
-    actor = result.first()
-    if actor is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
-    return NiamActor(account=actor[0], session=actor[1])
+# The clinical gateway and its tests import this name. It is the same function:
+# there is one actor dependency now, and it is synchronous.
+get_current_niam_actor_sync = get_current_niam_actor
 
 
 def serialize_workspace(workspace: Workspace) -> dict[str, object]:
@@ -106,19 +110,19 @@ def serialize_workspace(workspace: Workspace) -> dict[str, object]:
 
 
 @router.get("")
-async def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db: Session = Depends(get_db)):
     service = WorkspaceService(db)
-    citizen = await service.ensure_citizen_workspace(actor.account)
-    workspaces = await service.list_eligible(actor.account)
+    citizen = service.ensure_citizen_workspace(actor.account)
+    workspaces = service.list_eligible(actor.account)
     if citizen and all(item.id != citizen.id for item in workspaces):
         workspaces.append(citizen)
     return {"workspaces": [serialize_workspace(item) for item in workspaces]}
 
 
 @router.get("/{workspace_id}")
-async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: Session = Depends(get_db)):
     service = WorkspaceService(db)
-    workspaces = await service.list_eligible(actor.account)
+    workspaces = service.list_eligible(actor.account)
     workspace = next((item for item in workspaces if item.id == workspace_id), None)
     if workspace is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
@@ -126,12 +130,12 @@ async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_curren
 
 
 @router.post("/{workspace_id}/switch")
-async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: Session = Depends(get_db)):
     service = WorkspaceService(db)
     try:
-        context = await service.switch(actor.account, actor.session.id, workspace_id)
+        context = service.switch(actor.account, actor.session.id, workspace_id)
     except WorkspaceAccessDenied as exc:
-        await AuditService(db).record_event(
+        AuditService(db).record_event(
             AuditAction.workspace_switched.value,
             actor_id=actor.account.id,
             target_type="workspace",
@@ -140,8 +144,8 @@ async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_cur
             outcome="denied",
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace access denied") from exc
-    workspace = await db.get(Workspace, context.workspace_id)
-    await AuditService(db).record(
+    workspace = db.get(Workspace, context.workspace_id)
+    AuditService(db).record(
         AuditAction.workspace_switched,
         actor_id=actor.account.id,
         actor_type="account",

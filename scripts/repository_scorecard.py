@@ -247,7 +247,7 @@ def _score_code_quality() -> AxisResult:
         if static_issues > 0:
             ax.add_recommendation(f"Fix {static_issues} static analysis issues — run `flake8 --select=E9,F821 backend/app`")
         if syntax_pct < 95:
-            ax.add_recommendation(f"Fix syntax errors in {syntax_bad} files failing py_compile")
+            ax.add_recommendation(f"Fix syntax errors in {len(bad_files)} files failing py_compile")
         if type_pct < 50:
             ax.add_recommendation("Add type annotations — target 50%+ of files. Focus on public API functions.")
         if long_pct >= 5:

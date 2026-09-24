@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models.authorization import BreakGlassSession
 from app.models.user import User
 from app.security.dependencies import get_current_user
+from app.security.rbac import can_manage_role
 from app.services.authorization_service import (
     AuthorizationAuditService,
     AuthorizationCheckService,
@@ -559,12 +560,44 @@ def list_my_assignments(
     }
 
 
+#: Granting a role is a privilege-granting operation, so only platform-scoped
+#: roles may perform it. Mirrors _PLATFORM_ROLES in routes/admin.py rather than
+#: introducing a second notion of "may act on the platform".
+_ROLE_GRANTING_ROLES = ("master_admin", "ministry_admin", "province_admin")
+
+
+def _require_role_granting_authority(actor, target_role_id: str) -> None:
+    """NR-140. Who may grant a role, and which roles they may grant.
+
+    POST /authz/assignments depended on get_current_user and nothing else, and
+    RoleAssignmentService.assign_role performs no authorization check of its
+    own: it wrote user_id, role_id and organization_id straight from the
+    request body. The only thing that stopped an ordinary authenticated caller
+    was a foreign key, and a foreign key is not an authorization control.
+
+    Two conditions, both required. The actor must be platform-scoped at all --
+    a lab-scoped admin has no business granting roles through this surface --
+    and it must be permitted to manage the specific role being granted, which
+    is the same can_manage_role() the rest of the platform uses. Without the
+    second check a province_admin could grant master_admin.
+    """
+    if getattr(actor, "role", None) not in _ROLE_GRANTING_ROLES:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not can_manage_role(actor.role, target_role_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You may not grant a role at or above your own level",
+        )
+
+
 @router.post("/assignments", status_code=201)
 def assign_role(
     req: AssignRoleRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _require_role_granting_authority(current_user, req.role_id)
+
     expires_at = None
     if req.expires_at:
         try:

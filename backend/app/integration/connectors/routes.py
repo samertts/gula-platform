@@ -5,8 +5,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.security.dependencies import require_permission
 from app.integration.connectors import BaseConnector, ConnectorRegistry
+from app.security.dependencies import require_permission
 
 logger = logging.getLogger("gula.integration.connectors.routes")
 

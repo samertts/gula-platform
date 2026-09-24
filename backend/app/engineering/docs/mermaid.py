@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
+from app.engineering.generators.base import BaseGenerator, GenerateResult
 
 
 class MermaidGenerator(BaseGenerator):

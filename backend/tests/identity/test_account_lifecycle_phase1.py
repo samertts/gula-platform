@@ -64,7 +64,7 @@ def test_verification_policy_is_centralized():
 
     result = VerificationResult(
         status=VerificationStatus.verified,
-        assurance=AssuranceLevel.L5,
+        assurance=AssuranceLevel.L3,  # a provider claiming the top; the policy overrides
         provider="phone:test",
         method=VerificationMethod.phone,
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.services.authorization_decision import (
     AuthorizationDecision,
@@ -43,20 +43,20 @@ class PolicyContext:
 class PolicyEngine:
     """Fail-closed compatibility facade over the centralized decision service."""
 
-    def __init__(self, session: AsyncSession | None = None, actor: NiamActor | None = None) -> None:
+    def __init__(self, session: Session | None = None, actor: NiamActor | None = None) -> None:
         self.session = session
         self.actor = actor
 
-    async def evaluate(self, context: PolicyContext) -> bool:
-        decision = await self._decision(context)
+    def evaluate(self, context: PolicyContext) -> bool:
+        decision = self._decision(context)
         return cast(bool, decision.allowed)
 
-    async def evaluate_action(self, policy: Any, context: PolicyContext) -> str:
+    def evaluate_action(self, policy: Any, context: PolicyContext) -> str:
         del policy
-        decision = await self._decision(context)
+        decision = self._decision(context)
         return cast(str, decision.decision.value)
 
-    async def filter_resources(
+    def filter_resources(
         self,
         resources: list[Any],
         context: PolicyContext,
@@ -83,12 +83,12 @@ class PolicyEngine:
                 context, resource_id=resource_id, resource_context=resource_context
             )
             if (
-                await AuthorizationDecisionService(self.session).authorize(self.actor, request)
+                AuthorizationDecisionService(self.session).authorize(self.actor, request)
             ).allowed:
                 authorized.append(resource)
         return authorized
 
-    async def _decision(self, context: PolicyContext) -> AuthorizationDecision:
+    def _decision(self, context: PolicyContext) -> AuthorizationDecision:
         if self.session is None or self.actor is None:
             from app.identity.services.authorization_decision import (
                 AuthorizationDecision,
@@ -96,7 +96,7 @@ class PolicyEngine:
             )
 
             return AuthorizationDecision.deny(AuthorizationReason.session_invalid)
-        return await AuthorizationDecisionService(self.session).authorize(
+        return AuthorizationDecisionService(self.session).authorize(
             self.actor, self._request(context)
         )
 

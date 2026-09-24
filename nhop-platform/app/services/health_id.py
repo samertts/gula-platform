@@ -6,11 +6,9 @@ of entropy — sufficient that a uniqueness check plus one retry is effectively
 never expected to collide at national scale.
 """
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
-
-from backend.app._compat import UTC
 
 from ..models.citizen import Citizen
 

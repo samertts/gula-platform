@@ -7,8 +7,8 @@ Routes:
     POST /doctor/refer                                 Refer to another doctor
 
 Authorization (pending the central RBAC layer):
-    * An ``X-Actor-Role`` header must equal ``DOCTOR`` (case-insensitive).
-    * An ``X-Actor-Id`` header must identify the physician and is persisted
+    * The trusted context's role must be ``DOCTOR`` (case-insensitive).
+    * The trusted context's actor id identifies the physician and is persisted
       on the order / referral.
 
 Route ordering matters: the ``/patient/{health_id}/timeline/{test_code}``
@@ -18,16 +18,15 @@ does not accidentally match ``overview`` or ``timeline`` as a path variable.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
 
-from backend.app._compat import UTC
-
 from ...core.database import get_db
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab import Lab
 from ...models.test_order import TestOrder, TestOrderStatus
@@ -57,7 +56,9 @@ _DOCTOR_ROLE = "DOCTOR"
 
 
 def _actor_id(request: Request) -> str | None:
-    return request.headers.get("X-Actor-Id")
+    # NR-127. This read the actor off the wire. Identity now comes from
+    # the server-established context; see app/core/trusted_context.py.
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:
@@ -73,7 +74,9 @@ def _require_doctor(request: Request) -> str:
     Raises 403 on missing / wrong role, 401 on missing actor id, matching
     the minimal auth contract used elsewhere in the service.
     """
-    role = (request.headers.get("X-Actor-Role") or "").strip().upper()
+    # NR-127. This read the actor off the wire. Identity now comes from
+    # the server-established context; see app/core/trusted_context.py.
+    role = (current_context(request).role or "").strip().upper()
     if role != _DOCTOR_ROLE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -83,7 +86,7 @@ def _require_doctor(request: Request) -> str:
     if not doctor_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="X-Actor-Id header required",
+            detail="a trusted caller identity is required",
         )
     return doctor_id
 

@@ -8,7 +8,7 @@ class EmploymentRepository(IdentityRepositoryBase[Employment]):
 
     model_class = Employment
 
-    async def find_by_person_id(self, person_id: str) -> list[Employment]:
+    def find_by_person_id(self, person_id: str) -> list[Employment]:
         stmt = (
             select(self.model_class)
             .where(
@@ -16,10 +16,10 @@ class EmploymentRepository(IdentityRepositoryBase[Employment]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_by_organization_id(self, org_id: str) -> list[Employment]:
+    def find_by_organization_id(self, org_id: str) -> list[Employment]:
         stmt = (
             select(self.model_class)
             .where(
@@ -27,10 +27,10 @@ class EmploymentRepository(IdentityRepositoryBase[Employment]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_primary_employment(self, person_id: str) -> list[Employment]:
+    def find_primary_employment(self, person_id: str) -> list[Employment]:
         stmt = (
             select(self.model_class)
             .where(
@@ -39,5 +39,5 @@ class EmploymentRepository(IdentityRepositoryBase[Employment]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())

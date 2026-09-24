@@ -8,7 +8,7 @@ from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.models.audit import IdentityAuditEntry
 
@@ -90,7 +90,7 @@ def _utc(value: datetime) -> datetime:
 class CanonicalAuditService:
     """Append-only Phase 9 audit stream over the existing NIAM audit table."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @staticmethod
@@ -130,8 +130,8 @@ class CanonicalAuditService:
     def _hash(cls, entry: IdentityAuditEntry) -> str:
         return hashlib.sha256(cls._canonical_payload(entry).encode("utf-8")).hexdigest()
 
-    async def _last_canonical_hash(self) -> str | None:
-        result = await self.session.execute(
+    def _last_canonical_hash(self) -> str | None:
+        result = self.session.execute(
             select(IdentityAuditEntry.entry_hash)
             .where(IdentityAuditEntry.event_version == "2")
             .order_by(IdentityAuditEntry.occurred_at.desc(), IdentityAuditEntry.id.desc())
@@ -140,7 +140,7 @@ class CanonicalAuditService:
         )
         return result.scalar_one_or_none()
 
-    async def record(self, event: AuditEventInput) -> IdentityAuditEntry:
+    def record(self, event: AuditEventInput) -> IdentityAuditEntry:
         occurred_at = datetime.now(UTC)
         entry = IdentityAuditEntry(
             event_type=event.event_type,
@@ -172,14 +172,14 @@ class CanonicalAuditService:
             outcome=event.outcome,
             error_message=event.error_message,
         )
-        entry.previous_hash = await self._last_canonical_hash()
+        entry.previous_hash = self._last_canonical_hash()
         self.session.add(entry)
-        await self.session.flush()
+        self.session.flush()
         entry.entry_hash = self._hash(entry)
-        await self.session.flush()
+        self.session.flush()
         return entry
 
-    async def search(
+    def search(
         self,
         *,
         organization_id: str,
@@ -211,7 +211,7 @@ class CanonicalAuditService:
             conditions.append(IdentityAuditEntry.occurred_at >= occurred_from)
         if occurred_to is not None:
             conditions.append(IdentityAuditEntry.occurred_at < occurred_to)
-        result = await self.session.execute(
+        result = self.session.execute(
             select(IdentityAuditEntry)
             .where(and_(*conditions))
             .order_by(IdentityAuditEntry.occurred_at.desc(), IdentityAuditEntry.id.desc())
@@ -220,7 +220,7 @@ class CanonicalAuditService:
         )
         return list(result.scalars().all())
 
-    async def verify(
+    def verify(
         self,
         *,
         organization_id: str | None = None,
@@ -234,7 +234,7 @@ class CanonicalAuditService:
             conditions.append(IdentityAuditEntry.occurred_at >= occurred_from)
         if occurred_to is not None:
             conditions.append(IdentityAuditEntry.occurred_at < occurred_to)
-        result = await self.session.execute(
+        result = self.session.execute(
             select(IdentityAuditEntry)
             .where(and_(*conditions))
             .order_by(IdentityAuditEntry.occurred_at.asc(), IdentityAuditEntry.id.asc()),

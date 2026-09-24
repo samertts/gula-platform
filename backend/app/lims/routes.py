@@ -319,7 +319,7 @@ def list_departments(
 ):
     depts = db.query(lims_models.Department).filter(
         lims_models.Department.lab_id == _lab_id(current_user),
-        not lims_models.Department.is_deleted,
+        ~lims_models.Department.is_deleted,
     ).order_by(lims_models.Department.sort_order).all()
     return {"departments": _list_to_dict(depts)}
 
@@ -411,7 +411,7 @@ def list_instruments(
 ):
     q = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == _lab_id(current_user),
-        not lims_models.Instrument.is_deleted,
+        ~lims_models.Instrument.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Instrument.status == status)
@@ -600,7 +600,7 @@ def list_manufacturers(
     db: Session = Depends(get_db),
 ):
     mfrs = db.query(lims_models.Manufacturer).filter(
-        not lims_models.Manufacturer.is_deleted,
+        ~lims_models.Manufacturer.is_deleted,
     ).order_by(lims_models.Manufacturer.name).all()
     return {"manufacturers": _list_to_dict(mfrs)}
 
@@ -630,7 +630,7 @@ def list_instrument_models(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.InstrumentModel).filter(
-        not lims_models.InstrumentModel.is_deleted,
+        ~lims_models.InstrumentModel.is_deleted,
     )
     if manufacturer_id:
         q = q.filter(lims_models.InstrumentModel.manufacturer_id == manufacturer_id)
@@ -661,6 +661,7 @@ def register_specimen(
         specimen = SpecimenService.register(
             db, data.order_id, _lab_id(current_user),
             data.specimen_type, data.barcode, current_user.id,
+            actor_role=current_user.role,
             container_type=data.container_type,
             volume_ml=data.volume_ml,
             clinical_info=data.clinical_info,
@@ -684,7 +685,7 @@ def list_specimens(
 ):
     q = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == _lab_id(current_user),
-        not lims_models.Specimen.is_deleted,
+        ~lims_models.Specimen.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Specimen.status == status)
@@ -764,9 +765,15 @@ def transition_specimen(
     )
     try:
         if data.rejection_reason:
-            specimen = SpecimenService.reject(db, specimen, data.rejection_reason, current_user.id)
+            specimen = SpecimenService.reject(
+                db, specimen, data.rejection_reason, current_user.id,
+                actor_role=current_user.role,
+            )
         else:
-            specimen = SpecimenService.transition(db, specimen, data.target_status, current_user.id, data.notes)
+            specimen = SpecimenService.transition(
+                db, specimen, data.target_status, current_user.id, data.notes,
+                actor_role=current_user.role,
+            )
         specimen.version = version_before + 1
         guard.complete(
             receipt,
@@ -847,6 +854,7 @@ def create_lims_order(
         lims_order = OrderService.create_lims_order(
             db, data.order_id, _lab_id(current_user), current_user.id,
             data.accession_number, data.priority,
+            actor_role=current_user.role,
             clinical_note=data.clinical_note,
             diagnosis_code=data.diagnosis_code,
         )
@@ -868,7 +876,7 @@ def list_lims_orders(
 ):
     q = db.query(lims_models.Order).filter(
         lims_models.Order.lab_id == _lab_id(current_user),
-        not lims_models.Order.is_deleted,
+        ~lims_models.Order.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Order.order_status == status)
@@ -1016,7 +1024,7 @@ def list_panels(
 ):
     q = db.query(lims_models.Panel).filter(
         lims_models.Panel.lab_id == _lab_id(current_user),
-        not lims_models.Panel.is_deleted,
+        ~lims_models.Panel.is_deleted,
     )
     if category:
         q = q.filter(lims_models.Panel.category == category)
@@ -1124,6 +1132,7 @@ def create_result(
             db, data.specimen_id, specimen.order_id,
             lab_id, data.test_code, data.test_name,
             current_user.id,
+            actor_role=current_user.role,
             value_numeric=data.value_numeric,
             value_text=data.value_text,
             unit=data.unit,
@@ -1160,7 +1169,7 @@ def list_results(
 ):
     q = db.query(lims_models.Result).filter(
         lims_models.Result.lab_id == _lab_id(current_user),
-        not lims_models.Result.is_deleted,
+        ~lims_models.Result.is_deleted,
     )
     if specimen_id:
         q = q.filter(lims_models.Result.specimen_id == specimen_id)
@@ -1331,17 +1340,25 @@ def release_result(
         lims_models.Specimen.id == result.specimen_id,
         lims_models.Specimen.lab_id == lab_id,
     ).with_for_update().first()
-    if not specimen or specimen.status != "verified":
+    # The specimen must be VALIDATED, not merely verified. state_machine.py is
+    # the declared single source of truth and allows verified -> validated ->
+    # released; this precondition used to demand "verified" and then call
+    # SpecimenService.transition(..., "released"), which the same state machine
+    # refuses with 409. The two contradicted each other, so no release could
+    # ever complete. Requiring the validated state resolves it in the stricter
+    # direction -- one more control state before a result reaches a clinician,
+    # never one fewer.
+    if not specimen or specimen.status != "validated":
         guard.reject(
             operation="result.release",
             resource_type="lims_result",
             resource_id=result.id,
             state_before=state_before,
             version_before=version_before,
-            reason="verified_specimen_required",
+            reason="validated_specimen_required",
         )
         db.commit()
-        raise HTTPException(422, detail="A result can only be released from a verified specimen")
+        raise HTTPException(422, detail="A result can only be released from a validated specimen")
 
     remaining_unvalidated = db.query(lims_models.Result).filter(
         lims_models.Result.specimen_id == specimen.id,
@@ -1371,7 +1388,10 @@ def release_result(
     specimen_version_before = specimen.version
     try:
         release = ResultService.release(db, result, current_user.id)
-        specimen = SpecimenService.transition(db, specimen, "released", current_user.id)
+        specimen = SpecimenService.transition(
+            db, specimen, "released", current_user.id,
+            actor_role=current_user.role,
+        )
         specimen.version = specimen_version_before + 1
         guard.complete(
             receipt,
@@ -1466,7 +1486,7 @@ def list_qc_programs(
 ):
     programs = db.query(lims_models.QCProgram).filter(
         lims_models.QCProgram.lab_id == _lab_id(current_user),
-        not lims_models.QCProgram.is_deleted,
+        ~lims_models.QCProgram.is_deleted,
     ).all()
     return {"programs": _list_to_dict(programs)}
 
@@ -1579,7 +1599,7 @@ def list_reagents(
 ):
     q = db.query(lims_models.Reagent).filter(
         lims_models.Reagent.lab_id == _lab_id(current_user),
-        not lims_models.Reagent.is_deleted,
+        ~lims_models.Reagent.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Reagent.current_quantity <= lims_models.Reagent.minimum_quantity)
@@ -1642,7 +1662,7 @@ def list_consumables(
 ):
     q = db.query(lims_models.Consumable).filter(
         lims_models.Consumable.lab_id == _lab_id(current_user),
-        not lims_models.Consumable.is_deleted,
+        ~lims_models.Consumable.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Consumable.current_quantity <= lims_models.Consumable.minimum_quantity)
@@ -1659,7 +1679,7 @@ def list_lots(
     from datetime import timedelta
     q = db.query(lims_models.Lot).filter(
         lims_models.Lot.lab_id == _lab_id(current_user),
-        not lims_models.Lot.is_deleted,
+        ~lims_models.Lot.is_deleted,
     )
     if item_type:
         q = q.filter(lims_models.Lot.item_type == item_type)
@@ -1677,7 +1697,7 @@ def list_suppliers(
 ):
     suppliers = db.query(lims_models.Supplier).filter(
         lims_models.Supplier.lab_id == _lab_id(current_user),
-        not lims_models.Supplier.is_deleted,
+        ~lims_models.Supplier.is_deleted,
     ).all()
     return {"suppliers": _list_to_dict(suppliers)}
 
@@ -1689,7 +1709,7 @@ def list_storage(
 ):
     storage = db.query(lims_models.Storage).filter(
         lims_models.Storage.lab_id == _lab_id(current_user),
-        not lims_models.Storage.is_deleted,
+        ~lims_models.Storage.is_deleted,
     ).all()
     return {"storage": _list_to_dict(storage)}
 
@@ -1725,7 +1745,7 @@ def list_reference_ranges(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.ReferenceRangeDef).filter(
-        not lims_models.ReferenceRangeDef.is_deleted,
+        ~lims_models.ReferenceRangeDef.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.ReferenceRangeDef.test_code == test_code)
@@ -1770,7 +1790,7 @@ def list_auto_validation_rules(
 ):
     q = db.query(lims_models.AutoValidationRule).filter(
         lims_models.AutoValidationRule.lab_id == _lab_id(current_user),
-        not lims_models.AutoValidationRule.is_deleted,
+        ~lims_models.AutoValidationRule.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.AutoValidationRule.test_code == test_code)
@@ -1806,7 +1826,7 @@ def list_delta_check_rules(
 ):
     rules = db.query(lims_models.DeltaCheckRule).filter(
         lims_models.DeltaCheckRule.lab_id == _lab_id(current_user),
-        not lims_models.DeltaCheckRule.is_deleted,
+        ~lims_models.DeltaCheckRule.is_deleted,
     ).all()
     return {"rules": _list_to_dict(rules)}
 
@@ -1883,7 +1903,7 @@ def list_reports(
 ):
     q = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.lab_id == _lab_id(current_user),
-        not lims_models.LabReport.is_deleted,
+        ~lims_models.LabReport.is_deleted,
     )
     if status:
         q = q.filter(lims_models.LabReport.status == status)
@@ -2249,7 +2269,7 @@ def lims_dashboard(
 
     specimens_total = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == lab_id,
-        not lims_models.Specimen.is_deleted,
+        ~lims_models.Specimen.is_deleted,
     ).count()
 
     specimens_by_status = {}
@@ -2276,7 +2296,7 @@ def lims_dashboard(
 
     instruments_total = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == lab_id,
-        not lims_models.Instrument.is_deleted,
+        ~lims_models.Instrument.is_deleted,
     ).count()
 
     qc_warnings = db.query(lims_models.IQC).filter(

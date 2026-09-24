@@ -8,9 +8,10 @@ Mixins are imported from shared.models.
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import declarative_base
 
+from app.orm_topology import SHARED_METADATA
 from shared.models import BaseEntityMixin, SoftDeleteMixin, TimestampMixin
 
-DataPlatformBase = declarative_base()
+DataPlatformBase = declarative_base(metadata=SHARED_METADATA)
 
 
 class BaseEntity(TimestampMixin, SoftDeleteMixin, BaseEntityMixin, DataPlatformBase):

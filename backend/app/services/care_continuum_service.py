@@ -116,15 +116,22 @@ def _apply_lab_filter(query, model, lab_id: int | None):
 def create_primary_care_encounter(
     db: Session, data: dict, lab_id: int | None = None,
 ) -> dict:
-    enc = PrimaryCareEncounter(**data)
+    # NR-146. This accepted lab_id and dropped it on the floor, so every caller
+    # looked tenant-aware while the encounter's owner came from the request
+    # body. The server-derived value wins; a body that names a lab is ignored,
+    # not honoured.
+    enc = PrimaryCareEncounter(**{**data, **({"lab_id": lab_id} if lab_id is not None else {})})
     db.add(enc)
     db.commit()
     db.refresh(enc)
     return enc.to_dict()
 
 
-def get_primary_care_encounter(db: Session, encounter_id: str) -> dict | None:
-    enc = db.query(PrimaryCareEncounter).filter(
+def get_primary_care_encounter(
+    db: Session, encounter_id: str, lab_id: int | None = None,
+) -> dict | None:
+    q = _apply_lab_filter(db.query(PrimaryCareEncounter), PrimaryCareEncounter, lab_id)
+    enc = q.filter(
         PrimaryCareEncounter.id == encounter_id, PrimaryCareEncounter.is_deleted.is_(False),
     ).first()
     return enc.to_dict() if enc else None
@@ -238,7 +245,8 @@ def create_referral_request(db: Session, data: dict) -> dict:
 
 
 def accept_referral(db: Session, referral_id: str, lab_id: int | None = None) -> dict | None:
-    ref = db.query(ReferralRequest).filter(ReferralRequest.id == referral_id).first()
+    q = _apply_lab_filter(db.query(ReferralRequest), ReferralRequest, lab_id)
+    ref = q.filter(ReferralRequest.id == referral_id).first()
     if not ref:
         return None
     ref.status = ReferralStatus.ACCEPTED
@@ -249,8 +257,11 @@ def accept_referral(db: Session, referral_id: str, lab_id: int | None = None) ->
     return ref.to_dict()
 
 
-def reject_referral(db: Session, referral_id: str, reason: str) -> dict | None:
-    ref = db.query(ReferralRequest).filter(ReferralRequest.id == referral_id).first()
+def reject_referral(
+    db: Session, referral_id: str, reason: str, lab_id: int | None = None,
+) -> dict | None:
+    q = _apply_lab_filter(db.query(ReferralRequest), ReferralRequest, lab_id)
+    ref = q.filter(ReferralRequest.id == referral_id).first()
     if not ref:
         return None
     ref.status = ReferralStatus.REJECTED
@@ -262,8 +273,11 @@ def reject_referral(db: Session, referral_id: str, reason: str) -> dict | None:
     return ref.to_dict()
 
 
-def complete_referral(db: Session, referral_id: str) -> dict | None:
-    ref = db.query(ReferralRequest).filter(ReferralRequest.id == referral_id).first()
+def complete_referral(
+    db: Session, referral_id: str, lab_id: int | None = None,
+) -> dict | None:
+    q = _apply_lab_filter(db.query(ReferralRequest), ReferralRequest, lab_id)
+    ref = q.filter(ReferralRequest.id == referral_id).first()
     if not ref:
         return None
     ref.status = ReferralStatus.COMPLETED
@@ -301,9 +315,11 @@ def list_referrals(
     return _paginated_query(q, skip, limit)
 
 
-def get_referral_timeline(db: Session, referral_id: str) -> list[dict]:
+def get_referral_timeline(
+    db: Session, referral_id: str, lab_id: int | None = None,
+) -> list[dict]:
     entries = (
-        db.query(ReferralTimeline)
+        _apply_lab_filter(db.query(ReferralTimeline), ReferralTimeline, lab_id)
         .filter(
             ReferralTimeline.referral_request_id == referral_id,
             ReferralTimeline.is_deleted.is_(False),
@@ -363,8 +379,10 @@ def get_referral_analytics(
     organization_id: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
+    lab_id: int | None = None,
 ) -> dict:
-    q = db.query(ReferralRequest).filter(ReferralRequest.is_deleted.is_(False))
+    q = _apply_lab_filter(db.query(ReferralRequest), ReferralRequest, lab_id)
+    q = q.filter(ReferralRequest.is_deleted.is_(False))
     if facility_id:
         q = q.filter(
             or_(
@@ -426,8 +444,11 @@ def create_care_journey(db: Session, data: dict) -> dict:
     return cj.to_dict()
 
 
-def get_care_journey(db: Session, journey_id: str) -> dict | None:
-    cj = db.query(CareJourney).filter(
+def get_care_journey(
+    db: Session, journey_id: str, lab_id: int | None = None,
+) -> dict | None:
+    q = _apply_lab_filter(db.query(CareJourney), CareJourney, lab_id)
+    cj = q.filter(
         CareJourney.id == journey_id, CareJourney.is_deleted.is_(False),
     ).first()
     return cj.to_dict() if cj else None
@@ -640,8 +661,11 @@ def create_pregnancy_record(db: Session, data: dict) -> dict:
     return pr.to_dict()
 
 
-def get_pregnancy_record(db: Session, pregnancy_id: str) -> dict | None:
-    pr = db.query(PregnancyRecord).filter(
+def get_pregnancy_record(
+    db: Session, pregnancy_id: str, lab_id: int | None = None,
+) -> dict | None:
+    q = _apply_lab_filter(db.query(PregnancyRecord), PregnancyRecord, lab_id)
+    pr = q.filter(
         PregnancyRecord.id == pregnancy_id, PregnancyRecord.is_deleted.is_(False),
     ).first()
     return pr.to_dict() if pr else None
@@ -972,7 +996,7 @@ def create_educational_material_assignment(db: Session, data: dict) -> dict:
 def detect_care_gaps(db: Session, patient_id: str, lab_id: int | None = None) -> dict:
     gaps = []
 
-    overdue_follow_ups = db.query(FollowUpPlan).filter(
+    overdue_follow_ups = _apply_lab_filter(db.query(FollowUpPlan), FollowUpPlan, lab_id).filter(
         FollowUpPlan.patient_id == patient_id,
         FollowUpPlan.is_deleted.is_(False),
         FollowUpPlan.status == FollowUpStatus.SCHEDULED,
@@ -986,7 +1010,7 @@ def detect_care_gaps(db: Session, patient_id: str, lab_id: int | None = None) ->
             "description": f"{overdue_follow_ups} follow-up plan(s) past due date",
         })
 
-    missed_vaccinations = db.query(ImmunizationSchedule).filter(
+    missed_vaccinations = _apply_lab_filter(db.query(ImmunizationSchedule), ImmunizationSchedule, lab_id).filter(
         ImmunizationSchedule.patient_id == patient_id,
         ImmunizationSchedule.is_deleted.is_(False),
         ImmunizationSchedule.due_date < _today(),
@@ -1000,7 +1024,7 @@ def detect_care_gaps(db: Session, patient_id: str, lab_id: int | None = None) ->
             "description": f"{missed_vaccinations} vaccination(s) overdue",
         })
 
-    uncontrolled_chronic = db.query(ChronicDiseaseRegistry).filter(
+    uncontrolled_chronic = _apply_lab_filter(db.query(ChronicDiseaseRegistry), ChronicDiseaseRegistry, lab_id).filter(
         ChronicDiseaseRegistry.patient_id == patient_id,
         ChronicDiseaseRegistry.is_deleted.is_(False),
         ChronicDiseaseRegistry.is_controlled.is_(False),
@@ -1014,7 +1038,7 @@ def detect_care_gaps(db: Session, patient_id: str, lab_id: int | None = None) ->
             "description": f"{uncontrolled_chronic} uncontrolled chronic condition(s) requiring review",
         })
 
-    overdue_anc = db.query(PregnancyRecord).filter(
+    overdue_anc = _apply_lab_filter(db.query(PregnancyRecord), PregnancyRecord, lab_id).filter(
         PregnancyRecord.patient_id == patient_id,
         PregnancyRecord.is_deleted.is_(False),
         PregnancyRecord.status.notin_([PregnancyStatus.POSTPARTUM]),
@@ -1028,7 +1052,7 @@ def detect_care_gaps(db: Session, patient_id: str, lab_id: int | None = None) ->
             "description": "Antenatal care visits incomplete",
         })
 
-    overdue_tasks = db.query(PatientTask).filter(
+    overdue_tasks = _apply_lab_filter(db.query(PatientTask), PatientTask, lab_id).filter(
         PatientTask.patient_id == patient_id,
         PatientTask.is_deleted.is_(False),
         PatientTask.status == FollowUpStatus.SCHEDULED,

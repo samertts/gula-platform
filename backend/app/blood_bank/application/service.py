@@ -26,7 +26,6 @@ from app.blood_bank.domain.enums import (
     TransfusionStatus,
 )
 from app.blood_bank.domain.state_machine import transition
-from app.clinical.failure_injection import maybe_fail
 from app.blood_bank.exceptions import (
     BloodBankValidationError,
     BloodBankWorkflowError,
@@ -39,29 +38,79 @@ from app.blood_bank.exceptions import (
 )
 from app.blood_bank.infrastructure.models import (
     BloodComponentModel,
+    BloodDiscardModel,
     BloodDonationModel,
     BloodDonorModel,
     BloodInventoryModel,
     BloodRequestModel,
+    BloodReservationModel,
+    BloodReturnModel,
+    BloodTraceabilityEventModel,
     BloodUnitModel,
     CrossmatchModel,
     DonorDeferralModel,
-    TransfusionModel,
     InventoryMovementModel,
     PatientBloodSampleModel,
-    BloodReservationModel,
+    TransfusionModel,
     TransfusionReactionModel,
-    BloodTraceabilityEventModel,
-    BloodReturnModel,
-    BloodDiscardModel,
 )
+from app.clinical.failure_injection import maybe_fail
 from app.national.events.base import NationalDomainEvent
+from app.services.audit_service import log_action, normalize_resource_id
+
+# Fields the SERVER owns, never the request body. lab_id is here because a
+# client-supplied lab_id is a tenant reassignment (NR-021); id because a
+# client-supplied primary key is row hijacking.
+_SERVER_OWNED_FIELDS = frozenset({"lab_id", "id"})
+
+# The same set, plus the immutable creation timestamp, for update paths.
+_DONOR_UPDATE_EXCLUDED = _SERVER_OWNED_FIELDS | {"created_at"}
 
 
 class BloodBankService:
-    def __init__(self, db: Session, event_bus: Any = None):
+    def __init__(self, db: Session, event_bus: Any = None, lab_id: int | None = None,
+                 user_id: int | None = None):
+        # NR-027. user_id carries the ACTOR so the six legacy mutations below can
+        # write an attributable audit row. The service had lab_id but no actor,
+        # which is why those routes could not be audited without threading it in.
+        # Optional so existing constructions -- BloodBankService(db) in the
+        # row-locked sample routes -- keep working unchanged.
+        self.user_id = user_id
         self.db = db
         self.event_bus = event_bus
+        # Server-authoritative tenant context. Every blood bank table carries
+        # lab_id, so every unscoped query is a cross-tenant read (NR-021).
+        self.lab_id = lab_id
+
+    def _require_lab(self) -> int:
+        """The caller's laboratory, or refuse.
+
+        Fails closed on purpose: returning every laboratory's rows when the
+        tenant context is missing is precisely the defect this replaces.
+        """
+        if not isinstance(self.lab_id, int) or self.lab_id <= 0:
+            raise BloodBankValidationError(
+                "Blood bank operations require an authenticated laboratory context"
+            )
+        return self.lab_id
+
+    def _scoped(self, model: Any) -> Any:
+        """A query already filtered to the caller's laboratory."""
+        return self.db.query(model).filter(model.lab_id == self._require_lab())
+
+    def _owned(self, data: dict[str, Any], model: Any) -> dict[str, Any]:
+        """Client payload with tenant ownership decided by the server.
+
+        A raw request dict was mass-assigned onto models that carry lab_id, so
+        a caller could attribute a row to another laboratory. lab_id is dropped
+        from the payload and set from the authenticated context instead.
+        """
+        cleaned = {
+            k: v for k, v in data.items()
+            if hasattr(model, k) and k not in _SERVER_OWNED_FIELDS
+        }
+        cleaned["lab_id"] = self._require_lab()
+        return cleaned
 
     def _emit(self, event: NationalDomainEvent) -> None:
         if self.event_bus:
@@ -69,18 +118,52 @@ class BloodBankService:
 
     # ---- Donor Management ----
 
+    def _audit(self, action: str, resource_type: str, resource_id: str | int | None,
+               details: dict[str, Any] | None = None) -> None:
+        """Write a hash-chained audit row for a legacy mutation (NR-027).
+
+        Called BEFORE the method's own commit so the audit row and the clinical
+        effect land in one transaction: log_action does db.add + db.flush and
+        never commits, so an audit that is written cannot survive a rolled-back
+        mutation, and a mutation cannot commit without its audit.
+
+        These routes are NOT under ClinicalCommandGuard. Bringing them under it
+        needs an idempotency key and a precondition contract on each -- a
+        behavioural change to live endpoints, which CLAUDE.md reserves. Audit
+        coverage needs neither, so it is not held hostage to that decision:
+        CLAUDE.md Security Invariant #2 requires every mutation to be audited,
+        and these clinical blood-bank mutations were not.
+
+        audit_logs.resource_id is INTEGER while every blood bank primary key is
+        a varchar identifier, so passing the key straight through raises a
+        DataError from inside the audit writer and takes the clinical
+        transaction down with it -- an audit attempt that breaks the endpoint is
+        worse than the gap it closes. The identifier is therefore normalised the
+        same way ClinicalCommandGuard normalises it, and the unabridged string
+        is always carried in details["resource_id"] so identity is never lost.
+        """
+        payload: dict[str, Any] = {"resource_id": str(resource_id)}
+        payload.update(details or {})
+        log_action(
+            self.db, action, resource_type, normalize_resource_id(resource_id),
+            user_id=self.user_id, lab_id=self.lab_id, details=payload,
+        )
+
     def register_donor(self, data: dict[str, Any]) -> BloodDonor:
-        existing = self.db.query(BloodDonorModel).filter(
+        existing = self._scoped(BloodDonorModel).filter(
             BloodDonorModel.citizen_id == data.get("citizen_id", ""),
             BloodDonorModel.is_deleted.isnot(True),
         ).first()
         if existing:
             existing.status = DonorStatus.ACTIVE.value
             return self._update_donor(existing, data)
-        model = BloodDonorModel(**{k: v for k, v in data.items() if hasattr(BloodDonorModel, k)})
+        model = BloodDonorModel(**self._owned(data, BloodDonorModel))
         if not model.next_eligible_date:
             model.next_eligible_date = datetime.now(UTC)
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.donor.register", "blood_donor", model.id,
+                    {"blood_group": data.get("blood_group", "")})
         self.db.commit()
         self.db.refresh(model)
         donor = self._donor_from_model(model)
@@ -91,13 +174,13 @@ class BloodBankService:
         return donor
 
     def get_donor(self, donor_id: str) -> BloodDonor:
-        model = self.db.query(BloodDonorModel).filter_by(id=donor_id).first()
+        model = self._scoped(BloodDonorModel).filter_by(id=donor_id).first()
         if not model or model.is_deleted:
             raise DonorNotFoundError()
         return self._donor_from_model(model)
 
     def find_donors(self, blood_group: str | None = None, status: str | None = None, skip: int = 0, limit: int = 100) -> list[BloodDonor]:
-        query = self.db.query(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True))
+        query = self._scoped(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True))
         if blood_group:
             query = query.filter_by(blood_group=blood_group)
         if status:
@@ -105,19 +188,36 @@ class BloodBankService:
         return [self._donor_from_model(m) for m in query.offset(skip).limit(limit).all()]
 
     def defer_donor(self, donor_id: str, data: dict[str, Any]) -> DonorDeferral:
-        donor = self.db.query(BloodDonorModel).filter_by(id=donor_id).first()
+        donor = self._scoped(BloodDonorModel).filter_by(id=donor_id).first()
         if not donor:
             raise DonorNotFoundError()
         deferral_days = data.get("deferral_days", 0)
-        deferred_until = datetime.now(UTC) + timedelta(days=deferral_days) if deferral_days else None
+        # NR-027. blood_bank_donor_deferrals.deferred_from is NOT NULL with no
+        # default in either the ORM or the physical schema, and this was the
+        # only construction site and never set it -- so every call to
+        # POST /donors/{donor_id}/defer raised NotNullViolation and returned
+        # 500. The consequence is not cosmetic: register_donation refuses a
+        # donation only when an ACTIVE deferral row exists, so while no
+        # deferral row could be written, the donor-deferral safety gate could
+        # never fire and a deferred donor was never actually blocked.
+        # The deferral starts now, which is the same instant deferred_until is
+        # already measured from one line above.
+        deferred_from = datetime.now(UTC)
+        deferred_until = deferred_from + timedelta(days=deferral_days) if deferral_days else None
         model = DonorDeferralModel(
+            lab_id=self._require_lab(),
             donor_id=donor_id, deferral_type=data.get("deferral_type", "temporary"),
             reason=data.get("reason", "other"), reason_detail=data.get("reason_detail", ""),
-            deferral_days=deferral_days, deferred_until=deferred_until,
+            deferral_days=deferral_days, deferred_from=deferred_from,
+            deferred_until=deferred_until,
             deferred_by=data.get("deferred_by", ""), notes=data.get("notes", ""),
         )
         donor.status = DonorStatus.DEFERRED.value
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.donor.defer", "donor_deferral", model.id,
+                    {"donor_id": donor_id, "deferral_days": deferral_days,
+                     "reason": data.get("reason", "other")})
         self.db.commit()
         self.db.refresh(model)
         return DonorDeferral(id=model.id, donor_id=donor_id, deferral_days=deferral_days,
@@ -127,19 +227,22 @@ class BloodBankService:
 
     def register_donation(self, data: dict[str, Any]) -> BloodDonation:
         donor_id = data.get("donor_id", "")
-        donor = self.db.query(BloodDonorModel).filter_by(id=donor_id).first()
+        donor = self._scoped(BloodDonorModel).filter_by(id=donor_id).first()
         if not donor:
             raise DonorNotFoundError()
         if donor.status == DonorStatus.DEFERRED.value:
-            active_deferral = self.db.query(DonorDeferralModel).filter(
+            active_deferral = self._scoped(DonorDeferralModel).filter(
                 DonorDeferralModel.donor_id == donor_id,
                 DonorDeferralModel.is_active,
             ).first()
             if active_deferral:
                 raise DonorDeferredError(f"Donor is deferred until {active_deferral.deferred_until}")
-        model = BloodDonationModel(**{k: v for k, v in data.items() if hasattr(BloodDonationModel, k)})
+        model = BloodDonationModel(**self._owned(data, BloodDonationModel))
         model.status = DonationStatus.REGISTERED.value
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.donation.register", "blood_donation", model.id,
+                    {"donor_id": donor_id, "volume_ml": data.get("volume_ml", 450)})
         self.db.commit()
         self.db.refresh(model)
         donor.last_donation_date = datetime.now(UTC)
@@ -154,10 +257,13 @@ class BloodBankService:
         )
 
     def complete_donation(self, donation_id: str) -> BloodDonation:
-        model = self.db.query(BloodDonationModel).filter_by(id=donation_id).first()
+        model = self._scoped(BloodDonationModel).filter_by(id=donation_id).first()
         if not model:
             raise DonationNotFoundError()
+        state_before = model.status
         model.status = DonationStatus.COMPLETED.value
+        self._audit("bloodbank.donation.complete", "blood_donation", model.id,
+                    {"state_before": state_before, "state_after": model.status})
         self.db.commit()
         self.db.refresh(model)
         return BloodDonation(id=model.id, donor_id=model.donor_id, status=model.status, donation_type=model.donation_type,
@@ -166,10 +272,13 @@ class BloodBankService:
     # ---- Components ----
 
     def process_component(self, data: dict[str, Any]) -> BloodComponentEntity:
-        model = BloodComponentModel(**{k: v for k, v in data.items() if hasattr(BloodComponentModel, k)})
+        model = BloodComponentModel(**self._owned(data, BloodComponentModel))
         model.processing_date = datetime.now(UTC)
         model.status = ComponentStatus.AVAILABLE.value
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.component.process", "blood_component", model.id,
+                    {"donation_id": model.donation_id, "component": model.component})
         self.db.commit()
         self.db.refresh(model)
         return BloodComponentEntity(id=model.id, donation_id=model.donation_id, component=model.component, status=model.status,
@@ -178,7 +287,7 @@ class BloodBankService:
     # ---- Inventory ----
 
     def get_inventory(self, facility_id: str | None = None) -> list[BloodInventory]:
-        query = self.db.query(BloodInventoryModel)
+        query = self._scoped(BloodInventoryModel)
         if facility_id:
             query = query.filter_by(facility_id=facility_id)
         results = []
@@ -192,7 +301,7 @@ class BloodBankService:
         return results
 
     def get_critical_inventory(self) -> list[BloodInventory]:
-        models = self.db.query(BloodInventoryModel).all()
+        models = self._scoped(BloodInventoryModel).all()
         critical = []
         for m in models:
             available = (m.quantity or 0) - (m.reserved_quantity or 0)
@@ -206,7 +315,7 @@ class BloodBankService:
         return critical
 
     def issue_units(self, blood_group: str, component: str, quantity: int, facility_id: str) -> list[BloodUnit]:
-        available = self.db.query(BloodUnitModel).filter(
+        available = self._scoped(BloodUnitModel).filter(
             BloodUnitModel.blood_group == blood_group,
             BloodUnitModel.component == component,
             BloodUnitModel.status == "available",
@@ -253,7 +362,7 @@ class BloodBankService:
     # ---- Transfusion ----
 
     def record_transfusion(self, data: dict[str, Any]) -> Transfusion:
-        model = TransfusionModel(**{k: v for k, v in data.items() if hasattr(TransfusionModel, k)})
+        model = TransfusionModel(**self._owned(data, TransfusionModel))
         model.status = TransfusionStatus.ORDERED.value
         self.db.add(model)
         self.db.commit()
@@ -261,7 +370,7 @@ class BloodBankService:
         return Transfusion(id=model.id, patient_id=model.patient_id, unit_id=model.unit_id, status=model.status)
 
     def start_transfusion(self, transfusion_id: str) -> Transfusion:
-        model = self.db.query(TransfusionModel).filter_by(id=transfusion_id).first()
+        model = self._scoped(TransfusionModel).filter_by(id=transfusion_id).first()
         if not model:
             raise TransfusionNotFoundError()
         model.status = TransfusionStatus.IN_PROGRESS.value
@@ -271,13 +380,13 @@ class BloodBankService:
         return Transfusion(id=model.id, patient_id=model.patient_id, status=TransfusionStatus.IN_PROGRESS)
 
     def complete_transfusion(self, transfusion_id: str) -> Transfusion:
-        model = self.db.query(TransfusionModel).filter_by(id=transfusion_id).first()
+        model = self._scoped(TransfusionModel).filter_by(id=transfusion_id).first()
         if not model:
             raise TransfusionNotFoundError()
         model.status = TransfusionStatus.COMPLETED.value
         model.end_time = datetime.now(UTC)
         if model.unit_id:
-            unit = self.db.query(BloodUnitModel).filter_by(id=model.unit_id).first()
+            unit = self._scoped(BloodUnitModel).filter_by(id=model.unit_id).first()
             if unit:
                 unit.status = "transfused"
                 unit.transfused_at = datetime.now(UTC)
@@ -795,8 +904,18 @@ class BloodBankService:
     # ---- Blood Requests ----
 
     def create_blood_request(self, data: dict[str, Any]) -> BloodRequest:
-        model = BloodRequestModel(**{k: v for k, v in data.items() if hasattr(BloodRequestModel, k)})
+        # NR-021 residue, found in BATCH-2.7. BloodRequestModel is a TenantEntity
+        # and blood_bank_requests.lab_id is NOT NULL, but this was the one
+        # route-reachable method still mass-assigning the raw request body, so a
+        # caller could file a blood request against another laboratory by putting
+        # lab_id in the payload. _owned() drops any client lab_id and sets it from
+        # the authenticated context, exactly as the other create paths do.
+        model = BloodRequestModel(**self._owned(data, BloodRequestModel))
         self.db.add(model)
+        self.db.flush()
+        self._audit("bloodbank.request.create", "blood_request", model.id,
+                    {"patient_id": model.patient_id, "blood_group": model.blood_group,
+                     "units_requested": model.units_requested})
         self.db.commit()
         self.db.refresh(model)
         return BloodRequest(id=model.id, patient_id=model.patient_id, blood_group=model.blood_group,
@@ -805,16 +924,18 @@ class BloodBankService:
     # ---- Dashboard ----
 
     def get_dashboard(self) -> dict[str, Any]:
-        total_donors = self.db.query(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True)).count()
-        active_donors = self.db.query(BloodDonorModel).filter_by(status="active").count()
-        donations_today = self.db.query(BloodDonationModel).filter(
+        # Every count is scoped: an unscoped dashboard reports the whole
+        # country's blood supply to one laboratory (NR-021).
+        total_donors = self._scoped(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True)).count()
+        active_donors = self._scoped(BloodDonorModel).filter_by(status="active").count()
+        donations_today = self._scoped(BloodDonationModel).filter(
             BloodDonationModel.created_at >= datetime.now(UTC).replace(hour=0, minute=0, second=0),
         ).count()
-        total_donations = self.db.query(BloodDonationModel).count()
-        total_units = self.db.query(BloodUnitModel).filter_by(status="available").count()
+        total_donations = self._scoped(BloodDonationModel).count()
+        total_units = self._scoped(BloodUnitModel).filter_by(status="available").count()
         critical = self.get_critical_inventory()
-        pending_requests = self.db.query(BloodRequestModel).filter_by(status="pending").count()
-        total_transfusions = self.db.query(TransfusionModel).count()
+        pending_requests = self._scoped(BloodRequestModel).filter_by(status="pending").count()
+        total_transfusions = self._scoped(TransfusionModel).count()
         return {
             "total_donors": total_donors, "active_donors": active_donors,
             "donations_today": donations_today, "total_donations": total_donations,
@@ -833,9 +954,31 @@ class BloodBankService:
         )
 
     def _update_donor(self, model: BloodDonorModel, data: dict[str, Any]) -> BloodDonor:
-        for k, v in data.items():
-            if hasattr(model, k) and k not in ("id", "created_at"):
-                setattr(model, k, v)
+        """Apply a client payload to an existing donor, tenant-safely (NR-027).
+
+        Reached from register_donor when the citizen already has a donor record
+        in the caller's laboratory, so it is a live, client-reachable write
+        path. Two defects were fixed here:
+
+        1. `lab_id` was assignable from the request body. `_owned()` was added
+           on the create path precisely to stop a caller attributing a row to
+           another laboratory (NR-021), but this update path did not use it, so
+           the same payload could hand one laboratory's donor to another. The
+           exclusion set is now shared with `_owned()` instead of re-listed.
+        2. The write was not audited, so a donor demographic change left no
+           trail. CLAUDE.md Security Invariant #2 requires every mutation to
+           be audited.
+        """
+        changed = sorted(
+            k for k, v in data.items()
+            if hasattr(model, k)
+            and k not in _DONOR_UPDATE_EXCLUDED
+            and getattr(model, k) != v
+        )
+        for k in changed:
+            setattr(model, k, data[k])
+        self._audit("bloodbank.donor.update", "blood_donor", model.id,
+                    {"fields_changed": changed})
         self.db.commit()
         self.db.refresh(model)
         return self._donor_from_model(model)

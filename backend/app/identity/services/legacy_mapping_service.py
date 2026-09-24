@@ -6,7 +6,7 @@ import secrets
 from typing import Final
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.models.legacy_account_link import (
     LegacyAccountLink,
@@ -56,12 +56,12 @@ class LegacyMappingService:
     actions require separate approved waves and an explicit feature-flagged cohort.
     """
 
-    def __init__(self, session: AsyncSession, hmac_key: str) -> None:
+    def __init__(self, session: Session, hmac_key: str) -> None:
         self.session = session
         self.hmac_key = hmac_key
         self.audit = AuditService(session)
 
-    async def get_link(
+    def get_link(
         self,
         source_kind: LegacyAccountLinkSource | str,
         legacy_account_id: int,
@@ -75,10 +75,10 @@ class LegacyMappingService:
         )
         if for_update:
             stmt = stmt.with_for_update()
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def ensure_pending_link(
+    def ensure_pending_link(
         self,
         source_kind: LegacyAccountLinkSource | str,
         legacy_account_id: int,
@@ -87,7 +87,7 @@ class LegacyMappingService:
         kind = LegacyAccountLinkSource(source_kind)
         if legacy_account_id <= 0:
             raise ValueError("legacy_account_id must be a positive integer")
-        existing = await self.get_link(kind, legacy_account_id)
+        existing = self.get_link(kind, legacy_account_id)
         if existing:
             return existing
 
@@ -100,8 +100,8 @@ class LegacyMappingService:
             rollback_token=secrets.token_urlsafe(32),
         )
         self.session.add(link)
-        await self.session.flush()
-        await self.audit.record_event(
+        self.session.flush()
+        self.audit.record_event(
             action="legacy_mapping_created",
             target_type="legacy_account_link",
             target_id=link.id,
@@ -113,7 +113,7 @@ class LegacyMappingService:
         )
         return link
 
-    async def transition(
+    def transition(
         self,
         link_id: str,
         target: LegacyAccountLinkStatus | str,
@@ -121,12 +121,12 @@ class LegacyMappingService:
         actor_id: str | None,
         reason: str | None = None,
     ) -> LegacyAccountLink:
-        link = await self._get_by_id(link_id, for_update=True)
+        link = self._get_by_id(link_id, for_update=True)
         old_status = link.status
         target_status = LegacyAccountLinkStatus(target)
         link.transition(target_status, reason=reason)
-        await self.session.flush()
-        await self.audit.record_event(
+        self.session.flush()
+        self.audit.record_event(
             action="legacy_mapping_transition",
             actor_id=actor_id,
             target_type="legacy_account_link",
@@ -141,7 +141,7 @@ class LegacyMappingService:
         )
         return link
 
-    async def rollback(
+    def rollback(
         self,
         link_id: str,
         rollback_token: str,
@@ -149,23 +149,23 @@ class LegacyMappingService:
         actor_id: str | None,
         reason: str,
     ) -> LegacyAccountLink:
-        link = await self._get_by_id(link_id, for_update=True)
+        link = self._get_by_id(link_id, for_update=True)
         if not hmac.compare_digest(link.rollback_token, rollback_token):
             raise LegacyMappingRollbackDenied("Invalid rollback token")
         if not reason.strip():
             raise ValueError("A rollback reason is required")
-        return await self.transition(
+        return self.transition(
             link.id,
             LegacyAccountLinkStatus.rolled_back,
             actor_id=actor_id,
             reason=reason,
         )
 
-    async def _get_by_id(self, link_id: str, *, for_update: bool) -> LegacyAccountLink:
+    def _get_by_id(self, link_id: str, *, for_update: bool) -> LegacyAccountLink:
         stmt = select(LegacyAccountLink).where(LegacyAccountLink.id == link_id)
         if for_update:
             stmt = stmt.with_for_update()
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         link = result.scalar_one_or_none()
         if link is None:
             raise LegacyMappingNotFound(f"Legacy mapping link not found: {link_id}")

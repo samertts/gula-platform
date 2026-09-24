@@ -12,8 +12,9 @@ from sqlalchemy import Column, DateTime
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
+from app.orm_topology import SHARED_METADATA
 
-TrustBase = declarative_base()
+TrustBase = declarative_base(metadata=SHARED_METADATA)
 
 
 class TrustTimestampMixin:
@@ -43,7 +44,7 @@ class TrustSoftDeleteMixin:
         return self.is_deleted is None
 
 
-class TrustBaseEntity(TrustTimestampMixin, TrustBase):
+class TrustBaseEntity(TrustTimestampMixin, TrustSoftDeleteMixin, TrustBase):
     __abstract__ = True
 
     def to_dict(self) -> dict[str, Any]:

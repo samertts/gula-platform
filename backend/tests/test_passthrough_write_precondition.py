@@ -1,0 +1,263 @@
+"""NR-063 — a table may not be built while its create path is an unvalidated passthrough.
+
+Found while resolving NR-022's nine REVIEW sites. They could not be decided from
+their call sites, and the reason turned out to matter more than the question:
+the call sites are generic passthroughs. `create_risk_stratification(db, data)`
+is a route taking a bare `data: dict` -- no request model -- handed to
+`RiskStratification(**data)`. The code cannot express who `assessed_by` means
+because nothing in the code ever sets it.
+
+Measured across `app/`: **103** sites construct an ORM model by splatting a
+function parameter (`Model(**param)`).
+
+    28  set tenant and/or actor server-side
+    75  set neither -- the request body controls every column
+
+The 28 are the defensible pattern, e.g.::
+
+    ClinicalTask(lab_id=lab_id, created_by=user_id, assigned_by=user_id, **data)
+
+`lab_id` and the actor come from the authenticated user, and a body key that
+collides with them raises TypeError rather than overriding them. Those paths
+also audit. The residual risk is arbitrary *non-tenant* columns.
+
+The 75 are `Model(**data)` with nothing server-set, concentrated in
+care_continuum (40), clinical (18) and ehr (17). On those, the request body
+would decide `lab_id`, `verified_by`, `is_deleted` -- everything.
+
+Server-setting is detected in both forms it takes here: an explicit keyword
+on the call, and a pre-splat `data["key"] = value` mutation. Counting only
+the first reported `create_compliance_check` as unguarded when it does set
+the actor by mutation -- a false positive worth not shipping in a guard that
+is supposed to block schema work.
+
+**Today that is latent, and this file's job is to keep it that way.** Every one
+of the 75 targets a table no migration builds, so the write fails with
+UndefinedTable before a row exists. The danger is not the current state; it is
+that NR-022 and NR-059 are both about building unbuilt tables. Building one of
+them without first giving it a validated create path would convert 75 latent
+mass-assignment paths into live ones, including tenant assignment on
+TenantAuditEntity models.
+
+**Latent is not the same as dead, and the difference is now measured rather than
+assumed.** Classifying all 75 against the running application (PHASE G):
+
+    LIVE                     0
+    REACHABLE-BUT-INACTIVE  75
+    DEAD                     0
+
+All three modules are a **direct import of a registered route module** -- exactly
+NR-064's shape, where the route was clean and its service was not. So the single
+thing standing between these paths and a live mass-assignment surface is the
+absent table. Nothing else.
+
+That correction cost a wrong answer first. An initial pass classified
+`app/services/ehr_service.py` (17 of the 75) as DEAD because no module imported
+it -- which was false: `app/routes/ehr.py:29` does `from ..services import
+ehr_service`, a package import naming a submodule, and the import resolver only
+tried `app/services.py`. The same pass also read router registration by regex
+over `factory.py` and missed its bulk block, finding 79 registered modules where
+the application serves 142. Both are fixed in `tests/orm_resolution.py` and
+recorded as NR-079; "DEAD" is the answer an undercounting instrument gives, and
+it is the most comfortable one to be wrong about.
+
+So the invariant is a precondition, not a prohibition: fix the create path, then
+build the table. Either order is fine. Only the omission fails.
+"""
+
+from __future__ import annotations
+
+import ast
+import collections
+
+import pytest
+
+from tests.orm_resolution import (
+    BACKEND,
+    app_modules,
+    built_tables,
+    imported_modules,
+    parse,
+    route_modules,
+    tables_by_local_name,
+)
+
+#: Names that, when passed explicitly alongside the splat, mean the server -- not
+#: the caller -- decided tenancy and actor.
+_SERVER_SET = frozenset({
+    "lab_id", "tenant_id", "created_by", "user_id", "actor_id", "organization_id",
+    "checked_by",
+})
+
+#: Modules whose create paths splat an unvalidated parameter with nothing
+#: server-set, and the number of such sites. This ledger may shrink. It may
+#: never grow.
+DECLARED_UNGUARDED_PASSTHROUGH = {
+    "app/services/care_continuum_service.py": 40,
+    "app/services/clinical_service.py": 18,
+    "app/services/ehr_service.py": 17,
+}
+
+
+def _passthrough_writes() -> list[tuple[str, str, str, bool]]:
+    """(module, function, table, server_set_tenant_and_actor) for each splat.
+
+    The model name is resolved through the importing file's own imports (see
+    `orm_resolution`), not by bare class name. This file used to do the latter,
+    and although the totals happened to come out the same, `ComplianceCheck`
+    alone names three different tables -- so the old answer was right by
+    coincidence rather than by method. A name that resolves to no table is not
+    an ORM model and is excluded: `GatewayMessage` in `app/integration` is a
+    plain class, and bare-name matching cannot tell the difference.
+    """
+    found: list[tuple[str, str, str, bool]] = []
+    for path in app_modules():
+        tree = parse(path)
+        if tree is None:
+            continue
+        names = tables_by_local_name(path)
+        module = str(path.relative_to(BACKEND))
+        for fn in (
+            n for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        ):
+            params = {a.arg for a in fn.args.args}
+            # Server-setting takes two forms here: an explicit keyword on the
+            # call, and a `data["key"] = value` mutation before the splat. Miss
+            # the second and the guard cries wolf on paths that are already safe.
+            mutated: set[str] = set()
+            for node in ast.walk(fn):
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if (
+                            isinstance(target, ast.Subscript)
+                            and isinstance(target.value, ast.Name)
+                            and target.value.id in params
+                            and isinstance(target.slice, ast.Constant)
+                        ):
+                            mutated.add(target.slice.value)
+            for node in ast.walk(fn):
+                if not isinstance(node, ast.Call) or not node.keywords:
+                    continue
+                splatted = any(
+                    kw.arg is None
+                    and isinstance(kw.value, ast.Name)
+                    and kw.value.id in params
+                    for kw in node.keywords
+                )
+                table = names.get(getattr(node.func, "id", None))
+                if splatted and table is not None:
+                    named = {kw.arg for kw in node.keywords if kw.arg}
+                    found.append(
+                        (module, fn.name, table, bool((named | mutated) & _SERVER_SET))
+                    )
+    return found
+
+
+def test_the_scan_still_finds_the_passthrough_surface() -> None:
+    """Guard the guard: finding nothing would make the precondition vacuous."""
+    writes = _passthrough_writes()
+    assert len(writes) >= 90, (
+        f"only {len(writes)} passthrough constructions found; the scan has drifted"
+    )
+
+
+def test_no_unguarded_passthrough_reaches_a_built_table() -> None:
+    """The precondition, and the reason this file exists.
+
+    An unguarded path is `Model(**data)` with no server-set tenant or actor, so
+    the request body decides every column including `lab_id`. Today every such
+    path targets a table no migration creates, which is the only reason the
+    pattern is latent.
+
+    If a table appears under one of these, the fix is not to delete this test.
+    It is to give that create path a request model and server-set tenancy first.
+    Either order works; only the omission fails.
+    """
+    built = built_tables()
+    live = sorted({
+        (table, module, fn)
+        for module, fn, table, guarded in _passthrough_writes()
+        if not guarded and table in built
+    })
+    assert live == [], (
+        "these tables are built AND written by an unvalidated passthrough with "
+        "no server-set tenant or actor, so the request body decides lab_id. "
+        f"Give the create path a request model before building the table: {live}"
+    )
+
+
+def test_the_unguarded_ledger_does_not_grow() -> None:
+    """New unguarded create paths are new latent mass-assignment."""
+    counts = collections.Counter(
+        module for module, _, _, guarded in _passthrough_writes() if not guarded
+    )
+    appeared = sorted(set(counts) - set(DECLARED_UNGUARDED_PASSTHROUGH))
+    assert appeared == [], (
+        "new modules construct ORM models from an unvalidated parameter with "
+        f"nothing server-set: {appeared}"
+    )
+    widened = {
+        m: (declared, counts.get(m, 0))
+        for m, declared in DECLARED_UNGUARDED_PASSTHROUGH.items()
+        if counts.get(m, 0) > declared
+    }
+    assert widened == {}, (
+        f"unguarded passthrough writes were added (declared -> now): {widened}"
+    )
+
+
+def test_the_guarded_pattern_still_sets_tenant_and_actor() -> None:
+    """The 28 defensible sites are the template the other 75 should follow.
+
+    If this reaches zero, the pattern that makes a passthrough survivable has
+    been removed and the ledger above is describing a different codebase.
+    """
+    guarded = [w for w in _passthrough_writes() if w[3]]
+    assert len(guarded) >= 20, (
+        "the server-set tenant/actor passthrough pattern has largely "
+        f"disappeared; only {len(guarded)} sites remain"
+    )
+
+
+@pytest.fixture()
+def reachable_from_a_router(client):
+    """Every module the running application can reach from a served route."""
+    from app.main import app
+
+    graph = {str(p.relative_to(BACKEND)): imported_modules(p) for p in app_modules()}
+    seen: set[str] = set()
+    stack = list(route_modules(app))
+    while stack:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        stack.extend(graph.get(current, ()))
+    return seen
+
+
+def test_every_unguarded_passthrough_is_reachable_from_a_registered_router(
+    reachable_from_a_router,
+) -> None:
+    """PHASE G. None of this is dead code, and that is the whole point.
+
+    A reader meeting 75 mass-assignment paths that have never failed will reach
+    for the comfortable explanation: nobody calls them. That explanation is
+    false. All 75 sit in modules a registered route module imports directly, so
+    the only thing between them and a live surface is the missing table -- which
+    NR-022 and NR-059 both propose to create.
+
+    If one ever does become unreachable, this fails, and the right response is to
+    re-classify it rather than to relax the precondition: unreachable code that
+    constructs ORM models is its own finding, not an improvement.
+    """
+    unreachable = sorted({
+        module for module, _, _, server_set in _passthrough_writes()
+        if not server_set and module not in reachable_from_a_router
+    })
+    assert unreachable == [], (
+        "these modules hold unguarded passthrough create paths and are no longer "
+        "reachable from any route the application serves. Re-classify them "
+        f"before trusting the precondition that covers them: {unreachable}"
+    )
