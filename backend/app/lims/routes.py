@@ -664,7 +664,7 @@ def register_specimen(
     try:
         specimen = SpecimenService.register(
             db, data.order_id, _lab_id(current_user),
-            data.specimen_type, data.barcode, current_user.id,
+            data.specimen_type, data.barcode, current_user.id, current_user.role,
             container_type=data.container_type,
             volume_ml=data.volume_ml,
             clinical_info=data.clinical_info,
@@ -768,9 +768,13 @@ def transition_specimen(
     )
     try:
         if data.rejection_reason:
-            specimen = SpecimenService.reject(db, specimen, data.rejection_reason, current_user.id)
+            specimen = SpecimenService.reject(
+                db, specimen, data.rejection_reason, current_user.id, current_user.role,
+            )
         else:
-            specimen = SpecimenService.transition(db, specimen, data.target_status, current_user.id, data.notes)
+            specimen = SpecimenService.transition(
+                db, specimen, data.target_status, current_user.id, current_user.role, data.notes,
+            )
         specimen.version = version_before + 1
         guard.complete(
             receipt,
@@ -849,7 +853,7 @@ def create_lims_order(
 
     try:
         lims_order = OrderService.create_lims_order(
-            db, data.order_id, _lab_id(current_user), current_user.id,
+            db, data.order_id, _lab_id(current_user), current_user.id, current_user.role,
             data.accession_number, data.priority,
             clinical_note=data.clinical_note,
             diagnosis_code=data.diagnosis_code,
@@ -1127,7 +1131,7 @@ def create_result(
         result = ResultService.create_result(
             db, data.specimen_id, specimen.order_id,
             lab_id, data.test_code, data.test_name,
-            current_user.id,
+            current_user.id, current_user.role,
             value_numeric=data.value_numeric,
             value_text=data.value_text,
             unit=data.unit,
@@ -1375,7 +1379,9 @@ def release_result(
     specimen_version_before = specimen.version
     try:
         release = ResultService.release(db, result, current_user.id)
-        specimen = SpecimenService.transition(db, specimen, "released", current_user.id)
+        specimen = SpecimenService.transition(
+            db, specimen, "released", current_user.id, current_user.role,
+        )
         specimen.version = specimen_version_before + 1
         guard.complete(
             receipt,

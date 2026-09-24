@@ -56,6 +56,7 @@ class SpecimenService:
         specimen_type: str,
         barcode: str,
         user_id: int,
+        user_role: str,
         container_type: str | None = None,
         **kwargs,
     ) -> Specimen:
@@ -77,7 +78,7 @@ class SpecimenService:
         db.flush()
         log_action(
             db, "create", "lims_specimen", specimen.id,
-            user_id=user_id, user_role="lab_tech", lab_id=lab_id,
+            user_id=user_id, user_role=user_role, lab_id=lab_id,
             details={"message": f"Specimen {barcode} registered"},
         )
         return specimen
@@ -88,6 +89,7 @@ class SpecimenService:
         specimen: Specimen,
         target_status: str,
         user_id: int,
+        user_role: str,
         notes: str | None = None,
     ) -> Specimen:
         enforce_specimen_transition(specimen.status, target_status)
@@ -126,7 +128,7 @@ class SpecimenService:
         db.flush()
         log_action(
             db, "transition", "lims_specimen", specimen.id,
-            user_id=user_id, user_role="lab_tech", lab_id=specimen.lab_id,
+            user_id=user_id, user_role=user_role, lab_id=specimen.lab_id,
             details={"message": f"Specimen {specimen.barcode}: {specimen.status} → {target_status}"},
         )
         return specimen
@@ -137,9 +139,10 @@ class SpecimenService:
         specimen: Specimen,
         reason: str,
         user_id: int,
+        user_role: str,
     ) -> Specimen:
         specimen.rejection_reason = reason
-        return SpecimenService.transition(db, specimen, "rejected", user_id)
+        return SpecimenService.transition(db, specimen, "rejected", user_id, user_role)
 
     @staticmethod
     def record_transportation(
@@ -178,6 +181,7 @@ class OrderService:
         order_id: int,
         lab_id: int,
         user_id: int,
+        user_role: str,
         accession_number: str,
         priority: str = "routine",
         **kwargs,
@@ -200,7 +204,7 @@ class OrderService:
         db.flush()
         log_action(
             db, "create", "lims_order", lims_order.id,
-            user_id=user_id, user_role="lab_tech", lab_id=lab_id,
+            user_id=user_id, user_role=user_role, lab_id=lab_id,
             details={"message": f"LIMS order {accession_number} created"},
         )
         return lims_order
@@ -237,6 +241,7 @@ class ResultService:
         test_code: str,
         test_name: str,
         user_id: int,
+        user_role: str,
         value_numeric: float | None = None,
         value_text: str | None = None,
         unit: str | None = None,
@@ -284,7 +289,7 @@ class ResultService:
         db.flush()
         log_action(
             db, "create", "lims_result", result.id,
-            user_id=user_id, user_role="lab_tech", lab_id=lab_id,
+            user_id=user_id, user_role=user_role, lab_id=lab_id,
             details={"message": f"Result {test_code}: {value_numeric} {unit or ''}".strip()},
         )
         return result

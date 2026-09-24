@@ -281,3 +281,18 @@ Recalculated UNKNOWN: 61 of 117 mounted routers (exact, see
 `docs/security/AUTHORIZATION_COVERAGE_MATRIX.md`'s Batch 7 section).
 All 25 routers Batch 5's accounting correction surfaced have now been
 examined.
+
+**Batch 8 update**: re-derived the mounted-router count from live runtime
+registration rather than assuming it: 117 router modules confirmed
+unchanged (`app/factory.py`'s structure untouched since Batch 5), plus a
+new, more precise measurement — a live `app.openapi()` schema dump
+(`ENV=test RUNTIME_MODE=test ... python3 -c "from app.main import app;
+print(len(app.openapi()['paths']))"`) shows **1794 distinct paths, 2103
+total method×path operations** across the whole app. This is a separate,
+finer-grained unit than "117 router modules" (each module mounts many
+individual routes — `ehr.py` alone contributes 86) and does not
+contradict it. No new routers mounted or unmounted this pass. UNKNOWN
+count unchanged at 61 of 117 — Batch 8's forensic sweep (audit-role
+hardcoding in LIMS/Hospital, mass-assignment detector, hardcoded-tenant-ID
+grep) found and fixed issues within already-VERIFIED/PARTIALLY-VERIFIED
+routers, not previously-UNKNOWN ones.

@@ -1041,3 +1041,153 @@ ready," or "national scale ready." 61 of 117 mounted routers remain
 genuinely untraced, GAP-3's 109 EHR/FHIR routes remain open pending a
 human architecture decision (ADR-009), and the carried-forward items
 above remain exactly as open as before.
+
+## Batch 8 — Full Forensic Production Closure (bounded pass)
+
+### Baseline discrepancy (read first)
+
+This batch's directive stated a baseline (`HEAD 96f40e02`, "3338 passed,
+329 skipped, 0 failed") that does not exist on this branch
+(`claude/mustafa-parallel-engineering`). Investigation found `96f40e02`
+on a sibling branch, `claude/p0-2-pharmacy-reconciliation`, forked from
+the same `main` commit (`46158e90`) as this branch but diverged onto an
+entirely separate, independently-numbered ("NR-xxx") engineering effort.
+Re-measured this branch's actual baseline: **3099 passed, 27 skipped, 2
+pre-existing/unrelated failures** (same 2 confirmed identical on
+unmodified HEAD since Batch 6). Continued work on this branch (per this
+session's own continuity and git-safety rules against switching branches
+without explicit instruction), not the sibling branch. **HUMAN ACTION
+REQUIRED**: clarify which branch this closure effort should target.
+
+### GAP-6 (new, this pass — Batch 8, CLOSED) — audit-log role hardcoding,
+same shape found in 2 domains: `app/lims/services.py` (4 sites) +
+`app/services/hospital_service.py` (5 sites)
+
+**Shape**: a service method accepts a real, server-derived `user_id`
+parameter but hard-codes a fixed string (`user_role="lab_tech"` /
+`user_role="hospital_staff"`) in its `log_action()` call, discarding the
+actual actor's role on every audited mutation. This is an audit-integrity
+defect, not an authorization bypass — the mutation itself was already
+correctly tenant/ownership-scoped in every affected method — but it means
+the audit trail cannot answer "who, in what role, performed this action,"
+which matters for compliance review and incident forensics.
+
+- **LIMS** (`app/lims/services.py`): `SpecimenService.register`,
+  `SpecimenService.transition` (+ `.reject`, which delegates to it),
+  `OrderService.create_lims_order`, `ResultService.create_result` — 4
+  `log_action` call sites, called from 5 route call sites in
+  `app/lims/routes.py`.
+- **Hospital** (`app/services/hospital_service.py`): `assign_bed`,
+  `discharge_bed`, `transfer_bed`, `update_operation_theater_status`,
+  `complete_surgical_safety_checklist` — 5 `log_action` call sites,
+  called from 5 route call sites in `app/routes/hospital.py`. Hospital
+  remains schema-blocked for real PostgreSQL (see carried-forward items)
+  but is fully exercised via this repo's SQLite test harness, the same
+  one used for this fix's regression tests.
+- **Fix**: added a required `user_role: str` parameter to all 9 methods,
+  threaded from `current_user.role` at every route call site (and from
+  a plain `role` parameter in the one direct-service-call test file,
+  `tests/test_emergency_surgery_workflow_p0.py`, updated to match the new
+  signature). No RBAC matrix change, no new permission, no schema change.
+- **Spoofing check**: confirmed by direct inspection that no LIMS or
+  Hospital request Pydantic schema (`SpecimenRegisterRequest`,
+  `SpecimenTransitionRequest`, `OrderCreateRequest`, `ResultCreateRequest`,
+  `CampusCreate`/`DepartmentCreate`/`NestedCreate` and siblings) declares
+  a `role` field — the value passed into these service methods can only
+  ever be the route's own `current_user.role`, itself derived from the
+  JWT-decoded, DB-verified `LabUser` object.
+- **4 other hard-coded-role sites found and triaged as NOT this
+  pattern**: `app/services/patient_service.py`'s `user_role="system"`
+  (a genuine system-internal MPI-resolution-failure event, not a
+  discarded actor role — there is no human actor in that code path);
+  `app/routes/register.py`'s `user_role="citizen"`/`"doctor"` and
+  `app/routes/citizen_portal.py`'s `user_role="citizen"` (self-registration
+  and citizen-only-portal routes where the hardcoded role always equals
+  the actor's own role by construction, since these routes have no other
+  possible caller identity).
+- **Evidence**: `backend/tests/test_lims_audit_role_threading.py` (17
+  tests: 4 roles × {register, transition, order-create, result-create} +
+  1 schema-field-absence check) + `backend/tests/test_hospital_audit_role_threading.py`
+  (12 tests: 4 roles × {assign_bed, discharge_bed, OT-status}).
+- **Negative-proofed**: 2 separate `git stash`/`git stash pop` cycles
+  (LIMS files together, Hospital files + the one dependent test file
+  together), md5-verified byte-identical restoration both times; all
+  reverted-state runs failed (16 of 17 LIMS tests via wrong recorded
+  role; all 12 Hospital tests via `TypeError` from the reverted
+  signature, since the fix changed both the string and the parameter
+  list) — confirmed the fix is what the tests actually depend on.
+- **Regression sweep**: full backend suite, 3128 passed (up from 3099 by
+  exactly the 29 new tests), same 2 pre-existing unrelated failures, 0
+  new failures.
+- **Status**: **CLOSED** — 9 sites across 2 domains.
+
+### Forensic sweep findings (Batch 8) — not new gaps, or below fix threshold
+
+- **`app/services/telegram_bot_commands.py`** hard-codes `lab_id=1` in
+  its `/alerts`/`/stats` command handlers. Confirmed **not reachable**:
+  the router that would expose it (`app/routes/telegram_webhook.py`,
+  which itself already fail-closes on a missing webhook secret and an
+  unconfigured chat-ID allowlist) is never mounted in
+  `app/factory.py::_register_routes` (grep-confirmed). Recorded as a P3
+  observation (dead code; hardcodes a single lab if ever mounted),
+  not fixed.
+- **`scripts/setattr_mass_assignment_guard.py`** re-run repo-wide: 77
+  candidates, 50 already self-flagged `guarded` (an allowlist exists
+  nearby), 27 unguarded. Of the 27: 17 in `app/services/ehr_service.py`
+  (triaged in Batch 7 — not exploitable via the live route surface,
+  every EHR `*Update` Pydantic schema declares only safe fields with no
+  `extra="allow"` override), 2 in `app/routes/hospital.py` (spot-checked
+  this pass — `CampusCreate`/`DepartmentCreate` declare only `code`,
+  `name`, `name_ar`, and domain-specific safe fields; no `id`/`lab_id`
+  path), 1 spot-checked in `app/insurance/api/claims.py` (same
+  tenant-scoped-before-fetch + narrow-schema pattern). The remaining 7
+  (`app/core/bootstrap/subscriptions.py`, 5 other `app/insurance/api/*.py`
+  files, `app/nursing/services.py`) were **not** individually verified
+  this pass — recorded as **UNKNOWN**, not assumed safe by
+  extrapolation, though the pattern held in every file actually checked.
+- **Hard-coded tenant-ID sweep**: `grep`'d the full `app/` tree for
+  `(lab_id|organization_id|facility_id|tenant_id)\s*=\s*[0-9]+` outside
+  tests/migrations — the Telegram bot's `lab_id=1` (above) is the only
+  hit. No other hardcoded-tenant-ID pattern found.
+- **`boolean_not_filter_guard.py`** and **`log_action_arg_order_guard.py`**
+  re-run: 0 hits each, no regression of either previously-closed pattern.
+
+### Carried forward, unchanged this pass
+
+- GAP-1 `adaptive-auth-account-id-idor` — still **BLOCKED —
+  NEEDS_DECISION**.
+- GAP-3 (ADR-009): 109 of 115 EHR/FHIR routes — still **OPEN — BLOCKED**
+  on the taxonomy decision.
+- GAP-5 (`quality_control.py`) — still **OPEN — documented, not fixed**
+  (P2/P3).
+- Hospital schema blocker (13/14 tables lack Alembic migrations) —
+  unchanged, still **BLOCKED — human migration-authorship required**.
+- External CI runner blocker — unchanged, re-verified after this pass's
+  push (same ~3-4s no-dispatch signature).
+- Pharmacy `/batches/expiring` route-shadowing bug (P3) — still
+  documented, not fixed.
+- `test_icu_lab_workflow_p0.py::test_transfusion_requires_independent_crossmatch_and_bedside_verification`
+  — still fails, confirmed pre-existing (identical on unmodified HEAD,
+  first noted Batch 6) — **not yet root-caused by this program**.
+  Flagged this pass as a clinical-safety-relevant failure that deserves
+  a dedicated triage, not just a "known pre-existing failure" label,
+  given what the test asserts.
+
+## Summary (additions this pass — Batch 8)
+
+| ID | Severity | Status |
+|---|---|---|
+| GAP-6: `lims/services.py` (4 sites) + `hospital_service.py` (5 sites) audit-role hardcoding | P1 (audit-integrity) | **CLOSED** |
+| `telegram_bot_commands.py` hardcoded `lab_id=1` | P3 | DOCUMENTED — dead code, not fixed |
+| `setattr_mass_assignment_guard.py` 27 unguarded candidates | — | 20 spot-checked/not-exploitable, 7 UNKNOWN |
+| `test_icu_lab_workflow_p0.py` transfusion safety test failure | UNKNOWN severity | flagged for dedicated triage, not root-caused |
+
+**Batch 8 closed 1 new systemic P1 (audit-role hardcoding, 9 sites, 2
+domains) with full negative-proof discipline, and completed a bounded
+forensic sweep (mass-assignment detector, hard-coded-tenant-ID grep,
+both pre-existing detectors) rather than an exhaustive 24-phase rewrite of
+the whole codebase — consistent with "minimum resources, maximum verified
+result." Not claimed: authorization complete, security complete,
+production ready, or national scale ready. The branch/baseline
+discrepancy above is the most important open item for a human to resolve
+before any further batch continues this program.**

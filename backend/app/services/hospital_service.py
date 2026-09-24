@@ -302,6 +302,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         bed_id: int,
         patient_id: int,
         *,
@@ -343,7 +344,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "patient_id": patient_id,
@@ -360,6 +361,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         bed_id: int,
         *,
         expected_version: int,
@@ -395,7 +397,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "discharge_reason": discharge_reason,
@@ -411,6 +413,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         from_bed_id: int,
         to_bed_id: int,
         *,
@@ -467,7 +470,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(from_bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "to_bed_id": to_bed_id,
@@ -492,6 +495,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         ot_id: int,
         *,
         expected_version: int,
@@ -535,7 +539,7 @@ class HospitalService:
             resource_type="hospital_operation_theater",
             resource_id=str(ot_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "state_before": state_before,
@@ -551,6 +555,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         data: dict[str, Any],
     ) -> SurgicalSafetyChecklist:
         theater_id = int(data["operation_theater_id"])
@@ -605,7 +610,7 @@ class HospitalService:
             resource_type="hospital_surgical_safety_checklist",
             resource_id=str(checklist.id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "operation_theater_id": theater_id,

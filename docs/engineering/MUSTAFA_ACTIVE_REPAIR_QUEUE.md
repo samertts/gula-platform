@@ -856,3 +856,84 @@ BLOCKED — NEEDS_DECISION), Hospital schema blocker, external CI runner
 blocker, pharmacy `/batches/expiring` route-shadowing bug (P3).
 
 | Commit: `(pending)` | Owner: Mustafa | Files: `app/routes/ehr_fhir.py`, `app/routes/device_results.py`, `app/routes/critical_alerts.py`, `app/routes/batch.py`, 2 new test files, `docs/national/ADR.md` (new ADR-009), 4 other docs | Next action: a domain owner must pick ADR-009's option (reuse legacy `patients:*`/`results:*`, wire in `app/national/security/*`, or a hybrid interim) so the remaining 109 EHR/FHIR routes can be fixed with the same negative-proof discipline; separately, decide `quality_control.py`'s permission (reuse `staff:manage` or add `qc:*`); then trace the still-untraced routers (`edge`, `ai_fabric`, `control_plane`, `integrations`, `chronic_care`, `certification`, `citizen_platform`, `contracts`, `ai_telemetry`, `kernel`/`clinical_gateway`, and the generic `routes/` package's remaining untraced files). |
+
+## Batch 8 — Full Forensic Production Closure (bounded)
+
+**BRANCH/BASELINE DISCREPANCY FOUND FIRST — read before anything else.**
+This batch's directive stated `HEAD 96f40e02`, "3338 passed, 329 skipped, 0
+failed." That commit does not exist on `claude/mustafa-parallel-engineering`.
+It lives on a sibling branch, `claude/p0-2-pharmacy-reconciliation`, forked
+from the same `main` commit (`46158e90`) but independently developed under
+an entirely different, NR-numbered engineering program (pharmacy
+reconciliation, MPI, ORM writability across 76 tables, LIMS result-release,
+national-ID identity work — verified via `git log --oneline --all | grep
+96f40e02` + `git merge-base`). Continued this batch on
+`claude/mustafa-parallel-engineering` (this session's designated,
+continuously-worked branch; switching branches without explicit
+instruction would violate this session's own git-safety rules). Re-measured
+this branch's real baseline: **3099 passed, 27 skipped, 2 pre-existing
+failures** (same 2 as every batch since Batch 6), **117 mounted router
+modules** (re-derived via the known `app.factory.py` for-loop structure,
+unchanged since Batch 5), **2103 individual route operations across 1794
+distinct paths** (new precision this pass, via a live `app.openapi()`
+schema dump rather than router-module counting). **HUMAN ACTION REQUIRED**:
+confirm which branch this production-closure effort should track — these
+two branches cannot be silently reconciled by an automated pass.
+
+**Phase 4 (LIMS audit role) + the same pattern found in Hospital**: fixed
+the 4 known `user_role="lab_tech"` hardcode sites in
+`app/lims/services.py`, and — per this batch's own "if a repair reveals a
+broader pattern, inspect all reachable instances" principle — searched for
+and found the identical shape in `app/services/hospital_service.py` (5
+sites, `user_role="hospital_staff"`). Both fixed by threading a required
+`user_role: str` parameter from `current_user.role` at every route call
+site; confirmed non-spoofable (no request schema in either domain declares
+a `role` field). See
+`docs/security/SYSTEMIC_CONCURRENCY_PATTERN_REGISTER.md` Pattern 4 and
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` GAP-6 for full detail. 29 new
+regression tests (17 LIMS + 12 Hospital), 2 negative-proof cycles
+(git stash/pop, md5-verified byte-identical restoration both times).
+
+**Bounded forensic sweep** (not an exhaustive 24-phase rewrite): re-ran
+both existing detectors (`boolean_not_filter_guard.py`,
+`log_action_arg_order_guard.py` — 0 hits each); ran
+`setattr_mass_assignment_guard.py` repo-wide (77 candidates, 50
+self-flagged already-guarded, 27 unguarded — spot-checked 20 of the 27
+across 3 domains and confirmed not exploitable via the live route surface
+in every one checked, 7 left as UNKNOWN rather than assumed safe); grepped
+the full tree for hardcoded tenant IDs (found exactly one,
+`telegram_bot_commands.py`'s `lab_id=1`, confirmed dead code — its router
+is never mounted in `app/factory.py`).
+
+**Built `docs/security/PRODUCTION_READINESS_MATRIX.md`** (new this pass,
+per Phase 20) — an honest, evidence-cited status for every category the
+directive required, using only VERIFIED/PARTIALLY VERIFIED/BLOCKED/UNKNOWN/
+NOT STARTED, built from real evidence gathered across all 8 batches plus
+this pass's own fresh checks — not fabricated for categories (AI, Frontend,
+Infrastructure, Recovery, Performance) this program has never actually
+touched.
+
+**Flagged, not fixed**: `test_icu_lab_workflow_p0.py`'s transfusion-safety
+test failure (pre-existing since Batch 6, confirmed identical on
+unmodified HEAD) is re-flagged this pass as deserving dedicated clinical-
+safety triage rather than remaining a routine "known pre-existing failure"
+line item, given what it actually asserts (independent crossmatch +
+bedside verification before transfusion).
+
+**Regression**: full suite, 3128 passed (3099 + the 29 new tests), same 2
+pre-existing failures, 0 new failures.
+
+STATUS: **1 new systemic P1 CLOSED (audit-role hardcoding, 9 sites across
+2 domains, full negative-proof discipline). 1 major branch/baseline
+discrepancy surfaced and documented (human action required). Bounded
+forensic sweep complete — 1 P3 dead-code observation, 7 mass-assignment
+candidates left honestly UNKNOWN. Production readiness matrix built from
+real evidence, no category fabricated.** Not claimed: authorization
+complete, security complete, production ready, or national scale ready.
+Carried forward unchanged: `adaptive-auth-account-id-idor` (P1, BLOCKED),
+ADR-009's 109-route decision, `quality_control.py`'s permission question,
+Hospital schema blocker, external CI runner blocker, pharmacy
+route-shadowing bug (P3), the ICU transfusion test failure (now flagged
+for dedicated triage instead of routine carry-forward).
+
+| Commit: `(pending)` | Owner: Mustafa | Files: `app/lims/services.py`, `app/lims/routes.py`, `app/services/hospital_service.py`, `app/routes/hospital.py`, `tests/test_emergency_surgery_workflow_p0.py` (updated for new signature), 2 new test files, `docs/security/PRODUCTION_READINESS_MATRIX.md` (new), 3 other docs | Next action: get a human decision on which branch (`claude/mustafa-parallel-engineering` vs `claude/p0-2-pharmacy-reconciliation`) this production-closure program should actually track — this is the single highest-value next action, ahead of any further code fix, since continuing to fix code on the wrong branch risks the two engineering efforts silently diverging further or conflicting at merge time; separately, triage the `test_icu_lab_workflow_p0.py` failure as a dedicated task rather than a routine carry-forward. |

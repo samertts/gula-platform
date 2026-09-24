@@ -212,3 +212,51 @@ test-client fixture (`tests/conftest.py`'s `client`) masks this defect
 shape completely (see GAP-7's "why this was invisible" note) — a
 domain's tests all passing is not evidence this pattern is absent
 there.
+
+## Pattern 4 (new, Batch 8 — Full Forensic Production Closure): "audit `log_action` call hard-codes a fixed `user_role` string instead of the real, server-derived actor role"
+
+**Shape**: a service method accepts a real `user_id: int` parameter
+(correctly threaded from `current_user.id` at the route layer) but its
+`log_action(...)` call passes a literal string constant for `user_role`
+instead of threading the caller's actual role through. The mutation
+itself is typically already correctly tenant/ownership-scoped — this is
+an audit-integrity defect (the hash-chained audit trail records the
+wrong actor role for every affected mutation, regardless of who really
+performed it), not an authorization bypass.
+
+**Confirmed in 2 domains this pass**, both closed identically (add a
+required `user_role: str` parameter, thread `current_user.role` through
+from every route call site):
+
+| Domain | Methods | Sites | Hardcoded value |
+|---|---|---|---|
+| `app/lims/services.py` | `SpecimenService.register`/`.transition` (+`.reject`), `OrderService.create_lims_order`, `ResultService.create_result` | 4 `log_action` calls, 5 route call sites | `"lab_tech"` |
+| `app/services/hospital_service.py` | `assign_bed`, `discharge_bed`, `transfer_bed`, `update_operation_theater_status`, `complete_surgical_safety_checklist` | 5 `log_action` calls, 5 route call sites | `"hospital_staff"` |
+
+Below this register's own normal 3-domain naming threshold (2 so far),
+recorded here per the same convention Pattern 3 used at 1 domain — named
+now because the shape is exact and mechanical, worth checking on sight
+in any future service-layer audit. See GAP-6 in
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` for full proof (29 new
+tests, 2 negative-proof cycles, both md5-verified).
+
+**4 hardcoded-role sites checked and confirmed NOT this pattern**:
+`app/services/patient_service.py`'s `user_role="system"` (a genuine
+system-internal event, no human actor in that code path);
+`app/routes/register.py`'s and `app/routes/citizen_portal.py`'s
+`user_role="citizen"`/`"doctor"` (self-registration/self-login routes
+where the hardcoded role always equals the actor's own role by
+construction — there is no other possible caller). The distinguishing
+test: does the method receive a real `user_id` that could belong to
+*any* role, while hardcoding a role anyway? If yes, it's this pattern.
+If the route's only possible caller is definitionally that one role,
+it isn't.
+
+**Detector opportunity — not built.** A reliable AST detector for "a
+`log_action(...)` call's `user_role=` keyword argument is a string
+literal, in a function that also takes a `user_id` parameter sourced
+from outside the function" is plausible but was not built this pass —
+found instead via a direct `grep -rn 'user_role="[a-z_]*"'` sweep of
+`app/`, which was fast enough (12 hits total, 4 domains) that a
+dedicated detector wasn't justified for this pass. Worth building if a
+3rd+ domain instance turns up.

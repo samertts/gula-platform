@@ -378,3 +378,73 @@ pharmacy `/batches/expiring` route-shadowing bug (P3). Newly open:
 ADR-009's 109-route decision (architecture-level, needs a human
 owner), and `quality_control.py`'s smaller permission-taxonomy
 question (P2/P3).
+
+## Addendum 7 — Batch 8: Full Forensic Production Closure (bounded)
+
+Objective (per a "MUSTAFA — GULA FULL FORENSIC PRODUCTION CLOSURE"
+directive): re-baseline from source, run a broad forensic scan, fix the
+known LIMS audit-role hardcoding, and build a production-readiness matrix
+— all with the same evidence discipline as every prior batch.
+
+**Most significant finding of this pass was not a code defect: a
+branch/baseline mismatch.** The directive's stated baseline (`HEAD
+96f40e02`, "3338 passed") does not exist on this branch
+(`claude/mustafa-parallel-engineering`) — it belongs to a sibling branch,
+`claude/p0-2-pharmacy-reconciliation`, forked from the same `main` commit
+but developed independently under a different, NR-numbered program. Rather
+than either blindly trusting the stated baseline or silently switching
+branches, this was surfaced explicitly and this branch's real baseline was
+re-measured: 3099 passed, 27 skipped, 2 pre-existing failures, 117 mounted
+router modules, 2103 total route operations across 1794 distinct paths
+(the last two figures newly precise this pass, via live runtime
+registration and an `app.openapi()` schema dump rather than assumption).
+**This is recorded as requiring human clarification before any further
+batch continues this program on the assumption that the two branches'
+work is reconcilable.**
+
+**LIMS audit-role fix, plus the same pattern found in Hospital**: fixed
+the 4 known `user_role="lab_tech"` hardcode sites, then — per the
+directive's own "if a repair reveals a broader pattern, inspect all
+reachable instances" principle — searched for and found the identical
+shape in Hospital's bed/operation-theater services (5 sites,
+`user_role="hospital_staff"`). Both fixed by threading a required
+`user_role: str` parameter from `current_user.role`; confirmed
+non-spoofable by inspection (no request schema in either domain declares
+a `role` field). 29 new regression tests, 2 full negative-proof cycles
+(git stash/pop, md5-verified byte-identical restoration). 4 other
+hardcoded-role sites elsewhere in the codebase were checked and confirmed
+to be a different, legitimate pattern (system-internal events or
+self-registration/self-login routes where the hardcoded role is always
+correct by construction), not fixed because they are not the same defect.
+
+**Bounded forensic sweep**: both pre-existing detectors re-run (0 hits
+each — no regression); the mass-assignment detector re-run repo-wide (77
+candidates, 20 of 27 unguarded ones spot-checked and confirmed not
+exploitable via the live route surface, 7 left honestly UNKNOWN rather
+than extrapolated safe); a full-tree grep for hardcoded tenant IDs found
+exactly one instance (`telegram_bot_commands.py`'s `lab_id=1`), confirmed
+to be dead code — its router is never mounted.
+
+**Built `docs/security/PRODUCTION_READINESS_MATRIX.md`** — the directive's
+required deliverable, using only the 5 allowed status words, with every
+VERIFIED/PARTIALLY VERIFIED entry citing its actual evidence (this
+program's own status docs and this pass's fresh checks), and every
+category this program has never touched (AI, Frontend, Infrastructure,
+Recovery, Performance) honestly marked UNKNOWN or NOT STARTED rather than
+inferred.
+
+**Flagged for dedicated triage, not fixed**:
+`test_icu_lab_workflow_p0.py::test_transfusion_requires_independent_crossmatch_and_bedside_verification`
+— a pre-existing failure (confirmed identical on unmodified HEAD since
+Batch 6) that, given what it actually asserts (independent crossmatch and
+bedside verification before transfusion), deserves a dedicated
+clinical-safety root-cause pass rather than continuing to sit as a
+routine "known pre-existing failure" line item.
+
+**Regression**: full suite, 3128 passed (3099 + the 29 new tests), same 2
+pre-existing unrelated failures, 0 new failures.
+
+**Still not claimed**: "authorization complete," "security complete,"
+"production ready," or "national scale ready." The single highest-value
+next action is not a code fix — it is a human decision on which branch
+this production-closure program should track.
