@@ -5,11 +5,11 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 158,
-    "P0": 25,
-    "P1": 77,
-    "P2": 41,
-    "P3": 12
+    "P0": 26,
+    "P1": 80,
+    "P2": 44,
+    "P3": 12,
+    "total": 162
   },
   "findings": [
     {
@@ -5407,8 +5407,8 @@
       "severity": "P1",
       "priority": 158,
       "status": "FIXED AND PROVED 2026-09-24. actor_role is threaded from current_user.role, keyword-only with no default.",
-      "title": "Every LIMS audit row recorded the actor's role as the literal \"lab_tech\" — a value the role vocabulary does not contain",
-      "description": "All four audit sites in app/lims/services.py passed the literal string \"lab_tech\" as log_action's `user_role`. The `user_id` was correct throughout, so this misattributes AUTHORITY, not identity: the row names the right person and the wrong power.\n\nAn audit trail is read to answer 'was this action within the actor's authority?'. A row that always says lab_tech cannot answer it, and it answers wrongly in the one direction that HIDES a privilege problem — a lab_admin releasing a clinical result, the most privileged action in the domain, was recorded as a technician.\n\nSHARPER THAN FIRST MEASURED. \"lab_tech\" is not a role this system has. Measured across app/: the string occurs nowhere else as a role value, and the actual column values are lab_technician and lab_admin. So the constant was wrong for EVERY actor including the technicians it purported to describe, and every LIMS audit row ever written carries a role that does not join to the role catalog.\n\nCANONICAL SOURCE. current_user.role. get_current_user does not read the role from the token: resolve_token_subject(db, payload) loads the live row, and the token's perm_ver is compared against the authoritative permission version and the request refused on a mismatch. So the role is a database column of the authenticated subject, re-read per request, and a token minted before a role change is rejected rather than honoured.\n\nIt is also the source ClinicalCommandGuard ALREADY uses in these very same handlers (actor_role=current_user.role, 7 pre-existing call sites). The repair makes the services agree with the guard beside them rather than inventing a second convention.\n\nKEYWORD-ONLY, NO DEFAULT, on purpose. A future call site that forgets actor_role raises TypeError at once. Any default would restore exactly this defect: a plausible-looking role silently standing in for the real one. The absence of a default IS the control. SpecimenService.reject threads it through to transition rather than re-deciding it.",
+      "title": "Every LIMS audit row recorded the actor's role as the literal \"lab_tech\" — a value absent from the role vocabulary the running authorization system uses",
+      "description": "All four audit sites in app/lims/services.py passed the literal string \"lab_tech\" as log_action's `user_role`. The `user_id` was correct throughout, so this misattributes AUTHORITY, not identity: the row names the right person and the wrong power.\n\nAn audit trail is read to answer 'was this action within the actor's authority?'. A row that always says lab_tech cannot answer it, and it answers wrongly in the one direction that HIDES a privilege problem — a lab_admin releasing a clinical result, the most privileged action in the domain, was recorded as a technician.\n\nSHARPER THAN FIRST MEASURED. \"lab_tech\" is not a role this system has. CORRECTED 2026-09-24 (the first measurement was wrong and is retained here so the correction is auditable). The original entry said the string \"occurs nowhere else as a role value\". It does: shared/rbac/permissions.py:10 defines Role.LAB_TECH = \"lab_tech\" in the LEGACY Enum-based catalogue. What is true, and is the finding, is that \"lab_tech\" is absent from shared.rbac.EXTENDED_VALID_ROLES — the string catalogue that LabUser.role is actually validated against and that every RBAC decision reads. So the constant named a role from a vocabulary the running authorization system does not use, and no LIMS audit row joins to the live role catalogue. See NR-162 for the three-vocabulary divergence this uncovered. So the constant was wrong for EVERY actor including the technicians it purported to describe, and every LIMS audit row ever written carries a role that does not join to the role catalog.\n\nCANONICAL SOURCE. current_user.role. get_current_user does not read the role from the token: resolve_token_subject(db, payload) loads the live row, and the token's perm_ver is compared against the authoritative permission version and the request refused on a mismatch. So the role is a database column of the authenticated subject, re-read per request, and a token minted before a role change is rejected rather than honoured.\n\nIt is also the source ClinicalCommandGuard ALREADY uses in these very same handlers (actor_role=current_user.role, 7 pre-existing call sites). The repair makes the services agree with the guard beside them rather than inventing a second convention.\n\nKEYWORD-ONLY, NO DEFAULT, on purpose. A future call site that forgets actor_role raises TypeError at once. Any default would restore exactly this defect: a plausible-looking role silently standing in for the real one. The absence of a default IS the control. SpecimenService.reject threads it through to transition rather than re-deciding it.",
       "evidence": [
         "app/lims/services.py:78,123,194,275 (pre-fix) -- four log_action calls with the literal \"lab_tech\"",
         "MEASURED: grep over app/ finds \"lab_tech\" as a role value at those sites only; the vocabulary is lab_technician / lab_admin",
@@ -5422,6 +5422,75 @@
         "regression: LIMS journey 8/8 on PostgreSQL; capability gate 4/4; adjacent audit suites 30 passed / 6 skipped"
       ],
       "generated": "2026-09-24"
+    },
+    {
+      "id": "NR-159",
+      "category": "Audit integrity / Actor attribution",
+      "domain": "app/services/hospital_service.py",
+      "severity": "P1",
+      "priority": 159,
+      "status": "FIXED AND PROVED 2026-09-24. actor_role is threaded from current_user.role, keyword-only with no default. Negative proof recorded below.",
+      "title": "Every hospital bed and operation-theater audit row recorded the actor as the literal \"hospital_staff\" — a value neither role catalogue contains",
+      "description": "Five audit sites in app/services/hospital_service.py passed the literal string 'hospital_staff' as log_action's `user_role`: assign_bed, discharge_bed, transfer_bed, update_operation_theater_status and complete_surgical_safety_checklist.\n\nThese are the five physical-custody actions of the hospital domain. They move a patient between beds and put an operating theater into use for a named surgery. The `user_id` was correct throughout, so this misattributes AUTHORITY, not identity — the row names the right person and the wrong power.\n\nMEASURED: 'hospital_staff' is not a role at all. It is absent from shared.rbac.EXTENDED_VALID_ROLES (the set LabUser.role is validated against) AND from the ABAC UserTypeEnum in app/models/authorization.py. So these audit rows cannot be joined to any role definition in the platform, and the question an audit trail exists to answer — 'was this action within the actor's authority?' — has no answer for any bed movement ever recorded.\n\nSAME DEFECT CLASS AS NR-158, found by the AST census of all 188 log_action call sites in app/ (see NR-160). Found by pattern, not by luck.\n\nCANONICAL SOURCE: current_user.role. get_current_user calls resolve_token_subject(db, payload), which loads the live row, then compares the token's perm_ver against the authoritative permission version and refuses the request on a mismatch. The role is therefore a database column of the authenticated subject, re-read per request. It is also the source the ClinicalCommandGuard wrapping these same handlers (_run_hospital_command, app/routes/hospital.py:298) has always used — the repair makes the service agree with the guard beside it rather than keeping a second, divergent convention.",
+      "evidence": [
+        "BEFORE: 5 AST-confirmed LITERAL user_role sites in app/services/hospital_service.py, value 'hospital_staff'.",
+        "AFTER: 0. AST census of app/ re-run: 188 log_action sites, 150 EXPR (was 145), 33 OMITTED, 5 LITERAL (was 10).",
+        "actor_role is keyword-only with no default on all 5 services (test_a). A caller that forgets it raises TypeError — which is how the 7 call sites in tests/test_emergency_surgery_workflow_p0.py were found.",
+        "6 actor_role= arguments in app/routes/hospital.py, every one reading current_user.role: 5 services + the pre-existing ClinicalCommandGuard (test_f).",
+        "NEGATIVE PROOF: restoring user_role='hospital_staff' in assign_bed alone fails 3 of the 6 tests — the source ratchet (test_b), the technician positive control (test_d) and the administrator finding (test_e) — while test_a and test_f correctly still pass, since the signature and the wiring are untouched and only the row is falsified. Restored byte-identically (sha256 verified), 10/10 green.",
+        "tests/test_hospital_audit_actor_is_server_derived.py — 6 tests, all passing.",
+        "tests/test_emergency_surgery_workflow_p0.py — 4 tests, passing after its 7 call sites were updated."
+      ],
+      "guard": "backend/tests/test_hospital_audit_actor_is_server_derived.py"
+    },
+    {
+      "id": "NR-160",
+      "category": "Audit integrity / Actor attribution (systemic pattern)",
+      "domain": "app/ (platform-wide)",
+      "severity": "P2",
+      "priority": 160,
+      "status": "REGISTERED AND FULLY CLASSIFIED 2026-09-24. All 188 reachable sites inspected; 9 falsifying sites repaired (NR-158, NR-159); 25 coverage-gap sites remain OPEN; 4 BLOCKED on financial approval; 8 correct by construction.",
+      "title": "The actor's role is not derived from the authenticated context at 43 of 188 log_action call sites",
+      "description": "An AST census of every log_action call in backend/app/ (188 sites) classified each by how the `user_role` argument is supplied. This is the pattern behind NR-158 and NR-159 rather than two isolated bugs, and every reachable instance has been inspected — not sampled.\n\nCENSUS (after the NR-158 and NR-159 repairs):\n  150  EXPR     — role derived from an expression (the correct shape)\n   33  OMITTED  — `user_role` not passed at all; the column takes NULL\n    5  LITERAL  — a hard-coded constant\n\nTHE TWO CLASSES ARE NOT EQUALLY SEVERE. An OMITTED role writes NULL, which is an honest 'unknown'. A LITERAL writes a false statement about authority, which is worse than silence: it is read as fact. That is why the 9 LITERAL sites were repaired first.\n\nTHE 5 REMAINING LITERALS — each inspected, none falsifying:\n  routes/citizen_portal.py:194,221 'citizen' — BOTH lookup branches filter User.role == 'citizen', so any row reaching the audit line IS a citizen. Correct by construction. (P3 note: on the failure branch at :194 no row may have matched at all, and the row still asserts a role for a subject that does not exist. citizen_portal login is authentication logic and needs human approval to change per CLAUDE.md, so this is recorded, not altered.)\n  routes/register.py:382 'citizen' — self-registration; the row is the subject just created, whose role column defaults to 'citizen'. Correct by construction.\n  routes/register.py:652 'doctor' — the User row being audited is created 12 lines above with role='doctor'. Correct, but a duplicated constant; user_role=doctor.role would be self-evidently correct. P3 hygiene.\n  services/patient_service.py:464 'system' — an mpi_resolve_failed diagnostic. It names a human user_id but overwrites that human's role with 'system', which is in neither role catalogue. A genuine, minor misattribution on an exception path. P2, OPEN, requires threading actor_role into patient_service.\n\nTHE 33 OMITTED — classified by whether a role is reachable at the call site:\n  4  CORRECT BY CONSTRUCTION — there is no authenticated actor, so NULL is the true value: routes/password_reset.py:53,76 (forgot/reset, where user_id is the SUBJECT not the actor) and services/order_service.py:759,858 (get_public_result, download_result_pdf — public token-authenticated reads).\n  4  BLOCKED — HUMAN APPROVAL REQUIRED: financial/routes.py:313,368 (role IS in scope as current_user and is simply not passed) and financial/services.py:131,247. CLAUDE.md requires explicit approval for any change under app/financial/, and Phase A is schema-only. Not touched.\n  25 OPEN COVERAGE GAP — the function receives user_id but no role, so the role must be threaded from the caller, exactly as in NR-158 and NR-159: nursing 15 (coordination.py x8, medication.py x3, services.py x3 — includes record_five_rights_attestation, record_administration and electronic_signature, all medication-safety evidence), pharmacy 4, nhdw 3, blood_bank 1, governance/repositories/base.py 1, audit/__init__.py 1 (a wrapper — inherits from its caller), services/hospital_service.py:109 deactivate_hospital 1.\n\nNURSING MEDICATION IS THE HIGHEST-VALUE REMAINING CLUSTER: a five-rights attestation and an electronic signature are precisely the records whose value depends on knowing the signer's authority.",
+      "evidence": [
+        "AST census over backend/app/**/*.py, matching every Call whose func name is log_action, resolving user_role from keywords or positional index 5: 188 sites.",
+        "Distribution after repair: 150 EXPR / 33 OMITTED / 5 LITERAL. Before the NR-158 and NR-159 repairs: 145 / 33 / 10.",
+        "Reachability classification of the 33 OMITTED sites by inspecting the innermost enclosing function's parameters: 2 ROLE_REACHABLE(current_user), 27 ACTOR_ID_ONLY, 4 NO_ACTOR_IN_SCOPE.",
+        "log_action's signature (app/services/audit_service.py:210) gives user_role a None default and AuditLog.user_role is String(50) nullable=True, so an omitted role is persisted as NULL, not rejected."
+      ],
+      "guard": "Per-domain: backend/tests/test_lims_audit_actor_is_server_derived.py, backend/tests/test_hospital_audit_actor_is_server_derived.py. No platform-wide ratchet yet — one would need the 8 correct-by-construction sites allow-listed with their reasons."
+    },
+    {
+      "id": "NR-161",
+      "category": "Audit integrity / Blocked on approval",
+      "domain": "app/financial",
+      "severity": "P2",
+      "priority": 161,
+      "status": "BLOCKED — HUMAN APPROVAL REQUIRED. Not modified.",
+      "title": "Four financial audit sites omit the actor's role, two of them with current_user in scope",
+      "description": "financial/routes.py:313 (create_transaction) and :368 (run_billing_cycle) both have the authenticated subject in scope as `current_user` and still call log_action without user_role, so the audit row for a financial transaction records NULL authority. financial/services.py:131 (create_invoice) and :247 (process_payment) have no actor in scope at all and would need the role threaded in.\n\nWHY THIS IS NOT FIXED HERE. CLAUDE.md lists 'Any changes to backend/app/financial/' under Requires human approval, and records that Phase A of the Financial Engine is schema-only with business logic deferred to Phase B+. Two of these are one-line changes and would be safe on their face; that is not the test. The boundary is the owner's to move.\n\nWHAT IS NEEDED: a decision from the Financial Engine owner on whether audit-actor corrections are in scope for Phase A. If yes, the repair is the NR-159 shape and takes under an hour including proofs.",
+      "evidence": [
+        "AST census: financial/routes.py:313,368 classified ROLE_REACHABLE(current_user); financial/services.py:131,247 classified NO_ACTOR_IN_SCOPE.",
+        "CLAUDE.md, 'Requires human approval': 'Any changes to backend/app/financial/'."
+      ],
+      "guard": null
+    },
+    {
+      "id": "NR-162",
+      "category": "Authorization / Canonical identity",
+      "domain": "shared/rbac, app/models/authorization.py",
+      "severity": "P2",
+      "priority": 162,
+      "status": "OPEN. Uncovered while correcting NR-158's own measurement.",
+      "title": "Three role vocabularies coexist and do not agree; only one of them governs authorization",
+      "description": "The platform defines roles in three places, and a string that is a valid role in one is unknown in the others:\n\n  1. shared/rbac/permissions.py — Role, a legacy Enum: super_admin, lab_admin, lab_tech, doctor, pathologist, nurse, receptionist, citizen, ministry, researcher.\n  2. shared/rbac/permissions.py — EXTENDED_VALID_ROLES, derived from EXTENDED_ROLE_PERMISSIONS: master_admin, ministry_admin, province_admin, admin, lab_admin, finance_controller, refund_reviewer, reconciler, finance_auditor, finance_operator, cashier, doctor, staff, lab_staff, technician, citizen. THIS is the set LabUser.role is validated against and the one get_role_level, get_permissions_for_role, has_permission_str and can_manage_role read. It is the only vocabulary that governs an authorization decision.\n  3. app/models/authorization.py — UserTypeEnum, ~35 clinical ABAC roles: physician, surgeon, lab_technician, senior_lab_technician, pathologist, hospital_director, and so on.\n\nCONSEQUENCES ALREADY OBSERVED. 'lab_tech' (NR-158) is valid in vocabulary 1 and meaningless in 2 — which is why a hard-coded constant looked plausible to every reader for as long as it survived. 'lab_technician' is valid in 3 and unknown in 2. 'hospital_staff' (NR-159) was valid in none, and nothing detected that either.\n\nTHE STRUCTURAL PROBLEM is not the duplication but that nothing rejects a role outside vocabulary 2 at the point it is written. get_role_level returns 0 for an unknown role and get_permissions_for_role returns [], so an unrecognised role fails CLOSED for permissions — which is the safe direction and is why this is P2 and not P0 — but it also means an unknown role is indistinguishable from a real role with no permissions, and no error is ever raised.\n\nNEEDS AN OWNER DECISION: whether vocabulary 1 is retired, whether 3 is mapped onto 2 or declared a separate ABAC axis, and whether writing a role outside the canonical set should raise.",
+      "evidence": [
+        "shared/rbac/permissions.py:7-17 (Role Enum), :108-125 (EXTENDED_ROLE_LEVELS), :251 (EXTENDED_VALID_ROLES = set(EXTENDED_ROLE_PERMISSIONS.keys())).",
+        "app/models/authorization.py:10-45 (UserTypeEnum, ~35 members).",
+        "app/security/rbac.py re-exports vocabulary 2 only; every role check in the backend resolves through it.",
+        "get_role_level() returns 0 and get_permissions_for_role() returns [] for an unknown role — fails closed, silently."
+      ],
+      "guard": "backend/tests/test_hospital_audit_actor_is_server_derived.py::test_c pins that 'hospital_staff' is in neither vocabulary 2 nor vocabulary 3."
     }
   ]
 }

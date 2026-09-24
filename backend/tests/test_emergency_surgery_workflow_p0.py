@@ -119,6 +119,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
             1,
             101,
             theater.id,
+            actor_role="lab_admin",
             expected_version=theater.version,
             next_status="in_use",
         )
@@ -129,6 +130,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
             1,
             101,
             theater.id,
+            actor_role="lab_admin",
             expected_version=theater.version,
             next_status="in_use",
             surgery_id=7001,
@@ -156,12 +158,14 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
             "imaging_reviewed": True,
             "team_time_out_completed": True,
         },
+        actor_role="lab_admin",
     )
     active = HospitalService.update_operation_theater_status(
         db,
         1,
         101,
         theater.id,
+        actor_role="lab_admin",
         expected_version=theater.version,
         next_status="in_use",
         surgery_id=7001,
@@ -175,6 +179,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
             1,
             101,
             theater.id,
+            actor_role="lab_admin",
             expected_version=active.version,
             next_status="available",
         )
@@ -184,6 +189,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
         1,
         101,
         theater.id,
+        actor_role="lab_admin",
         expected_version=active.version,
         next_status="cleaning",
     )
@@ -211,6 +217,7 @@ def test_bed_transfer_preserves_patient_and_closes_source_assignment(db: Any) ->
         101,
         source.id,
         target.id,
+        actor_role="lab_admin",
         from_expected_version=source.version,
         to_expected_version=target.version,
         reason="Critical care escalation",
