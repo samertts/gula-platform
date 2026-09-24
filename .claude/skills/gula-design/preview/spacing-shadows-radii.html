@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Spacing" name="Spacing, Shadows & Radii" subtitle="Elevation system, corner radii, spacing scale" viewport="700x180" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Poppins', sans-serif; background: #F8FAFC; padding: 20px; display: flex; gap: 16px; }
+
+/* Shadows */
+.shadow-demo { display: flex; flex-direction: column; gap: 12px; }
+.box { width: 100px; height: 56px; border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #475569; font-weight: 500; }
+.box-sm { box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); }
+.box-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+.box-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+
+/* Radii */
+.radius-demo { display: flex; flex-direction: column; gap: 10px; }
+.r-box { width: 100px; height: 40px; background: #2563EB; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: 500; }
+
+/* Spacing */
+.space-demo { display: flex; flex-direction: column; gap: 6px; }
+.space-row { display: flex; align-items: center; gap: 8px; }
+.space-bar { height: 10px; background: #BFDBFE; border-radius: 4px; }
+.space-label { font-size: 10px; color: #94A3B8; font-weight: 500; width: 80px; }
+</style>
+</head>
+<body>
+<div>
+  <div style="font-size:9px;color:#94A3B8;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Shadows</div>
+  <div class="shadow-demo">
+    <div class="box box-sm">shadow-sm</div>
+    <div class="box box-md">shadow-md</div>
+    <div class="box box-lg">shadow-lg</div>
+  </div>
+</div>
+<div>
+  <div style="font-size:9px;color:#94A3B8;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Radii</div>
+  <div class="radius-demo">
+    <div class="r-box" style="border-radius:4px">4px sm</div>
+    <div class="r-box" style="border-radius:8px">8px md</div>
+    <div class="r-box" style="border-radius:12px">12px lg</div>
+    <div class="r-box" style="border-radius:9999px">pill</div>
+  </div>
+</div>
+<div>
+  <div style="font-size:9px;color:#94A3B8;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Spacing Scale</div>
+  <div class="space-demo">
+    <div class="space-row"><span class="space-label">space-2 (8px)</span><div class="space-bar" style="width:8px"></div></div>
+    <div class="space-row"><span class="space-label">space-4 (16px)</span><div class="space-bar" style="width:16px"></div></div>
+    <div class="space-row"><span class="space-label">space-6 (24px)</span><div class="space-bar" style="width:24px"></div></div>
+    <div class="space-row"><span class="space-label">space-8 (32px)</span><div class="space-bar" style="width:32px"></div></div>
+    <div class="space-row"><span class="space-label">space-12 (48px)</span><div class="space-bar" style="width:48px"></div></div>
+    <div class="space-row"><span class="space-label">space-16 (64px)</span><div class="space-bar" style="width:64px"></div></div>
+  </div>
+</div>
+</body>
+</html>

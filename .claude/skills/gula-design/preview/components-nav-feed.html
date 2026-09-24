@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Sidebar Nav & Activity Feed" subtitle="Sidebar navigation + recent activity feed" viewport="700x280" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Poppins', sans-serif; background: #F8FAFC; padding: 20px; display: flex; gap: 12px; align-items: flex-start; }
+
+/* Sidebar nav */
+.sidebar { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); padding: 12px; width: 180px; }
+.nav-section { font-size: 9px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 8px; margin-bottom: 2px; margin-top: 10px; }
+.nav-section:first-child { margin-top: 0; }
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; font-size: 12px; font-weight: 500; color: #475569; cursor: pointer; }
+.nav-item.active { background: #EFF6FF; color: #2563EB; }
+.nav-item svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.badge-count { margin-left: auto; background: #EF4444; color: #fff; font-size: 9px; font-weight: 700; border-radius: 9999px; padding: 1px 5px; }
+
+/* Activity feed */
+.feed { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); padding: 14px; width: 220px; }
+.feed-title { font-size: 12px; font-weight: 600; color: #0F172A; margin-bottom: 12px; }
+.feed-item { display: flex; gap: 10px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #F1F5F9; }
+.feed-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.feed-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.feed-icon svg { width: 13px; height: 13px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.feed-text { font-size: 11px; font-weight: 500; color: #0F172A; line-height: 1.4; }
+.feed-time { font-size: 10px; color: #94A3B8; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="nav-section">Main</div>
+  <div class="nav-item active">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    Patients
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+    Samples
+    <span class="badge-count">5</span>
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Results
+  </div>
+  <div class="nav-section">Manage</div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="12" y2="15"/></svg>
+    Reports
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Billing
+  </div>
+  <div class="nav-section">System</div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 1.41 13.16"/></svg>
+    Settings
+  </div>
+</div>
+
+<div class="feed">
+  <div class="feed-title">Recent Activity</div>
+  <div class="feed-item">
+    <div class="feed-icon" style="background:#10B981"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div><div class="feed-text">Sample #S001 completed</div><div class="feed-time">2 hours ago</div></div>
+  </div>
+  <div class="feed-item">
+    <div class="feed-icon" style="background:#F97316"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+    <div><div class="feed-text">Report #R045 pending review</div><div class="feed-time">4 hours ago</div></div>
+  </div>
+  <div class="feed-item">
+    <div class="feed-icon" style="background:#3B82F6"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+    <div><div class="feed-text">New patient registered</div><div class="feed-time">6 hours ago</div></div>
+  </div>
+  <div class="feed-item">
+    <div class="feed-icon" style="background:#8B5CF6"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+    <div><div class="feed-text">System backup completed</div><div class="feed-time">1 day ago</div></div>
+  </div>
+</div>
+</body>
+</html>
