@@ -1,11 +1,11 @@
 {
   "document": "GULA Master Negative Register",
-  "generated": "2026-09-20",
+  "generated": "2026-09-24",
   "head_commit": "e7c25737",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 157,
+    "total": 158,
     "P0": 25,
     "P1": 77,
     "P2": 41,
@@ -5399,6 +5399,29 @@
         "negative proof: restoring the 'verified' precondition alone fails test_d and test_f and only those two; restored byte-identical, 8 pass"
       ],
       "generated": "2026-09-20"
+    },
+    {
+      "id": "NR-158",
+      "category": "Audit integrity / Actor attribution",
+      "domain": "app/lims",
+      "severity": "P1",
+      "priority": 158,
+      "status": "FIXED AND PROVED 2026-09-24. actor_role is threaded from current_user.role, keyword-only with no default.",
+      "title": "Every LIMS audit row recorded the actor's role as the literal \"lab_tech\" — a value the role vocabulary does not contain",
+      "description": "All four audit sites in app/lims/services.py passed the literal string \"lab_tech\" as log_action's `user_role`. The `user_id` was correct throughout, so this misattributes AUTHORITY, not identity: the row names the right person and the wrong power.\n\nAn audit trail is read to answer 'was this action within the actor's authority?'. A row that always says lab_tech cannot answer it, and it answers wrongly in the one direction that HIDES a privilege problem — a lab_admin releasing a clinical result, the most privileged action in the domain, was recorded as a technician.\n\nSHARPER THAN FIRST MEASURED. \"lab_tech\" is not a role this system has. Measured across app/: the string occurs nowhere else as a role value, and the actual column values are lab_technician and lab_admin. So the constant was wrong for EVERY actor including the technicians it purported to describe, and every LIMS audit row ever written carries a role that does not join to the role catalog.\n\nCANONICAL SOURCE. current_user.role. get_current_user does not read the role from the token: resolve_token_subject(db, payload) loads the live row, and the token's perm_ver is compared against the authoritative permission version and the request refused on a mismatch. So the role is a database column of the authenticated subject, re-read per request, and a token minted before a role change is rejected rather than honoured.\n\nIt is also the source ClinicalCommandGuard ALREADY uses in these very same handlers (actor_role=current_user.role, 7 pre-existing call sites). The repair makes the services agree with the guard beside them rather than inventing a second convention.\n\nKEYWORD-ONLY, NO DEFAULT, on purpose. A future call site that forgets actor_role raises TypeError at once. Any default would restore exactly this defect: a plausible-looking role silently standing in for the real one. The absence of a default IS the control. SpecimenService.reject threads it through to transition rather than re-deciding it.",
+      "evidence": [
+        "app/lims/services.py:78,123,194,275 (pre-fix) -- four log_action calls with the literal \"lab_tech\"",
+        "MEASURED: grep over app/ finds \"lab_tech\" as a role value at those sites only; the vocabulary is lab_technician / lab_admin",
+        "app/security/dependencies.py:90-135 -- get_current_user resolves the subject from the DB and enforces perm_version",
+        "app/lims/routes.py -- 7 pre-existing ClinicalCommandGuard call sites already pass actor_role=current_user.role; 6 service call sites now do too",
+        "5 service signatures changed (register, transition, reject, create_lims_order, create_result); 0 occurrences of \"lab_tech\" remain"
+      ],
+      "tests": [
+        "backend/tests/test_lims_audit_actor_is_server_derived.py (5 tests: signature control, source ratchet, technician positive control, administrator finding, client-authored-role spoofing proof through the real route)",
+        "negative proof: restoring the literal at the order audit site fails test_b, test_c AND test_d -- test_c's failure is itself the evidence that \"lab_tech\" was never a valid role; restored, 5 pass",
+        "regression: LIMS journey 8/8 on PostgreSQL; capability gate 4/4; adjacent audit suites 30 passed / 6 skipped"
+      ],
+      "generated": "2026-09-24"
     }
   ]
 }
