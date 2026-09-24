@@ -145,6 +145,11 @@ jobs:
   build-all:
     name: Build All Artifacts
     needs: [bump-version]
+    # Callee's dependency-submission job needs contents: write and the
+    # workflow needs packages: read; a caller granting less is a startup_failure.
+    permissions:
+      contents: write
+      packages: read
     uses: ./.github/workflows/mobile-android.yml
     with:
       build_type: release

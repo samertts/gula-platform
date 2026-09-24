@@ -23,6 +23,11 @@ env:
 jobs:
   android-nightly:
     name: Android Nightly Build
+    # Callee's dependency-submission job needs contents: write and the
+    # workflow needs packages: read; a caller granting less is a startup_failure.
+    permissions:
+      contents: write
+      packages: read
     uses: ./.github/workflows/mobile-android.yml
     secrets:
       GULA_ANDROID_UPLOAD_KEY_BASE64: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_BASE64 }}
