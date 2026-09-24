@@ -23,6 +23,7 @@ from app.biomedical.domain.enums import (
 )
 from app.biomedical.exceptions import (
     DeviceNotFoundError,
+    WorkOrderAlreadyClosedError,
     WorkOrderNotFoundError,
 )
 from app.biomedical.infrastructure.models import (
@@ -157,11 +158,43 @@ class BiomedicalService:
         query = query.order_by(WorkOrderModel.reported_date.desc()).offset(skip).limit(limit)
         return [self._work_order_from_model(m) for m in query.all()]
 
-    def complete_work_order(self, wo_id: str, data: dict[str, Any]) -> WorkOrder:
-        model = self.db.query(WorkOrderModel).filter_by(id=wo_id).first()
+    #: A work order in one of these states has already reached the end of its
+    #: lifecycle. Completing it again is a repeat of a terminal transition.
+    _TERMINAL_WORK_ORDER_STATES = frozenset({
+        WorkOrderStatus.COMPLETED.value,
+        WorkOrderStatus.VERIFIED.value,
+        WorkOrderStatus.CANCELLED.value,
+    })
+
+    def complete_work_order(
+        self,
+        wo_id: str,
+        data: dict[str, Any],
+        *,
+        actor_lab_id: int,
+    ) -> WorkOrder:
+        """Close a work order, and return the device to service only if it is safe.
+
+        `actor_lab_id` is keyword-only with no default so a caller that forgets it
+        raises TypeError rather than silently completing another tenant's work
+        order. It must come from the authenticated subject, never from the body.
+        """
+        model = (
+            self.db.query(WorkOrderModel)
+            .filter(
+                WorkOrderModel.id == wo_id,
+                WorkOrderModel.lab_id == actor_lab_id,
+                WorkOrderModel.is_deleted.isnot(True),
+            )
+            .with_for_update()
+            .first()
+        )
         if not model:
             raise WorkOrderNotFoundError()
+        if model.status in self._TERMINAL_WORK_ORDER_STATES:
+            raise WorkOrderAlreadyClosedError(model.status)
         model.status = WorkOrderStatus.COMPLETED.value
+        model.version = (model.version or 0) + 1
         model.completed_at = datetime.now(UTC)
         model.action_taken = data.get("action_taken", model.action_taken or "")
         model.problem_found = data.get("problem_found", model.problem_found or "")
@@ -171,12 +204,40 @@ class BiomedicalService:
         model.cost_labor = data.get("cost_labor", model.cost_labor)
         model.cost_total = (model.cost_parts or 0) + (model.cost_labor or 0)
         if model.device_id:
-            device = self.db.query(MedicalDeviceModel).filter_by(id=model.device_id).first()
+            device = (
+                self.db.query(MedicalDeviceModel)
+                .filter(
+                    MedicalDeviceModel.id == model.device_id,
+                    MedicalDeviceModel.lab_id == actor_lab_id,
+                    MedicalDeviceModel.is_deleted.isnot(True),
+                )
+                .with_for_update()
+                .first()
+            )
             if device:
-                device.status = DeviceStatus.AVAILABLE.value
                 device.last_pm_date = datetime.now(UTC)
                 if device.pm_frequency_days:
                     device.next_pm_due = datetime.now(UTC) + timedelta(days=device.pm_frequency_days)
+                # Returning a device to service is a clinical-safety decision, not a
+                # bookkeeping side effect of closing one ticket. Closing this work
+                # order says nothing about the faults the OTHER open work orders
+                # were raised for, so the device stays out of service until none
+                # remain. Without this, completing an unrelated ticket put a
+                # still-faulty class III device back into clinical use.
+                other_open = (
+                    self.db.query(WorkOrderModel)
+                    .filter(
+                        WorkOrderModel.device_id == device.id,
+                        WorkOrderModel.lab_id == actor_lab_id,
+                        WorkOrderModel.id != model.id,
+                        WorkOrderModel.is_deleted.isnot(True),
+                        WorkOrderModel.status.notin_(tuple(self._TERMINAL_WORK_ORDER_STATES)),
+                    )
+                    .count()
+                )
+                if other_open == 0:
+                    device.status = DeviceStatus.AVAILABLE.value
+                    device.version = (device.version or 0) + 1
         self.db.commit()
         self.db.refresh(model)
         return self._work_order_from_model(model)
