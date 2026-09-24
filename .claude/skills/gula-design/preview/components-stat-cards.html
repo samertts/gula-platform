@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Stat Cards" subtitle="KPI cards with icon, value, and trend" viewport="700x130" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Poppins', sans-serif; background: #F8FAFC; padding: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.05); padding: 20px; width: 180px; }
+.card-header { font-size: 11px; color: #475569; font-weight: 500; margin-bottom: 4px; }
+.card-value { font-size: 28px; font-weight: 700; color: #0F172A; }
+.card-change { font-size: 11px; margin-top: 6px; }
+.card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+.positive { color: #10B981; }
+.negative { color: #EF4444; }
+svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-top">
+    <div>
+      <div class="card-header">Total Patients</div>
+      <div class="card-value">1,234</div>
+    </div>
+    <div class="card-icon" style="background:#3B82F6">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
+  </div>
+  <div class="card-change positive">↑ 12% from last week</div>
+</div>
+<div class="card">
+  <div class="card-top">
+    <div>
+      <div class="card-header">Samples Today</div>
+      <div class="card-value">87</div>
+    </div>
+    <div class="card-icon" style="background:#8B5CF6">
+      <svg viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+  </div>
+  <div class="card-change positive">↑ 8% from last week</div>
+</div>
+<div class="card">
+  <div class="card-top">
+    <div>
+      <div class="card-header">Reports Pending</div>
+      <div class="card-value">23</div>
+    </div>
+    <div class="card-icon" style="background:#F97316">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+  </div>
+  <div class="card-change negative">↓ 5% from last week</div>
+</div>
+<div class="card">
+  <div class="card-top">
+    <div>
+      <div class="card-header">Completed Tests</div>
+      <div class="card-value">456</div>
+    </div>
+    <div class="card-icon" style="background:#10B981">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+  </div>
+  <div class="card-change positive">↑ 15% from last week</div>
+</div>
+</body>
+</html>
