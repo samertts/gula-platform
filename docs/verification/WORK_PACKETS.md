@@ -17,24 +17,38 @@ failure injection, clinical safety evidence, recovery evidence. **MUSTAFA**:
 orchestration, architecture, `gula_intel`, coherence, contracts, integration,
 readiness, dependency analysis.
 
-| TASK_ID | PRIORITY | OWNER                            | STATUS          | DEPENDENCIES                  | BLOCKERS                                      | EVIDENCE_REQUIRED                              | CLAIMED_BY                  |
-| ------- | -------- | -------------------------------- | --------------- | ----------------------------- | --------------------------------------------- | ---------------------------------------------- | --------------------------- |
-| WP-001  | P0       | Critical Care + Platform/Alembic | **BLOCKED**     | NR-003, NR-028                | HUMAN_APPROVAL_REQUIRED — schema change       | REAL_HTTP_POSTGRES on canonical head           | — (blocked; packets issued) |
-| WP-002  | P0       | Clinical platform                | UNCLAIMED       | —                             | none                                          | FAILURE_INJECTION per stage + durable record   | —                           |
-| WP-003  | P1       | Identity + Clinical governance   | **BLOCKED**     | —                             | HUMAN_APPROVAL_REQUIRED — authorization model | owner names the capability                     | — (decision)                |
-| WP-004  | P1       | Identity                         | UNCLAIMED       | NR-025                        | none — **schema blocker cleared 2026-09-25**  | REAL_HTTP_POSTGRES lockout behaviour           | —                           |
-| WP-005  | P1       | Platform / Data                  | **IN_PROGRESS** | —                             | none                                          | RECOVERY_PROOF — interrupt, restart, re-assert | **ABU_ALI**                 |
-| WP-006  | P1       | Platform / per-domain owners     | UNCLAIMED       | WP-001 for pharmacy/radiology | partial                                       | CONCURRENCY_POSTGRES per domain                | —                           |
-| WP-007  | P1       | National + Core                  | **BLOCKED**     | —                             | HUMAN_APPROVAL_REQUIRED — ownership decision  | ownership decision                             | — (decision)                |
+| TASK_ID | PRIORITY | OWNER                            | STATUS              | DEPENDENCIES                  | BLOCKERS                                      | EVIDENCE_REQUIRED                                                | CLAIMED_BY                  |
+| ------- | -------- | -------------------------------- | ------------------- | ----------------------------- | --------------------------------------------- | ---------------------------------------------------------------- | --------------------------- |
+| WP-001  | P0       | Critical Care + Platform/Alembic | **BLOCKED**         | NR-003, NR-028                | HUMAN_APPROVAL_REQUIRED — schema change       | REAL_HTTP_POSTGRES on canonical head                             | — (blocked; packets issued) |
+| WP-002  | P0       | Clinical platform                | **IN_PROGRESS**     | —                             | none                                          | FAILURE_INJECTION per stage + durable record                     | **ABU_ALI**                 |
+| WP-003  | P1       | Identity + Clinical governance   | **BLOCKED**         | —                             | HUMAN_APPROVAL_REQUIRED — authorization model | owner names the capability                                       | — (decision)                |
+| WP-004  | P1       | Identity                         | **DONE — VERIFIED** | NR-025 closed                 | none                                          | REAL_HTTP_POSTGRES — 6 tests, negative-proofed                   | released                    |
+| WP-005  | P1       | Platform / Data                  | **DONE (partial)**  | —                             | none                                          | RECOVERY_PROOF — FM-010/FM-011 done; FM-012/013/022/023/025 open | released                    |
+| WP-006  | P1       | Platform / per-domain owners     | UNCLAIMED           | WP-001 for pharmacy/radiology | partial                                       | CONCURRENCY_POSTGRES per domain                                  | —                           |
+| WP-007  | P1       | National + Core                  | **BLOCKED**         | —                             | HUMAN_APPROVAL_REQUIRED — ownership decision  | ownership decision                                               | — (decision)                |
 
-**Claimed now:** WP-005 by ABU_ALI — the only P1 in the PostgreSQL/recovery lane with
-no blocker and no human decision in front of it. FM-010–013 and FM-022–025 have **no
-mechanism** at all, so this is net-new capability rather than a re-measurement.
+**Claimed now:** WP-002 by ABU_ALI.
 
-**Not claimed, and why:** WP-001/003/007 are `HUMAN_APPROVAL_REQUIRED` — recorded, not
-waited on. WP-002 and WP-006 are in this lane and unclaimed; WP-002 is next. WP-004's
-schema blocker was cleared by the canonical-head measurement, so it is now executable
-and is queued behind WP-005.
+**Closed this session, both with executed evidence and negative proofs:**
+
+- **WP-005** — RECOVERY_PROOF for FM-010 (backend killed mid-transaction) and FM-011
+  (real `pg_ctlcluster restart`). FM-012, FM-013, FM-022, FM-023 and FM-025 are left
+  explicitly NOT STARTED rather than covered by implication, so the packet is done only
+  for the scope stated. `EVIDENCE_RECOVERY.md`.
+- **WP-004** — account lockout proven end to end, closing NR-025 from UNKNOWN. The
+  control is neither dead nor raising: it works, including across a database restart.
+  Opened NR-030 from what the proof turned up.
+
+**Not claimed, and why:** WP-001, WP-003 and WP-007 are `HUMAN_APPROVAL_REQUIRED` or
+owner decisions — recorded, not waited on. WP-006 is in this lane and unclaimed; it is
+next after WP-002, and partly blocked by WP-001 for pharmacy and radiology.
+
+**A note on the claim table's own reliability.** Two earlier attempts to update these
+rows silently failed: the edits matched on exact strings that Prettier had since
+re-padded, and the scripts reported success without checking. The rows now get rewritten
+by cell index with an assertion that every intended row was found exactly once — which
+is also how the second attempt discovered that this file contains _two_ WP tables. A
+queue that can quietly not update is worse than no queue.
 
 ---
 
