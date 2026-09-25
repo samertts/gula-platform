@@ -11,7 +11,7 @@ import hashlib
 from typing import Any
 
 
-class Status(str, enum.Enum):
+class Status(enum.StrEnum):
     """Verification status. UNKNOWN is never silently promoted to VERIFIED."""
 
     VERIFIED = "VERIFIED"
@@ -23,7 +23,7 @@ class Status(str, enum.Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class DetectorState(str, enum.Enum):
+class DetectorState(enum.StrEnum):
     """Why a check produced (or failed to produce) a result.
 
     The distinction is mandatory: "no findings" from a detector that never ran
@@ -38,7 +38,7 @@ class DetectorState(str, enum.Enum):
     NOT_APPLICABLE = "NOT_APPLICABLE"
 
 
-class Severity(str, enum.Enum):
+class Severity(enum.StrEnum):
     P0 = "P0"
     P1 = "P1"
     P2 = "P2"
@@ -47,7 +47,7 @@ class Severity(str, enum.Enum):
     P5 = "P5"
 
 
-class FindingState(str, enum.Enum):
+class FindingState(enum.StrEnum):
     OPEN = "OPEN"
     ACKNOWLEDGED = "ACKNOWLEDGED"
     IN_PROGRESS = "IN_PROGRESS"
@@ -58,7 +58,7 @@ class FindingState(str, enum.Enum):
     BLOCKED = "BLOCKED"
 
 
-class Health(str, enum.Enum):
+class Health(enum.StrEnum):
     HEALTHY = "HEALTHY"
     DEGRADED = "DEGRADED"
     UNHEALTHY = "UNHEALTHY"

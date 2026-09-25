@@ -26,9 +26,10 @@ def load_state(path: pathlib.Path | None = None) -> dict[str, Any]:
     if not target.is_file():
         return {"occurrences": {}}
     try:
-        return json.loads(target.read_text(encoding="utf-8"))
+        payload = json.loads(target.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError):
         return {"occurrences": {}}
+    return payload if isinstance(payload, dict) else {"occurrences": {}}
 
 
 def reconcile(results: list[CheckResult], state: dict[str, Any], commit: str) -> dict[str, Any]:

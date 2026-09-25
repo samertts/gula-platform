@@ -6,12 +6,11 @@ reporting success.
 """
 from __future__ import annotations
 
-import ast
 import collections
 import pathlib
 import re
 
-from .inventory import MIGRATIONS, REPO_ROOT, Inventory
+from .inventory import MIGRATIONS, Inventory
 from .model import (
     CheckResult,
     DetectorState,

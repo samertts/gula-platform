@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import pathlib
 import sys
+from typing import Any
 
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 
-from gula_intel import detectors, impact, inventory, registry  # noqa: E402
-from gula_intel.ai_boundary import AdapterViolation, assert_capability, build_context  # noqa: E402
-from gula_intel.model import (  # noqa: E402
+from gula_intel import detectors, impact, inventory, registry
+from gula_intel.ai_boundary import AdapterViolation, assert_capability, build_context
+from gula_intel.model import (
     CheckResult,
     DetectorState,
     Finding,
@@ -27,8 +28,15 @@ from gula_intel.model import (  # noqa: E402
 )
 
 
-def _inv(**kw):
-    base = dict(tables={}, migrations={}, endpoints=0, modules=[], transition_tables={}, sources={})
+def _inv(**kw: Any) -> inventory.Inventory:
+    base: dict[str, Any] = {
+        "tables": {},
+        "migrations": {},
+        "endpoints": 0,
+        "modules": [],
+        "transition_tables": {},
+        "sources": {},
+    }
     base.update(kw)
     return inventory.Inventory(**base)
 
@@ -183,3 +191,43 @@ def test_core_imports_no_ai_provider() -> None:
         source = (pathlib.Path(__file__).resolve().parents[1] / f"{module}.py").read_text()
         for banned in ("anthropic", "openai", "requests.post", "httpx"):
             assert banned not in source, f"{module}.py must not reach a model provider"
+
+
+# --- Development planner ----------------------------------------------------
+
+def test_docs_only_change_is_low_risk_and_requires_no_tests() -> None:
+    from gula_intel import planner
+    result = planner.plan(["docs/x.md"], include_open_blockers=False)
+    assert result.risk == planner.LOW
+    assert result.required_tests == {}
+    assert result.migration_implications == []
+
+
+def test_migration_change_is_critical_and_demands_a_clean_database_proof() -> None:
+    from gula_intel import planner
+    result = planner.plan(["backend/migrations/versions/x.py"], include_open_blockers=False)
+    assert result.risk == planner.CRITICAL
+    assert any("clean-database" in e for e in result.evidence_required)
+    assert "backend/tests/migrations/" in result.required_tests
+
+
+def test_shared_clinical_guard_change_is_high_risk_with_safety_implications() -> None:
+    from gula_intel import planner
+    result = planner.plan(["backend/app/clinical/command_guard.py"], include_open_blockers=False)
+    assert result.risk == planner.HIGH
+    assert result.clinical_safety_implications
+    assert result.security_implications
+
+
+def test_risk_factors_are_explicit_and_explainable() -> None:
+    from gula_intel import planner
+    result = planner.plan(["backend/app/blood_bank/x.py"], include_open_blockers=False)
+    assert result.factors and all({"factor", "weight", "matched"} <= set(f) for f in result.factors)
+
+
+def test_planner_never_claims_deployment_safety() -> None:
+    from gula_intel import planner
+    for paths in (["docs/x.md"], ["backend/migrations/versions/x.py"]):
+        blob = str(planner.plan(paths, include_open_blockers=False).to_dict()).lower()
+        assert "safe to deploy" not in blob
+        assert "production ready" not in blob
