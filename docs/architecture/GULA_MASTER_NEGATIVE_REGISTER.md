@@ -1,6 +1,6 @@
 # GULA Master Negative Register
 
-**Generated:** 2026-09-08 · **Head:** `604b245` · **production_ready:** `false`
+**Generated:** 2026-09-25 · **Head:** `913b1d4d` · **production_ready:** `false`
 **Machine-readable companion:** [`GULA_MASTER_NEGATIVE_REGISTER.json`](./GULA_MASTER_NEGATIVE_REGISTER.json)
 **Remediation plan:** [`GULA_MASTER_REMEDIATION_PLAN.md`](./GULA_MASTER_REMEDIATION_PLAN.md)
 
@@ -23,35 +23,50 @@ and `docs/adr/`.
 
 ## 1. Summary
 
-| Severity  | Count  | Fixed this session | Open        |
-| --------- | ------ | ------------------ | ----------- |
-| P0        | 3      | 2                  | 1 (blocker) |
-| P1        | 4      | 2                  | 2           |
-| P2        | 5      | 0                  | 5           |
-| P3        | 3      | 0                  | 3           |
-| **Total** | **15** | **4**              | **11**      |
+| Severity  | Count  | Fixed & verified | Partially closed | Accepted design | Open / not started |
+| --------- | ------ | ---------------- | ---------------- | --------------- | ------------------ |
+| P0        | 6      | 4                | 0                | 0               | 2                  |
+| P1        | 7      | 2                | 2                | 0               | 3                  |
+| P2        | 5      | 0                | 0                | 1               | 4                  |
+| P3        | 3      | 0                | 0                | 0               | 3                  |
+| **Total** | **21** | **6**            | **2**            | **1**           | **12**             |
 
-**Single true deployment blocker today:** **NR-003** — pharmacy primary-key type divergence.
+The first pass recorded NR-001..NR-015. NR-016..NR-021 were added by later sessions;
+their full detail is in the JSON companion only.
+
+**Only remaining blocker to `alembic upgrade head`:** **NR-003** — pharmacy primary-key
+type divergence.
+
+That is not the only open P0. **NR-019** is an open, verified authorization defect: every
+adaptive-auth endpoint taking `account_id` binds the caller zero times. It is unfixed
+because the fix shape is a policy decision, not because it is low risk. A deployment
+claim that cites NR-003 alone would be false.
 
 ## 2. Findings index
 
-| ID     | Sev | Domain              | Title                                                              | Status               |
-| ------ | --- | ------------------- | ------------------------------------------------------------------ | -------------------- |
-| NR-001 | P0  | Platform/Alembic    | Duplicate revision id made `clinical_command_receipts` unreachable | FIXED — VERIFIED     |
-| NR-002 | P0  | Platform/Alembic    | Three unmerged heads made clean deployment impossible              | FIXED — VERIFIED     |
-| NR-003 | P0  | Pharmacy            | PK type divergence blocks any full `upgrade head`                  | **OPEN — BLOCKED**   |
-| NR-004 | P1  | Blood Bank          | Shared transition table shadowed the blood-unit `reserved` state   | FIXED — VERIFIED     |
-| NR-005 | P1  | Platform/Alembic    | Unguarded duplicate index could never succeed                      | FIXED — VERIFIED     |
-| NR-006 | P1  | National + Core     | `national_facilities` mapped by two ORM classes                    | OPEN — DECISION      |
-| NR-007 | P1  | Clinical/Blood Bank | State machine is entity-agnostic by construction                   | OPEN — ARCH DECISION |
-| NR-008 | P2  | Platform            | `signxml` missing from lock file                                   | OPEN                 |
-| NR-009 | P2  | Platform CI         | Artifact quota exhausted; evidence jobs all red                    | OPEN — EXTERNAL      |
-| NR-010 | P2  | Platform CI         | `if:always()` upload masks the true failing step                   | OPEN                 |
-| NR-011 | P2  | frontend-v3         | Mobile nav accessible name contradicts its test                    | OPEN                 |
-| NR-012 | P2  | Clinical            | Replay returns deterministic 409, not original response            | ACCEPTED DESIGN      |
-| NR-013 | P3  | Platform            | Audit coverage is narrow                                           | NOT STARTED          |
-| NR-014 | P3  | Platform            | No verified national capacity numbers                              | NOT STARTED — GAP    |
-| NR-015 | P3  | Platform CI         | Postgres auth failure in migration gate                            | OPEN — LOW EVIDENCE  |
+| ID     | Sev | Domain                   | Title                                                                           | Status                             |
+| ------ | --- | ------------------------ | ------------------------------------------------------------------------------- | ---------------------------------- |
+| NR-001 | P0  | Platform/Alembic         | Duplicate revision id made `clinical_command_receipts` unreachable              | FIXED — VERIFIED                   |
+| NR-002 | P0  | Platform/Alembic         | Three unmerged heads made clean deployment impossible                           | FIXED — VERIFIED                   |
+| NR-003 | P0  | Pharmacy                 | PK type divergence blocks any full `upgrade head`                               | **OPEN — BLOCKED**                 |
+| NR-004 | P1  | Blood Bank               | Shared transition table shadowed the blood-unit `reserved` state                | FIXED — VERIFIED                   |
+| NR-005 | P1  | Platform/Alembic         | Unguarded duplicate index could never succeed                                   | FIXED — VERIFIED                   |
+| NR-006 | P1  | National + Core          | `national_facilities` mapped by two ORM classes                                 | OPEN — DECISION                    |
+| NR-007 | P1  | Clinical/Blood Bank      | State machine is entity-agnostic by construction                                | OPEN — ARCH DECISION               |
+| NR-008 | P2  | Platform                 | `signxml` missing from lock file                                                | OPEN                               |
+| NR-009 | P2  | Platform CI              | Artifact quota exhausted; evidence jobs all red                                 | OPEN — EXTERNAL                    |
+| NR-010 | P2  | Platform CI              | `if:always()` upload masks the true failing step                                | OPEN                               |
+| NR-011 | P2  | frontend-v3              | Mobile nav accessible name contradicts its test                                 | OPEN                               |
+| NR-012 | P2  | Clinical                 | Replay returns deterministic 409, not original response                         | ACCEPTED DESIGN                    |
+| NR-013 | P3  | Platform                 | Audit coverage is narrow                                                        | NOT STARTED                        |
+| NR-014 | P3  | Platform                 | No verified national capacity numbers                                           | NOT STARTED — GAP                  |
+| NR-015 | P3  | Platform CI              | Postgres auth failure in migration gate                                         | OPEN — LOW EVIDENCE                |
+| NR-016 | P0  | Biomedical               | Completing a work order freed a still-faulty device, for any tenant, repeatedly | FIXED — VERIFIED                   |
+| NR-017 | P1  | Platform-wide            | Mutating service methods select a row by id with no tenant predicate            | MEASURED — count is an upper bound |
+| NR-018 | P1  | Command Center           | Emergency `resolved_by` is caller-supplied free text                            | OPEN — DECISION                    |
+| NR-019 | P0  | Identity / adaptive auth | Every `account_id` endpoint binds the caller zero times (IDOR)                  | **OPEN — DECISION**                |
+| NR-020 | P1  | Blood Bank               | Only 2 of 7 declared `TransfusionStatus` states had a transition key            | PARTIALLY CLOSED                   |
+| NR-021 | P0  | Command Center           | An emergency could be resolved cross-tenant, repeatedly and concurrently        | FIXED — VERIFIED                   |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

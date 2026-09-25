@@ -1,7 +1,7 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-25",
-  "head_commit": "604b245",
+  "head_commit": "913b1d4d",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
