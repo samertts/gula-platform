@@ -359,3 +359,151 @@ restoring makes it pass.
 Two defects were found and fixed in that guard while building it — it missed the 33
 revisions declared as annotated assignments, and it could not follow the two merge
 revisions' multiple parents. Both would have made it pass vacuously.
+
+---
+
+## 12. Re-analysis after the handoff packets — 2026-09-25
+
+The three analyses the handoff brief asked to re-run, plus one classification that
+changed materially.
+
+Companions produced in this pass: [`NR-003-OWNER-HANDOFF.md`](./NR-003-OWNER-HANDOFF.md) ·
+[`NR-028-AUTHORIZATION-PACKET.md`](./NR-028-AUTHORIZATION-PACKET.md)
+
+### 12.1 Migration graph
+
+| Tree                             | Revisions | Heads | Head            |
+| -------------------------------- | --------- | ----- | --------------- |
+| `fe961550` (this branch)         | 101       | 1     | `20260908_0001` |
+| `dcf00fa1` (NR-003 owner branch) | 102       | 1     | `20260909_0001` |
+
+Single head on both. The repair's new revision chains off the old head rather than
+forking beside it, so no merge revision is needed.
+
+### 12.2 Dependency analysis
+
+Both blockers are ancestors of `20260820_0005`, which has 93 ancestors — from
+Alembic's own graph, cross-checked against a file-based reader that reproduces it
+exactly. The hospital domain is a 7-tier acyclic graph of 13 tables with **zero
+foreign keys leaving the domain**; full per-table detail is in the authorization
+packet.
+
+### 12.3 Drift classification — on a database that can actually be built
+
+Previous drift figures were measured on a head-built database that only existed
+because tables were probe-created from the ORM. This pass instead built the
+**deepest legitimately reachable** database and classified against that: the NR-003
+owner branch upgraded to `20260819_0003`, the revision immediately before the NR-028
+blocker.
+
+| Measurement            | Value                                                           |
+| ---------------------- | --------------------------------------------------------------- |
+| Database               | created empty, then `alembic upgrade 20260819_0003`, **exit 0** |
+| Revisions committed    | 92                                                              |
+| Physical tables        | 410                                                             |
+| Probe-created tables   | **0** — nothing was created from the ORM                        |
+| Mapped tables clean    | 310                                                             |
+| Mapped tables drifting | **84 / 693 columns**                                            |
+| Mapped tables absent   | 386                                                             |
+| Multi-owned            | `national_facilities` (unchanged — NR-006)                      |
+
+Worst-drifting: `pharmacy_drug_catalog` 25, `national_facilities` 24,
+`nursing_pressure_injury_assessments` 19, `nursing_nutrition_assessments` 18,
+`pharmacy_prescription_items` 18, `radiology_reports` 17, `nhdw_admissions` 16,
+`radiology_dicom_storage` 15.
+
+#### Four pinned entries are now CLEAN, and one finding changes because of it
+
+`test_schema_drift_guard.py` pins six critical-drift entries, measured on the
+probe-assisted head build. Re-measured on this migrations-only database:
+
+| Pinned entry                                                                | Re-classified   | Consequence                                                                 |
+| --------------------------------------------------------------------------- | --------------- | --------------------------------------------------------------------------- |
+| `critical_care_infusions` `{verified_by, verified_at}`                      | **still DRIFT** | NR-023 stands. The columns arrive at `20260820_0005`, which is unreachable. |
+| `lab_users` `{failed_login_attempts, locked_until}`                         | **CLEAN**       | see below                                                                   |
+| `users` `{failed_login_attempts, locked_until}`                             | **CLEAN**       | see below                                                                   |
+| `service_accounts` `{lab_id}`                                               | **CLEAN**       | no longer a schema finding                                                  |
+| `clinical_lab_facility_bindings` `{niam_facility_id, niam_organization_id}` | **CLEAN**       | no longer a schema finding                                                  |
+| `organizations` `{org_id, org_type, parent_org_id, updated_at}`             | **still DRIFT** | stands                                                                      |
+
+**NR-025 changes status.** The account-lockout columns were recorded as absent from
+both `lab_users` and `users`, which made `INV-AUTHN-02` unmeasurable — the state had
+nowhere to live. On a database built only by migrations to a reachable revision, both
+columns **exist**. So the schema blocker on WP-004 is gone: repeated failed
+authentications can now be executed against real PostgreSQL. The runtime behaviour
+itself remains **UNKNOWN — not executed**, and that is the only thing still missing.
+
+The `CLINICAL_COMMAND_ALLOWANCE` pins are confirmed exactly: `pharmacy_prescriptions`
+15 columns, `radiology_orders` 7. `TOTAL_DRIFTED_TABLES = 84` also matches.
+
+#### What was deliberately not changed
+
+The guard's pins were **not** edited. They describe the head-built database, and head
+cannot currently be built; deciding which database the guard should treat as canonical
+is a real decision, not a number to quietly adjust. Four of its per-table tests would
+now fail against this database — correctly, because reality moved in the _good_
+direction. Retiring those pins belongs with the NR-028 authorization, when head
+becomes buildable and one canonical database exists to pin against. Recorded rather
+than guessed at.
+
+### 12.4 Status after this pass
+
+| Finding         | Status                                                                                                                                                            |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NR-003          | OWNER-AUTHORIZED REPAIR AVAILABLE / NOT MERGED — `f92d4132`, verified by execution (94 → 98 revisions), single head preserved                                     |
+| NR-028          | **BLOCKED — HUMAN SCHEMA AUTHORIZATION REQUIRED.** 13 tables, 224 columns, 18 internal FKs, 7 tiers, 0 external references. Packet written; no migration written. |
+| ICU final proof | BLOCKED BY MIGRATION HEAD — not attempted                                                                                                                         |
+| NR-025          | schema blocker **cleared**; runtime behaviour still UNKNOWN. WP-004 is now executable.                                                                            |
+| NR-026          | 84 tables / 693 columns drifting on a reachable database — measured without probe tables for the first time                                                       |
+| NR-006          | unchanged — `national_facilities` still has two ORM owners disagreeing by 24 columns                                                                              |
+
+### 12.5 Drift at canonical head — measured without probe tables for the first time
+
+`claude/p0-1-hospital-migrations` @ `efcc4b6e` reaches head from a fresh database
+(exit 0, 103 revisions, stamp `20260909_0001`, 423 physical tables, **0 probe-created
+tables**). Every previous head figure in this document rested on a head build that
+only existed because tables were created from the ORM. This supersedes them.
+
+| Measurement | At head (canonical)         | At `20260819_0003` (§12.3) |
+| ----------- | --------------------------- | -------------------------- |
+| Clean       | 324                         | 310                        |
+| Drifting    | **83 tables / 691 columns** | 84 / 693                   |
+| Absent      | 373                         | 386                        |
+| Multi-owned | `national_facilities`       | `national_facilities`      |
+
+The canonical figures match the previously recorded 83 / 691 exactly, which
+retrospectively validates the probe-assisted measurement — but the evidence level is
+now POSTGRESQL on a database an operator can build, not a probe.
+
+#### Five of the six pinned critical-drift entries are CLEAN at head
+
+| Pinned entry                                                                | At canonical head                                     |
+| --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `critical_care_infusions` `{verified_by, verified_at}`                      | **CLEAN** — NR-023 is resolved by the migration chain |
+| `lab_users` `{failed_login_attempts, locked_until}`                         | **CLEAN**                                             |
+| `users` `{failed_login_attempts, locked_until}`                             | **CLEAN**                                             |
+| `service_accounts` `{lab_id}`                                               | **CLEAN**                                             |
+| `clinical_lab_facility_bindings` `{niam_facility_id, niam_organization_id}` | **CLEAN**                                             |
+| `organizations` `{org_id, org_type, parent_org_id, updated_at}`             | **still DRIFT**                                       |
+
+`CLINICAL_COMMAND_ALLOWANCE` holds exactly — `pharmacy_prescriptions` 15,
+`radiology_orders` 7. One new entry appears: `pharmacy_drug_substitution_rules` drifts
+by 2 (`fhir_id`, `fhir_resource_type`), reachable only once NR-003 creates the table.
+
+The hospital domain at head: **10 tables still absent** — `bed_assignments`,
+`hospital_beds`, `hospital_buildings`, `hospital_campuses`, `hospital_clinics`,
+`hospital_cost_centers`, `hospital_floors`, `hospital_medical_equipment`,
+`hospital_rooms`, `hospital_units`.
+
+#### Consequence for the ICU evidence
+
+`critical_care_infusions` being clean at head means the ICU final proof's precondition
+is **satisfiable** — on `claude/p0-1-hospital-migrations`, not on this branch. The
+proof was **not attempted**: the handoff brief rules it out, and the branch is
+unmerged. `POST /critical-care/infusions/{id}/verify` therefore stays
+**VERIFIED CONDITIONAL**, unshortened, until that chain lands and the slice is re-run
+against it.
+
+The drift guard's pins were still not edited, for the reason in §12.3 and now a
+sharper one: the canonical database exists only on an unmerged branch. Retiring the
+pins belongs with the decision that lands it.
