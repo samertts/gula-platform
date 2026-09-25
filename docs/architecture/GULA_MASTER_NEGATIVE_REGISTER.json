@@ -6,10 +6,10 @@
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
     "P0": 10,
-    "P1": 10,
+    "P1": 11,
     "P2": 9,
     "P3": 3,
-    "total": 32
+    "total": 33
   },
   "findings": [
     {
@@ -906,7 +906,7 @@
       "acceptance_criteria": "",
       "regression_risk": "Low if additive. Must not weaken guard.reject or swallow the exception.",
       "owner": "Clinical platform",
-      "related_tests": "backend/tests/verification/test_icu_infusion_verify_slice.py::test_tripwire_a_failed_clinical_command_writes_no_receipt_and_no_audit backend/tests/verification/test_icu_final_proof.py::test_18_a_refused_command_is_audited_with_its_clinical_reason",
+      "related_tests": "backend/tests/verification/test_icu_infusion_verify_slice.py::test_tripwire_a_failed_clinical_command_writes_no_receipt_and_no_audit backend/tests/verification/test_icu_final_proof.py::test_18_a_refused_command_is_audited_with_its_clinical_reason backend/tests/verification/test_clinical_failure_trace.py",
       "related_files": "",
       "related_adrs": "",
       "related_contracts": "",
@@ -914,13 +914,13 @@
       "complexity": "S",
       "can_fix_now": false,
       "blocker": true,
-      "evidence_strength": "STRONG for the observation. The fix shape is proposed, not executed.",
+      "evidence_strength": "STRONG — REAL_HTTP_POSTGRES at canonical head with a positive control isolating (a) from (b).",
       "id": "NR-024",
       "category": "Audit / Clinical safety",
       "domain": "app/clinical/command_guard.py + guarded routes",
       "severity": "P0",
       "priority": 24,
-      "status": "OPEN — VERIFIED DEFECT by execution. | ADDENDUM 2026-09-25 (canonical lineage efcc4b6e): NARROWED by execution. A refused ICU verification IS audited — clinical.icu.infusion.verify.rejected, naming actor, infusion, state_before and the clinical reason. The original measurement was taken when the DATABASE ITSELF was the failure (UndefinedColumn), so guard.reject shared the broken dependency it was trying to record. That narrower statement stands and is still a real gap; the blanket claim does not.",
+      "status": "OPEN — VERIFIED DEFECT by execution. | ADDENDUM 2026-09-25 (canonical lineage efcc4b6e): NARROWED by execution. A refused ICU verification IS audited — clinical.icu.infusion.verify.rejected, naming actor, infusion, state_before and the clinical reason. The original measurement was taken when the DATABASE ITSELF was the failure (UndefinedColumn), so guard.reject shared the broken dependency it was trying to record. That narrower statement stands and is still a real gap; the blanket claim does not. | ADDENDUM 2 (2026-09-25, canonical head): ROOT-CAUSED and SPLIT. The shared-dependency theory is wrong for the case originally measured. Two distinct mechanisms: (a) six blood bank commands have NO guard.reject at all, so nothing can be recorded — now NR-033; (b) on routes that DO call reject, the fallback fires but is an IN-MEMORY per-worker counter (app/clinical/observability.py), and reject() re-raises, so the audit failure MASKS the clinical reason the command was refused for (FM-026, executed for the first time). log_action does flush inside the try/except, so the except branch is reachable — it simply is never called in (a).",
       "title": "A protected clinical command that fails writes no receipt and no audit row",
       "description": ""
     },
@@ -1227,6 +1227,44 @@
       "status": "OPEN — VERIFIED DEFECT by execution. A deliberate compensation, not a slip: the identity is preserved in details.resource_id. Fixing the column is a schema change, so not applied.",
       "title": "Clinical audit rows cannot use the indexed resource_id column (integer vs string keys)",
       "description": "audit_logs.resource_id is integer while all 13 critical_care_* tables have character varying primary keys. ClinicalCommandGuard._audit_resource_id therefore returns None for a non-numeric id and writes the real value into the details JSON. Every clinical audit row — success and rejection — has resource_id NULL."
+    },
+    {
+      "root_cause": "The rejection path was never written for these six handlers. The other 30 guarded commands, including all eight ICU commands, do call guard.reject.",
+      "evidence": "REAL_HTTP_POSTGRES on canonical head 20260909_0001. Injecting a failure at after_business_effect on POST /blood-bank/reservations yields: 0 rejection audit rows, 0 receipts, 0 clinical effect, and 0 audit-failure metric increments. A POSITIVE CONTROL on the ICU verify route — which does call reject — under the same conditions DOES increment the counter, which isolates the cause to the missing path rather than a broken fallback. Pinned by tests/verification/test_guard_reject_coverage.py (static, negative-proofed three ways).",
+      "affected_components": "app/blood_bank/api/routes.py (6 handlers), app/clinical/command_guard.py",
+      "affected_users": "",
+      "clinical_impact": "A refused blood reservation, release, sample, transfusion reaction, return or discard leaves no record of the attempt or the reason. For a transfusion reaction in particular, the refusal of the record is itself clinically significant and is not reconstructable afterwards.",
+      "security_impact": "Repeated refused attempts against blood inventory are invisible to review.",
+      "data_integrity_impact": "None — the rollback is clean; no partial effect survives.",
+      "operational_impact": "Incident reconstruction for these six operations is not possible.",
+      "scalability_impact": "",
+      "legal_impact": "",
+      "dependencies": "",
+      "intersections": "",
+      "contradictions": "",
+      "recommended_fix": "Add guard.reject to each of the six handlers, mirroring the ICU pattern (rollback, reject with the clinical reason, commit, then raise the mapped error). Doing so changes the response for a refused command, so the clinical owner confirms the intended status codes first.",
+      "minimal_safe_fix": "None applied. Pinned by a ratchet so a seventh cannot appear silently.",
+      "verification_method": "tests/verification/test_clinical_failure_trace.py (PostgreSQL) and tests/verification/test_guard_reject_coverage.py (static ratchet)",
+      "acceptance_criteria": "Each of the six records a rejection row naming actor, resource and reason; the ratchet baseline is emptied deliberately and the failure-trace evidence is re-run.",
+      "regression_risk": "Medium — six handlers, and the refused-command response shape changes.",
+      "owner": "Blood Bank clinical owner + Clinical platform",
+      "related_tests": "backend/tests/verification/test_clinical_failure_trace.py, backend/tests/verification/test_guard_reject_coverage.py",
+      "related_files": "backend/app/blood_bank/api/routes.py, backend/app/clinical/command_guard.py",
+      "related_adrs": "",
+      "related_contracts": "",
+      "wave": "",
+      "complexity": "MEDIUM",
+      "can_fix_now": false,
+      "blocker": false,
+      "evidence_strength": "STRONG — executed on real PostgreSQL with a positive control, and ratcheted.",
+      "id": "NR-033",
+      "category": "clinical safety / audit",
+      "domain": "blood_bank",
+      "severity": "HIGH",
+      "priority": "P1",
+      "status": "OPEN — VERIFIED DEFECT by execution, root-caused. Not fixed: adding a rejection path changes what a refused clinical command returns, which is a clinical response contract, not a patch.",
+      "title": "Six guarded blood bank commands have no guard.reject, so a refused command records no reason",
+      "description": "An AST census over all 36 ClinicalCommandGuard-protected commands finds six whose handler never calls guard.reject: blood.reservation.create, blood.reservation.release, blood.sample.create, blood.reaction.create, blood.return.create and blood.discard.create. All six are in app/blood_bank/api/routes.py. Their except branch is 'db.rollback(); _raise_blood_error(exc); raise' — it rolls back and re-raises without recording anything."
     }
   ]
 }
