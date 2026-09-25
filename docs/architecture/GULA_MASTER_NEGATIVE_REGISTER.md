@@ -1,6 +1,6 @@
 # GULA Master Negative Register
 
-**Generated:** 2026-09-25 · **Head:** `913b1d4d` · **production_ready:** `false`
+**Generated:** 2026-09-25 · **Head:** `288b57fe` · **production_ready:** `false`
 **Machine-readable companion:** [`GULA_MASTER_NEGATIVE_REGISTER.json`](./GULA_MASTER_NEGATIVE_REGISTER.json)
 **Remediation plan:** [`GULA_MASTER_REMEDIATION_PLAN.md`](./GULA_MASTER_REMEDIATION_PLAN.md)
 
@@ -27,11 +27,11 @@ and `docs/adr/`.
 | --------- | ------ | ---------------- | ---------------- | --------------- | ------------------ |
 | P0        | 6      | 4                | 0                | 0               | 2                  |
 | P1        | 7      | 2                | 2                | 0               | 3                  |
-| P2        | 5      | 0                | 0                | 1               | 4                  |
+| P2        | 6      | 0                | 0                | 1               | 5                  |
 | P3        | 3      | 0                | 0                | 0               | 3                  |
-| **Total** | **21** | **6**            | **2**            | **1**           | **12**             |
+| **Total** | **22** | **6**            | **2**            | **1**           | **13**             |
 
-The first pass recorded NR-001..NR-015. NR-016..NR-021 were added by later sessions;
+The first pass recorded NR-001..NR-015. NR-016..NR-022 were added by later sessions;
 their full detail is in the JSON companion only.
 
 **Only remaining blocker to `alembic upgrade head`:** **NR-003** — pharmacy primary-key
@@ -67,6 +67,7 @@ claim that cites NR-003 alone would be false.
 | NR-019 | P0  | Identity / adaptive auth | Every `account_id` endpoint binds the caller zero times (IDOR)                  | **OPEN — DECISION**                |
 | NR-020 | P1  | Blood Bank               | Only 2 of 7 declared `TransfusionStatus` states had a transition key            | PARTIALLY CLOSED                   |
 | NR-021 | P0  | Command Center           | An emergency could be resolved cross-tenant, repeatedly and concurrently        | FIXED — VERIFIED                   |
+| NR-022 | P2  | Platform CI              | Constitution Compliance cannot pass any backend change: 3 of 25 rules misfire   | OPEN — MEASURED                    |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

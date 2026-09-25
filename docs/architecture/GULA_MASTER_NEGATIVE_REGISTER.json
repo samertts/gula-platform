@@ -1,15 +1,15 @@
 {
   "document": "GULA Master Negative Register",
   "generated": "2026-09-25",
-  "head_commit": "913b1d4d",
+  "head_commit": "288b57fe",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
     "P0": 6,
     "P1": 7,
-    "P2": 5,
+    "P2": 6,
     "P3": 3,
-    "total": 21
+    "total": 22
   },
   "findings": [
     {
@@ -809,6 +809,44 @@
       "status": "FIXED — VERIFIED (real PostgreSQL, pre-fix reproduced and post-fix proved)",
       "title": "A national emergency could be resolved by any tenant, repeatedly, and concurrently into a blended record",
       "description": "resolve_emergency and fulfill_resource both selected by id with no tenant predicate, no row lock, no terminal-state guard and no version advance. Reproduced on real PostgreSQL: (1) lab A resolved lab B's emergency and stamped resolved_by; (2) an already-resolved emergency resolved again, overwriting resolved_at/resolved_by and appending a second [RESOLVED] line; (3) two barrier-released sessions BOTH committed and the surviving row blended them — resolved_by from one transaction with the other's note appended first, a corrupted after-action record for a level_3_major emergency; (4) the identical cross-tenant hole on fulfill_resource."
+    },
+    {
+      "root_cause": "Three of the 25 rules measure something other than what they claim. Rule 10 shells out to flake8 with its DEFAULT line limit of 79, while the repository declares line-length = 100 in pyproject.toml, so every file in the platform that conforms to the project's own standard is reported as violating it. Rule 15 looks for functions never called by name in source, which every FastAPI route handler is by construction, because the decorator registers them. Rule 5 normalises short lines before comparing, so 'from __future__ import annotations', a blank line, a lone ')' and 'try:' count as duplicated code blocks between any two sibling modules changed together. Rule 12 is an aggregate of the other rules and fails whenever they do.",
+      "evidence": "Executed locally on 2026-09-25 against head 288b57fe, diff-mode base origin/main, 12 changed files / 9 Python files: compliance score 74.0/100, PASS 16, WARN 5, FAIL 4, exit 1. Per-rule, by invoking each rule function directly (the runner deliberately omits rule identifiers from its own output):\nrule5 FAIL — 28 'duplicate blocks'. The first five are biomedical/api/routes.py:1 vs command_center/api/routes.py:1 ('from __future__ import annotations'), :2 vs :2 (blank), :13 vs :20 (')'), :26 vs :33 ('try:'), and service.py:3 vs :4 ('from datetime import datetime, timedelta').\nrule10 FAIL — 207 flake8 E501 findings at the 79-character default. Measured at the repository's declared limit of 100, the seven touched files produce 9/30/0/0/6/10/0 findings, and main's copies of the same seven files produce 9/30/0/0/6/10/0 — identical. This change introduces zero new violations of the project's own standard.\nrule15 FAIL — 116 'potentially unused' functions, the first ten of which are complete_work_order, create_work_order, get_device, get_dashboard, health and other decorated route handlers in biomedical/api/routes.py.\nrule11 architecture score, rule14 architecture violations and rule19 circular dependencies all PASS.",
+      "affected_components": "scripts/constitution_enforcer.py rules 5, 10, 15 and the derived rule 12; .github/workflows/constitution-compliance.yml",
+      "affected_users": "Every contributor: the gate is red on any backend change, so its signal carries no information and will be routed around.",
+      "clinical_impact": "",
+      "security_impact": "Indirect but real. A gate that always fails is a gate nobody reads, so a genuine rule-13 secret or rule-18 security finding would arrive inside the same red result as the noise.",
+      "data_integrity_impact": "",
+      "operational_impact": "Constitution Compliance cannot be used as a merge condition in its present form.",
+      "scalability_impact": "",
+      "legal_impact": "",
+      "dependencies": "",
+      "intersections": "",
+      "contradictions": "The enforcer's rule 10 measures 79 characters; pyproject.toml declares line-length = 100. Both are in the same repository and they disagree.",
+      "recommended_fix": "",
+      "minimal_safe_fix": "Three independent changes, none of which weakens a rule: pass --max-line-length=100 to rule 10 so it measures the standard the repository actually declares; exempt decorated callables from rule 15, or treat a decorator as a use; raise rule 5's minimum block length and ignore import and single-token lines. Rule 12 then follows.",
+      "verification_method": "Re-run scripts/constitution_enforcer.py --diff-mode --base origin/main and require that a change which conforms to pyproject.toml's declared limits scores PASS. A regression test should assert that rule 10's limit is read from pyproject.toml rather than hard-coded.",
+      "acceptance_criteria": "",
+      "regression_risk": "None from recording it. The fix touches only the enforcer.",
+      "owner": "Platform / CI",
+      "related_tests": "",
+      "related_files": "scripts/constitution_enforcer.py, pyproject.toml, .github/workflows/constitution-compliance.yml",
+      "related_adrs": "",
+      "related_contracts": "",
+      "wave": "WAVE 2",
+      "complexity": "S",
+      "can_fix_now": false,
+      "blocker": false,
+      "evidence_strength": "STRONG for the measurement (each rule function executed directly and its findings read). The fix shape is proposed, not executed.",
+      "id": "NR-022",
+      "category": "CI / Quality gate design",
+      "domain": "scripts/constitution_enforcer.py",
+      "severity": "P2",
+      "priority": 22,
+      "status": "OPEN — MEASURED. Not fixed: changing a gate's thresholds is a governance decision, and no gate was weakened to record this.",
+      "title": "The Constitution Compliance gate cannot pass any backend change: 3 of its 25 rules fail on conditions that are not defects",
+      "description": ""
     }
   ]
 }
