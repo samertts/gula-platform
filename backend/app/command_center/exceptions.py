@@ -20,3 +20,13 @@ class SituationReportNotFoundError(CommandCenterError):
 class AfterActionReportNotFoundError(CommandCenterError):
     def __str__(self) -> str:
         return "After-action report not found"
+
+
+class EmergencyAlreadyResolvedError(CommandCenterError):
+    def __str__(self) -> str:
+        return "Emergency declaration is already resolved"
+
+
+class ResourceRequestAlreadyClosedError(CommandCenterError):
+    def __str__(self) -> str:
+        return "Resource request is already closed"

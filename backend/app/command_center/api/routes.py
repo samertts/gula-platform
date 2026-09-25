@@ -13,11 +13,14 @@ from app.command_center.domain.entities import (
     SituationReport,
 )
 from app.command_center.exceptions import (
+    EmergencyAlreadyResolvedError,
     EmergencyNotFoundError,
+    ResourceRequestAlreadyClosedError,
     ResourceRequestNotFoundError,
 )
 from app.database import get_db
-from app.security.dependencies import require_permission
+from app.models.lab_user import LabUser
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(
     prefix="/command-center",
@@ -74,12 +77,16 @@ async def resolve_emergency(
     emergency_id: str,
     body: dict[str, Any],
     service: CommandCenterService = Depends(_get_service),
+    current_user: LabUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     try:
         return _emergency_to_dict(service.resolve_emergency(
-            emergency_id, body.get("resolved_by", ""), body.get("notes", "")))
+            emergency_id, body.get("resolved_by", ""), body.get("notes", ""),
+            actor_lab_id=current_user.lab_id))
     except EmergencyNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+    except EmergencyAlreadyResolvedError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 # ── Resource Requests ──
@@ -108,11 +115,15 @@ async def fulfill_resource(
     request_id: str,
     body: dict[str, Any],
     service: CommandCenterService = Depends(_get_service),
+    current_user: LabUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     try:
-        return _resource_to_dict(service.fulfill_resource(request_id, body))
+        return _resource_to_dict(service.fulfill_resource(
+            request_id, body, actor_lab_id=current_user.lab_id))
     except ResourceRequestNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+    except ResourceRequestAlreadyClosedError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
 
 # ── Situation Reports ──
