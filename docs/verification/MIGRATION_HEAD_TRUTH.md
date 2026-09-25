@@ -285,3 +285,77 @@ no database is configured.
   authorised repair applied, not around it.
 - The 12 probe-created hospital tables exist **only** on a disposable database,
   and every claim resting on them is labelled conditional.
+
+---
+
+## 11. Precondition re-check for the ICU FINAL PROOF brief — 2026-09-25, `52184a75`
+
+The ICU final-proof brief gates itself: _"execute only after the canonical
+PostgreSQL migration head becomes applicable from a fresh database."_ That gate was
+re-measured rather than inherited from §6, because §6 reached head only with
+probe-created tables, which the brief explicitly refuses as final evidence.
+
+### What was executed
+
+One `alembic upgrade head` against a database created empty moments before
+(`gula_precond_090016`, PostgreSQL 16, 0 tables at start), schema from migrations
+alone. No manual column, no `ALTER TABLE`, no SQLite.
+
+| Measurement                        | Value                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Exit code                          | `1`                                                                                                          |
+| Revisions Alembic executed         | 94                                                                                                           |
+| Revision that aborted              | `20260815_0023` — _Institution-scoped drug substitution rules_                                               |
+| PostgreSQL error                   | `psycopg2.errors.DatatypeMismatch`                                                                           |
+| Detail                             | key columns `original_drug_catalog_id` and `id` are of incompatible types: `character varying` and `integer` |
+| Alembic stamp left in the database | `20260505_0005`                                                                                              |
+| Tables left in the database        | 32                                                                                                           |
+
+The stamp and the failure point are **different revisions**, and conflating them
+sends a diagnostician to the wrong file. `20260505_0006` opens an
+`autocommit_block` for a `CREATE INDEX CONCURRENTLY`, which commits everything open
+at that moment; the 62 revisions that ran after it were rolled back together when
+`20260815_0023` raised. So `20260505_0005` is a **rollback boundary**, not where the
+upgrade stopped. `pharmacy_drug_catalog` is absent from the resulting database for
+the same reason. `INV-DEPLOY-01` has been corrected accordingly.
+
+### The chain, re-established from Alembic's own graph
+
+`ScriptDirectory` reports a single head, `20260908_0001`, and for
+`20260820_0005` — the revision that adds `critical_care_infusions.verified_by` and
+`.verified_at` — 93 ancestors, among them **both** blockers:
+
+| Link | Revision        | Defect                                                                                                                               | Evidence                                                             |
+| ---- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| 1    | `20260815_0023` | `VARCHAR(26)` foreign key onto an `INTEGER` primary key (NR-003)                                                                     | **Executed and observed today** — `DatatypeMismatch`                 |
+| 2    | `20260820_0004` | `ForeignKeyConstraint(["operation_theater_id"], ["hospital_operation_theaters.id"])`; that table is created by no migration (NR-028) | Static AST + physical absence across three migration-built databases |
+
+`20260820_0005` carries `down_revision = "20260820_0004"`, so the two ICU columns are
+ordered strictly behind NR-028. **The hospital domain's missing migrations are what
+strand a patient-safety column addition** — that ordering, not the hospital domain
+itself, is why NR-028 is P0.
+
+### Verdict against the brief's own gate
+
+**STATUS: BLOCKED.** The precondition is not satisfied, so the 18 numbered proofs
+were not attempted and `VERIFIED` is not claimed for
+`POST /critical-care/infusions/{id}/verify`. The prior status stands unchanged and
+unshortened: **VERIFIED CONDITIONAL / VERIFIED under repair**, meaning every
+invariant was demonstrated on a database that an operator cannot currently build.
+
+Clearing the gate needs two things this pass had no authority to do: the owner lands
+the authorised NR-003 repair, and someone approves a migration for the hospital
+domain (a schema change under `CLAUDE.md`).
+
+### Regression guard added
+
+`tests/migrations/test_migration_corpus_completeness.py::test_the_icu_verification_columns_are_ordered_behind_the_known_blockers`
+pins the ordering, so when either blocker clears the test fails and the recorded ICU
+evidence must be re-measured instead of inherited. Its revision graph reproduces
+Alembic's ancestor sets exactly (101 revisions; identical sets for `20260820_0005`
+and for head), and it was negative-proofed: pinning a non-ancestor makes it fail,
+restoring makes it pass.
+
+Two defects were found and fixed in that guard while building it — it missed the 33
+revisions declared as annotated assignments, and it could not follow the two merge
+revisions' multiple parents. Both would have made it pass vacuously.

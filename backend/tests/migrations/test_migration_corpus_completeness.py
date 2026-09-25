@@ -179,3 +179,103 @@ def test_the_two_icu_blocking_revisions_are_still_the_recorded_unguarded_pair() 
         "one of the two ICU-path revisions gained a guard — good; update "
         f"NAMED_UNGUARDED and re-check the resume path. Still unguarded: {sorted(NAMED_UNGUARDED & unguarded)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Why an unsatisfiable foreign key in the hospital domain is a clinical blocker
+# ---------------------------------------------------------------------------
+
+# ``20260820_0005`` is the revision that adds ``critical_care_infusions.verified_by``
+# and ``.verified_at`` — the two columns the high-alert infusion second-actor check
+# writes. Alembic's own graph places it *after* ``20260820_0004``, the revision whose
+# foreign key cannot be satisfied. So the hospital domain's missing tables are not a
+# hospital-domain problem: they strand a patient-safety column addition ordered
+# behind them. Recorded as a test because the ordering is the whole reason NR-028 is
+# P0, and an ordering is exactly the kind of fact a later revision silently changes.
+ICU_VERIFICATION_REVISION = "20260820_0005"
+
+# The revisions observed aborting on a fresh migration-built PostgreSQL database, in
+# the order the upgrade reaches them. ``20260815_0023`` was executed and observed
+# (DatatypeMismatch: a VARCHAR(26) foreign key onto an INTEGER primary key, NR-003);
+# ``20260820_0004`` is established statically above plus physical absence (NR-028).
+BLOCKERS_AHEAD_OF_ICU_VERIFICATION = ("20260815_0023", "20260820_0004")
+
+
+def _revision_graph() -> dict[str, tuple[str, ...]]:
+    """Map revision -> its parent revisions, read from the files, not from alembic.
+
+    Deliberately independent of ``ScriptDirectory``: this test must keep working in
+    a lane with no alembic config and no database, and reading the corpus is what
+    the rest of this module already does.
+
+    Two shapes in this corpus defeat a naive reader and both are handled here. A
+    revision may be declared as a plain assignment or an annotated one
+    (``revision: str = "..."``) — 33 of them use the annotated form. And a merge
+    revision has *several* parents (``down_revision = ("a", "b", "c")``), so the
+    history is a directed graph, not a chain; ``20260815_0015`` and the head
+    ``20260908_0001`` are both merges.
+    """
+    graph: dict[str, tuple[str, ...]] = {}
+    for _name, tree, _text in _corpus():
+        revision: str | None = None
+        parents: tuple[str, ...] = ()
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                target = node.targets[0]
+                value = node.value
+            elif isinstance(node, ast.AnnAssign):
+                target = node.target
+                value = node.value
+            else:
+                continue
+            if not isinstance(target, ast.Name) or value is None:
+                continue
+            if target.id == "revision":
+                revision = _string(value)
+            elif target.id == "down_revision":
+                if isinstance(value, (ast.Tuple, ast.List)):
+                    parents = tuple(
+                        s for s in (_string(e) for e in value.elts) if s is not None
+                    )
+                else:
+                    single = _string(value)
+                    parents = (single,) if single else ()
+        if revision:
+            graph[revision] = parents
+    return graph
+
+
+def _ancestors(revision: str, graph: dict[str, tuple[str, ...]]) -> set[str]:
+    """Every revision that must run before ``revision``, across all merge branches."""
+    seen: set[str] = set()
+    queue = list(graph.get(revision, ()))
+    while queue:
+        current = queue.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        queue.extend(graph.get(current, ()))
+    return seen
+
+
+def test_the_icu_verification_columns_are_ordered_behind_the_known_blockers() -> None:
+    """The ICU second-actor columns cannot arrive while either blocker stands.
+
+    If this test fails, one of two good things happened: a blocker was repaired, or
+    the ICU column addition was re-parented ahead of it. Either way the claim
+    "``POST /critical-care/infusions/{id}/verify`` is unreachable on a
+    migration-built database" has to be re-measured rather than inherited.
+    """
+    graph = _revision_graph()
+    assert ICU_VERIFICATION_REVISION in graph, (
+        f"{ICU_VERIFICATION_REVISION} is no longer in the corpus; the ICU "
+        "verification evidence package refers to it by name"
+    )
+    ancestors = _ancestors(ICU_VERIFICATION_REVISION, graph)
+    still_ahead = [r for r in BLOCKERS_AHEAD_OF_ICU_VERIFICATION if r in ancestors]
+    assert still_ahead == list(BLOCKERS_AHEAD_OF_ICU_VERIFICATION), (
+        "the blocker ordering changed: of "
+        f"{list(BLOCKERS_AHEAD_OF_ICU_VERIFICATION)} only {still_ahead} still "
+        f"precede {ICU_VERIFICATION_REVISION}. Re-run a fresh-database "
+        "`alembic upgrade head` before reusing the recorded ICU evidence."
+    )
