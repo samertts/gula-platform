@@ -8,6 +8,36 @@ implementation is itself the verification boundary.
 
 ---
 
+## Claim table
+
+The shared work queue for these packets. `CLAIMED_BY` follows the collaboration
+protocol: a packet claimed by one agent is not worked by the other. Roles —
+**ABU_ALI**: PostgreSQL, Alembic, schema truth, migration verification, concurrency,
+failure injection, clinical safety evidence, recovery evidence. **MUSTAFA**:
+orchestration, architecture, `gula_intel`, coherence, contracts, integration,
+readiness, dependency analysis.
+
+| TASK_ID | PRIORITY | OWNER                            | STATUS          | DEPENDENCIES                  | BLOCKERS                                      | EVIDENCE_REQUIRED                              | CLAIMED_BY                  |
+| ------- | -------- | -------------------------------- | --------------- | ----------------------------- | --------------------------------------------- | ---------------------------------------------- | --------------------------- |
+| WP-001  | P0       | Critical Care + Platform/Alembic | **BLOCKED**     | NR-003, NR-028                | HUMAN_APPROVAL_REQUIRED — schema change       | REAL_HTTP_POSTGRES on canonical head           | — (blocked; packets issued) |
+| WP-002  | P0       | Clinical platform                | UNCLAIMED       | —                             | none                                          | FAILURE_INJECTION per stage + durable record   | —                           |
+| WP-003  | P1       | Identity + Clinical governance   | **BLOCKED**     | —                             | HUMAN_APPROVAL_REQUIRED — authorization model | owner names the capability                     | — (decision)                |
+| WP-004  | P1       | Identity                         | UNCLAIMED       | NR-025                        | none — **schema blocker cleared 2026-09-25**  | REAL_HTTP_POSTGRES lockout behaviour           | —                           |
+| WP-005  | P1       | Platform / Data                  | **IN_PROGRESS** | —                             | none                                          | RECOVERY_PROOF — interrupt, restart, re-assert | **ABU_ALI**                 |
+| WP-006  | P1       | Platform / per-domain owners     | UNCLAIMED       | WP-001 for pharmacy/radiology | partial                                       | CONCURRENCY_POSTGRES per domain                | —                           |
+| WP-007  | P1       | National + Core                  | **BLOCKED**     | —                             | HUMAN_APPROVAL_REQUIRED — ownership decision  | ownership decision                             | — (decision)                |
+
+**Claimed now:** WP-005 by ABU_ALI — the only P1 in the PostgreSQL/recovery lane with
+no blocker and no human decision in front of it. FM-010–013 and FM-022–025 have **no
+mechanism** at all, so this is net-new capability rather than a re-measurement.
+
+**Not claimed, and why:** WP-001/003/007 are `HUMAN_APPROVAL_REQUIRED` — recorded, not
+waited on. WP-002 and WP-006 are in this lane and unclaimed; WP-002 is next. WP-004's
+schema blocker was cleared by the canonical-head measurement, so it is now executable
+and is queued behind WP-005.
+
+---
+
 ## WP-001 — Make the ICU verification columns reachable · **P0** · needs human authorization
 
 | Field               | Value                                                                                                                                                                                                                                                                                                                                                                                |
