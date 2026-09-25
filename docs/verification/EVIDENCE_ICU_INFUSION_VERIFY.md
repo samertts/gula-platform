@@ -139,3 +139,54 @@ touched.
 | `…::test_the_verification_database_was_built_by_migrations`                  | Refuses a `create_all` database, on which every assertion above would pass vacuously.                                                                                    |
 | The slice's tripwires                                                        | Each fails the moment NR-023 is fixed, forcing the correct expectations to be written deliberately.                                                                      |
 | `harness.requires_postgres()`                                                | 25 tests **skip**, never pass, with no database configured. Verified both ways.                                                                                          |
+
+---
+
+## Addendum — the operation executed on canonical head, 2026-09-25
+
+The slice was re-run unchanged against a database built only by migrations to
+canonical head (`gula_recovery`, stamp `20260909_0001`, 423 tables, **0 probe-created
+tables**, schema from `claude/p0-1-hospital-migrations` @ `efcc4b6e`).
+
+Result: **7 passed, 8 failed** — and every one of the eight failures is a tripwire
+firing exactly as designed. A tripwire asserts today's defective behaviour so that it
+breaks when the defect is fixed; these broke.
+
+| Tripwire assertion (the defect)           | Observed on canonical head                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| happy path returns **500**                | **409** — the command runs; the 409 is a replay/state conflict from repeated runs against a shared seed, not `UndefinedColumn` |
+| cross-tenant returns **500**              | **404** — INV-TENANT-01 behaves correctly                                                                                      |
+| absent `If-Match` returns **500**         | **428** — its own correct status                                                                                               |
+| stale `If-Match` returns **500**          | **409** — its own correct status                                                                                               |
+| failed command writes no receipt/audit    | the command no longer fails this way                                                                                           |
+| ORM drift is `{verified_by, verified_at}` | **`set()`** — no drift                                                                                                         |
+| concurrency/idempotency unproven          | the operation now reaches the guard                                                                                            |
+| no partial effect survives the failure    | status is `active`, i.e. the verification **succeeded**                                                                        |
+
+The seven that passed are the ones that were never schema-dependent: the 401, the five
+403s, and the database-level refusal to delete audit history.
+
+### What this does and does not establish
+
+**Does:** `POST /critical-care/infusions/{id}/verify` is functional on a database an
+operator can build from that chain — cross-tenant isolation answers 404, both
+precondition failures return their own status codes, and the ORM↔database drift that
+caused NR-023 is gone. These are WP-001's acceptance criteria, met by execution.
+
+**Does not:** this is not the ICU FINAL PROOF. That proof was not attempted — the
+handoff brief rules it out, and the chain is unmerged. The happy path returning 409
+rather than 200 needs its own run against a per-test seed before anything is claimed
+about it; the tripwire only tells us it is no longer 500. Concurrency, idempotency and
+the audit trail for this operation remain **unproven**, because asserting the negation
+of a tripwire is not the same as proving the positive.
+
+So the status is unchanged and unshortened: **VERIFIED CONDITIONAL**. What changed is
+that the conditionality now has a name — `efcc4b6e` — and a verified build, rather than
+being a hypothetical.
+
+### Consequence for anyone running this suite
+
+Against a **head** database the slice reports 8 failures; against any database this
+branch can build, it passes. That is the guard working, not breakage. The tripwires must
+be rewritten to the repaired expectations **in the same change that lands the chain** —
+not before, or the suite would assert behaviour no buildable database exhibits.
