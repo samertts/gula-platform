@@ -132,7 +132,10 @@ class HospitalService:
 
     @staticmethod
     def _get_entity(db: Session, model, entity_id: int, lab_id: int, parent_filter=None):
-        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, not model.is_deleted)
+        # ``not model.is_deleted`` is Python's ``not`` on an InstrumentedAttribute: it
+        # evaluates to the literal False, which SQLAlchemy folds the whole conjunction
+        # into, compiling to ``WHERE false`` and matching nothing at all.
+        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, ~model.is_deleted)
         if parent_filter is not None:
             q = q.filter(parent_filter)
         entity = q.first()

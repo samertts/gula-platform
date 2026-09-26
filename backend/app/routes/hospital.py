@@ -820,7 +820,10 @@ def complete_surgical_safety_checklist(
 ):
     theater = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
     checklist = _run_hospital_command(
-        operation="hospital.surgical_safety_checklist.complete",
+        # ``clinical.`` + this name is the audit action, and ``audit_logs.action`` is
+        # varchar(50); the longer ``hospital.surgical_safety_checklist.complete`` made
+        # that 52 characters, so the audit write — and the whole command — failed.
+        operation="hospital.safety_checklist.complete",
         resource_type="hospital_operation_theater",
         resource_id=ot_id,
         state_before=theater.status,
