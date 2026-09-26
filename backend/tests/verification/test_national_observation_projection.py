@@ -43,7 +43,7 @@ def Session() -> Any:
 
 def _compiled(Session: Any, **kwargs: Any) -> str:
     """The projection's SQL text. Construction is where the defect used to raise."""
-    import app.main  # noqa  - configure the full mapped surface
+    import app.main  # configures the full mapped surface
     from app.national_data.models.canonical_observation import CanonicalObservation
 
     with Session() as session:
@@ -65,7 +65,7 @@ def test_the_module_references_no_attribute_LabResult_lacks() -> None:
     """
     import re
 
-    import app.main  # noqa  - configure the mapped surface
+    import app.main  # configures the mapped surface
     from app.models.lab_result import LabResult
 
     source = (
