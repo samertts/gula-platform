@@ -711,11 +711,14 @@ async def release_blood_reservation(
         raise HTTPException(status_code=404, detail="Resource not found")
     guard = _guard(db, current_user)
     guard.require_expected_version(if_match, current_version=reservation.version, resource_name="blood reservation")
+    # Captured before the service runs: ``result`` is this same row, so reading it
+    # afterwards would report the post-state as the pre-state.
+    version_before = reservation.version
     key = guard.require_idempotency_key(idempotency_key)
     receipt = guard.claim(operation="blood.reservation.release", resource_type="reservation", resource_id=reservation_id, idempotency_key=key, payload=body)
     try:
         result = BloodBankService(db).release_reservation(reservation_id, lab_id, str(current_user.id), str(body.get("reason", "")))
-        guard.complete(receipt, resource_type="reservation", resource_id=result.id, state_before="reserved", state_after=result.status, version_before=reservation.version - 1, version_after=result.version)
+        guard.complete(receipt, resource_type="reservation", resource_id=result.id, state_before="reserved", state_after=result.status, version_before=version_before, version_after=result.version)
         db.commit(); db.refresh(result)
         return _phase2_dict(result)
     except Exception as exc:
