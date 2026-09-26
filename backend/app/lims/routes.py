@@ -1564,8 +1564,15 @@ def qc_statistics(
 # ===========================================================================
 
 
+# These two were the only 2 of this module's 69 routes that required no
+# authenticated caller. The data is published ISO 15189 / CAP reference material
+# and the evaluation is stateless, so this is a consistency repair rather than a
+# disclosure fix -- but a laboratory's quality-management surface has no reason
+# to be the module's single anonymous entry point.
 @router.get("/quality/indicators")
-def list_quality_indicators():
+def list_quality_indicators(
+    current_user: LabUser = Depends(get_current_user),
+):
     from .quality import CAP_INDICATORS, ISO_15189_INDICATORS
 
     return {
@@ -1582,12 +1589,32 @@ def list_quality_indicators():
 def evaluate_indicator(
     indicator_id: str,
     value: float = Query(...),
+    current_user: LabUser = Depends(get_current_user),
 ):
-    from .quality import evaluate_iso_15189_indicator
+    from .quality import (
+        IndicatorNotEvaluable,
+        IndicatorValueOutOfRange,
+        evaluate_iso_15189_indicator,
+    )
+
     try:
         return evaluate_iso_15189_indicator(indicator_id, value)
+    except IndicatorValueOutOfRange as e:
+        # The caller sent a value the measure does not permit, e.g. -500 for a
+        # percentage. Previously this scored "passed".
+        raise HTTPException(400, detail=str(e)) from e
+    except IndicatorNotEvaluable as e:
+        # 422, not 404. The indicator exists -- the listing endpoint above
+        # publishes it -- but its target is prose rather than a threshold. All
+        # four CAP indicators previously answered 404 "Resource not found" here,
+        # denying the existence of something the sibling route had just returned.
+        raise HTTPException(
+            422,
+            detail=f"Indicator '{indicator_id}' cannot be evaluated numerically: {e}",
+        ) from e
     except ValueError as e:
-        raise HTTPException(404, detail="Resource not found") from e
+        # A genuinely unknown indicator id. 404 is right here and is kept.
+        raise HTTPException(404, detail=f"Unknown indicator: {indicator_id}") from e
 
 
 # ===========================================================================
