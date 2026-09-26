@@ -33,6 +33,7 @@ from ..security.oauth2_provider import (
     hash_token,
     verify_pkce,
 )
+from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.routes.oauth2")
 
@@ -49,12 +50,32 @@ class ClientRegisterRequest(BaseModel):
     token_endpoint_auth_method: str = "client_secret_basic"
 
 
+# PORTED from 60c7aa85 (Mustafa's lane), verified independently on this branch.
+# OAuth2Client is a platform-global registry -- the model carries no lab_id or
+# tenant column at all, by design. This route had only get_current_user, so any
+# authenticated user of any role could register a client with attacker-chosen
+# redirect_uris, and that client then receives real users' access, refresh and id
+# tokens the moment anyone completes /authorize against it. Token theft by
+# registration.
+#
+# The role set is the one service_accounts.py already uses for the same kind of
+# security-configuration write, rather than a new vocabulary.
+_OAUTH2_CLIENT_ADMIN_ROLES = frozenset({"admin", "master_admin"})
+
+
 @router.post("/register")
 def register_client(
     data: ClientRegisterRequest,
+    request: Request,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _OAUTH2_CLIENT_ADMIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions to register an OAuth2 client",
+        )
+
     client_id = generate_client_id()
     client_secret = generate_client_secret()
     client = OAuth2Client(
@@ -69,6 +90,28 @@ def register_client(
         token_endpoint_auth_method=data.token_endpoint_auth_method,
     )
     db.add(client)
+    db.flush()
+    # A new OAuth2 client can receive other users' tokens, so who created it --
+    # and with which redirect_uris -- has to be recoverable. The secret itself is
+    # never recorded; only its hash is stored, on the client row.
+    log_action(
+        db,
+        action="oauth2.client.registered",
+        resource_type="oauth2_client",
+        resource_id=client.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        lab_id=getattr(current_user, "lab_id", None),
+        details={
+            "client_id": client_id,
+            "client_name": data.client_name,
+            "redirect_uris": data.redirect_uris,
+            "grant_types": data.grant_types,
+            "allowed_scopes": data.allowed_scopes,
+            "token_endpoint_auth_method": data.token_endpoint_auth_method,
+        },
+        ip_address=request.client.host if request.client else None,
+    )
     db.commit()
     db.refresh(client)
     return {

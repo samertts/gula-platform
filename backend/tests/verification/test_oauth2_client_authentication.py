@@ -255,3 +255,80 @@ def test_client_cannot_revoke_another_clients_token(Session, seeded):
         assert _is_revoked(session, seeded["token_b"]) is False
     finally:
         session.close()
+
+
+# ---------------------------------------------------------------------------
+# POST /oauth2/register -- client registration is a privileged operation
+# ---------------------------------------------------------------------------
+#
+# PORTED finding (NR-067/NR-068). This route had only ``get_current_user``, so any
+# authenticated user of any role could register an OAuth2 client with
+# attacker-chosen ``redirect_uris``.  That client then receives real users'
+# access, refresh and id tokens the moment anyone completes ``/authorize``
+# against it -- token theft by registration, not by interception.
+#
+# ``OAuth2Client`` carries no tenant column at all, by design: the registry is
+# platform-global.  That is precisely why the gate has to be a role check rather
+# than a tenant scope.
+
+
+def _register_payload(name: str) -> dict:
+    return {
+        "client_name": name,
+        "redirect_uris": ["https://attacker.example/callback"],
+        "allowed_scopes": ["openid"],
+        "grant_types": ["authorization_code"],
+        "response_types": ["code"],
+    }
+
+
+@harness.requires_postgres()
+def test_a_non_admin_cannot_register_an_oauth2_client(Session):
+    """A lab technician is authenticated, and that must not be enough."""
+    actor = harness.Actor(user_id=1, lab_id=1, role="lab_technician")
+    with harness.client(Session, actor) as api:
+        response = api.post("/oauth2/register", json=_register_payload("Rogue Client"))
+
+    assert response.status_code == 403, response.text
+    # The secret must not leak alongside the refusal.
+    assert "client_secret" not in response.text
+
+
+@harness.requires_postgres()
+def test_an_admin_can_still_register_and_the_registration_is_audited(Session):
+    """The gate must not disable the capability, and must leave a trail."""
+    actor = harness.Actor(user_id=1, lab_id=1, role="admin")
+    with harness.client(Session, actor) as api:
+        response = api.post("/oauth2/register", json=_register_payload("Legitimate Client"))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["client_id"]
+    assert body["client_secret"]
+
+    session = Session()
+    try:
+        row = session.execute(
+            text(
+                "SELECT user_id, user_role, resource_type, details "
+                "FROM audit_logs WHERE action = 'oauth2.client.registered' "
+                "ORDER BY id DESC LIMIT 1"
+            )
+        ).fetchone()
+        assert row is not None, "registering a client wrote no audit row"
+        user_id, user_role, resource_type, details = row
+        assert user_id == 1
+        assert user_role == "admin"
+        assert resource_type == "oauth2_client"
+        # The redirect_uris are the security-relevant part of the record.
+        assert "attacker.example" in details
+        # The plaintext secret must never reach the audit trail.
+        assert body["client_secret"] not in (details or "")
+    finally:
+        # Archive rather than delete: deactivate the client this test created.
+        session.execute(
+            text("UPDATE oauth2_clients SET is_active = false WHERE client_id = :c"),
+            {"c": body["client_id"]},
+        )
+        session.commit()
+        session.close()
