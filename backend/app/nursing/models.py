@@ -370,7 +370,12 @@ class ShiftHandover(NursingBaseEntity):
 
 
 class ClinicalChecklist(NursingBaseEntity):
-    __tablename__ = "nursing_checklists"
+    # NR-077: the physical table is `nursing_clinical_checklists`. No migration on
+    # any branch ever created `nursing_checklists`; 20260716_0002 is the only
+    # migration that creates it and its own docstring names the long form, which
+    # is also what this class is named after. Mapping to a table that exists
+    # nowhere made every read and write raise UndefinedTable.
+    __tablename__ = "nursing_clinical_checklists"
 
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
     encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -411,7 +416,9 @@ class Delegation(NursingBaseEntity):
 
 
 class EscalationRecord(NursingBaseEntity):
-    __tablename__ = "nursing_escalations"
+    # NR-077: the physical table is `nursing_escalation_records` -- same evidence
+    # and same reasoning as ClinicalChecklist above.
+    __tablename__ = "nursing_escalation_records"
 
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
     encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)

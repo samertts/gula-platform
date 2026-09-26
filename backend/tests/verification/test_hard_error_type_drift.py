@@ -133,6 +133,20 @@ _PINNED_HARD_ERRORS: frozenset[str] = frozenset({
     "nhdw_waiting_list_entries.id",
     "nhdw_ward_rounds.id",
     "nursing_care_plans.created_by",
+    # NR-077 made these six measurable rather than introducing them. Until the
+    # two __tablename__ strings were corrected, ClinicalChecklist and
+    # EscalationRecord mapped `nursing_checklists` and `nursing_escalations`,
+    # which no migration creates -- so the survey found no physical table to
+    # compare against and these columns were silently outside the pin. The drift
+    # is as old as the tables. Re-measuring a ledger after repairing its evidence
+    # base is the NR-069 precedent, and it is the reason this pin uses subset
+    # semantics: a number that can only be edited downwards would have hidden this.
+    "nursing_clinical_checklists.created_by",
+    "nursing_clinical_checklists.id",
+    "nursing_clinical_checklists.verified_by",
+    "nursing_escalation_records.escalated_by",
+    "nursing_escalation_records.escalated_to",
+    "nursing_escalation_records.id",
     "nursing_care_plans.id",
     "nursing_delegations.delegated_by",
     "nursing_delegations.delegated_to",
