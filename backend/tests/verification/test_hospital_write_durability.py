@@ -382,3 +382,33 @@ def test_actor_role_is_a_required_keyword_with_no_default():
         "actor_role must be required, with no default -- a default restores the "
         "defect:\n  " + "\n  ".join(weak)
     )
+
+
+def test_every_mutating_method_writes_an_audit_row():
+    """CLAUDE.md invariant 2: every mutation must reach the audit log.
+
+    Ten of these methods -- building, floor, department, clinic, room, bed, unit,
+    operation theatre, equipment and cost centre creation -- called log_action
+    never, so there was no record of who created a bed or a theatre. The three
+    tests above constrain how a role is passed; this one constrains whether the
+    call happens at all, which is a different failure and needs its own
+    assertion.
+    """
+    unaudited = []
+    for name, fn in _service_functions().items():
+        flushes = any(
+            isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "flush"
+            for n in ast.walk(fn)
+        )
+        if not flushes:
+            continue
+        audits = any(
+            isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "log_action"
+            for n in ast.walk(fn)
+        )
+        if not audits:
+            unaudited.append(name)
+    assert unaudited == [], (
+        "these methods change state without writing an audit row, so there is no "
+        "record of who did it:\n  " + "\n  ".join(sorted(unaudited))
+    )

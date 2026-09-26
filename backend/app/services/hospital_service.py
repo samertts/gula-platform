@@ -217,11 +217,23 @@ class HospitalService:
     # ── Building CRUD ──────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_building(db: Session, lab_id: int, user_id: int, campus_id: int, data: dict) -> Building:
+    def create_building(
+        db: Session, lab_id: int, user_id: int, campus_id: int, data: dict, *, actor_role: str,
+    ) -> Building:
         HospitalService._get_entity(db, Campus, campus_id, lab_id)
         building = Building(lab_id=lab_id, created_by=user_id, campus_id=campus_id, **data)
         db.add(building)
         db.flush()
+        log_action(
+            db,
+            action="hospital.building.create",
+            resource_type="hospital_building",
+            resource_id=building.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -236,11 +248,23 @@ class HospitalService:
     # ── Floor CRUD ─────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_floor(db: Session, lab_id: int, user_id: int, building_id: int, data: dict) -> Floor:
+    def create_floor(
+        db: Session, lab_id: int, user_id: int, building_id: int, data: dict, *, actor_role: str,
+    ) -> Floor:
         HospitalService._get_entity(db, Building, building_id, lab_id)
         floor = Floor(lab_id=lab_id, created_by=user_id, building_id=building_id, **data)
         db.add(floor)
         db.flush()
+        log_action(
+            db,
+            action="hospital.floor.create",
+            resource_type="hospital_floor",
+            resource_id=floor.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -255,13 +279,25 @@ class HospitalService:
     # ── HospitalDepartment CRUD ────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_department(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> HospitalDepartment:
+    def create_department(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict, *, actor_role: str,
+    ) -> HospitalDepartment:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         if data.get("parent_id"):
             HospitalService._get_entity(db, HospitalDepartment, data["parent_id"], lab_id, HospitalDepartment.hospital_id == hospital_id)
         dept = HospitalDepartment(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(dept)
         db.flush()
+        log_action(
+            db,
+            action="hospital.department.create",
+            resource_type="hospital_department",
+            resource_id=dept.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -279,12 +315,24 @@ class HospitalService:
     # ── Clinic CRUD ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_clinic(db: Session, lab_id: int, user_id: int, department_id: int, data: dict) -> Clinic:
+    def create_clinic(
+        db: Session, lab_id: int, user_id: int, department_id: int, data: dict, *, actor_role: str,
+    ) -> Clinic:
         dept = HospitalService._get_entity(db, HospitalDepartment, department_id, lab_id)
         data.setdefault("hospital_id", dept.hospital_id)
         clinic = Clinic(lab_id=lab_id, created_by=user_id, department_id=department_id, **data)
         db.add(clinic)
         db.flush()
+        log_action(
+            db,
+            action="hospital.clinic.create",
+            resource_type="hospital_clinic",
+            resource_id=clinic.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -300,11 +348,23 @@ class HospitalService:
     # ── Room CRUD ──────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_room(db: Session, lab_id: int, user_id: int, department_id: int, data: dict) -> Room:
+    def create_room(
+        db: Session, lab_id: int, user_id: int, department_id: int, data: dict, *, actor_role: str,
+    ) -> Room:
         HospitalService._get_entity(db, HospitalDepartment, department_id, lab_id)
         room = Room(lab_id=lab_id, created_by=user_id, department_id=department_id, **data)
         db.add(room)
         db.flush()
+        log_action(
+            db,
+            action="hospital.room.create",
+            resource_type="hospital_room",
+            resource_id=room.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -325,11 +385,23 @@ class HospitalService:
     # ── Bed CRUD + Assignment ──────────────────────────────────────────────────
 
     @staticmethod
-    def create_bed(db: Session, lab_id: int, user_id: int, room_id: int, data: dict) -> Bed:
+    def create_bed(
+        db: Session, lab_id: int, user_id: int, room_id: int, data: dict, *, actor_role: str,
+    ) -> Bed:
         HospitalService._get_entity(db, Room, room_id, lab_id)
         bed = Bed(lab_id=lab_id, created_by=user_id, room_id=room_id, **data)
         db.add(bed)
         db.flush()
+        log_action(
+            db,
+            action="hospital.bed.create",
+            resource_type="hospital_bed",
+            resource_id=bed.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -729,11 +801,23 @@ class HospitalService:
     # ── Unit CRUD ──────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_unit(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> Unit:
+    def create_unit(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict, *, actor_role: str,
+    ) -> Unit:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         unit = Unit(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(unit)
         db.flush()
+        log_action(
+            db,
+            action="hospital.unit.create",
+            resource_type="hospital_unit",
+            resource_id=unit.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -748,11 +832,23 @@ class HospitalService:
     # ── Operation Theater CRUD ─────────────────────────────────────────────────
 
     @staticmethod
-    def create_ot(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> OperationTheater:
+    def create_ot(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict, *, actor_role: str,
+    ) -> OperationTheater:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         ot = OperationTheater(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(ot)
         db.flush()
+        log_action(
+            db,
+            action="hospital.operation_theater.create",
+            resource_type="hospital_operation_theater",
+            resource_id=ot.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -769,11 +865,23 @@ class HospitalService:
     # ── Medical Equipment CRUD ─────────────────────────────────────────────────
 
     @staticmethod
-    def create_equipment(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> MedicalEquipment:
+    def create_equipment(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict, *, actor_role: str,
+    ) -> MedicalEquipment:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         equip = MedicalEquipment(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(equip)
         db.flush()
+        log_action(
+            db,
+            action="hospital.equipment.create",
+            resource_type="hospital_equipment",
+            resource_id=equip.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()
@@ -798,11 +906,23 @@ class HospitalService:
     # ── Cost Center CRUD ───────────────────────────────────────────────────────
 
     @staticmethod
-    def create_cost_center(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> CostCenter:
+    def create_cost_center(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict, *, actor_role: str,
+    ) -> CostCenter:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         cc = CostCenter(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(cc)
         db.flush()
+        log_action(
+            db,
+            action="hospital.cost_center.create",
+            resource_type="hospital_cost_center",
+            resource_id=cc.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
         # get_db() never commits on success (it yields, rolls back on exception,
         # then closes), so a flush alone is discarded when the request ends.
         db.commit()

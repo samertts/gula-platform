@@ -471,6 +471,7 @@ def create_building(
 ):
     building = HospitalService.create_building(
         db, current_user.lab_id, current_user.id, campus_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(building)
 
@@ -497,6 +498,7 @@ def create_floor(
 ):
     floor = HospitalService.create_floor(
         db, current_user.lab_id, current_user.id, building_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(floor)
 
@@ -526,6 +528,7 @@ def create_department(
 ):
     dept = HospitalService.create_department(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(dept)
 
@@ -567,6 +570,7 @@ def create_clinic(
 ):
     clinic = HospitalService.create_clinic(
         db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(clinic)
 
@@ -594,6 +598,7 @@ def create_room(
 ):
     room = HospitalService.create_room(
         db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(room)
 
@@ -622,6 +627,7 @@ def create_bed(
 ):
     bed = HospitalService.create_bed(
         db, current_user.lab_id, current_user.id, room_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(bed)
 
@@ -784,6 +790,7 @@ def create_unit(
 ):
     unit = HospitalService.create_unit(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(unit)
 
@@ -810,6 +817,7 @@ def create_operation_theater(
 ):
     ot = HospitalService.create_ot(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(ot)
 
@@ -922,6 +930,7 @@ def create_equipment(
 ):
     equip = HospitalService.create_equipment(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(equip)
 
@@ -963,6 +972,7 @@ def create_cost_center(
 ):
     cc = HospitalService.create_cost_center(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(cc)
 
