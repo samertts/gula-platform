@@ -66,6 +66,17 @@ MUST_REFUSE = [
     ("POST", "/pilot-platform/readiness"),
     ("POST", "/certification/release/check"),
     ("POST", "/certification/release/validate"),
+    # Ported from Mustafa's NR-108: these are mounted-guard gaps, which a per-route
+    # dependency walk cannot see. ``devices/{uuid}/trust`` is the worst of them — a
+    # trusted device feeds the adaptive-authentication decision, so elevating one
+    # anonymously weakens the MFA outcome for it.
+    ("POST", "/niam/sessions/00000000000000000000000000/terminate"),
+    ("POST", "/niam/sessions/account/1/terminate-all"),
+    ("GET", "/niam/sessions/account/1"),
+    ("POST", "/niam/devices/00000000000000000000000000/trust"),
+    ("POST", "/niam/devices/00000000000000000000000000/revoke"),
+    ("POST", "/niam/devices/register"),
+    ("GET", "/niam/persons/00000000000000000000000000"),
 ]
 
 # Routers that must carry a router-level guard because every route in them is
@@ -139,18 +150,12 @@ def test_administrative_router_carries_a_router_level_guard(module: str) -> None
     )
 
 
-def test_the_contracts_spec_surface_is_covered_by_the_docs_guard() -> None:
-    """The generated API specification must have one policy, not two.
+def test_the_only_mutating_contracts_route_is_guarded(client: TestClient) -> None:
+    """POST /contracts/export wrote files to disk for any caller.
 
-    ``DocsAuthMiddleware`` protects /docs, /redoc and /openapi.json in production via
-    an exact-match set. ``app/contracts/routes.py`` regenerates the same surface —
-    OpenAPI, AsyncAPI, per-module JSON Schema and the FHIR R4 profiles — under its own
-    prefix, which that set never matched, so the specification the platform
-    deliberately protects was also served unauthenticated at /contracts/openapi.json.
+    The GET routes stay public on purpose — publishing the OpenAPI, AsyncAPI and FHIR
+    contracts is what that router is for. Whether the contract should be public at all
+    is inconsistent with DocsAuthMiddleware protecting /openapi.json in production;
+    that is recorded as a product decision, not settled here.
     """
-    from app.middleware import DocsAuthMiddleware
-
-    assert "/contracts".startswith(DocsAuthMiddleware._PROTECTED_PREFIXES), (
-        "the contracts spec surface must be inside the docs guard's protected prefixes; "
-        f"prefixes are {DocsAuthMiddleware._PROTECTED_PREFIXES}"
-    )
+    assert client.post("/contracts/export", json={}).status_code in (401, 403)

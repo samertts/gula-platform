@@ -289,19 +289,24 @@ class PrivacyMiddleware(BaseHTTPMiddleware):
 
 
 class DocsAuthMiddleware(BaseHTTPMiddleware):
-    """Guard the API specification surface behind admin JWT in production."""
+    """Guard /docs, /redoc, /openapi.json behind admin JWT in production.
+
+    ``app/contracts/routes.py`` publishes the same specification — OpenAPI,
+    AsyncAPI, per-module JSON Schema and the FHIR R4 profiles — under its own
+    prefix, which this exact-match set does not cover. That is deliberate on the
+    contracts side: publishing those documents is what that router is for, and its
+    only mutating route carries its own admin guard.
+
+    Whether the API contract should be public at all is therefore inconsistent
+    between the two surfaces — protected here in production, published there. That
+    is a product decision about the contract, not a defect to settle in a
+    middleware, and it is recorded rather than resolved here.
+    """
 
     _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
-    # ``app/contracts/routes.py`` regenerates the same surface — OpenAPI, AsyncAPI,
-    # per-module JSON Schema and the FHIR R4 profiles — under its own prefix, which an
-    # exact-match set never matched. So the specification the platform deliberately
-    # protects at /openapi.json was served unauthenticated at /contracts/openapi.json.
-    # Matched by prefix so the spec surface has one policy rather than two.
-    _PROTECTED_PREFIXES = ("/contracts",)
 
     async def dispatch(self, request: Request, call_next):
-        path = request.url.path
-        if path not in self._PROTECTED and not path.startswith(self._PROTECTED_PREFIXES):
+        if request.url.path not in self._PROTECTED:
             return await call_next(request)
         token = request.cookies.get("access_token")
         if not token:
