@@ -308,3 +308,77 @@ def test_the_guard_owned_set_still_matches_the_routes():
     for name in _GUARD_OWNED:
         assert f"HospitalService.{name}" in routes, f"{name} is no longer called by the routes"
     assert "_run_hospital_command" in routes
+
+
+# ---------------------------------------------------------------------------
+# NR-066: the audit actor must be real, not a placeholder
+# ---------------------------------------------------------------------------
+#
+# Closing an omission by writing a CONSTANT is not closing it. Five sites passed
+# user_role="hospital_staff" -- a value that exists in NONE of the platform's
+# three role catalogues: not app.security.rbac.ROLE_PERMISSIONS, not
+# shared.rbac.EXTENDED_VALID_ROLES, and not app.models.authorization.UserTypeEnum
+# (35 values). An unknown role fails closed and silently:
+# get_permissions_for_role returns [] and get_role_level returns 0. So those rows
+# claimed an authority no policy can evaluate, which is worse than NULL because it
+# looks populated.
+#
+# This ratchets BOTH ways on purpose: it asserts that a role is supplied AND that
+# what is supplied is not a literal. Asserting only the first is what lets a
+# constant satisfy the check.
+
+
+def test_no_audit_call_passes_a_literal_role():
+    """A hardcoded role satisfies "a role is present" while meaning nothing."""
+    offenders = []
+    for name, fn in _service_functions().items():
+        for node in ast.walk(fn):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == "log_action"):
+                continue
+            for kw in node.keywords:
+                if kw.arg == "user_role" and isinstance(kw.value, ast.Constant):
+                    offenders.append(f"{name} (line {node.lineno}): user_role={kw.value.value!r}")
+    assert offenders == [], (
+        "user_role passed as a literal -- the audit row would claim an authority "
+        "that is not the caller's, and may not be a real role at all:\n  "
+        + "\n  ".join(offenders)
+    )
+
+
+def test_every_audit_call_supplies_a_role_at_all():
+    """The other direction: an omitted user_role writes NULL."""
+    offenders = []
+    for name, fn in _service_functions().items():
+        for node in ast.walk(fn):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == "log_action"):
+                continue
+            if not any(kw.arg == "user_role" for kw in node.keywords):
+                offenders.append(f"{name} (line {node.lineno})")
+    assert offenders == [], (
+        "log_action called without user_role, so the audit row records no actor "
+        "authority:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_actor_role_is_a_required_keyword_with_no_default():
+    """The control that found the stale call sites.
+
+    A default would let any forgotten caller silently fall back, restoring the
+    defect at exactly the sites a grep cannot find. Every service method that
+    audits must therefore demand actor_role explicitly.
+    """
+    weak = []
+    for name, fn in _service_functions().items():
+        args = fn.args
+        if "actor_role" not in [a.arg for a in args.kwonlyargs]:
+            continue
+        idx = [a.arg for a in args.kwonlyargs].index("actor_role")
+        default = args.kw_defaults[idx]
+        if default is not None:
+            weak.append(f"{name}: actor_role has a default")
+    assert weak == [], (
+        "actor_role must be required, with no default -- a default restores the "
+        "defect:\n  " + "\n  ".join(weak)
+    )
