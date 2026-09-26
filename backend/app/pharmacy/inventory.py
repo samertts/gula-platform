@@ -359,7 +359,7 @@ class ReorderService:
         reorder_list: list[dict[str, Any]] = []
 
         drug_ids_q = self.db.query(StockLevel.drug_catalog_id).filter(
-            ~~StockLevel.is_deleted,
+            ~StockLevel.is_deleted,
             StockLevel.reorder_point.isnot(None),
         )
         if self.lab_id:

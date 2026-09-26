@@ -116,7 +116,7 @@ class PharmacyService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[DrugCatalog], int]:
-        q = self.db.query(DrugCatalog).filter(~~DrugCatalog.is_deleted)
+        q = self.db.query(DrugCatalog).filter(~DrugCatalog.is_deleted)
         if self.lab_id:
             q = q.filter(DrugCatalog.lab_id == self.lab_id)
         if query:
@@ -212,7 +212,7 @@ class PharmacyService:
         return supplier
 
     def list_suppliers(self) -> list[DrugSupplier]:
-        q = self.db.query(DrugSupplier).filter(~~DrugSupplier.is_deleted)
+        q = self.db.query(DrugSupplier).filter(~DrugSupplier.is_deleted)
         if self.lab_id:
             q = q.filter(DrugSupplier.lab_id == self.lab_id)
         return q.order_by(DrugSupplier.name).all()
@@ -332,7 +332,7 @@ class PharmacyService:
     def get_dispense_queue(
         self, status: str | None = None, priority: str | None = None, skip: int = 0, limit: int = 50,
     ) -> tuple[list[DispenseQueue], int]:
-        q = self.db.query(DispenseQueue).filter(~~DispenseQueue.is_deleted)
+        q = self.db.query(DispenseQueue).filter(~DispenseQueue.is_deleted)
         if self.lab_id:
             q = q.filter(DispenseQueue.lab_id == self.lab_id)
         if status:
@@ -1114,7 +1114,7 @@ class PharmacyService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[StockLevel], int]:
-        q = self.db.query(StockLevel).filter(~~StockLevel.is_deleted)
+        q = self.db.query(StockLevel).filter(~StockLevel.is_deleted)
         if self.lab_id:
             q = q.filter(StockLevel.lab_id == self.lab_id)
         if warehouse_id:
@@ -1130,7 +1130,7 @@ class PharmacyService:
     def get_stock_alerts(self) -> dict[str, list[dict[str, Any]]]:
         alerts: dict[str, list[dict[str, Any]]] = {"low_stock": [], "overstocked": [], "expiring_soon": []}
         q = self.db.query(StockLevel).filter(
-            ~~StockLevel.is_deleted,
+            ~StockLevel.is_deleted,
             StockLevel.available_quantity > 0,
         )
         if self.lab_id:
@@ -1211,7 +1211,7 @@ class PharmacyService:
     def get_movements(
         self, drug_id: str | None = None, movement_type: str | None = None, skip: int = 0, limit: int = 50,
     ) -> tuple[list[StockMovement], int]:
-        q = self.db.query(StockMovement).filter(~~StockMovement.is_deleted)
+        q = self.db.query(StockMovement).filter(~StockMovement.is_deleted)
         if self.lab_id:
             q = q.filter(StockMovement.lab_id == self.lab_id)
         if drug_id:
@@ -1241,7 +1241,7 @@ class PharmacyService:
         return transfer
 
     def get_transfers(self, status: str | None = None, skip: int = 0, limit: int = 50) -> tuple[list[InventoryTransfer], int]:
-        q = self.db.query(InventoryTransfer).filter(~~InventoryTransfer.is_deleted)
+        q = self.db.query(InventoryTransfer).filter(~InventoryTransfer.is_deleted)
         if self.lab_id:
             q = q.filter(InventoryTransfer.lab_id == self.lab_id)
         if status:
@@ -1341,7 +1341,7 @@ class PharmacyService:
         return waste
 
     def list_recalls(self, status: str | None = None, skip: int = 0, limit: int = 50) -> tuple[list[Recall], int]:
-        q = self.db.query(Recall).filter(~~Recall.is_deleted)
+        q = self.db.query(Recall).filter(~Recall.is_deleted)
         if self.lab_id:
             q = q.filter(Recall.lab_id == self.lab_id)
         if status:
@@ -1371,7 +1371,7 @@ class PharmacyService:
     def generate_reorder_recommendations(self) -> list[dict[str, Any]]:
         recommendations: list[dict[str, Any]] = []
         q = self.db.query(StockLevel).filter(
-            ~~StockLevel.is_deleted,
+            ~StockLevel.is_deleted,
             StockLevel.reorder_point.isnot(None),
             StockLevel.available_quantity <= StockLevel.reorder_point,
         )
@@ -1397,8 +1397,8 @@ class PharmacyService:
     # ── Dashboard ──────────────────────────────────────────────────────────────
 
     def get_dashboard(self) -> dict[str, Any]:
-        rx_q = self.db.query(Prescription).filter(~~Prescription.is_deleted)
-        queue_q = self.db.query(DispenseQueue).filter(~~DispenseQueue.is_deleted)
+        rx_q = self.db.query(Prescription).filter(~Prescription.is_deleted)
+        queue_q = self.db.query(DispenseQueue).filter(~DispenseQueue.is_deleted)
         if self.lab_id:
             rx_q = rx_q.filter(Prescription.lab_id == self.lab_id)
             queue_q = queue_q.filter(DispenseQueue.lab_id == self.lab_id)
@@ -1419,7 +1419,7 @@ class PharmacyService:
         }
 
     def get_queue_summary(self) -> dict[str, Any]:
-        q = self.db.query(DispenseQueue).filter(~~DispenseQueue.is_deleted)
+        q = self.db.query(DispenseQueue).filter(~DispenseQueue.is_deleted)
         if self.lab_id:
             q = q.filter(DispenseQueue.lab_id == self.lab_id)
 

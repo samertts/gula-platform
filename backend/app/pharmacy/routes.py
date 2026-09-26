@@ -758,7 +758,7 @@ async def list_prescriptions(
     user=Depends(get_current_user),
 ):
     _get_pharmacy_service(db, user)
-    q = db.query(Prescription).filter(~~Prescription.is_deleted)
+    q = db.query(Prescription).filter(~Prescription.is_deleted)
     if user.lab_id:
         q = q.filter(Prescription.lab_id == user.lab_id)
     if status_filter:

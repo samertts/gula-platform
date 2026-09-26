@@ -105,7 +105,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Appointment]:
-        query = self.db.query(NationalAppointment).filter(~~NationalAppointment.is_deleted)
+        query = self.db.query(NationalAppointment).filter(~NationalAppointment.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalAppointment, key) and value is not None:
                 query = query.filter(getattr(NationalAppointment, key) == value)
@@ -170,7 +170,7 @@ class SQLAlchemyAppointmentRepository(AppointmentRepository):
         exclude_id: str | None = None,
     ) -> list[Appointment]:
         query = self.db.query(NationalAppointment).filter(
-            ~~NationalAppointment.is_deleted,
+            ~NationalAppointment.is_deleted,
             NationalAppointment.start_at < end_at,
             NationalAppointment.end_at > start_at,
             NationalAppointment.status.notin_([
@@ -243,7 +243,7 @@ class SQLAlchemyResourceRepository(ResourceRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Resource]:
-        query = self.db.query(NationalResource).filter(~~NationalResource.is_deleted)
+        query = self.db.query(NationalResource).filter(~NationalResource.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalResource, key) and value is not None:
                 query = query.filter(getattr(NationalResource, key) == value)
@@ -321,7 +321,7 @@ class SQLAlchemyScheduleRepository(ScheduleRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Schedule]:
-        query = self.db.query(NationalSchedule).filter(~~NationalSchedule.is_deleted)
+        query = self.db.query(NationalSchedule).filter(~NationalSchedule.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalSchedule, key) and value is not None:
                 query = query.filter(getattr(NationalSchedule, key) == value)
@@ -529,7 +529,7 @@ class SQLAlchemyWaitingListRepository(WaitingListRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[WaitingList]:
-        query = self.db.query(NationalWaitingList).filter(~~NationalWaitingList.is_deleted)
+        query = self.db.query(NationalWaitingList).filter(~NationalWaitingList.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalWaitingList, key) and value is not None:
                 query = query.filter(getattr(NationalWaitingList, key) == value)
@@ -611,7 +611,7 @@ class SQLAlchemyCalendarRepository(CalendarRepository):
         limit: int = 100,
     ) -> list[Calendar]:
         models = self.db.query(NationalCalendar).filter(
-            ~~NationalCalendar.is_deleted,
+            ~NationalCalendar.is_deleted,
         ).order_by(NationalCalendar.name.asc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 

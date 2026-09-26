@@ -96,7 +96,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[Document]:
-        query = self.db.query(NationalDocumentModel).filter(~~NationalDocumentModel.is_deleted)
+        query = self.db.query(NationalDocumentModel).filter(~NationalDocumentModel.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalDocumentModel, key) and value is not None:
                 query = query.filter(getattr(NationalDocumentModel, key) == value)
@@ -148,7 +148,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
     ) -> list[Document]:
         search_term = f"%{query}%"
         models = self.db.query(NationalDocumentModel).filter(
-            ~~NationalDocumentModel.is_deleted,
+            ~NationalDocumentModel.is_deleted,
             or_(
                 NationalDocumentModel.filename.ilike(search_term),
                 NationalDocumentModel.original_name.ilike(search_term),
@@ -157,7 +157,7 @@ class SQLAlchemyDocumentRepository(DocumentRepository):
         return [m.to_domain() for m in models]
 
     async def count(self, **filters: Any) -> int:
-        query = self.db.query(NationalDocumentModel).filter(~~NationalDocumentModel.is_deleted)
+        query = self.db.query(NationalDocumentModel).filter(~NationalDocumentModel.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalDocumentModel, key) and value is not None:
                 query = query.filter(getattr(NationalDocumentModel, key) == value)
