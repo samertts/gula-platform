@@ -283,29 +283,60 @@ class DoseEngine:
             DoseGuideline.renal_adjustment.isnot(None),
         ).first()
 
+        # Three outcomes, kept apart on purpose. This previously answered
+        # requires_adjustment=False with "No adjustment needed based on
+        # guidelines" in every case where no adjustment was found -- including
+        # the case where the platform holds no renal guideline for the drug at
+        # all. Absence of data is not a negative finding: many drugs require a
+        # reduced dose in renal impairment, so telling a prescriber that no
+        # adjustment is needed, for a drug nothing is known about, can leave a
+        # full dose in place for a patient with a low eGFR.
+        #
+        # `assessed` therefore says whether an assessment happened, and
+        # `requires_adjustment` is None until one has. The wording below states
+        # what the system knows; it does not offer clinical advice of its own.
         result: dict[str, Any] = {
             "drug_code": drug_code,
             "egfr": egfr,
-            "requires_adjustment": False,
+            "assessed": False,
+            "requires_adjustment": None,
             "adjusted_dose": None,
-            "recommendation": "No adjustment needed based on guidelines",
+            "recommendation": (
+                "No renal dosing guideline is on file for this drug. Renal dose "
+                "adjustment has NOT been assessed."
+            ),
         }
 
         if not guideline or not guideline.renal_adjustment:
             return result
 
         adjustments = guideline.renal_adjustment
-        if isinstance(adjustments, list):
-            for adj in adjustments:
-                egfr_range = adj.get("egfr_range", {})
-                egfr_min = egfr_range.get("min", 0)
-                egfr_max = egfr_range.get("max", 999)
-                if egfr_min <= egfr <= egfr_max:
-                    result["requires_adjustment"] = True
-                    result["adjusted_dose"] = adj.get("dose", "See recommendation")
-                    result["recommendation"] = adj.get("recommendation", "Adjust dose per renal function")
-                    result["adjustment_detail"] = adj
-                    break
+        if not isinstance(adjustments, list):
+            # A guideline exists but its renal_adjustment is not the list of eGFR
+            # bands this code knows how to read, so nothing was assessed.
+            result["recommendation"] = (
+                "A renal guideline is on file for this drug but its adjustment "
+                "data is not in a form this service can evaluate. Renal dose "
+                "adjustment has NOT been assessed."
+            )
+            return result
+
+        result["assessed"] = True
+        result["requires_adjustment"] = False
+        result["recommendation"] = (
+            "The renal guideline on file specifies dose bands by eGFR, and this "
+            "eGFR falls outside all of them. No adjustment is specified for it."
+        )
+        for adj in adjustments:
+            egfr_range = adj.get("egfr_range", {})
+            egfr_min = egfr_range.get("min", 0)
+            egfr_max = egfr_range.get("max", 999)
+            if egfr_min <= egfr <= egfr_max:
+                result["requires_adjustment"] = True
+                result["adjusted_dose"] = adj.get("dose", "See recommendation")
+                result["recommendation"] = adj.get("recommendation", "Adjust dose per renal function")
+                result["adjustment_detail"] = adj
+                break
 
         return result
 
