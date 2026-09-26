@@ -57,7 +57,25 @@ MUST_REFUSE = [
     ("GET", "/governance/connectors"),
     ("GET", "/governance/laboratories"),
     ("GET", "/governance/workers/ranking"),
+    # Three administrative modules had no guard on any route. Each now carries a
+    # router-level require_permission("system:admin"), matching app/platform/routes.py,
+    # app/research_platform/routes.py and app/critical_care/api/routes.py.
+    ("POST", "/lifecycle/components"),
+    ("POST", "/lifecycle/releases"),
+    ("POST", "/pilot-platform/pilots"),
+    ("POST", "/pilot-platform/readiness"),
+    ("POST", "/certification/release/check"),
+    ("POST", "/certification/release/validate"),
 ]
+
+# Routers that must carry a router-level guard because every route in them is
+# administrative. A per-route guard leaves gaps; the router level cannot.
+GUARDED_ROUTERS = (
+    "app/identity/lifecycle/routes.py",
+    "app/lifecycle_platform/api/routes.py",
+    "app/pilot_platform/api/routes.py",
+    "app/certification/routes.py",
+)
 
 
 @pytest.fixture(scope="module")
@@ -109,4 +127,30 @@ def test_every_governance_route_declares_a_guard_or_is_public() -> None:
         "these governance routes have no authorization dependency and are not declared "
         "public; add the guard its family already uses, or declare it public with a "
         "reason in PUBLIC_BY_DESIGN:\n  " + "\n  ".join(unguarded)
+    )
+
+
+@pytest.mark.parametrize("module", GUARDED_ROUTERS)
+def test_administrative_router_carries_a_router_level_guard(module: str) -> None:
+    """These modules are guarded at the router so no future route can miss it."""
+    source = (pathlib.Path(__file__).resolve().parents[2] / module).read_text(encoding="utf-8")
+    assert 'dependencies=[Depends(require_permission("system:admin"))]' in source, (
+        f"{module} must guard its router, not its routes one by one"
+    )
+
+
+def test_the_contracts_spec_surface_is_covered_by_the_docs_guard() -> None:
+    """The generated API specification must have one policy, not two.
+
+    ``DocsAuthMiddleware`` protects /docs, /redoc and /openapi.json in production via
+    an exact-match set. ``app/contracts/routes.py`` regenerates the same surface —
+    OpenAPI, AsyncAPI, per-module JSON Schema and the FHIR R4 profiles — under its own
+    prefix, which that set never matched, so the specification the platform
+    deliberately protects was also served unauthenticated at /contracts/openapi.json.
+    """
+    from app.middleware import DocsAuthMiddleware
+
+    assert "/contracts".startswith(DocsAuthMiddleware._PROTECTED_PREFIXES), (
+        "the contracts spec surface must be inside the docs guard's protected prefixes; "
+        f"prefixes are {DocsAuthMiddleware._PROTECTED_PREFIXES}"
     )

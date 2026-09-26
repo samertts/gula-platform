@@ -14,8 +14,17 @@ from app.identity.lifecycle.services import (
     GuardianService,
     WorkforceService,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/lifecycle", tags=["NIAM Lifecycle"])
+router = APIRouter(
+    prefix="/lifecycle",
+    tags=["NIAM Lifecycle"],
+    # Identity lifecycle administration: enterprise registration, licensing,
+    # inspection and risk assessment. Every route here was reachable with no
+    # credentials. Guarded at the router, the way app/platform/routes.py and
+    # app/research_platform/routes.py guard their administrative surfaces.
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 # ──────────────────────────────────────────────
 #  Enterprise Registration

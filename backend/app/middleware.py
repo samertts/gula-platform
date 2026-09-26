@@ -289,12 +289,19 @@ class PrivacyMiddleware(BaseHTTPMiddleware):
 
 
 class DocsAuthMiddleware(BaseHTTPMiddleware):
-    """Guard /docs, /redoc, /openapi.json behind admin JWT in production."""
+    """Guard the API specification surface behind admin JWT in production."""
 
     _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
+    # ``app/contracts/routes.py`` regenerates the same surface — OpenAPI, AsyncAPI,
+    # per-module JSON Schema and the FHIR R4 profiles — under its own prefix, which an
+    # exact-match set never matched. So the specification the platform deliberately
+    # protects at /openapi.json was served unauthenticated at /contracts/openapi.json.
+    # Matched by prefix so the spec surface has one policy rather than two.
+    _PROTECTED_PREFIXES = ("/contracts",)
 
     async def dispatch(self, request: Request, call_next):
-        if request.url.path not in self._PROTECTED:
+        path = request.url.path
+        if path not in self._PROTECTED and not path.startswith(self._PROTECTED_PREFIXES):
             return await call_next(request)
         token = request.cookies.get("access_token")
         if not token:

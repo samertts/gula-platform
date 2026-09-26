@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.security.dependencies import require_permission
 
 from .engine import CertificationEngine
 from .enums import CertificationDimension, MetricCategory, ReleaseGate
@@ -12,7 +14,13 @@ from .metrics import MetricsCollector
 from .release_gates import ReleaseGateChecker
 from .report import generate_pdf_report
 
-router = APIRouter(prefix="/certification", tags=["certification"])
+router = APIRouter(
+    prefix="/certification",
+    tags=["certification"],
+    # Release certification and gate checks — an administrative surface that was
+    # reachable with no credentials.
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 engine = CertificationEngine()
 metrics_collector = MetricsCollector()
