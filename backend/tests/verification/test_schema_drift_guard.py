@@ -98,12 +98,20 @@ CLINICAL_COMMAND_ALLOWANCE: dict[str, set[str]] = {
 
 TOTAL_DRIFTED_TABLES = 84
 
-# NR-006, sharpened.  One physical table is still mapped by two classes, and the
-# two disagree about the schema: ``app.national.domain.facility.Facility``
-# declares 24 columns the table lacks, while ``app.models.clinical_scope
-# .NationalFacility`` matches it exactly.  Which module a caller imports
-# therefore decides whether the write succeeds.
-KNOWN_MULTI_OWNED = {"national_facilities"}
+# NR-006, RESOLVED 2026-09-26, so this set is deliberately empty.
+#
+# It used to hold ``national_facilities``, which was mapped by
+# ``app.national.domain.facility.Facility`` (24 columns the table lacks) and by
+# ``app.models.clinical_scope.NationalFacility`` (an exact match), so which
+# module a caller imported decided whether the write succeeded.  NR-074's shared
+# ``MetaData`` forced the choice -- the first carried ``extend_existing=True``
+# and silently unioned itself into the second, producing a 30-column ``Table``
+# with 24 phantom columns -- and the physical schema decided it.  The richer
+# class is retired; see ``docs/architecture/NR-006-national-facilities-ownership.md``.
+#
+# An empty set is a stronger pin than a one-element one: any dual mapping now
+# fails, including a reintroduction of this one under a different name.
+KNOWN_MULTI_OWNED: set[str] = set()
 
 
 def _classes_by_table() -> dict[str, list[Any]]:
@@ -191,9 +199,18 @@ def test_platform_wide_drift_does_not_grow(report: dict[str, Any]) -> None:
 
 
 def test_only_the_known_table_is_mapped_by_more_than_one_class(report: dict[str, Any]) -> None:
-    """NR-006 has not spread, and is still the disagreement it was measured to be.
+    """No physical table is mapped by two classes. NR-006 was the last one.
 
-    Asserting the set rather than the count so a swap — one dual mapping retired
-    while another appears — cannot pass.
+    Still asserting the set rather than the count, so a swap — one dual mapping
+    retired while another appears — cannot pass. With ``KNOWN_MULTI_OWNED`` now
+    empty this is simply the invariant, and it matters more than it did: under
+    NR-074's shared ``MetaData`` a second declaration carrying
+    ``extend_existing=True`` does not raise, it silently unions itself into the
+    first. SQLAlchemy will not catch this, so the assertion has to.
     """
-    assert set(report["multi_owned"]) == KNOWN_MULTI_OWNED, report["multi_owned"]
+    assert set(report["multi_owned"]) == KNOWN_MULTI_OWNED, (
+        f"tables mapped by more than one class: {report['multi_owned']}. "
+        "NR-006 closed this for national_facilities; a new entry here is a new "
+        "ownership collision, and under one shared MetaData it will have merged "
+        "the two column sets rather than failing."
+    )

@@ -15,8 +15,11 @@ from app.models.base import (
     TenantMixin,
     TimestampMixin,
 )
+from app.orm_topology import SHARED_METADATA
 
-NationalBase = declarative_base()
+#: NR-086 -- constructed against the one shared namespace so this base's
+#: cross-base foreign keys resolve. See app/orm_topology.py.
+NationalBase = declarative_base(metadata=SHARED_METADATA)
 
 
 def _ulid() -> str:

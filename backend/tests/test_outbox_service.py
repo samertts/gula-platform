@@ -34,6 +34,7 @@ from app.core.events import EventBus
 from app.database import Base
 from app.national.base import NationalBase
 from app.models.outbox import MAX_ATTEMPTS, OutboxEvent
+from app.orm_topology import own_tables
 from app.services.outbox_service import OutboxWorker, emit_to_outbox, purge_old_events
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -48,15 +49,15 @@ def db():
     from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     import app.national.domain  # noqa: F401
-    NationalBase.metadata.create_all(engine)
-    Base.metadata.create_all(engine)
+    NationalBase.metadata.create_all(engine, tables=own_tables(NationalBase))
+    Base.metadata.create_all(engine, tables=own_tables(Base))
     Session = sessionmaker(bind=engine)
     s = Session()
     try:
         yield s
     finally:
         s.close()
-        Base.metadata.drop_all(engine)
+        Base.metadata.drop_all(engine, tables=own_tables(Base))
 
 
 def _pending_count(db) -> int:

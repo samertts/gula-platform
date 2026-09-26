@@ -72,7 +72,7 @@ class AdaptiveMFASession(IdentityBaseEntity):
     mfa_id = Column(String(100), unique=True, nullable=False, index=True)
 
     account_id = Column(String(100), ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
-    session_id = Column(String(100), ForeignKey("niam_user_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    session_id = Column(String(100), ForeignKey("niam_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
 
     mfa_type = Column(String(30), nullable=False)
 

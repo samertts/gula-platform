@@ -8,8 +8,11 @@ from sqlalchemy import Column, DateTime, String
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
+from app.orm_topology import SHARED_METADATA
 
-IdentityBase = declarative_base()
+#: NR-086 -- constructed against the one shared namespace so this base's
+#: cross-base foreign keys resolve. See app/orm_topology.py.
+IdentityBase = declarative_base(metadata=SHARED_METADATA)
 
 
 def _ulid() -> str:

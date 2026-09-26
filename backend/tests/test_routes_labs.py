@@ -43,6 +43,7 @@ import pytest
 from app.database import Base, get_db
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
+from app.orm_topology import own_tables
 from app.security.auth import create_token, hash_password
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -72,9 +73,9 @@ def db_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine, tables=own_tables(Base))
     yield engine
-    Base.metadata.drop_all(engine)
+    Base.metadata.drop_all(engine, tables=own_tables(Base))
     engine.dispose()
 
 

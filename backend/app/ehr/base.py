@@ -5,9 +5,12 @@ import uuid
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
+from app.orm_topology import SHARED_METADATA
 from shared.models import BaseEntityMixin, OptimisticLockMixin, SoftDeleteMixin, TimestampMixin
 
-EHRBase = declarative_base()
+#: NR-086 -- constructed against the one shared namespace so this base's
+#: cross-base foreign keys resolve. See app/orm_topology.py.
+EHRBase = declarative_base(metadata=SHARED_METADATA)
 
 # Backward-compatible aliases for the old EHR-prefixed mixin names.
 # New code should import TimestampMixin, SoftDeleteMixin from shared.models.
