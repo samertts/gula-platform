@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -311,6 +312,17 @@ class DoseEngine:
             return result
 
         adjustments = guideline.renal_adjustment
+        if isinstance(adjustments, str):
+            # The physical column is `text`, not jsonb. This branch reads Generation
+            # A (Column(JSON), decoded for us) and Generation B (Column(Text), a raw
+            # JSON string) identically, so renal assessment keeps working whichever
+            # ORM generation is in place. Without it, the isinstance check below is
+            # always False against a Text column and every drug reports
+            # "not assessed" -- fail-safe, but silently unassessable forever.
+            try:
+                adjustments = json.loads(adjustments)
+            except (ValueError, TypeError):
+                adjustments = None
         if not isinstance(adjustments, list):
             # A guideline exists but its renal_adjustment is not the list of eGFR
             # bands this code knows how to read, so nothing was assessed.

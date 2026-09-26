@@ -30,8 +30,10 @@ repaired.  Guarding it first means the drift repair cannot silently ship it.
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
+import pytest
 from app.pharmacy.clinical import DoseEngine
 
 
@@ -115,3 +117,57 @@ def test_matching_band_still_returns_the_adjustment():
     assert result["adjusted_dose"] == "250mg q24h"
     assert result["recommendation"] == "Reduce dose and extend interval"
     assert result["adjustment_detail"]["egfr_range"] == {"min": 0, "max": 30}
+
+
+# ---------------------------------------------------------------------------
+# Forward compatibility across the two pharmacy ORM generations
+# ---------------------------------------------------------------------------
+#
+# The physical column is ``text``, not ``jsonb``. This branch's model declares
+# ``Column(JSON)`` (SQLAlchemy decodes it for us, so the attribute is a list);
+# the reconciled model on the pharmacy branch declares ``Column(Text)``, which
+# correctly matches the schema and hands back a raw JSON **string**.
+#
+# Without handling both, the band check is always False against Text and EVERY
+# drug reports "not assessed". That fails safe -- it refuses rather than
+# asserting a false negative, which is what NR-055 exists to guarantee -- but it
+# would make renal assessment silently unassessable forever, which is its own
+# defect. These tests pin both shapes so the behaviour does not depend on which
+# ORM generation is in place.
+
+
+def test_a_json_string_of_bands_is_read_like_a_list():
+    """Generation B: Column(Text) hands back a raw JSON string."""
+    guideline = SimpleNamespace(
+        renal_adjustment=json.dumps(
+            [{"egfr_range": {"min": 0, "max": 30}, "dose": "250mg q24h",
+              "recommendation": "Reduce dose and extend interval"}]
+        )
+    )
+    result = _engine(guideline).calculate_renal_adjustment("SOME-DRUG", egfr=22.0)
+
+    assert result["assessed"] is True
+    assert result["requires_adjustment"] is True
+    assert result["adjusted_dose"] == "250mg q24h"
+
+
+def test_a_json_string_outside_every_band_is_still_assessed():
+    guideline = SimpleNamespace(
+        renal_adjustment=json.dumps([{"egfr_range": {"min": 0, "max": 15}, "dose": "half"}])
+    )
+    result = _engine(guideline).calculate_renal_adjustment("SOME-DRUG", egfr=90.0)
+
+    assert result["assessed"] is True
+    assert result["requires_adjustment"] is False
+    assert "falls outside all of them" in result["recommendation"]
+
+
+@pytest.mark.parametrize("payload", ["not json at all", "{", '"a bare string"', "42"])
+def test_unparseable_text_is_reported_as_not_assessed(payload):
+    """Malformed or non-list text must not be guessed at."""
+    result = _engine(SimpleNamespace(renal_adjustment=payload)).calculate_renal_adjustment(
+        "SOME-DRUG", egfr=22.0
+    )
+    assert result["assessed"] is False
+    assert result["requires_adjustment"] is None
+    assert "NOT been assessed" in result["recommendation"]
