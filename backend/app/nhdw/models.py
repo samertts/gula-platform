@@ -54,11 +54,16 @@ class Admission(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    hospital = relationship("HospitalMaster", foreign_keys=[hospital_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
-    room = relationship("Room", foreign_keys=[room_id])
-    bed = relationship("Bed", foreign_keys=[bed_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
+    # Hospital entities live on the hospital declarative base; NHDW has its own
+    # registry, and relationship() cannot resolve a name across registries — these
+    # declarations only made configure_mappers() fail. The *_id columns are kept;
+    # app/nhdw/services.py and kpi.py already import and query the hospital models
+    # directly, which is the working cross-base pattern.
 
     __table_args__ = (
         Index("ix_nhdw_admissions_patient", "patient_id"),
@@ -87,7 +92,11 @@ class Discharge(NHDWBaseEntity):
     metadata_ = Column("metadata", JSON, nullable=True)
 
     admission = relationship("Admission", foreign_keys=[admission_id])
-    patient = relationship("Patient", foreign_keys=[patient_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
 
     __table_args__ = (
         Index("ix_nhdw_discharges_admission", "admission_id"),
@@ -116,7 +125,11 @@ class Transfer(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
 
     __table_args__ = (
         Index("ix_nhdw_transfers_patient", "patient_id"),
@@ -143,9 +156,16 @@ class QueueEntry(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
-    clinic = relationship("Clinic", foreign_keys=[clinic_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
+    # Hospital entities live on the hospital declarative base; NHDW has its own
+    # registry, and relationship() cannot resolve a name across registries — these
+    # declarations only made configure_mappers() fail. The *_id columns are kept;
+    # app/nhdw/services.py and kpi.py already import and query the hospital models
+    # directly, which is the working cross-base pattern.
 
     __table_args__ = (
         Index("ix_nhdw_queue_dept_date", "department_id", "queue_date"),
@@ -168,8 +188,16 @@ class WaitingListEntry(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
+    # Hospital entities live on the hospital declarative base; NHDW has its own
+    # registry, and relationship() cannot resolve a name across registries — these
+    # declarations only made configure_mappers() fail. The *_id columns are kept;
+    # app/nhdw/services.py and kpi.py already import and query the hospital models
+    # directly, which is the working cross-base pattern.
 
     __table_args__ = (
         Index("ix_nhdw_waiting_patient", "patient_id"),
@@ -197,7 +225,11 @@ class ClinicalTask(NHDWBaseEntity):
     is_recurring = Column(Boolean, default=False, nullable=False)
     recurrence_rule = Column(String(500), nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
 
     __table_args__ = (
         Index("ix_nhdw_tasks_patient", "patient_id"),
@@ -225,8 +257,16 @@ class WardRound(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
+    # Hospital entities live on the hospital declarative base; NHDW has its own
+    # registry, and relationship() cannot resolve a name across registries — these
+    # declarations only made configure_mappers() fail. The *_id columns are kept;
+    # app/nhdw/services.py and kpi.py already import and query the hospital models
+    # directly, which is the working cross-base pattern.
 
     __table_args__ = (
         Index("ix_nhdw_rounds_patient", "patient_id"),
@@ -252,7 +292,11 @@ class CarePlan(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
 
     __table_args__ = (
         Index("ix_nhdw_care_plans_patient", "patient_id"),
@@ -277,8 +321,16 @@ class HospitalAlert(NHDWBaseEntity):
     acknowledged_by = Column(JSON, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    source_department = relationship("HospitalDepartment", foreign_keys=[source_department_id])
-    patient = relationship("Patient", foreign_keys=[patient_id])
+    # Hospital entities live on the hospital declarative base; NHDW has its own
+    # registry, and relationship() cannot resolve a name across registries — these
+    # declarations only made configure_mappers() fail. The *_id columns are kept;
+    # app/nhdw/services.py and kpi.py already import and query the hospital models
+    # directly, which is the working cross-base pattern.
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
 
     __table_args__ = (
         Index("ix_nhdw_alerts_severity", "severity"),
@@ -301,7 +353,11 @@ class HospitalMessage(NHDWBaseEntity):
     has_attachments = Column(Boolean, default=False, nullable=False)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
+    # Hospital entities live on the hospital declarative base; NHDW has its own
+    # registry, and relationship() cannot resolve a name across registries — these
+    # declarations only made configure_mappers() fail. The *_id columns are kept;
+    # app/nhdw/services.py and kpi.py already import and query the hospital models
+    # directly, which is the working cross-base pattern.
     parent = relationship("HospitalMessage", remote_side="HospitalMessage.id", foreign_keys=[parent_message_id])
 
     __table_args__ = (
@@ -327,7 +383,11 @@ class TelemedicineSession(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    patient = relationship("Patient", foreign_keys=[patient_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
 
     __table_args__ = (
         Index("ix_nhdw_telemed_patient", "patient_id"),
@@ -351,7 +411,11 @@ class ResourceSchedule(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    booked_for_patient = relationship("Patient", foreign_keys=[booked_for_patient_id])
+    # ``Patient`` is owned by the main declarative Base; NHDW has its own
+    # registry (app/nhdw/base.py), and a relationship() string cannot be resolved
+    # across registries — declaring it only made configure_mappers() fail, which
+    # broke every NHDW endpoint. ``patient_id`` is kept; load the patient
+    # explicitly as app/nhdw/services.py already does.
 
     __table_args__ = (
         Index("ix_nhdw_resource_type_date", "resource_type", "scheduled_date"),
@@ -393,7 +457,11 @@ class ShiftReport(NHDWBaseEntity):
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 
-    department = relationship("HospitalDepartment", foreign_keys=[department_id])
+    # Hospital entities live on the hospital declarative base; NHDW has its own
+    # registry, and relationship() cannot resolve a name across registries — these
+    # declarations only made configure_mappers() fail. The *_id columns are kept;
+    # app/nhdw/services.py and kpi.py already import and query the hospital models
+    # directly, which is the working cross-base pattern.
 
     __table_args__ = (
         Index("ix_nhdw_shift_reports_dept_date", "department_id", "shift_date"),
