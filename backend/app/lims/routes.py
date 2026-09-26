@@ -341,7 +341,16 @@ def create_department(
     )
     db.add(dept)
     db.flush()
-    log_action(db, "create", "lims_department", dept.id, current_user.id, current_user.role, f"Department {dept.code} created")
+    log_action(
+        db,
+        action="create",
+        resource_type="lims_department",
+        resource_id=dept.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        lab_id=_lab_id(current_user),
+        details=f"Department {dept.code} created",
+    )
     db.commit()
     db.refresh(dept)
     return dept
@@ -662,6 +671,7 @@ def register_specimen(
             db, data.order_id, _lab_id(current_user),
             data.specimen_type, data.barcode, current_user.id,
             container_type=data.container_type,
+            actor_role=current_user.role,
             volume_ml=data.volume_ml,
             clinical_info=data.clinical_info,
         )
@@ -766,7 +776,10 @@ def transition_specimen(
         if data.rejection_reason:
             specimen = SpecimenService.reject(db, specimen, data.rejection_reason, current_user.id)
         else:
-            specimen = SpecimenService.transition(db, specimen, data.target_status, current_user.id, data.notes)
+            specimen = SpecimenService.transition(
+                db, specimen, data.target_status, current_user.id, data.notes,
+                actor_role=current_user.role,
+            )
         specimen.version = version_before + 1
         guard.complete(
             receipt,
@@ -847,6 +860,7 @@ def create_lims_order(
         lims_order = OrderService.create_lims_order(
             db, data.order_id, _lab_id(current_user), current_user.id,
             data.accession_number, data.priority,
+            actor_role=current_user.role,
             clinical_note=data.clinical_note,
             diagnosis_code=data.diagnosis_code,
         )
@@ -1124,6 +1138,7 @@ def create_result(
             db, data.specimen_id, specimen.order_id,
             lab_id, data.test_code, data.test_name,
             current_user.id,
+            actor_role=current_user.role,
             value_numeric=data.value_numeric,
             value_text=data.value_text,
             unit=data.unit,
@@ -1331,17 +1346,24 @@ def release_result(
         lims_models.Specimen.id == result.specimen_id,
         lims_models.Specimen.lab_id == lab_id,
     ).with_for_update().first()
-    if not specimen or specimen.status != "verified":
+    # The specimen must be ``validated``, not ``verified``: this handler goes on to
+    # run ``SpecimenService.transition(..., "released")``, and the specimen state
+    # machine allows ``released`` only from ``validated``
+    # (app/lims/state_machine.py::_SPECIMEN_TRANSITIONS). Demanding ``verified``
+    # here made every release fail on that transition, so no result could ever be
+    # released. Requiring ``validated`` is also the stricter reading: the laboratory
+    # signs the specimen off before a result leaves the building.
+    if not specimen or specimen.status != "validated":
         guard.reject(
             operation="result.release",
             resource_type="lims_result",
             resource_id=result.id,
             state_before=state_before,
             version_before=version_before,
-            reason="verified_specimen_required",
+            reason="validated_specimen_required",
         )
         db.commit()
-        raise HTTPException(422, detail="A result can only be released from a verified specimen")
+        raise HTTPException(422, detail="A result can only be released from a validated specimen")
 
     remaining_unvalidated = db.query(lims_models.Result).filter(
         lims_models.Result.specimen_id == specimen.id,
@@ -1371,7 +1393,9 @@ def release_result(
     specimen_version_before = specimen.version
     try:
         release = ResultService.release(db, result, current_user.id)
-        specimen = SpecimenService.transition(db, specimen, "released", current_user.id)
+        specimen = SpecimenService.transition(
+            db, specimen, "released", current_user.id, actor_role=current_user.role
+        )
         specimen.version = specimen_version_before + 1
         guard.complete(
             receipt,
