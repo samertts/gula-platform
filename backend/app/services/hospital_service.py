@@ -56,6 +56,8 @@ class HospitalService:
         lab_id: int,
         user_id: int,
         data: dict[str, Any],
+        *,
+        actor_role: str,
     ) -> HospitalMaster:
         existing = db.query(HospitalMaster).filter(
             HospitalMaster.lab_id == lab_id,
@@ -67,7 +69,26 @@ class HospitalService:
         hospital = HospitalMaster(lab_id=lab_id, created_by=user_id, **data)
         db.add(hospital)
         db.flush()
-        log_action(db, "hospital.create", hospital.id, lab_id, user_id, data)
+        # These arguments were passed positionally against a signature of
+        # (db, action, resource_type, resource_id, user_id, user_role, lab_id,
+        # details), so resource_type received the hospital's id, resource_id
+        # received the lab_id, lab_id was never recorded at all, and the payload
+        # dict landed in user_role -- a varchar column, which psycopg2 refused
+        # with "can't adapt type 'dict'". Every call to this route was a 500.
+        log_action(
+            db,
+            action="hospital.create",
+            resource_type="hospital",
+            resource_id=hospital.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
+        # get_db() yields, rolls back on exception and closes -- it never commits.
+        # Without this the flush above is discarded when the request ends, and the
+        # route returns a populated 200 for a write that never persisted.
+        db.commit()
         return hospital
 
     @staticmethod
@@ -77,6 +98,8 @@ class HospitalService:
         lab_id: int,
         user_id: int,
         data: dict[str, Any],
+        *,
+        actor_role: str,
     ) -> HospitalMaster:
         hospital = db.query(HospitalMaster).filter(
             HospitalMaster.id == hospital_id,
@@ -89,12 +112,22 @@ class HospitalService:
             setattr(hospital, k, v)
         hospital.updated_by = user_id
         db.flush()
-        log_action(db, "hospital.update", hospital_id, lab_id, user_id, data)
+        log_action(
+            db,
+            action="hospital.update",
+            resource_type="hospital",
+            resource_id=hospital_id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
+        db.commit()
         return hospital
 
     @staticmethod
     def deactivate_hospital(
-        db: Session, hospital_id: int, lab_id: int, user_id: int,
+        db: Session, hospital_id: int, lab_id: int, user_id: int, *, actor_role: str,
     ) -> None:
         hospital = db.query(HospitalMaster).filter(
             HospitalMaster.id == hospital_id,
@@ -106,7 +139,16 @@ class HospitalService:
         hospital.is_active = False
         hospital.updated_by = user_id
         db.flush()
-        log_action(db, "hospital.deactivate", hospital_id, lab_id, user_id)
+        log_action(
+            db,
+            action="hospital.deactivate",
+            resource_type="hospital",
+            resource_id=hospital_id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+        )
+        db.commit()
 
     @staticmethod
     def get_hospital(db: Session, hospital_id: int, lab_id: int) -> HospitalMaster:
@@ -146,12 +188,24 @@ class HospitalService:
     # ── Campus CRUD ────────────────────────────────────────────────────────────
 
     @staticmethod
-    def create_campus(db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict) -> Campus:
+    def create_campus(
+        db: Session, lab_id: int, user_id: int, hospital_id: int, data: dict, *, actor_role: str,
+    ) -> Campus:
         HospitalService.get_hospital(db, hospital_id, lab_id)
         campus = Campus(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(campus)
         db.flush()
-        log_action(db, "campus.create", campus.id, lab_id, user_id, data)
+        log_action(
+            db,
+            action="campus.create",
+            resource_type="hospital_campus",
+            resource_id=campus.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
+        db.commit()
         return campus
 
     @staticmethod
@@ -168,6 +222,9 @@ class HospitalService:
         building = Building(lab_id=lab_id, created_by=user_id, campus_id=campus_id, **data)
         db.add(building)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return building
 
     @staticmethod
@@ -184,6 +241,9 @@ class HospitalService:
         floor = Floor(lab_id=lab_id, created_by=user_id, building_id=building_id, **data)
         db.add(floor)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return floor
 
     @staticmethod
@@ -202,6 +262,9 @@ class HospitalService:
         dept = HospitalDepartment(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(dept)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return dept
 
     @staticmethod
@@ -222,6 +285,9 @@ class HospitalService:
         clinic = Clinic(lab_id=lab_id, created_by=user_id, department_id=department_id, **data)
         db.add(clinic)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return clinic
 
     @staticmethod
@@ -239,6 +305,9 @@ class HospitalService:
         room = Room(lab_id=lab_id, created_by=user_id, department_id=department_id, **data)
         db.add(room)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return room
 
     @staticmethod
@@ -261,6 +330,9 @@ class HospitalService:
         bed = Bed(lab_id=lab_id, created_by=user_id, room_id=room_id, **data)
         db.add(bed)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return bed
 
     @staticmethod
@@ -333,6 +405,12 @@ class HospitalService:
                 "version": bed.version,
             },
         )
+        # Deliberately NO db.commit() here. This method runs inside
+        # _run_hospital_command's ClinicalCommandGuard, which claims a receipt,
+        # runs this mutation, records completion and only then commits -- and
+        # rolls back if completion fails. Committing here would publish the
+        # clinical change before its receipt was recorded, and the guard's
+        # rollback could no longer undo it.
         return bed
 
     @staticmethod
@@ -384,6 +462,12 @@ class HospitalService:
                 "version": bed.version,
             },
         )
+        # Deliberately NO db.commit() here. This method runs inside
+        # _run_hospital_command's ClinicalCommandGuard, which claims a receipt,
+        # runs this mutation, records completion and only then commits -- and
+        # rolls back if completion fails. Committing here would publish the
+        # clinical change before its receipt was recorded, and the guard's
+        # rollback could no longer undo it.
         return bed
 
     @staticmethod
@@ -459,6 +543,12 @@ class HospitalService:
                 "target_version": target.version,
             },
         )
+        # Deliberately NO db.commit() here. This method runs inside
+        # _run_hospital_command's ClinicalCommandGuard, which claims a receipt,
+        # runs this mutation, records completion and only then commits -- and
+        # rolls back if completion fails. Committing here would publish the
+        # clinical change before its receipt was recorded, and the guard's
+        # rollback could no longer undo it.
         return {
             "from_bed": from_bed_id,
             "to_bed": to_bed_id,
@@ -524,6 +614,12 @@ class HospitalService:
                 "version": theater.version,
             },
         )
+        # Deliberately NO db.commit() here. This method runs inside
+        # _run_hospital_command's ClinicalCommandGuard, which claims a receipt,
+        # runs this mutation, records completion and only then commits -- and
+        # rolls back if completion fails. Committing here would publish the
+        # clinical change before its receipt was recorded, and the guard's
+        # rollback could no longer undo it.
         return theater
 
     @staticmethod
@@ -594,6 +690,12 @@ class HospitalService:
                 "procedure_site": checklist.procedure_site,
             },
         )
+        # Deliberately NO db.commit() here. This method runs inside
+        # _run_hospital_command's ClinicalCommandGuard, which claims a receipt,
+        # runs this mutation, records completion and only then commits -- and
+        # rolls back if completion fails. Committing here would publish the
+        # clinical change before its receipt was recorded, and the guard's
+        # rollback could no longer undo it.
         return checklist
 
     @staticmethod
@@ -626,6 +728,9 @@ class HospitalService:
         unit = Unit(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(unit)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return unit
 
     @staticmethod
@@ -642,6 +747,9 @@ class HospitalService:
         ot = OperationTheater(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(ot)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return ot
 
     @staticmethod
@@ -660,6 +768,9 @@ class HospitalService:
         equip = MedicalEquipment(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(equip)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return equip
 
     @staticmethod
@@ -686,6 +797,9 @@ class HospitalService:
         cc = CostCenter(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(cc)
         db.flush()
+        # get_db() never commits on success (it yields, rolls back on exception,
+        # then closes), so a flush alone is discarded when the request ends.
+        db.commit()
         return cc
 
     @staticmethod
@@ -775,10 +889,20 @@ class HospitalService:
 
     @staticmethod
     def create_appointment(
-        db: Session, lab_id: int, user_id: int, data: dict[str, Any],
+        db: Session, lab_id: int, user_id: int, data: dict[str, Any], *, actor_role: str,
     ) -> Appointment:
         apt = Appointment(lab_id=lab_id, **data)
         db.add(apt)
         db.flush()
-        log_action(db, "appointment.create", apt.id, lab_id, user_id, data)
+        log_action(
+            db,
+            action="appointment.create",
+            resource_type="hospital_appointment",
+            resource_id=apt.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=data,
+        )
+        db.commit()
         return apt

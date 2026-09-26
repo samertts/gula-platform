@@ -372,6 +372,7 @@ def create_hospital(
 ):
     hospital = HospitalService.create_hospital(
         db, current_user.lab_id, current_user.id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(hospital)
 
@@ -388,6 +389,7 @@ def update_hospital(
         raise HTTPException(status_code=400, detail="No fields to update")
     hospital = HospitalService.update_hospital(
         db, hospital_id, current_user.lab_id, current_user.id, data,
+        actor_role=current_user.role,
     )
     return _model_to_dict(hospital)
 
@@ -398,7 +400,10 @@ def deactivate_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    HospitalService.deactivate_hospital(db, hospital_id, current_user.lab_id, current_user.id)
+    HospitalService.deactivate_hospital(
+        db, hospital_id, current_user.lab_id, current_user.id,
+        actor_role=current_user.role,
+    )
     return {"detail": "Hospital deactivated", "detail_ar": "تم إلغاء تنشيط المستشفى"}
 
 
@@ -424,6 +429,7 @@ def create_campus(
 ):
     campus = HospitalService.create_campus(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(campus)
 
@@ -985,6 +991,7 @@ def create_appointment(
 ):
     apt = HospitalService.create_appointment(
         db, current_user.lab_id, current_user.id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(apt)
 
