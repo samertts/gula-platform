@@ -983,6 +983,35 @@ evidence.
 | PR #258 M4 `DoseGuideline` | **CONSUMED, NOT REBUILT** | Answered my NR-056 human gate outright: years not months, `drug_id` integer FK, global reference data. Nothing invented here. |
 | `MUSTAFA_ACTIVE_REPAIR_QUEUE.md` | **PORTED** | This file. One document, two hands. |
 
+### Standing caveat on cross-lane finding numbers — read this before citing any NR-nnn
+
+Measured 2026-09-27 by loading both registers, not by reading either lane's prose:
+`claude/p0-2-pharmacy-reconciliation` carries **162** findings, this lane **80**,
+**80 ids are present in both**, and the two lanes mean the **same** finding for only
+**14** of them — NR-001..NR-007 and NR-009..NR-015. **66 mean different findings.**
+The numbering forked at **NR-008**.
+
+So `NR-074` is this lane's foreign-key topology repair and the sibling's
+`nhdw_admissions` split; `NR-076` is nursing here and orchestration repositories
+there; `NR-082` is 52 unaudited EHR writes here and dead radiology there. A bare
+`NR-nnn` above NR-015 is ambiguous **in both directions**, including inside the two
+open PR bodies and inside the watch notes each lane schedules for itself — the PR
+#258 watch note lists NR-074/NR-076/NR-082 as "Reserved", numbers this lane had
+already spent.
+
+**Until a convention is agreed, cite the branch with the number.** Full 66-row map:
+`docs/architecture/CROSS_LANE_FINDING_ID_COLLISIONS.md`, registered as NR-083 on
+this lane. Renumbering is **refused**, with reasons: the numbers are the audit trail
+in dozens of commit messages, three ADR filenames and two PR bodies; neither lane
+owns the space, so first-to-renumber is resolution by precedence; and it is wide
+churn on a shared artifact while two PRs are open against it.
+
+**A correction to this lane's own record, kept visible rather than deleted.** The
+notes on NR-077 and NR-081 claimed NR-078 and NR-080 were left unused "so one number
+means one thing across both hands." That was false when written — 66 numbers already
+meant two things — and the same commits created seven fresh collisions while avoiding
+two. Both notes now point here.
+
 ### Standing caveat on this lane's evidence base
 
 `gula_canon` is stamped at head `20260909_0001` with 423 tables, but it was built

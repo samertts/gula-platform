@@ -5,9 +5,9 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 80,
+    "total": 81,
     "P0": 35,
-    "P1": 29,
+    "P1": 30,
     "P2": 13,
     "P3": 3
   },
@@ -2925,7 +2925,7 @@
       "can_fix_now": "yes",
       "blocker": "no",
       "evidence_strength": "VERIFIED (migration sources across all reachable refs, physical schema, negative-proofed)",
-      "notes": "NR-078 is deliberately unused in this register: the sibling branch's finding series already uses NR-078 for the cross-base topology map, and NR-074 cites it under that name. Skipping it keeps one number meaning one thing across both hands."
+      "notes": "NR-078 is deliberately unused in this register: the sibling branch's finding series already uses NR-078 for the cross-base topology map, and NR-074 cites it under that name. Skipping it keeps one number meaning one thing across both hands.  CORRECTED 2026-09-27: the claim above that a number was left unused so that \"one number means one thing across both hands\" was FALSE WHEN WRITTEN. Measured by comparing the two registers directly, the numbering forked at NR-008 and 66 of the 80 shared ids already meant different findings in the two lanes; the two lanes agree only on NR-001..NR-007 and NR-009..NR-015. Skipping NR-078 and NR-080 avoided two collisions while the same commits created seven more (NR-074, NR-075, NR-076, NR-077, NR-079, NR-081, NR-082). The skip was cosmetic. See docs/architecture/CROSS_LANE_FINDING_ID_COLLISIONS.md and NR-083 below; renumbering is refused with reasons rather than deferred."
     },
     {
       "id": "NR-079",
@@ -2995,7 +2995,7 @@
       "can_fix_now": "yes",
       "blocker": "no",
       "evidence_strength": "VERIFIED (three runs in each mode, deterministic within mode, difference isolated to one table)",
-      "notes": "NR-080 is deliberately unused in this register: the sibling branch's series uses NR-080 for the destructive-autogenerate refusal, which app/orm_topology.py cites under that name. Same reasoning as NR-078."
+      "notes": "NR-080 is deliberately unused in this register: the sibling branch's series uses NR-080 for the destructive-autogenerate refusal, which app/orm_topology.py cites under that name. Same reasoning as NR-078.  CORRECTED 2026-09-27: the claim above that a number was left unused so that \"one number means one thing across both hands\" was FALSE WHEN WRITTEN. Measured by comparing the two registers directly, the numbering forked at NR-008 and 66 of the 80 shared ids already meant different findings in the two lanes; the two lanes agree only on NR-001..NR-007 and NR-009..NR-015. Skipping NR-078 and NR-080 avoided two collisions while the same commits created seven more (NR-074, NR-075, NR-076, NR-077, NR-079, NR-081, NR-082). The skip was cosmetic. See docs/architecture/CROSS_LANE_FINDING_ID_COLLISIONS.md and NR-083 below; renumbering is refused with reasons rather than deferred."
     },
     {
       "id": "NR-082",
@@ -3031,6 +3031,41 @@
       "blocker": "no",
       "evidence_strength": "VERIFIED (AST over both mechanisms, corrected once after reading the decorator)",
       "notes": "This was the most consequential thing NR-070's reconnaissance found, and it is not the thing NR-070 is about. The authorization gap needs a per-resource decision; this does not."
+    },
+    {
+      "id": "NR-083",
+      "category": "shared-state integrity",
+      "domain": "engineering process / negative register",
+      "priority": "P1",
+      "status": "OPEN — measured and mapped; renumbering refused with reasons; the namespacing convention is a decision for both lanes",
+      "title": "The two lanes share one finding-number space and 66 of 80 shared ids mean different findings",
+      "root_cause": "Two hands maintain a file of the same name and path with no reservation mechanism, so both allocate the next integer independently. Nothing detects the collision because neither register reads the other.",
+      "evidence": "Measured 2026-09-27 by loading both registers and comparing titles, not by reading either lane's prose. claude/p0-2-pharmacy-reconciliation (PR #258) carries 162 findings; claude/autonomous-run-1 carries 80; 80 ids are present in both; the two lanes mean the SAME finding for only 14 of them (NR-001..NR-007 and NR-009..NR-015) and DIFFERENT findings for 66. First divergence is NR-008. Examples: NR-074 is this lane's cross-base foreign-key topology repair and the sibling's nhdw_admissions ORM split; NR-076 is this lane's nursing ORM/schema contradiction and the sibling's eleven non-persisting orchestration repositories; NR-082 is this lane's 52 unaudited EHR write routes and the sibling's dead radiology module. The full 66-row map is docs/architecture/CROSS_LANE_FINDING_ID_COLLISIONS.md, generated from the two registers so it can be regenerated rather than maintained.",
+      "affected_components": "docs/architecture/GULA_MASTER_NEGATIVE_REGISTER.json on both branches; docs/engineering/MUSTAFA_ACTIVE_REPAIR_QUEUE.md; every commit message, ADR filename and PR body that cites a bare NR-nnn",
+      "affected_users": "",
+      "clinical_impact": "",
+      "security_impact": "",
+      "data_integrity_impact": "",
+      "operational_impact": "Every cross-lane citation of a bare NR-nnn above NR-015 is ambiguous, including in the bodies of two open pull requests and in the watch notes both lanes schedule for themselves. A reader who resolves such a citation in the wrong register gets a different defect in a different domain with a different severity, and nothing signals the error.",
+      "scalability_impact": "",
+      "legal_impact": "",
+      "intersections": "NR-077 and NR-081 in this lane, whose notes carried the false rationale this finding corrects",
+      "contradictions": "This lane's own register claimed, in two places, that NR-078 and NR-080 were left unused to keep one number meaning one thing across both hands. Measured, 66 numbers already meant two things when that was written. Both notes are corrected in place rather than deleted, so the mistaken reasoning stays auditable.",
+      "recommended_fix": "Namespace future ids per lane (NR-AA-nnn / NR-MU-nnn), or have one lane cede the bare NR-nnn space. Until that is decided, cite the branch with the number — \"NR-074 on autonomous-run-1\", never a bare \"NR-074\".",
+      "minimal_safe_fix": "NOT a renumber, and refused with reasons rather than deferred for convenience. (1) 66 findings are cited by number in dozens of commit messages, in ADR filenames, in test docstrings and in two open PR bodies; those citations are the audit trail and a renumber silently falsifies all of them. (2) Neither lane owns the numbering, so resolving it by whoever renumbers first is resolution by precedence, which the dual-hand protocol rules out. (3) It is wide churn on a shared artifact while two PRs are open against it. What is applied instead is the generated collision map plus the correction to this lane's two false rationale notes.",
+      "verification_method": "Regenerate the map by comparing both registers; assert that the agreeing set is exactly NR-001..NR-007 and NR-009..NR-015 and that no NEW collision is introduced by either lane.",
+      "acceptance_criteria": "One finding id resolves to one finding regardless of which lane a reader is standing in.",
+      "regression_risk": "",
+      "owner": "Both lanes jointly — this is the one thing neither can decide alone",
+      "related_tests": "none yet — a guard would have to read the sibling branch, which no existing test does",
+      "related_files": "docs/architecture/CROSS_LANE_FINDING_ID_COLLISIONS.md",
+      "related_adrs": "docs/architecture/CROSS_LANE_FINDING_ID_COLLISIONS.md",
+      "wave": "",
+      "complexity": "low to record, medium to converge",
+      "can_fix_now": "no",
+      "blocker": "no",
+      "evidence_strength": "VERIFIED (both registers compared programmatically; the sibling's register read from origin, not from its prose)",
+      "notes": "Found by a scheduled PR #258 watch whose own note listed NR-074, NR-076 and NR-082 as 'Reserved' — numbers this lane had assigned two days earlier to different findings. The watch itself was the detector, and the PR it was watching was unchanged."
     }
   ]
 }
