@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from backend.app._compat import StrEnum
+from app._compat import StrEnum
 
 
 class WorkflowExecutionStatus(StrEnum):

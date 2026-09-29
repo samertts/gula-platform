@@ -7,6 +7,6 @@ Layer: application
 Version: 1.0.0
 """
 
-from provider_management.capability import Provider_managementCapability
+from .capability import Provider_managementCapability
 
 __all__ = ["Provider_managementCapability"]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.app.kernel.integration import get_kernel
+from app.kernel.integration import get_kernel
 
 logger = logging.getLogger("gula.capability.fhir_interoperability")
 

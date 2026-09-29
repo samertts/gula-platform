@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from backend.app.national.task_engine.application.interfaces import (
+from app.national.task_engine.application.interfaces import (
     AssignmentEngine,
     RoundRobinAssigner,
 )
-from backend.app.national.task_engine.application.service import TaskEngineService
-from backend.app.national.task_engine.domain.entities import (
+from app.national.task_engine.application.service import TaskEngineService
+from app.national.task_engine.domain.entities import (
     NationalTask,
     TaskAssignment,
     TaskComment,
@@ -13,7 +13,7 @@ from backend.app.national.task_engine.domain.entities import (
     TaskQueue,
     TaskSLADefinition,
 )
-from backend.app.national.task_engine.domain.enums import (
+from app.national.task_engine.domain.enums import (
     AssignmentStrategy,
     EscalationLevel,
     TaskCategory,

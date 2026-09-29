@@ -5,14 +5,14 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from backend.app._compat import UTC
-from backend.app.national.workflow_runtime.application.interfaces import (
+from app._compat import UTC
+from app.national.workflow_runtime.application.interfaces import (
     WorkflowApprovalHandler,
     WorkflowNotifier,
     WorkflowStepExecutor,
     WorkflowTimerHandler,
 )
-from backend.app.national.workflow_runtime.domain.entities import (
+from app.national.workflow_runtime.domain.entities import (
     RetryPolicyConfig,
     WorkflowApproval,
     WorkflowDefinition,
@@ -21,13 +21,13 @@ from backend.app.national.workflow_runtime.domain.entities import (
     WorkflowStepDefinition,
     WorkflowTemplate,
 )
-from backend.app.national.workflow_runtime.domain.enums import (
+from app.national.workflow_runtime.domain.enums import (
     CompensationStrategy,
     WorkflowExecutionStatus,
     WorkflowStepStatus,
     WorkflowTrigger,
 )
-from backend.app.national.workflow_runtime.domain.repository import (
+from app.national.workflow_runtime.domain.repository import (
     SagaLogRepository,
     WorkflowApprovalRepository,
     WorkflowCompensationRepository,
@@ -37,11 +37,11 @@ from backend.app.national.workflow_runtime.domain.repository import (
     WorkflowTemplateRepository,
     WorkflowTimerRepository,
 )
-from backend.app.national.workflow_runtime.domain.saga_engine import SagaEngine
-from backend.app.national.workflow_runtime.domain.workflow_state_machine import (
+from app.national.workflow_runtime.domain.saga_engine import SagaEngine
+from app.national.workflow_runtime.domain.workflow_state_machine import (
     WorkflowStateMachine,
 )
-from backend.app.national.workflow_runtime.exceptions import (
+from app.national.workflow_runtime.exceptions import (
     WorkflowExecutionNotFoundError,
     WorkflowNotFoundError,
     WorkflowStepFailedError,

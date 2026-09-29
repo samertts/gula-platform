@@ -5,12 +5,12 @@ from typing import Any
 
 from sqlalchemy import desc, text
 
-from backend.app._compat import UTC
-from backend.app.database import SessionLocal
-from backend.app.national.task_engine.domain.entities import (
+from app._compat import UTC
+from app.database import SessionLocal
+from app.national.task_engine.domain.entities import (
     NationalTask,
 )
-from backend.app.national.task_engine.domain.repository import (
+from app.national.task_engine.domain.repository import (
     NationalTaskRepository,
     TaskAssignmentRepository,
     TaskAuditLogRepository,
@@ -19,7 +19,7 @@ from backend.app.national.task_engine.domain.repository import (
     TaskQueueRepository,
     TaskSLARepository,
 )
-from backend.app.national.task_engine.infrastructure.models import (
+from app.national.task_engine.infrastructure.models import (
     NationalTaskModel,
 )
 
@@ -158,7 +158,7 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
             return len(result.all())
 
     def _model_to_domain(self, model: Any) -> NationalTask:
-        from backend.app.national.task_engine.domain.enums import (
+        from app.national.task_engine.domain.enums import (
             TaskCategory,
             TaskPriority,
             TaskStatus,

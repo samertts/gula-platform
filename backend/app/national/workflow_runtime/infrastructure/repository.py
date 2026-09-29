@@ -7,13 +7,13 @@ from typing import Any
 
 from sqlalchemy import desc, text
 
-from backend.app._compat import UTC
-from backend.app.database import SessionLocal
-from backend.app.national.workflow_runtime.domain.entities import (
+from app._compat import UTC
+from app.database import SessionLocal
+from app.national.workflow_runtime.domain.entities import (
     WorkflowDefinition,
     WorkflowExecution,
 )
-from backend.app.national.workflow_runtime.domain.repository import (
+from app.national.workflow_runtime.domain.repository import (
     WorkflowApprovalRepository,
     WorkflowCompensationRepository,
     WorkflowDefinitionRepository,
@@ -22,7 +22,7 @@ from backend.app.national.workflow_runtime.domain.repository import (
     WorkflowTemplateRepository,
     WorkflowTimerRepository,
 )
-from backend.app.national.workflow_runtime.infrastructure.models import (
+from app.national.workflow_runtime.infrastructure.models import (
     NationalWorkflowDefinition,
     NationalWorkflowExecution,
 )

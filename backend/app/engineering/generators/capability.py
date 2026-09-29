@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
+from app.engineering.generators.base import BaseGenerator, GenerateResult
 
 
 @dataclass
@@ -188,7 +188,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(prefix="/{prefix}", tags=["{tag}"])
 
@@ -424,7 +424,7 @@ class CapabilityGenerator(BaseGenerator):
 
         cap = spec.name.lower().replace(" ", "_")
         cap_cap = spec.name[0].upper() + spec.name[1:]
-        module_path = f"backend.app.capabilities.{cap}"
+        module_path = f"app.capabilities.{cap}"
         prefix = cap.replace("_", "-")
 
         self.target_dir.mkdir(parents=True, exist_ok=True)
@@ -482,7 +482,7 @@ Layer: {spec.layer}
 Version: {spec.version}
 """
 
-from {cap}.capability import {cap_cap}Capability
+from .capability import {cap_cap}Capability
 
 __all__ = ["{cap_cap}Capability"]
 ''',
@@ -511,7 +511,7 @@ __all__ = ["{cap_cap}Capability"]
 import logging
 from typing import Any
 
-from backend.app.kernel.integration import get_kernel
+from app.kernel.integration import get_kernel
 
 logger = logging.getLogger("gula.capability.{cap}")
 
@@ -595,7 +595,7 @@ class {cap_cap}Capability:
         self._write(
             f"{cap}/infrastructure/repository.py",
             _REPOSITORY_IMPL_TPL.format(
-                module_path=f"backend.app.capabilities.{cap}",
+                module_path=f"app.capabilities.{cap}",
                 entity_name=entity_name,
                 repo=cap_cap,
             ),

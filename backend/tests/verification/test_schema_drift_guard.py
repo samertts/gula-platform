@@ -123,6 +123,18 @@ def _classes_by_table() -> dict[str, list[Any]]:
     every mapped class regardless of which base it belongs to, and a per-base
     walk that missed a base would silently narrow this guard.  Grouping rather
     than de-duplicating is what makes a dual-owned table visible.
+
+    NR-081: the sweep is confined to classes declared under the ``app`` package.
+    Without that, any mapped class alive anywhere in the process is counted, so a
+    test module declaring its own model changes this guard's numbers — measured,
+    a throwaway class on an existing table takes the drifted count from 84 to 85
+    and invents a dual-owner entry. That made the count depend on which tests ran
+    first, which is a ratchet that can pass for the wrong reason.
+
+    The filter is a no-op on today's tree, and that is the point: all 780 mapped
+    classes are under ``app.`` since NR-086b collapsed the duplicate
+    ``backend.app.*`` import path, so nothing real is excluded and nothing
+    foreign is admitted.
     """
     import gc
 
@@ -132,6 +144,8 @@ def _classes_by_table() -> dict[str, list[Any]]:
     for obj in gc.get_objects():
         try:
             if isinstance(obj, type) and hasattr(obj, "__tablename__") and hasattr(obj, "__table__"):
+                if not getattr(obj, "__module__", "").startswith("app."):
+                    continue
                 found[obj.__table__.name].append(obj)
         except Exception:
             continue
