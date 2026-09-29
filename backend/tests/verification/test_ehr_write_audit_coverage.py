@@ -93,6 +93,36 @@ def _kwarg(call: ast.Call, name: str) -> str | None:
     return None
 
 
+def _branch_on_batch_commits(fn: ast.FunctionDef) -> bool:
+    """True when some ``if ... "batch" ...`` branch commits inside its own body.
+
+    Read out of the tree rather than matched against ``ast.unparse`` output: that
+    normalises every string literal to single quotes, so a search for
+    ``'bundle_type == "batch"'`` silently never matches. It cost this test a
+    false failure, which is the cheap version of the same mistake a source-grep
+    ratchet makes when it passes on a commented-out line.
+    """
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.If):
+            continue
+        compares_batch = any(
+            isinstance(c, ast.Constant) and c.value == "batch"
+            for c in ast.walk(node.test)
+        )
+        if not compares_batch:
+            continue
+        commits = any(
+            isinstance(inner, ast.Call)
+            and isinstance(inner.func, ast.Attribute)
+            and inner.func.attr == "commit"
+            for stmt in node.body
+            for inner in ast.walk(stmt)
+        )
+        if commits:
+            return True
+    return False
+
+
 # ── Structural ratchet over the whole surface ──────────────────────────────
 
 
@@ -151,28 +181,33 @@ def test_no_ehr_write_route_is_async_while_the_decorator_is_sync():
                 assert not isinstance(fn, ast.AsyncFunctionDef), f"{fn.name} is async and decorated"
 
 
-def test_fhir_batch_is_not_audited_while_it_still_discards_writes():
-    """``POST /fhir`` commits only for ``type: "transaction"``.
+def test_the_fhir_write_routes_are_audited_and_batch_persists_on_its_own():
+    """All four FHIR writes carry an audit row, which completes 55 of 55.
 
-    ``body.get("type", "batch")`` defaults to ``batch``, whose entries are
-    applied with ``db.add`` and never committed -- ``get_db`` rolls back on
-    close -- while the response reports ``201``. Decorating it would make the
-    decorator's own ``db.commit()`` silently persist writes that are discarded
-    today, repairing a data-integrity defect as an invisible side effect of an
-    audit change. So audit and persistence must land together, or neither.
+    ``fhir_batch`` was deliberately held back one commit: it committed only for
+    ``type: "transaction"``, and ``body.get("type", "batch")`` defaults to
+    ``batch``, whose entries were applied with ``db.add`` and never committed
+    while the response reported ``201``. Decorating it in that state would have
+    made the decorator's own ``db.commit()`` the thing that persisted a batch
+    entry -- a data-integrity repair smuggled in as a side effect of an audit
+    change. The two landed together instead, and the persistence contract is
+    proven behaviourally in ``tests/test_fhir_batch_persistence.py`` (NR-084).
+
+    The source check below is what keeps the pairing honest: if the batch path
+    ever loses its own commit again, the audit commit silently becomes the only
+    thing making a batch entry durable.
     """
-    batch = [
-        (fn, decs) for fn, decs in _write_routes(_FHIR_ROUTES) if fn.name == "fhir_batch"
-    ]
+    routes = _write_routes(_FHIR_ROUTES)
+    assert len(routes) == 4, f"the FHIR write surface changed: {len(routes)} write routes, expected 4"
+    unaudited = [fn.name for fn, decs in routes if _audit_decorator(decs) is None]
+    assert unaudited == [], f"FHIR writes with no audit row (Invariant #2): {unaudited}"
+
+    batch = [fn for fn, _ in routes if fn.name == "fhir_batch"]
     assert len(batch) == 1, "fhir_batch is gone or renamed; re-derive this pin"
-    fn, decs = batch[0]
-    source = ast.unparse(fn)
-    commits_unconditionally = 'if bundle_type == "transaction"' not in source
-    if _audit_decorator(decs) is not None:
-        assert commits_unconditionally, (
-            "fhir_batch is audited but still only commits for transaction bundles: "
-            "the audit commit would be what persists a batch entry"
-        )
+    assert _branch_on_batch_commits(batch[0]), (
+        "fhir_batch is audited without a commit of its own on the batch path: "
+        "the audit commit would be what persists a batch entry"
+    )
 
 
 # ── Real-PostgreSQL proof of the mechanism ─────────────────────────────────

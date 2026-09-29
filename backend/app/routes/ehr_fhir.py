@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import date, datetime
 from html import escape
 import json
+import logging
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -34,6 +36,8 @@ from ..models.lab_user import LabUser
 from ..national.domain.encounter import Encounter
 from ..security.dependencies import get_current_user
 from ..services import ehr_service
+
+logger = logging.getLogger("gula.fhir")
 
 class FHIRJSONResponse(JSONResponse):
     """FHIR R4 JSON representation for successful external exchange requests."""
@@ -1435,6 +1439,7 @@ def fhir_delete_resource(
 
 
 @router.post("", summary="FHIR Batch or Transaction")
+@audit_log(action="fhir.batch")
 def fhir_batch(
     body: dict[str, Any],
     current_user: LabUser = Depends(get_current_user),
@@ -1445,6 +1450,7 @@ def fhir_batch(
         raise HTTPException(status_code=422, detail=f"Unsupported bundle type: {bundle_type}")
     entries = body.get("entry", [])
     results: list[dict[str, Any]] = []
+    any_entry_failed = False
     for entry in entries:
         resource = entry.get("resource", {})
         rt = resource.get("resourceType", "")
@@ -1497,13 +1503,53 @@ def fhir_batch(
                 status_code = 405
         except HTTPException as exc:
             status_code = exc.status_code
+        if bundle_type == "batch":
+            # A batch bundle's entries are independent interactions, so a 2xx
+            # here has to mean this entry is durable whatever the others did.
+            # Without this the endpoint reported 201 and discarded the write:
+            # get_db never commits, and closing the session rolls it back.
+            if 200 <= status_code < 300:
+                try:
+                    db.commit()
+                except SQLAlchemyError:
+                    # The store rejected the row this entry claimed to create.
+                    # Not trying is what let the old code answer 201 anyway.
+                    logger.exception("FHIR batch entry could not be persisted: %s/%s", rt, resource_id)
+                    db.rollback()
+                    status_code = 500
+            else:
+                db.rollback()
+        if not 200 <= status_code < 300:
+            any_entry_failed = True
         results.append({
             "resourceType": "Bundle",
             "type": bundle_type,
             "entry": [{"response": {"status": str(status_code), "location": f"{rt}/{resource_id}"}}],
         })
     if bundle_type == "transaction":
-        db.commit()
+        # A transaction bundle is all-or-nothing, so one failed entry must not
+        # leave the others persisted. It previously committed regardless.
+        statuses = [
+            e["entry"][0]["response"]["status"] for e in results
+        ]
+        if any_entry_failed:
+            db.rollback()
+            # And the caller must not be handed a bundle of 201s for writes that
+            # were just discarded -- that is the same false success as the batch
+            # path, one level up.
+            raise HTTPException(
+                status_code=422,
+                detail=f"transaction bundle rolled back; no entry was applied: {statuses}",
+            )
+        try:
+            db.commit()
+        except SQLAlchemyError:
+            logger.exception("FHIR transaction bundle could not be committed")
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail="transaction bundle could not be committed; no entry was applied",
+            ) from None
     return {"resourceType": "Bundle", "type": f"{bundle_type}-response", "entry": results}
 
 
