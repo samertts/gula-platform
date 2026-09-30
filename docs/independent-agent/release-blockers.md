@@ -41,3 +41,4 @@ database (IA-003).
 | IA-008 | P1 | OPEN, methodology | this lane is 176 commits behind the lineage that built the head DB; conformance measurements here produce false positives |
 | IA-009 | P1 | OPEN, awaiting owner | on the matched pair, 26 present tables are unwritable through the ORM — radiology 17/17, nhdw 14, fin 3 |
 | IA-010 | P2 | **NEEDS_DECISION** | the audit chain resists modification (DB triggers) but a NULL-hash row verifies as intact; legacy rows make NULL legitimate |
+| IA-011 | P2 | **NEEDS_DECISION** | two FHIR Observation builders with different contracts; no canonical `lab_results.flag` vocabulary; the unreached builder reports abnormal results as Normal |

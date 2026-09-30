@@ -150,3 +150,17 @@ Runtime, against `gula_agent2`; every write rolled back (table verified back to 
 | + 1 row with `chain_hash = NULL`, then verify | `status=intact verified=True checked=4 broken=0` — **the gap** |
 | existing suite coverage of the NULL case | **none** (`test_compliance_integrity.py` covers field tampering and silent deletion only) |
 | is NULL legitimate? | **yes for legacy rows** — nullable since the base schema, back-filled by `20260324_0009`, so the fix needs a deployment boundary |
+
+## IA-011 — FHIR path A contract audit (2026-09-30)
+
+| probe | result |
+|---|---|
+| served `_lab_result_to_observation`, flags `H`/`L`/`N` | conformant v3-ObservationInterpretation codes |
+| served builder, flags `critical`/`unknown`/`normal`/`high`/`critical_high` | passed through verbatim — **non-conformant** codes in a declared HL7 system |
+| served builder, empty flag | no `interpretation` emitted (branch skipped) |
+| served builder timestamps | `2026-01-01T12:00:00` — correct ISO-8601 |
+| unreached `FHIRObservationMapper`, flags `H`/`L`/`critical` | all → **`N` (Normal)** |
+| unreached builder, glucose 180 mg/dL vs range 70–110, flag `H` | emitted as **interpretation Normal**, LOINC code `""`, `issued` `2026-01-01 12:00:00` |
+| `lab_results.test_code` exists? | **no** — the column is on `test_types` |
+| `FHIRObservationMapper` production callers | **none** — 2 re-exports, 1 unit test |
+| `lab_results.flag` writers | 4 disagreeing vocabularies, no enum, no validation |

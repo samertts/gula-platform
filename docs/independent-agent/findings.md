@@ -488,6 +488,100 @@ and changing the verifier without it would turn every upgraded database red.
 
 ---
 
+## IA-011 — P2 — NEEDS_DECISION — two FHIR Observation builders with different contracts, and no canonical lab-result flag vocabulary
+
+FHIR contract audit of **path A** (lab data → FHIR), the one FHIR path whose source
+tables exist and therefore the one that could ship for v1.0.0. Investigation only.
+
+### The root cause: `lab_results.flag` has no agreed vocabulary
+
+Measured across the writers:
+
+| value written | written by |
+|---|---|
+| `"H"`, `"L"`, `"N"` | `app/lims/integration/simulator.py:82,84` — the analyser path |
+| `"unknown"` | `app/services/order_service.py:405`, `app/routes/test_results.py:351` |
+| `"normal"`, `"H"` | `app/core/bootstrap/demo_data.py:192` |
+| `""` | `app/lims/integration/simulator.py:124` |
+| `"critical"` | queried at `app/routes/stats.py:113` |
+
+There is no enum, no constant, and no validation. Both defects below follow from this.
+
+### Builder A — served, and non-conformant for some flags
+
+`app/routes/ehr_fhir.py:388` `_lab_result_to_observation` is the one an endpoint reaches.
+It passes the raw flag through as both code and display inside a declared HL7 system:
+
+```python
+obs["interpretation"] = [_codeable_concept(result.flag, result.flag,
+    "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation")]
+```
+
+**RUNTIME VERIFIED** per flag:
+
+| flag | emitted code | valid `v3-ObservationInterpretation`? |
+|---|---|---|
+| `H`, `L`, `N` | `H`, `L`, `N` | **yes** — correct |
+| `critical`, `unknown`, `normal`, `high`, `critical_high` | passed through verbatim | **no — non-conformant** |
+| `""` | none emitted | n/a, the branch is skipped |
+
+So a consumer receives an unrecognised code inside a system it trusts. Its timestamps
+are correct (`_fmt_fhir_datetime` yields `2026-01-01T12:00:00`). Severity **P2,
+conformance** — not a clinical inversion.
+
+### Builder B — not served, and it would invert clinical meaning
+
+`app/national/fhir/observation.py:42` `FHIRObservationMapper.from_lab_result` defaults
+every unrecognised flag to Normal:
+
+```python
+mapping = {"high": "H", "low": "L", "critical_high": "HH", "critical_low": "LL", "normal": "N"}
+return [{"coding": [{"code": mapping.get(flag, "N"), ...}]}]
+```
+
+Its keys are the long lowercase forms, which almost nothing writes. **RUNTIME VERIFIED:**
+`H` → `N`, `L` → `N`, `critical` → `N`. A full Observation built from a realistic row —
+glucose 180 mg/dL, reference range 70–110, analyser flag `H` — is emitted as
+**interpretation Normal**.
+
+Three further defects in the same builder:
+
+* `code.coding[0].code` comes from `result.get("test_code")`, and **`lab_results` has no
+  `test_code` column** — it lives on `test_types`, one join away. The emitted LOINC code
+  is `""`.
+* `"issued": str(result.get("created_at"))` yields `2026-01-01 12:00:00` — a space, not
+  `T`. Invalid FHIR `instant`.
+* `value_text` is never read, so qualitative results (Positive/Negative) are silently
+  dropped; and `_build_reference_range` can emit `{"low": null, …}`, which FHIR JSON
+  does not permit.
+
+**It has no production caller.** Only `app/fhir/__init__.py` and
+`app/national/fhir/__init__.py` re-export it, and one unit test
+(`app/national/tests/unit/test_fhir.py:113`) calls it. So the clinical inversion is
+**latent, in unreached code** — severity **P2**, not P0. Saying otherwise would repeat
+the IA-007 mistake of asserting a failure without establishing reachability.
+
+The danger is that it looks like the canonical mapper: it sits in `app/national/fhir/`
+alongside the ten mappers that *are* wired up, and it is exported from two packages.
+Whoever wires it up inherits a builder that reports abnormal results as normal.
+
+### The decision required
+
+Three things, none of which this lane may guess — mapping a flag to a clinical
+interpretation is exactly the semantics prohibition:
+
+1. **What is the canonical `lab_results.flag` vocabulary?** Today four writers disagree.
+2. **How does each value map to `v3-ObservationInterpretation`?** `H`/`L`/`N` are
+   already right. `critical` could be `HH`, `LL`, `AA` or `A` depending on what it means,
+   and `unknown` has no interpretation code at all — it may warrant emitting none.
+3. **Which builder is canonical?** Two exist with different contracts; one is served and
+   one is exported but unreached. Keeping both guarantees they drift again.
+
+**Status:** OPEN / NEEDS_DECISION. Nothing changed. A safe fix is not available without
+(1) and (2), and deleting a builder is a deletion this lane does not take.
+
+---
+
 ## Verified negatives
 
 Recorded because a sweep that publishes only its hits hides its false-positive
@@ -510,4 +604,7 @@ rate, and three of this pass's five leads died on reading.
 | `audit_logs` resistance to UPDATE and DELETE | **verified present and effective** — PostgreSQL triggers `trg_audit_logs_no_update` / `trg_audit_logs_no_delete` refuse both; an attempted overwrite was rejected by the database |
 | the audit chain's hash construction | **sound** — SHA-256 over previous hash + canonical record, UTC-normalised so write and verify agree, with HMAC-signed anchors |
 | other `*AuditLog` models as NULL-hash sources | **not sources** — `PortalAuditLog`, `PartnerAuditLog`, `TaskAuditLog` and `IdentityAuditLog` are separate models on separate tables, outside the canonical chain |
+| the served Observation builder's timestamps | **correct** — `_fmt_fhir_datetime` emits ISO-8601 with `T`, unlike the unreached builder |
+| the served Observation builder's `H`/`L`/`N` interpretations | **correct and conformant** v3-ObservationInterpretation codes |
+| `FHIRObservationMapper.from_lab_result` reachability | **no production caller** — two `__init__` re-exports and one unit test; the clinical inversion is latent, not live |
 
