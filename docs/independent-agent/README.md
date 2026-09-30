@@ -55,5 +55,7 @@ history rewrite, no branch checkout in the other tree.
 
 | IA-005 addendum | full serializer sweep, 137-model impact matrix, per-operation EHR verification | `ia005-ia006-addendum.md`, `ia005-impact-matrix.md`, `ia006-per-operation.md` | 5 further live sites fixed; `col.key` conclusion corrected; exposure measured (34 HIGH, 10 live) |
 
+| IA-006 decision package | 18-table architectural decision matrix, `national_patients` analysis | `ia006-decision-package.md` | **NEEDS_DECISION** — one question, not eighteen; zero migrations; lane-independence verified |
+
 RB-5, RB-4 and RB-6 are not started.
 

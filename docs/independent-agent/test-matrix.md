@@ -98,3 +98,23 @@ was pinned from a single-file run, which is why a whole-suite run surfaces more.
 
 Recorded as an **order-dependency limitation of my own guard**: pinning an exact
 set measured in isolation understates what the assembled suite loads.
+
+## IA-006 / IA-008 / IA-009 — measurement provenance (2026-09-30)
+
+Every conformance number below states its **(code lineage, database lineage)** pair,
+because R-14 showed that omitting it produces false positives at scale.
+
+| measurement | code lineage | database | result |
+|---|---|---|---|
+| EHR migration absence | this lane `f538bd4f` | — (migration files) | 0 `ehr_*` creations, 0 `national_patients` creations |
+| EHR migration absence | integration `ce097a0c` | — (migration files) | 0 and 0 — **INDEPENDENTLY VERIFIED** |
+| `/ehr` runtime, 86 operations | this lane | `gula_agent2` | 85 × `500`, 1 × `403`, 0 × 2xx |
+| 65 FKs → `national_patients`, live/dormant split | this lane | `gula_agent2` | 4 live / 61 dormant |
+| pharmacy ORM↔schema drift | **this lane** | `gula_agent2` | 216/228/178 — **RETRACTED, cross-lane artefact** |
+| pharmacy ORM↔schema drift | **integration `ce097a0c`** | `gula_agent2` | clean — pharmacy absent from the unwritable set |
+| platform ORM↔schema conformance | integration `ce097a0c` | `gula_agent2` | 409 present / 371 absent / **26 present-but-unwritable** / 293 ORM columns absent |
+| lane divergence | this lane vs `ce097a0c` | — | 176 commits, 10 migrations, every clinical domain differs |
+
+The lab-core hosting test (`patients` 16 cols, `lab_orders` 12, `lab_results` 16,
+`visits` 6, no JSON extension point) is read from the physical schema of `gula_agent2`
+and is lineage-independent.

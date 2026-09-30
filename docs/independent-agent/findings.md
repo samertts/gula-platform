@@ -305,6 +305,90 @@ attribute). This is the one live instance found.
 
 ---
 
+## IA-008 — P1 — this lane cannot measure ORM↔schema conformance, because the head database was built from a different lineage
+
+`gula_agent2` was migrated from the integration lineage `ce097a0c`
+(`claude/p0-2-pharmacy-reconciliation`). This lane is `claude/independent-audit-1`, based
+on `claude/autonomous-run-1`. **176 commits exist in that lineage and not here**, and
+every clinical domain diverges (`national/` 282 differing files, `identity/` 193,
+`nursing/` 17, `ehr/` 17, `pharmacy/` 14, `nhdw/` 13). Migrations differ too: 102 here
+versus 112 there.
+
+**Consequence:** any comparison of *this lane's ORM* against *that database* is a
+cross-lane comparison and is not evidence about the platform.
+
+**A finding this produced, and its retraction.** Measuring this lane's pharmacy ORM
+against `gula_agent2` showed 216 ORM columns the tables lack, 228 physical columns the
+ORM ignores, 178 type mismatches, and all 27 pharmacy tables unwritable — with
+`pharmacy_prescriptions.patient_id` declared `String(26) → national_patients.id` against
+a physical `INTEGER → patients.id`. That reads as a P0.
+
+**It is not a platform defect and is retracted as such.** The integration lineage's own
+`app/pharmacy/models.py` already declares `Column(Integer, nullable=True)` and is 1 292
+lines against this lane's 954. The drift is this lane lacking the pharmacy
+reconciliation (`20260910_0001`…`20260916_0001`, ten migrations). Caught before it was
+written up as a defect, by diffing the two worktrees.
+
+**What is genuinely true and actionable:** schema-conformance audits in this programme
+must be run on the lineage that produced the database under test. Running them here
+produces false positives at scale.
+
+**Correction to IA-005's report.** That report said 10 affected models sat on tables
+present in the head DB and were therefore *live* failures. The four pharmacy ones
+(`pharmacy_prescriptions`, `pharmacy_stock_levels`, `pharmacy_stores`,
+`pharmacy_warehouses`) are lane-dependent: in this lane those endpoints cannot work at
+all for unrelated reasons. The IA-005 **fix** is unaffected — it resolves a Python
+attribute through the mapper and touches neither schema nor dialect — and its test and
+serializer-level evidence stand. Only the word "live" was overstated for those four.
+The nursing and nhdw sites remain live: both domains are conformant on the matched pair.
+
+**Status:** OPEN as a methodology constraint. No code change. The remedy is procedural.
+
+---
+
+## IA-009 — P1 — 26 physically present tables cannot be written through the ORM, measured on the matched lineage pair
+
+Measured correctly this time: integration lineage `ce097a0c` against `gula_agent2`
+(head `20260916_0001`), which is the matched pair.
+
+| | value |
+|---|---|
+| mapped tables | 780 |
+| present in head DB | 409 |
+| absent | 371 (RB-2's figure, confirmed on the matched pair) |
+| **present but unwritable** (≥1 ORM column the table lacks) | **26** |
+| ORM columns absent physically | **293** |
+
+Concentrated in two domains nobody has claimed:
+
+| domain | present | unwritable |
+|---|---|---|
+| `radiology_*` | 17 | **17 of 17** |
+| `nhdw_*` | 14 | **9 shown, 14 flagged** |
+| `fin_*` | 3 | 3 |
+
+Worst offenders: `radiology_reports` (17 ORM columns missing), `nhdw_transfers` (15, of
+which **3 NOT NULL without a default**), `radiology_dicom_storage` (15, **4 NOT NULL**),
+`nhdw_queue_entries` (13, 2 NOT NULL). A NOT NULL ORM column that the table lacks means
+the insert fails outright, not silently.
+
+The most frequently missing columns are base-mixin fields — `extra_metadata` (17
+tables), `extension` (14), `metadata` (13), `fhir_id`/`fhir_resource_type` (7 each),
+`version` (6), `is_deleted`/`deleted_at` (5 each) — plus real domain columns
+(`department_id` 8, `encounter_id` 7). So the migrations created these tables without
+the base entity columns their models declare.
+
+This is the same shape as RB-5 (nursing, 15 tables) but in **radiology and nhdw**, and
+unlike RB-5 every table here physically exists. It also intersects IA-005: the
+`nhdw/offline.py` offline-sync serialiser reads 13 `nhdw_*` tables, and those tables
+cannot hold the rows the ORM expects.
+
+**Not fixed here.** Reconciling 26 tables is a schema decision of the scale RB-2
+escalated, it is in a different lineage from this worktree (IA-008), and it belongs to
+whoever owns radiology and nhdw. **Status: OPEN, evidence complete, awaiting owner.**
+
+---
+
 ## Verified negatives
 
 Recorded because a sweep that publishes only its hits hides its false-positive
@@ -322,4 +406,6 @@ rate, and three of this pass's five leads died on reading.
 | `document_intelligence/.../wiring.py:602` `field.metadata.get("unit")` | **not a defect** — `field` is an extracted-field domain object, not a mapped instance |
 | the 13 `.metadata` sites in `app/national/*/infrastructure/repository.py` | **correct code** — each pairs `model.metadata_ =` with a read from a domain dataclass, which is how the contract is meant to be used |
 | any physical column other than `metadata` whose name differs from its mapped attribute | **none** across all 780 mapped classes, and no column is unmapped — which is why the IA-005 fix has no collateral effect |
+| the 216/228/178 pharmacy drift measured in this lane | **retracted** — cross-lane artefact, see IA-008; the integration lineage's pharmacy ORM is already reconciled |
+| pharmacy and nursing conformance on the matched pair | **clean** — neither appears among the 26 unwritable tables |
 
