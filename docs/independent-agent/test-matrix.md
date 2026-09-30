@@ -26,3 +26,25 @@ is named for what it is.
   so any plan would be a seq-scan on an empty table and would mislead.
 * **Chaos (Redis / RabbitMQ down)** — neither is running in this container, so
   "fails safely" could not be distinguished from "was never reached".
+
+## RB-3 — `/ehr` surface probes (2026-09-30)
+
+Executable probes, not pytest tests. Scripts live in the session scratchpad and
+are recorded here so the numbers can be re-derived.
+
+| probe | database | subject | result |
+|---|---|---|---|
+| served-surface enumeration | — | `/ehr` paths and operations in the OpenAPI schema | 54 paths / 86 operations / 86 route functions |
+| head-DB execution | `gula_agent2` @ `20260916_0001`, 423 tables | all 86 operations | 85 × `500` `UndefinedTable`, 1 × `403`, **0 × 2xx** |
+| physical-table check | `gula_agent2` | the 19 tables the surface needs | 0 present |
+| migration search | — | any migration creating those 19 | 0; `national_patients` appears only as a guarded FK target |
+| AST trace | — | route → service → model → table, all 86 | 86/86 resolve to a real model; 0 stubs |
+| clinical read gate, deny paths | `gula_agent2` | `ClinicalEhrReadGate._resolve` | denies `legacy_identity_unresolved`; emits `ehr_facility_scope_unavailable` on empty/`None` facility id — 2 distinct reasons, so not a constant denial |
+| clinical read gate, allow path | `gula_agent2` | can it reach `ALLOWED`? | **UNKNOWN** — needs a full identity spine; FK `niam_legacy_account_links_canonical_account_id_fkey` blocks a shortcut |
+| code-path run | SQLite (scratch file) | all 86 with the 19 tables created | 8 × `200` (2 vacuously empty), 50 × `404`, 27 × `RecursionError`, 1 × harness `OperationalError` |
+| IA-005 isolation | SQLite | which value recurses | only `metadata`, `type=MetaData`; 486+484 `jsonable_encoder` frames of 1052 |
+| IA-005 causation | none | does a small `MetaData` recurse? | empty → encodes; **one table → recurses**. Predates NR-086 |
+| IA-005 exposure | — | static, over all 86 operations | 59 exposed / 27 not |
+| IA-005 prediction check | SQLite, records seeded | 2 exposed + 2 unexposed operations | 4/4 as predicted, both directions |
+| IA-005 blast radius | — | tables in `SHARED_METADATA` with a `metadata` column | 124 |
+| head-DB integrity after the pass | `gula_agent2` | tables / head / rows added | 423 / `20260916_0001` / 0 — unchanged |

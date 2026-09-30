@@ -42,3 +42,14 @@ false-positive rate you cannot see.
 `git worktree list` shows two trees on two branches. Nothing outside
 `/home/user/gula-audit` was written during this pass. No push, no force-push, no
 history rewrite, no branch checkout in the other tree.
+
+## Release-blocker passes
+
+| pass | subject | artifact | outcome |
+|---|---|---|---|
+| RB-1 | migration head on the integration lineage | `rb1-migration-head.md` | RESOLVED — 112/112, head `20260916_0001`, 423 tables, round-trip passes |
+| RB-2 | ORM ↔ migration reconciliation | `orm-migration-reconciliation.md` | RECONCILED — 780 mapped / 423 physical / 371 absent / 14 orphan; accepted for inventory; IA-004 raised |
+| RB-3 | the served `/ehr` surface, end to end | `rb3-ehr-surface-audit.md` | AUDITED — 53 BROKEN, 1 PARTIAL, 0 REAL of 54 paths; IA-005 (P0) and IA-006 (P1) raised |
+
+RB-5, RB-4 and RB-6 are not started.
+

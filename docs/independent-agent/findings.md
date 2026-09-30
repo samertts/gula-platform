@@ -133,6 +133,72 @@ integration rather than raced.
 
 ---
 
+## IA-005 — P0 — `to_dict()` hands FastAPI the ORM schema registry instead of the column value
+
+`shared/models/base.py:36` serialises by **column name**:
+
+```python
+for col in self.__table__.columns:
+    val = getattr(self, col.name)
+```
+
+For a column literally named `metadata` the mapped Python attribute is
+`metadata_`. So `getattr(self, "metadata")` does not read the column — it returns
+the declarative base's `MetaData` registry (564 tables under `SHARED_METADATA`).
+`jsonable_encoder` then walks that object graph until the stack is exhausted.
+
+**Evidence.** Encoding one real `AllergyIntolerance` field-by-field, the only key
+that recurses is `metadata`, `type=MetaData`, `repr=MetaData()`. A frame census on
+`POST /ehr/allergies` shows 1 052 frames, 486 + 484 of them
+`fastapi/encoders.py:307` / `:356` in `jsonable_encoder`.
+`type(AllergyIntolerance.metadata).__name__ == "MetaData"` and it **is**
+`SHARED_METADATA`.
+
+**Not caused by NR-086.** `jsonable_encoder(MetaData())` on an empty registry
+encodes fine, but a registry holding **one** table already recurses. NR-086
+enlarged the walked object; the defect is independent of it and predates it.
+
+**Exposure.** 59 of the 86 served `/ehr` operations (measured statically over the
+AST; validated against runtime 4/4 including two negatives). Platform-wide,
+**124 tables** in `SHARED_METADATA` carry a column named `metadata`; every route
+returning `to_dict()` on one of them is affected. Named examples outside EHR:
+`ai_conversations`, `ai_agent_executions`, `ai_embeddings`, and the `cc_*`
+care-continuum cluster. **The non-`/ehr` route count is UNKNOWN — not measured.**
+
+**Impact.** Two failure modes. Where the encoder recurses, the endpoint 500s.
+Where a serialiser tolerates the object, a clinical response silently carries a
+schema registry in place of the record's own metadata — a wrong value presented as
+data.
+
+**Status:** OPEN, deliberately not fixed in this lane. `shared/models/base.py` is
+shared surface, and changing a serialiser used by 124 tables is an API
+response-shape change, which `CLAUDE.md` puts behind human approval.
+
+---
+
+## IA-006 — P1 — 86 clinical operations are served over 19 tables that no migration creates
+
+The `/ehr` surface depends on 18 `ehr_*` tables plus `national_patients`. None is
+present in the RB-1 proven head database (423 tables, head `20260916_0001`), and
+**none is created by any migration in the chain**. `national_patients` is named
+once, at `20260811_0002_citizen_relationship_foundation.py:72`, only as a
+foreign-key target inside an `if _has_table(target_table):` guard.
+
+This is not a migration that failed, was skipped or was reverted — it was never
+authored. The router is nonetheless registered unconditionally in
+`factory.py:559`, behind no feature flag, so every deployment advertises 86
+clinical operations that can only return `500`.
+
+It is also the silent arm of IA-004: the FK to `national_patients` is skipped
+without a trace because the target does not exist. RB-3 confirms IA-004
+independently.
+
+**Status:** OPEN. Remediation needs the schema-ownership decision RB-2 escalated,
+and the options are set out in `rb3-ehr-surface-audit.md` §14. IA-004 itself
+remains OPEN/P1 and was not fixed here.
+
+---
+
 ## Verified negatives
 
 Recorded because a sweep that publishes only its hits hides its false-positive
