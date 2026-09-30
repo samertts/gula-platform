@@ -29,3 +29,15 @@ database (IA-003).
 * **NR-089** — the capability subsystem is scaffolding: 0 of 10 registered with
   the kernel, and until `203c85aa` every one reported success without doing
   anything. Now honest, still unimplemented.
+
+## Account 2 findings ledger (not all release blockers)
+
+| id | sev | state | one line |
+|---|---|---|---|
+| IA-004 | P1 | OPEN, untouched by instruction | `20260811_0002` skips four FKs silently when the target table is absent |
+| IA-005 | P0 | **FIXED**, test + runtime verified | 17 serializers returned the `MetaData` registry for a column named `metadata`; 137 models affected |
+| IA-006 | P1 | **NEEDS_DECISION** | ADR-016 forbids new EHR tables while its Phase 2 mandates EHR write support; 0 migrations authored |
+| IA-007 | P3 | **FIXED** | the generated invoice number never reached the claim; unreachable today, latent data loss once `ins_*` is migrated |
+| IA-008 | P1 | OPEN, methodology | this lane is 176 commits behind the lineage that built the head DB; conformance measurements here produce false positives |
+| IA-009 | P1 | OPEN, awaiting owner | on the matched pair, 26 present tables are unwritable through the ORM — radiology 17/17, nhdw 14, fin 3 |
+| IA-010 | P2 | **NEEDS_DECISION** | the audit chain resists modification (DB triggers) but a NULL-hash row verifies as intact; legacy rows make NULL legitimate |

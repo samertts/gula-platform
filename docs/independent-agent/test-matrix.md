@@ -137,3 +137,16 @@ guards the other four from passing for the wrong reason.
 Reachability, established before fixing: `generate_invoice` has no caller but
 `batch_invoices`, which has none either, and `ins_claims` is absent from the head DB.
 Severity corrected P1 → P3.
+
+## IA-010 — audit-chain integrity probe (2026-09-30)
+
+Runtime, against `gula_agent2`; every write rolled back (table verified back to 0 rows).
+
+| probe | result |
+|---|---|
+| overwrite one row's `chain_hash` (UPDATE) | **refused by PostgreSQL** — `audit_logs is append-only: UPDATE operation is not permitted` |
+| triggers present on `audit_logs` | `trg_audit_logs_no_update`, `trg_audit_logs_no_delete` → `audit_logs_deny_mutation()` |
+| 3 rows via `log_action`, then verify | `status=intact verified=True checked=3` |
+| + 1 row with `chain_hash = NULL`, then verify | `status=intact verified=True checked=4 broken=0` — **the gap** |
+| existing suite coverage of the NULL case | **none** (`test_compliance_integrity.py` covers field tampering and silent deletion only) |
+| is NULL legitimate? | **yes for legacy rows** — nullable since the base schema, back-filled by `20260324_0009`, so the fix needs a deployment boundary |

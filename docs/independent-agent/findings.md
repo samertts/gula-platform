@@ -416,6 +416,78 @@ whoever owns radiology and nhdw. **Status: OPEN, evidence complete, awaiting own
 
 ---
 
+## IA-010 — P2 — NEEDS_DECISION — the audit chain resists modification but not the insertion of unverifiable rows
+
+**What was verified to work, first.** The audit trail has genuinely strong controls, and
+this is positive evidence the programme has little of:
+
+* `audit_logs` is **append-only at the database level**. Two triggers,
+  `trg_audit_logs_no_update` and `trg_audit_logs_no_delete`, call
+  `audit_logs_deny_mutation()` which raises
+  `audit_logs is append-only: UPDATE operation is not permitted`. A probe that tried to
+  overwrite one row's `chain_hash` was refused by PostgreSQL, not by application code.
+  **RUNTIME VERIFIED** against `gula_agent2`.
+* the chain itself is soundly built: SHA-256 over the previous hash plus a canonical
+  record, dialect-independent UTC timestamps so write-time and verify-time hashes agree,
+  and HMAC-signed anchor files.
+* `tests/test_compliance_integrity.py` already covers field tampering and silent record
+  deletion.
+
+**The gap.** `verify_audit_chain` (`app/services/audit_service.py:238`) skips any row
+whose `chain_hash` is NULL:
+
+```python
+for entry in entries:
+    if entry.chain_hash is None:
+        prev_hash = entry.chain_hash or prev_hash   # carries the previous hash forward
+        continue
+```
+
+so an unhashed row is counted but never validated, and it does not break the chain for
+the rows after it. Proven at runtime against `gula_agent2`, everything rolled back:
+
+| state | verifier says |
+|---|---|
+| 3 rows written through `log_action` | `status=intact verified=True checked=3` |
+| + 1 row inserted with `chain_hash = NULL` | `status=intact verified=True checked=4 broken=0` |
+
+The table held 4 rows, one with a NULL hash, and the verifier called it **intact**. So
+history cannot be *altered* — the triggers prevent that — but it can be *appended to
+unverifiably*, and the verification that exists to detect that reports success.
+
+**Why this is not a mechanical fix.** `chain_hash` has been nullable since
+`20250322_0000_create_base_schema.py`, and `20260324_0009_audit_chain_hash_result_engine_version.py`
+added it to already-populated databases. **Pre-chain historical rows therefore have NULL
+legitimately.** Failing on NULL would report every upgraded deployment as tampered for
+all of its pre-2026-03-24 history. Skipping NULL is a deliberate backward-compatibility
+choice, not an oversight.
+
+**The decision required:** what marks the boundary between legacy unhashed rows and rows
+that must be hashed? The remedy shape follows from the answer — record, per deployment,
+the first chained `audit_logs.id` (or the chain's start timestamp), treat NULL below that
+boundary as legacy and NULL at or above it as a chain break. That boundary is deployment
+data this lane cannot determine.
+
+**Exposure today:** low. `app/services/audit_service.py:203` is the only site
+constructing the canonical `AuditLog`, and it always assigns a hash; the other
+`*AuditLog` classes found (`PortalAuditLog`, `PartnerAuditLog`, `TaskAuditLog`,
+`IdentityAuditLog`) are different models on different tables. So no current code path
+produces a NULL hash. The risk is a future direct write, a partial failure, or anyone
+with database write access.
+
+**Also missing:** no test covers the NULL case. The guard to add alongside the fix:
+
+```python
+# once the legacy boundary is known
+report = verify_audit_chain(db)
+assert not report["verified"], "an unhashed row at or above the chain boundary must break verification"
+```
+
+**Status:** OPEN / NEEDS_DECISION. Not fixed — the legacy boundary is a data decision,
+and changing the verifier without it would turn every upgraded database red.
+
+---
+
 ## Verified negatives
 
 Recorded because a sweep that publishes only its hits hides its false-positive
@@ -435,4 +507,7 @@ rate, and three of this pass's five leads died on reading.
 | any physical column other than `metadata` whose name differs from its mapped attribute | **none** across all 780 mapped classes, and no column is unmapped — which is why the IA-005 fix has no collateral effect |
 | the 216/228/178 pharmacy drift measured in this lane | **retracted** — cross-lane artefact, see IA-008; the integration lineage's pharmacy ORM is already reconciled |
 | pharmacy and nursing conformance on the matched pair | **clean** — neither appears among the 26 unwritable tables |
+| `audit_logs` resistance to UPDATE and DELETE | **verified present and effective** — PostgreSQL triggers `trg_audit_logs_no_update` / `trg_audit_logs_no_delete` refuse both; an attempted overwrite was rejected by the database |
+| the audit chain's hash construction | **sound** — SHA-256 over previous hash + canonical record, UTC-normalised so write and verify agree, with HMAC-signed anchors |
+| other `*AuditLog` models as NULL-hash sources | **not sources** — `PortalAuditLog`, `PartnerAuditLog`, `TaskAuditLog` and `IdentityAuditLog` are separate models on separate tables, outside the canonical chain |
 
