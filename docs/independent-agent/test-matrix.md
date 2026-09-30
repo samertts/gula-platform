@@ -118,3 +118,22 @@ because R-14 showed that omitting it produces false positives at scale.
 The lab-core hosting test (`patients` 16 cols, `lab_orders` 12, `lab_results` 16,
 `visits` 6, no JSON extension point) is read from the physical schema of `gula_agent2`
 and is lineage-independent.
+
+## IA-007 — invoice-number stamping (2026-09-30)
+
+`backend/tests/verification/test_invoice_number_is_persisted.py`, 5 tests, schema-free
+(a stub session replaces the absent `ins_*` tables).
+
+| stage | result |
+|---|---|
+| baseline | **4 failed**, 1 passed — `TypeError: 'MetaData' object does not support item assignment` |
+| after the fix | **5 passed** |
+| perturbation: both identifiers back to `.metadata` | **3 failed** — `TypeError: 'MetaData' object is not iterable` |
+| restored | **5 passed** |
+
+The one test passing throughout asserts the column is mapped as `extra_metadata`; it
+guards the other four from passing for the wrong reason.
+
+Reachability, established before fixing: `generate_invoice` has no caller but
+`batch_invoices`, which has none either, and `ins_claims` is absent from the head DB.
+Severity corrected P1 → P3.

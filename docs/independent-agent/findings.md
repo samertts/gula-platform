@@ -301,7 +301,34 @@ sites; **all 13 are correct** (`model.metadata_ = domain.metadata` in the nation
 platform repositories, reading a domain dataclass and writing the mapped
 attribute). This is the one live instance found.
 
-**Status:** OPEN, not fixed in this lane. Patch specified above.
+**Severity corrected from P1 to P3, and reachability established** — the first report
+asserted the failure without checking whether the code runs.
+
+* `generate_invoice` has **no caller** except `batch_invoices`, which itself has no
+  caller. No route, no service and no test invokes either. `InvoiceGenerator` is
+  exported from `app/insurance/financial/__init__.py` and never used.
+* `ins_claims` **does not exist** in the head database — the whole `ins_*` family is
+  absent (only the unrelated `insurance_coverages` is present). So the model is one of
+  the 371 absent-table models from RB-2.
+
+So the `TypeError` is real and proven, but unreachable today. Calling it a live billing
+failure was wrong. It is a latent defect that would become **silent data loss** the
+moment the `ins_*` tables are migrated: even without the exception,
+`claim.metadata = …` sets an instance attribute that never reaches the column, so the
+following `commit()` would persist nothing.
+
+**Status: FIXED.** `stamped = dict(claim.extra_metadata or {})` … `claim.extra_metadata
+= stamped`, with a comment recording why. Business semantics were already established
+by the surrounding code and needed no guess: the invoice dict is built entirely from
+claim fields *before* these lines, so **no financial figure can move** — a test pins
+that explicitly (`subtotal`, `allowed_amount`, `tax`, `total_with_tax`, `currency`).
+`dict(...)` also stops the stamp mutating a caller's dict in place.
+
+Proof: `backend/tests/verification/test_invoice_number_is_persisted.py`, 5 tests —
+4 failed on the exact `TypeError` before the fix, 5 passed after, and perturbing the
+two identifiers back reproduced the failure (`'MetaData' object is not iterable`).
+The test needs no schema: the defect is attribute resolution, so a stub session stands
+in for the absent tables.
 
 ---
 
