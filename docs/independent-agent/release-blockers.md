@@ -41,6 +41,7 @@ database (IA-003).
 | IA-008 | P1 | OPEN, methodology | this lane is 176 commits behind the lineage that built the head DB; conformance measurements here produce false positives |
 | IA-009 | P1 | OPEN, awaiting owner | on the matched pair, 26 present tables are unwritable through the ORM — radiology 17/17, nhdw 14, fin 3 |
 | IA-010 | P2 | **NEEDS_DECISION** | the audit chain resists modification (DB triggers) but a NULL-hash row verifies as intact; legacy rows make NULL legitimate |
+| IA-013 | P1 | **CONFIRMED_DEFECT**, decision then Account 2 | the kernel event bus is wholly in-memory: `publish` never uses its own outbox, failed handlers reach no retry or DLQ, `EventStore` is unbounded — and identity lifecycle events ride it |
 | IA-012 | P2 | **CONFIRMED_DEFECT**, owner Account 1 | served `GET /pharmacy/dispense/dispense-records/{patient_id}` declares `str` against an `INTEGER` column → `DataError`/500 on a ULID id, in the shipping lineage |
 | national_patients | — | **BLOCKED on NR-022** | not a new decision: `20260914_0001`'s docstring already defers the clinical subject to NR-022; evidence package delivered |
 | IA-011 | P2 | **NEEDS_DECISION** | two FHIR Observation builders with different contracts; no canonical `lab_results.flag` vocabulary; the unreached builder reports abnormal results as Normal |

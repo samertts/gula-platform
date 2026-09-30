@@ -182,3 +182,21 @@ and after).
 | served OpenAPI type of that path param | integration | `('patient_id', 'string')` — served, and wrong |
 | `niam_citizen_relationships` FK constraints | — | `…_person (citizen_id → niam_persons)` **present**; `patient_id` has **no FK** |
 | `20260914_0001_citizen_relationship_person_fk.py` present? | integration **yes**, this lane **no** | IA-004 `citizen_id` arm closed only in the shipping lineage |
+
+## IA-013 — kernel event bus delivery guarantees (2026-09-30)
+
+In-process probe, no database.
+
+| probe | result |
+|---|---|
+| 5 × `publish("probe.ok")` | handler invoked 5× |
+| 1 × `publish("probe.fail")`, handler raises | handler invoked; exception swallowed into a log line |
+| failed event in `retry_queue` | **0** |
+| failed event in `dead_letter_queue` | **0** |
+| `outbox._messages` after 6 publishes | **0** — `publish` never enqueues |
+| `inbox` entries | **0** |
+| `EventStore.count()` after 6 / after 506 | 6 / **506** — unbounded, never evicted |
+| publishers found | 8+: plugin API, SDK, and 6 national services |
+| `search_platform` tables present? | **yes** (`national_search_results`, `national_search_saved_searches`) → a live publisher |
+| subscribers found | `identity/events.py` ×3 (`person.created`, `account.created`, `identity.verified`), `health_data/streaming/pipeline.py` |
+| durable alternative exists? | **yes** — `outbox_service.py` over the present `outbox_events`, with `OutboxWorker` started in two places |

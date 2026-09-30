@@ -670,6 +670,114 @@ Account 1's active area and the file is theirs.
 
 ---
 
+## IA-013 — P1 — CONFIRMED_DEFECT — the kernel event bus loses events silently while presenting outbox, retry and dead-letter APIs
+
+| field | value |
+|---|---|
+| **ID** | IA-013 |
+| **severity** | P1 |
+| **state** | CONFIRMED_DEFECT (RUNTIME_VERIFIED); not fixed |
+| **files** | `backend/app/kernel/event_bus/bus.py:40-42`, `dispatcher.py:13-24`, `outbox.py:31`, `store.py:12`, `retry_queue.py:23` |
+| **symbol** | `EventBus.publish`, `EventDispatcher.dispatch` |
+| **owner** | **Human decision** (which events may be lost) + Account 2 implementation once decided |
+
+### What it does
+
+`EventBus.publish` is two lines: save to an in-memory store, then dispatch to subscribers.
+
+```python
+def publish(self, event: Event) -> None:
+    self.store.save(event)
+    self.dispatcher.dispatch(event, self._subscribers.get(event.name, []))
+```
+
+The bus constructs `OutboxPattern`, `InboxPattern`, `RetryQueue`, `DeadLetterQueue`,
+`RecoveryEngine`, `EventReplay`, `SnapshotEngine` and `EventVersioning` in `__init__` —
+**and `publish` uses none of them.** `EventDispatcher.dispatch` catches every handler
+exception into a log line, so a failed handler is neither retried nor dead-lettered. Async
+handlers are fire-and-forget: `asyncio.create_task(result)` with a done-callback that only
+logs, so the task is never awaited or tracked.
+
+Every store is a plain Python container: `EventStore._events: dict`,
+`OutboxPattern._messages: list`, `RetryQueue._entries: list`. Nothing is durable, and
+`EventStore` is never evicted.
+
+### Reproduction — RUNTIME VERIFIED
+
+```
+5 × publish("probe.ok")      -> handler invoked 5 times
+1 × publish("probe.fail")    -> handler invoked, raised RuntimeError
+retry_queue entries          : 0
+dead_letter_queue entries    : 0
+outbox messages              : 0    (publish never enqueues)
+inbox entries                : 0
+EventStore after 6 publishes : 6
+EventStore after 506         : 506  -> unbounded
+```
+
+The failed event is in **no** queue. Delivery is at-most-once, in-process, non-durable,
+and `EventStore` grows without bound — a memory leak on any hot publish path.
+
+### Reachability — it is live, not scaffolding
+
+**Publishers (8+):** `app/kernel/runtime_sdk.py:101` (plugin API) and `:277` (SDK), plus six
+national services — `rules_engine`, `observability`, `document_platform`,
+`scheduling_platform`, `background_platform`, `search_platform`, each holding this exact
+`EventBus`. **`search_platform`'s tables are present** in the head DB
+(`national_search_results`, `national_search_saved_searches`), so at least one publisher
+sits on live schema.
+
+**Subscribers exist:** `app/identity/events.py` registers handlers for `person.created`,
+`account.created` and `identity.verified`; `app/health_data/streaming/pipeline.py:35`
+subscribes dynamically. So the loss is not hypothetical — if an identity handler raises,
+the event is logged and dropped while the publisher has already committed.
+
+### The architectural duplication
+
+GULA already has a **durable** outbox, and it is the one the important paths use:
+`app/services/outbox_service.py`, backed by the **present** `outbox_events` table, with
+`OutboxWorker` started at `app/worker.py:86` and `app/core/startup.py:270`, and
+`emit_to_outbox` called from `claims_service`, `data_platform_service` and
+`routes/national_streaming.py`.
+
+So there are two event systems: a durable DB-backed one for claims, data platform and
+national streaming, and this in-memory one for identity and health-data streaming. The
+weaker one carries the identity events.
+
+### Impact
+
+* **affected data:** any event published on the kernel bus whose handler fails, or any
+  event in flight at shutdown. Identity lifecycle events (`person.created`,
+  `account.created`, `identity.verified`) are on this bus.
+* **affected users/tenants:** not tenant-scoped — the bus has no tenant concept at all,
+  which is itself worth noting for a multi-tenant platform.
+* **integrity impact:** a consumer can miss a state transition with no trace beyond a log
+  line, and no mechanism exists to detect or replay the gap. `EventReplay` and
+  `RecoveryEngine` operate on the in-memory store, so they cannot recover across a restart.
+* **availability impact:** unbounded `EventStore` growth.
+* **existing mitigation:** none on this bus. The durable outbox mitigates only the paths
+  that use it, which are different paths.
+* **tests:** none found asserting delivery, retry or dead-lettering on the kernel bus.
+
+### Next action — decision first, then implementation
+
+Not fixed, because the fix depends on a question this lane must not answer: **which of the
+events on the kernel bus are load-bearing?**
+
+* if identity lifecycle events must not be lost → they belong on the durable
+  `outbox_service`, and the kernel bus should either delegate to it or be removed;
+* if they are advisory only → the bus is adequate, but the `OutboxPattern`,
+  `RetryQueue` and `DeadLetterQueue` APIs should be removed rather than left implying a
+  guarantee they do not provide.
+
+Either way, two independent findings can be fixed without the decision: `publish` should
+not construct eight unused components, and `EventStore` needs eviction.
+
+**Status:** OPEN. Decision required on event criticality; implementation is Account 2's
+once decided.
+
+---
+
 ## Verified negatives
 
 Recorded because a sweep that publishes only its hits hides its false-positive
@@ -695,4 +803,6 @@ rate, and three of this pass's five leads died on reading.
 | the served Observation builder's timestamps | **correct** — `_fmt_fhir_datetime` emits ISO-8601 with `T`, unlike the unreached builder |
 | the served Observation builder's `H`/`L`/`N` interpretations | **correct and conformant** v3-ObservationInterpretation codes |
 | `FHIRObservationMapper.from_lab_result` reachability | **no production caller** — two `__init__` re-exports and one unit test; the clinical inversion is latent, not live |
+| `app/services/outbox_service.py` — the DB-backed outbox | **real and wired** — `outbox_events` present, `OutboxWorker` started from both `worker.py` and `core/startup.py`, `emit_to_outbox` used by claims, data platform and national streaming |
+| kernel-bus subscribers | **they exist** — `identity/events.py` (3 handlers) and `health_data/streaming/pipeline.py`; the silent loss is therefore reachable, not theoretical |
 
