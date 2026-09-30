@@ -65,5 +65,7 @@ history rewrite, no branch checkout in the other tree.
 
 | Lab Result Workflows | order → test type → specimen → result → validation → report → audit/event, end to end | `findings.md`, `test-matrix.md` | IA-019 and IA-020 **FIXED** (3 of 4 write paths wrote no test-type link; a critical analyzer result was stored unflagged); IA-021 and IA-022 **NEEDS_DECISION** (the MoH DHIS2 export cannot report an abnormal result; three event buses with zero subscribers). Corrects the task premise: `test_type_id` is nullable in all three lineages and in the migrated database — NR-164 did not close it here. 7 verified negatives recorded |
 
+| Lab Result Workflows (cont.) | NR-164 premise re-measured; write-path matrix; analyzer boundary; result update | `findings.md`, `test-matrix.md` | **NR-164 premise corrected**: CODE/MIGRATION/DATABASE separated — no code↔DB mismatch exists, and migrations `20260930_0001/0002` are absent from every worktree *and every git ref*, so NR-164's content is **BLOCKED, not disproven**. IA-024 mechanism **FIXED** (24 of 37 critical-capable tests have no catalog entry, so the earlier fix was necessary but **not sufficient**); IA-026 **FIXED** (a `unit`-only PATCH blanked value and both ranges while leaving `flag='critical'`); IA-025 recorded (a third, unreachable lab-result writer). **Proven: a bare NR-164 NOT NULL would reject every result for an uncatalogued test, even after the fixes.** |
+
 RB-5, RB-4 and RB-6 are not started.
 

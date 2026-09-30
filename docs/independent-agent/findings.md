@@ -1759,3 +1759,355 @@ Decide A–D. If A, the `DeviceResult`/`DeviceSubmission` schemas need
 | **Writing to a locked, cancelled or rejected workflow** | **NO DEFECT FOUND.** `assert_not_locked`, `assert_not_cancelled`, `enforce_transition(order.status, "completed")` run before any insert; a rejected sample is refused with 400. |
 | **Audit coverage of the ingestion itself** | **NO DEFECT FOUND.** `log_action` is called on every submission with actor id and role. Only the *device* identity within it is unverified (IA-023). |
 | **`/device-integration/*` writing lab results** | **NO DEFECT FOUND** — it does not touch `LabResult`; it is a separate device-management surface, not a result ingress. |
+
+---
+
+## NR-164 premise — CODE vs MIGRATION vs DATABASE, separated
+
+My previous batch said "NR-164 did not close this here." That phrasing was too
+strong in one direction. Separated properly, and re-measured:
+
+```text
+CODE (ORM, all three worktrees)
+  test_type_id = Column(Integer, ForeignKey("test_types.id", ondelete="SET NULL"),
+                        nullable=True)
+  gula-audit @ a5c3e083 · gula-platform @ 203c85aa · gula-p02-proof @ ce097a0c
+  -> identical in all three.
+
+MIGRATION (scripts on disk, and in every git ref)
+  gula-audit      102 migrations, script head 20260909_0001
+  gula-platform   101 migrations, script head 20260908_0001
+  gula-p02-proof  112 migrations, script head 20260916_0001
+  20260930_0001 / 20260930_0002 : ABSENT from all three worktrees, and absent
+    from every local and remote-tracking ref —
+    `git log --all --diff-filter=A -- 'backend/migrations/versions/20260930*'`
+    returns nothing. `claude/autonomous-run-1` does not exist on origin at all
+    (`git fetch origin claude/autonomous-run-1` -> "couldn't find remote ref"),
+    so the sibling lane is local-only and its head carries no 20260930 script.
+  No migration in any ref applies NOT NULL to lab_results.test_type_id.
+
+DATABASE (gula_agent2)
+  alembic_version = 20260916_0001
+  information_schema: lab_results.test_type_id is_nullable = YES
+  pg_constraint on lab_results: 2 FKs, 1 PK, 2 token uniques. No CHECK.
+  20260916_0001 exists ONLY in the gula-p02-proof graph — this audit lane's
+  migration graph does not contain the revision its own probe database is on.
+
+CONCLUSION
+  There is NO code/database mismatch to explain: CODE and DATABASE agree that
+  the column is nullable, and the MIGRATION set on disk contains nothing that
+  would make it otherwise. The database is not "behind" this lane; it is on a
+  different, further-ahead lineage (112 vs 102 scripts) — the divergence already
+  recorded as R-14 / IA-008.
+
+  Whether migrations 20260930_0001/0002 exist elsewhere and set NOT NULL is
+  **BLOCKED BY INFRASTRUCTURE — evidence not present in this container.** I
+  withdraw any implication that NR-164 was not implemented; I can only state
+  that it is not verifiable from here, and that in everything measurable the
+  column is nullable.
+```
+
+### The write-path matrix (§1.A)
+
+| Write path | Route / service | Caller | Reachable | `test_type_id` set (before → after) | Resolver | NULL still possible | test_code / test_name | Txn boundary | Production impact |
+|---|---|---|---|---|---|---|---|---|---|
+| `app/routes/test_results.py:362` | `POST /test-results/` | served route | **yes** | yes → yes | `resolve_test_type` | **yes** — uncatalogued test | both (code first) | 1 commit, 1 flush | was already correct |
+| `app/services/order_service.py:420` | `create_order` | `POST /batch/orders`, `/results` | **yes** | **no** → yes | none → `resolve_test_type` | **yes** | name only (items carry no `test_code`) | 6 commits, 1 flush, 1 rollback | silent category-filter exclusion; unflagged criticals |
+| `app/routes/device_results.py:96` | `POST /device/results` | served route (analyzer) | **yes** | **no** → yes | none → `resolve_test_type` | **yes** | name only (`DeviceResult` has no `test_code`) | 1 commit, no rollback | same, on the highest-volume path |
+| `app/core/bootstrap/demo_data.py:185` | startup seeding | `seed`/bootstrap | **yes** (boot) | **no** → yes | none → `resolve_test_type` | **yes** | name + optional `code` | 1 commit, 5 flushes, 1 rollback | demo data looked healthier than production |
+| `app/reference/infrastructure/repositories.py:315` | raw `INSERT INTO lab_results` | `SQLResultRepository.save` | **NO** | n/a | n/a | n/a | `analyte`, not test_name | async session | **fails closed** — see IA-025 |
+
+No `bulk_insert_mappings` / `bulk_save_objects` anywhere. One raw-SQL writer, unreachable.
+
+---
+
+## IA-024 — P1 — CONFIRMED_DEFECT — FIXED (mechanism) / NEEDS_DECISION (data) — criticality depended on a catalog entry that 24 of 37 critical tests do not have
+
+| Field | Value |
+|---|---|
+| **ID** | IA-024 |
+| **Severity** | P1 — patient safety. Includes troponin, troponin_i, INR, PT, aPTT, calcium, magnesium, procalcitonin, LDH, CK. |
+| **State** | mechanism **FIXED** (RUNTIME + TEST VERIFIED, negative proof); catalog data **NEEDS_DECISION** |
+| **Files** | `app/services/interpretation.py` (new `apply_critical_override`), the three clinical write paths, plus the result-update path |
+| **Owner** | Account 2 (mechanism, done); clinical authority (catalog data) |
+
+### The gap, measured
+
+```
+seeded TestType codes            : 20
+tests with critical thresholds   : 37
+CRITICAL-CAPABLE BUT NOT IN THE CATALOG: 24
+  alp, ammonia, amylase, aptt, bicarbonate, bilirubin_total, c_reactive_protein,
+  calcium, ck, cortisol, crp, ferritin, fibrinogen, ggt, inr, iron, ldh, lipase,
+  magnesium, phosphorus, procalcitonin, pt, troponin, troponin_i
+in catalog and critical-capable  : 13
+in catalog, no critical threshold: 7  (cholesterol, hdl, ldl, mcv, rbc, triglycerides, vitamin_d)
+```
+
+`CRITICAL_THRESHOLDS` and the `TestType` catalog are two independent lists of
+"tests this platform knows", and they disagree by 24. The seeder
+(`startup_guard.seed_critical_data` → `_run_seed_test_types`) is explicitly
+**NON-FATAL**: if it fails, the app serves traffic with an empty catalog and logs
+an error. (`test_types` has **0 rows** in `gula_agent2`, which was built by
+migrations without ever booting the app — so the empty catalog there is expected,
+not a defect.)
+
+### Why IA-019's fix was necessary but not sufficient
+
+My previous batch made every path consult the catalog. For the 24 above the
+catalog has nothing to return, so `resolve_test_type` yields `None`, no reference
+range appears, and `get_flag` returns `"unknown"` — or is never called at all on
+the analyzer path. A critical troponin was still stored unflagged **after** that
+fix. I am recording that plainly rather than letting the earlier fix read as
+complete.
+
+### The mechanism fix
+
+`check_critical(test_name, value)` needs only a name and a value, and
+`order_service._check_critical_alerts` already consults it that way, so the
+platform had already established that criticality is knowable without a range.
+`apply_critical_override(flag, test_name, value)` applies that same established
+judgement to the **stored** flag, at four sites: the three clinical write paths
+and the result-update path. It only ever escalates to `"critical"`; it never
+produces `H`, `L` or `normal`, never downgrades an existing `"critical"`, and
+returns the flag untouched when there is no value or no documented threshold.
+
+### What I did NOT do
+
+Extending the catalog to cover the 24 would mean authoring `test_name`, `unit`,
+`normal_range_low/high` and interpretation text for troponin, INR, PT and the
+rest. That is clinical reference data. The standing rule is explicit — never
+invent clinical semantics — so the data half stays **NEEDS_DECISION** for someone
+with clinical authority. `test_code` is `UNIQUE NOT NULL`, so auto-creating
+catalog rows from analyzer traffic would also require synthesising codes, which
+would fabricate clinical identity.
+
+### If NR-164 lands as a bare NOT NULL, it breaks every write path
+
+RUNTIME VERIFIED — simulated `ALTER TABLE lab_results ALTER COLUMN test_type_id
+SET NOT NULL` on the probe database:
+
+```
+PATH 1: /test-results/ POST, test type resolved        -> INSERT 0 1
+PATH 2: order_service BEFORE the fix, column omitted   -> ERROR: null value ... violates not-null
+PATH 3: /device/results BEFORE the fix, column omitted -> ERROR: null value ... violates not-null
+PATH 2/3 AFTER the fix, uncatalogued test (tt is None) -> ERROR: null value ... violates not-null
+rows that survived: 1 of 4
+```
+
+So NR-164 cannot be deployed as a bare NOT NULL: **including after my fix**, any
+result for a test outside the 20-entry catalog would be rejected at the database,
+turning a silent data-quality problem into a hard clinical-write outage. Options
+for whoever owns NR-164, none of them mine to pick:
+
+- **A.** NOT NULL + complete the catalog + reject unknown tests at the API
+  boundary with a 4xx instead of an IntegrityError 500.
+- **B.** NOT NULL + auto-create a `TestType` on first sight — requires
+  synthesising a unique `test_code`, i.e. inventing clinical identity.
+- **C.** Keep nullable; surface unlinked results by report or partial index.
+  This is what the current fixes achieve.
+- **D.** NOT NULL with an explicit sentinel `UNMAPPED` catalog row — queryable,
+  and fabricates no clinical identity.
+
+---
+
+## IA-025 — P3 — CONFIRMED_DEFECT — a third, incompatible notion of a lab result, writing raw SQL that cannot succeed
+
+| Field | Value |
+|---|---|
+| **ID** | IA-025 |
+| **Severity** | P3 — unreachable and fails closed. Recorded for architectural significance, not impact. |
+| **State** | CONFIRMED_DEFECT — STATIC VERIFIED + schema-verified — not fixed |
+| **File** | `app/reference/infrastructure/repositories.py:315` (`SQLResultRepository.save`) |
+| **Owner** | Human Decision (canonical owner) |
+
+It executes `INSERT INTO lab_results (order_id, analyte, value, unit, min_value,
+max_value, min_critical, max_critical, is_critical, flagged, notes, created_at,
+performed_by)`. **None** of `analyte`, `min_value`, `max_value`, `min_critical`,
+`max_critical`, `is_critical`, `flagged`, `notes`, `performed_by` exists in
+`lab_results` — `information_schema` returns an empty set for all nine. So the
+statement would raise `UndefinedColumn`. `app/factory.py` includes only
+`user_preferences_routes` from `app/reference`, so nothing reaches it.
+
+This is the third incompatible model of a lab result in one repository, after
+`app/models/lab_result.py` (`test_name`/`flag`/`normal_range_*`) and the LIMS
+`Result` (`loinc_code`/`validation_status`/`specimen_id`/`ref_range_*`). Same
+class as IA-018's four `OfflineSyncEngine` classes.
+
+**Guard added**, because it exposed a real hole in my own verification: an AST
+guard on `LabResult(...)` constructions cannot see a `text()` INSERT, so a future
+raw writer would bypass every other guard in the file silently. The raw-SQL
+writer set is now pinned to exactly this one known-dead module.
+
+---
+
+## IA-026 — P1 — CONFIRMED_DEFECT — a partial PATCH blanks the fields it does not mention, and leaves a "critical" flag on a result with no value
+
+| Field | Value |
+|---|---|
+| **ID** | IA-026 |
+| **Severity** | P1 — served clinical data loss on an ordinary partial update; also breaches the PERMANENT DATA RULE. |
+| **State** | CONFIRMED_DEFECT → **FIXED** — RUNTIME VERIFIED (PostgreSQL) + TEST VERIFIED with negative proof |
+| **Files** | `app/services/order_service.py::update_result` (the `.update({...})` dict); `app/routes/results.py:89` (`UpdateResultRequest`) |
+| **Route** | `PATCH /results/{result_id}` — authenticated, tenant-scoped, `If-Match` required |
+| **Owner** | Account 2 — next |
+
+`UpdateResultRequest` declares all five body fields as `X | None = None`, and
+`update_result` writes **all five keys unconditionally**:
+
+```python
+.update({"value": value, "value_text": value_text, "unit": unit,
+         "normal_range_low": normal_range_low, "normal_range_high": normal_range_high,
+         "flag": proposed_flag, "version": LabResult.version + 1}, ...)
+```
+
+The flag, however, is computed from `proposed_value = value if value is not None
+else result.value` — the **old** value. So a caller who PATCHes one field blanks
+the other four and leaves behind a flag describing data that is no longer there:
+
+```
+=== BEFORE ===
+ test_name | value |  unit  | normal_range_low | normal_range_high |   flag   | version
+ Potassium |   7.5 | mmol/L |              3.5 |               5.1 | critical |       1
+
+=== the caller PATCHes only unit ===
+=== AFTER ===
+ Potassium |       | mmol/L |                  |                   | critical |       2
+```
+
+A critically-flagged potassium result with no value and no reference range, and
+an audit row reading "Updated laboratory result with CAS version 1".
+
+### Verified negative in the same function
+
+The concurrency control here is **correct** and is recorded as NO DEFECT FOUND:
+the update is a single atomic statement filtered on
+`LabResult.version == expected_version` **and** `order_id IN (unlocked orders for
+this lab)`; `rows_updated == 0` triggers `db.rollback()` and a 409; the route
+requires `If-Match` and answers 428 without it, 400 on a non-numeric value. Role
+is checked against a five-role allowlist. Optimistic locking, tenant scoping and
+lock-state enforcement all hold.
+
+### The fix
+
+The payload is now built conditionally: `flag` and `version` always, and each of
+the five mutable columns only when the caller actually supplied it. Absent means
+unchanged, which is PATCH semantics and the only intent this contract can
+express — there is no way to distinguish "omitted" from "explicitly null" here,
+both arrive as `None`, so nothing that worked deliberately is lost. Under the
+PERMANENT DATA RULE, blanking a stored clinical value by omission is not an
+operation GULA should offer at all.
+
+The optimistic-locking assertions are pinned in the same test file, so a future
+change cannot trade concurrency control for patch semantics.
+
+### Negative proof
+
+```
+BASELINE                                   : 3 failed, 5 passed
+AFTER the fix                              : 8 passed
+REVERT the guard for `unit` alone          : 1 failed  (that field's guard)
+RESTORE                                    : 8 passed
+REVERT to the all-fields literal payload   : 6 failed  (4 field guards + payload + shape)
+RESTORE                                    : 8 passed
+combined with the IA-019/IA-024 file       : 30 passed
+```
+
+---
+
+## API Contract Drift — method note before any finding
+
+The obvious scan for this phase — "served path parameter declares `string`, the
+entity's primary key is `integer`" — returns **35 served operations** on the
+priority entities (Patient, LabResult, Order, Specimen, Lab). It is a candidate
+set, not a finding set, and two of its members are already proven false
+positives:
+
+- **`/radiology/orders/...` and its siblings.** `app/radiology/routes.py:260`
+  resolves the parameter with `Patient.health_id == patient_id`. `health_id` is a
+  string, so `patient_id: str` is **correct**; only the parameter *name*
+  suggests the integer PK. R-1's lesson in a new guise.
+- **`/critical-care/vitals/{patient_id}` and the other critical-care routes.**
+  `app/critical_care/infrastructure/models.py` declares
+  `patient_id = Column(String(100))`, so `str` is type-consistent with the
+  column the handler actually filters on. No coercion, no 500.
+
+18 of the 35 are `/ehr/*`, already established BROKEN at the first table lookup
+by RB-3, so they fail before reaching any comparison and are latent rather than
+live. `/pharmacy/dispense/dispense-records/{patient_id}` appears in the set and
+**independently reproduces IA-012** (owner: Account 1) — recorded as
+INDEPENDENTLY_VERIFIED, not re-raised.
+
+Chasing the parameter type was the wrong axis. Following it to the columns
+produced the finding below.
+
+---
+
+## IA-027 — P1 — CONFIRMED_DEFECT — NEEDS_DECISION — `patient_id` means three incompatible things across 119 tables, and 30 of them constrain nothing
+
+| Field | Value |
+|---|---|
+| **ID** | IA-027 |
+| **Severity** | P1 — referential integrity of the patient link, across clinical domains including blood bank and critical care |
+| **State** | CONFIRMED_DEFECT — STATIC VERIFIED against the shared MetaData — **not fixed** |
+| **Scope** | 119 tables in the shared `MetaData` (564 tables total) |
+| **Owner** | Human Decision; the type split is **NR-022's**, the missing FKs are separable |
+
+### Measured
+
+```
+`patient_id` columns grouped by (python type, FK target):
+
+  str    -> national_patients.id     :  65 tables   (cc_* care-continuum family)
+  str    -> <no FK>                  :  28 tables   (blood_bank_*, critical_care_*)
+  int    -> patients.id              :  24 tables   (lab_orders, billing_*, claims, nursing_*)
+  int    -> <no FK>                  :   2 tables   (bed_assignments,
+                                                     hospital_surgical_safety_checklists)
+
+total tables carrying patient_id : 119
+  with an FK to patients.id      :  24
+  with NO foreign key at all     :  30
+```
+
+One column name, inside one shared `MetaData`, with **three** referents: an
+integer `patients.id`, a string `national_patients.id`, and an unconstrained
+string. Any query, report or export that treats `patient_id` uniformly across
+domains is wrong for at least one of them.
+
+### Two separable questions
+
+1. **`int patients.id` vs `str national_patients.id` (89 tables).** This *is* the
+   clinical-subject question already named as **NR-022**, and
+   `20260914_0001`'s own docstring defers it (see the `national_patients`
+   decision package in this lane). **BLOCKED on NR-022** — not re-raised, and no
+   ORM or FK change made, per the standing instruction.
+
+2. **The 30 tables with no foreign key at all** — separable, and open regardless
+   of how NR-022 resolves. Whichever subject wins, these columns reference
+   nothing: a `critical_care_admissions` row, a `blood_bank_crossmatch`, a
+   `bed_assignment` can each carry a patient identifier that matches no patient
+   in either table, and the database will not object. For blood bank that means a
+   crossmatch or a transfusion record whose patient link is unverifiable; for
+   critical care, ventilator settings and EWS/SOFA scores keyed to a free-text
+   string.
+
+### Why I did not fix it
+
+Adding foreign keys is a schema change, which `CLAUDE.md` places under "Requires
+human approval", and it cannot be done before question 1 resolves — an FK has to
+point at `patients` or at `national_patients`, and that is precisely the open
+decision. Backfilling or validating existing values would also be a data
+migration on clinical rows.
+
+What can be decided independently of NR-022: whether a patient link with **no**
+constraint is acceptable in blood bank and critical care, and whether the 28
+`str`-with-no-FK columns are meant to hold `national_patients.id` (in which case
+they are the same population as the 65 and the FK is simply missing) or
+something else entirely.
+
+### Next action
+
+Committee: confirm whether the 28 `str`/no-FK columns belong to the
+`national_patients.id` population. If yes, this collapses into NR-022 plus one
+FK-adding migration per domain. If no, each domain needs its own stated
+convention for what its `patient_id` references.

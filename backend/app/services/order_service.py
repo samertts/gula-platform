@@ -23,7 +23,7 @@ from ..security.redis_client import cache as _cache
 from ..services.audit_service import log_action
 from ..services.clinical_legacy_read_scope import ClinicalLegacyReadScope
 from ..services.critical_alerts import check_critical
-from ..services.interpretation import get_flag, interpret_result
+from ..services.interpretation import apply_critical_override, get_flag, interpret_result
 from ..services.pdf_report import generate_result_pdf
 from ..services.test_catalog import resolve_test_type
 
@@ -429,6 +429,9 @@ def create_order(
                 normal_high,
                 test_name=item["test_name"],
             )
+        # Criticality does not depend on a range existing: 24 of the 37 tests
+        # with documented thresholds have no catalog entry to supply one.
+        flag = apply_critical_override(flag, item["test_name"], item.get("value"))
 
         token, token_h = _generate_unique_token(db)
 
@@ -587,6 +590,30 @@ def update_result(
             proposed_high,
             test_name=result.test_name,
         )
+    # An update must not drop a criticality the reference range cannot express.
+    proposed_flag = apply_critical_override(
+        proposed_flag, result.test_name, proposed_value,
+    )
+
+    # PATCH semantics: a field the caller did not send is left untouched.
+    # Writing NULL over stored clinical data because a key was absent is data
+    # loss, not an update, and the PERMANENT DATA RULE forbids it. There is no
+    # way to distinguish "omitted" from "explicitly null" on this contract —
+    # both arrive as None — so absent is treated as unchanged. See IA-026.
+    updates = {
+        "flag": proposed_flag,
+        "version": LabResult.version + 1,
+    }
+    if value is not None:
+        updates["value"] = value
+    if value_text is not None:
+        updates["value_text"] = value_text
+    if unit is not None:
+        updates["unit"] = unit
+    if normal_range_low is not None:
+        updates["normal_range_low"] = normal_range_low
+    if normal_range_high is not None:
+        updates["normal_range_high"] = normal_range_high
 
     from sqlalchemy import select
 
@@ -603,15 +630,7 @@ def update_result(
             LabResult.order_id.in_(open_order_ids),
         )
         .update(
-            {
-                "value": value,
-                "value_text": value_text,
-                "unit": unit,
-                "normal_range_low": normal_range_low,
-                "normal_range_high": normal_range_high,
-                "flag": proposed_flag,
-                "version": LabResult.version + 1,
-            },
+            updates,
             synchronize_session="fetch",
         )
     )

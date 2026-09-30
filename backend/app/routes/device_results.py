@@ -12,7 +12,7 @@ from ..models.sample import Sample
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_public
 from ..services.audit_service import log_action
-from ..services.interpretation import get_flag
+from ..services.interpretation import apply_critical_override, get_flag
 from ..services.test_catalog import resolve_test_type
 
 router = APIRouter(prefix="/device", tags=["device"])
@@ -102,6 +102,9 @@ def receive_device_results(
             flag = get_flag(
                 item.value, normal_low, normal_high, test_name=item.test_name,
             )
+        # An analyzer reporting troponin or INR has no catalog entry to give it a
+        # range, but the threshold table still knows those tests are critical.
+        flag = apply_critical_override(flag, item.test_name, item.value)
 
         import secrets
 

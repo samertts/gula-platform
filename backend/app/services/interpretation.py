@@ -1239,6 +1239,38 @@ def _interpret_generic(
     }
 
 
+def apply_critical_override(
+    flag: str | None,
+    test_name: str | None,
+    value: float | None,
+) -> str | None:
+    """Escalate a flag to "critical" when the medical threshold table says so.
+
+    ``get_flag`` returns "unknown" on its first branch when either reference
+    bound is missing, so it never reaches its own critical check for a result
+    whose range is unknown. That is not a rare case: the startup TestType
+    catalog seeds 20 tests, ``CRITICAL_THRESHOLDS`` covers 37, and the 24 in the
+    second but not the first — troponin, INR, PT, aPTT, calcium, magnesium,
+    procalcitonin among them — have no catalog entry to supply a range.
+
+    ``check_critical`` needs only a test name and a value, and the platform
+    already consults it that way in ``order_service._check_critical_alerts``.
+    This applies the same established judgement to the *stored* flag, which is
+    what the critical-alert service, the statistics dashboards, the citizen
+    portal and the compliance export all select on.
+
+    It only ever escalates to "critical". It never produces "H", "L" or
+    "normal", never downgrades an existing "critical", and returns the flag
+    unchanged when there is no value or no documented threshold — so it cannot
+    invent a classification. See IA-020 / IA-024.
+    """
+    if value is None or not test_name or flag == "critical":
+        return flag
+    from ..services.critical_alerts import check_critical
+
+    return "critical" if check_critical(test_name, value) else flag
+
+
 def get_flag(
     value: float,
     normal_low: float | None = None,

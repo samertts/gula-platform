@@ -39,7 +39,7 @@ import pathlib
 
 import pytest
 from app.services.critical_alerts import CRITICAL_THRESHOLDS, check_critical
-from app.services.interpretation import get_flag
+from app.services.interpretation import apply_critical_override, get_flag
 from app.services.test_catalog import resolve_test_type
 
 _BACKEND = pathlib.Path(__file__).resolve().parents[2]
@@ -151,6 +151,26 @@ def test_resolver_returns_none_when_the_catalog_has_no_match():
 # ── the guards: no write path may skip the catalog ───────────────────────────
 
 
+def _calls_function(rel_path: str, func_name: str) -> bool:
+    """True only when the module actually *calls* func_name.
+
+    Substring matching is not enough: an ``import`` line contains the name, so a
+    source scan passes even after every call site is deleted. This was found by
+    the negative proof for IA-024 — removing the override call from the analyzer
+    path left the string-matching guard green.
+    """
+    tree = ast.parse((_BACKEND / rel_path).read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == func_name:
+            return True
+        if isinstance(func, ast.Attribute) and func.attr == func_name:
+            return True
+    return False
+
+
 def _lab_result_constructions(rel_path: str) -> list[ast.Call]:
     tree = ast.parse((_BACKEND / rel_path).read_text(encoding="utf-8"))
     return [
@@ -183,8 +203,7 @@ def test_every_write_path_passes_test_type_id(rel_path):
 @pytest.mark.parametrize("rel_path", _WRITE_PATHS)
 def test_every_write_path_resolves_the_catalog(rel_path):
     """The link and the reference ranges come from the same lookup (IA-020)."""
-    source = (_BACKEND / rel_path).read_text(encoding="utf-8")
-    assert "resolve_test_type" in source, (
+    assert _calls_function(rel_path, "resolve_test_type"), (
         f"{rel_path} does not call resolve_test_type, so it cannot fill missing "
         "reference ranges and any critical value it stores is left unflagged."
     )
@@ -210,3 +229,105 @@ def test_there_is_exactly_one_catalog_resolver():
             ):
                 definitions.append(f"{path.relative_to(_APP.parent)}:{node.lineno}")
     assert len(definitions) == 1, f"expected one resolver, found: {definitions}"
+
+
+# ── IA-024: criticality must not depend on a catalog entry existing ──────────
+
+
+def _seeded_test_codes() -> set[str]:
+    import re
+    src = (_BACKEND / "app/core/startup_guard.py").read_text(encoding="utf-8")
+    return set(re.findall(r'test_code="([^"]+)"', src))
+
+
+def test_the_catalog_does_not_cover_every_critical_capable_test():
+    """Pins the data gap that motivates the override (IA-024).
+
+    The startup seeder creates a bounded TestType catalog; CRITICAL_THRESHOLDS is
+    a separate, larger list. Tests in the second but not the first resolve to no
+    TestType, so no reference range is available and `get_flag` cannot classify
+    them — which is exactly when the override has to carry the criticality.
+
+    This asserts the gap is non-empty, not that it has a particular size: closing
+    it needs clinical reference data for each test, which is a decision for
+    someone with clinical authority, not something to fill in from types.
+    """
+    uncatalogued = set(CRITICAL_THRESHOLDS) - _seeded_test_codes()
+    assert uncatalogued, (
+        "Every critical-capable test now has a catalog entry. If the catalog was "
+        "extended with real clinical reference data, IA-024's data half is closed "
+        "and this test should be replaced by one asserting the opposite."
+    )
+    # The cardiac, coagulation and sepsis markers are the ones that matter most.
+    for marker in ("troponin", "inr", "calcium"):
+        assert marker in uncatalogued, (
+            f"{marker} left the uncatalogued set; re-derive IA-024's numbers."
+        )
+
+
+def test_override_escalates_a_critical_value_with_no_reference_range():
+    """The case the analyzer produces: a value, a name, and no range."""
+    assert get_flag(7.5, None, None, test_name="potassium") == "unknown"
+    assert apply_critical_override("unknown", "potassium", 7.5) == "critical"
+    assert apply_critical_override(None, "potassium", 7.5) == "critical"
+    # A test with a threshold but no catalog entry — the IA-024 population.
+    assert "troponin" in CRITICAL_THRESHOLDS
+    th = CRITICAL_THRESHOLDS["troponin"]
+    assert apply_critical_override(None, "troponin", th["critical_high"] + 1) == "critical"
+
+
+def test_override_never_invents_a_classification():
+    """It escalates to "critical" or leaves the flag exactly as it was."""
+    # Normal value, threshold known -> unchanged.
+    assert apply_critical_override("normal", "potassium", 4.0) == "normal"
+    assert apply_critical_override(None, "potassium", 4.0) is None
+    assert apply_critical_override("unknown", "potassium", 4.0) == "unknown"
+    # Test the threshold table does not know -> unchanged, whatever the value.
+    assert apply_critical_override("unknown", "Unheard Of Assay", 99999) == "unknown"
+    # No value -> nothing to judge.
+    assert apply_critical_override("unknown", "potassium", None) == "unknown"
+    # It never downgrades an existing critical.
+    assert apply_critical_override("critical", "potassium", 4.0) == "critical"
+    # It never produces H, L or normal.
+    for flag in (None, "unknown", "H", "L", "normal"):
+        out = apply_critical_override(flag, "potassium", 7.5)
+        assert out == "critical", out
+
+
+@pytest.mark.parametrize("rel_path", (
+    "app/services/order_service.py",
+    "app/routes/device_results.py",
+    "app/routes/test_results.py",
+))
+def test_every_clinical_write_path_applies_the_critical_override(rel_path):
+    """Seeding is not a clinical path; the three clinical writers are."""
+    assert _calls_function(rel_path, "apply_critical_override"), (
+        f"{rel_path} stores a flag without consulting the critical-threshold "
+        "table, so a critical value for an uncatalogued test is stored unflagged "
+        "and is invisible to every consumer of flag == 'critical'. See IA-024."
+    )
+
+
+# ── the guard must also see raw SQL, not only ORM constructions ──────────────
+
+
+def test_no_raw_sql_writes_lab_results_outside_the_known_dead_module():
+    """An AST guard on `LabResult(...)` cannot see a text() INSERT.
+
+    `app/reference/infrastructure/repositories.py` contains an
+    `INSERT INTO lab_results` naming columns (`analyte`, `min_value`,
+    `is_critical`, `flagged`, `performed_by`, …) that the table does not have, so
+    it fails closed with UndefinedColumn and `app/reference` serves no route that
+    reaches it. It is pinned here rather than removed, because a *new* raw writer
+    would bypass every other guard in this file silently. See IA-025.
+    """
+    known_dead = {"app/reference/infrastructure/repositories.py"}
+    offenders: set[str] = set()
+    for path in sorted(_APP.rglob("*.py")):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if "INSERT INTO lab_results" in text:
+            offenders.add(str(path.relative_to(_APP.parent)))
+    assert offenders == known_dead, (
+        "raw SQL writing lab_results changed. A new writer must set test_type_id "
+        f"and the clinical flag like the ORM paths do. Found: {offenders}"
+    )

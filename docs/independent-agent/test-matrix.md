@@ -443,3 +443,99 @@ The single failure is again `test_no_module_is_loaded_under_two_names`, proven
 pre-existing by the control run recorded in the previous batch. Arithmetic
 confirms no new failure: the previous batch measured **2872 passed** with the
 same one failure, this batch adds a 15-test file, and 2872 + 15 = **2887**.
+
+## IA-024 / IA-025 / IA-026 — catalog coverage, raw-SQL writers, PATCH semantics
+
+`test_lab_result_catalog_resolution.py` (22 tests) and
+`test_result_update_is_a_patch.py` (8 tests), **Python 3.13**. Consequence
+probes in **PostgreSQL** on the isolated `ia019_probe` database.
+
+### Lineage separation (answers the NR-164 question)
+
+| layer | measurement |
+|---|---|
+| CODE, all 3 worktrees | `test_type_id` `nullable=True` |
+| MIGRATION, gula-audit | 102 scripts, head `20260909_0001` |
+| MIGRATION, gula-platform | 101 scripts, head `20260908_0001` |
+| MIGRATION, gula-p02-proof | 112 scripts, head `20260916_0001` |
+| `20260930_0001` / `_0002` | **absent from all worktrees and every git ref**; `origin` has no `claude/autonomous-run-1` |
+| DATABASE `gula_agent2` | revision `20260916_0001`, `is_nullable=YES`, no CHECK |
+| revision's graph | exists **only** in gula-p02-proof — this lane's graph lacks the revision its probe DB runs |
+| verdict | no CODE↔DB mismatch; NR-164's migration content is **BLOCKED — not present in this container** |
+
+### IA-024 catalog coverage
+
+| probe | result |
+|---|---|
+| seeded `TestType` codes (`startup_guard`) | **20** |
+| `CRITICAL_THRESHOLDS` entries | **37** |
+| critical-capable with **no** catalog entry | **24** (troponin, troponin_i, inr, pt, aptt, calcium, magnesium, procalcitonin, ldh, ck, …) |
+| both | 13 |
+| catalogued but no threshold | 7 |
+| seeder criticality | **NON-FATAL** — a failure leaves an empty catalog and serves traffic |
+| `test_types` rows in `gula_agent2` | 0 (migration-only DB, never booted — expected) |
+| `apply_critical_override` on a critical value with no range | escalates to `"critical"` |
+| …on a normal value, an unknown test, or no value | **unchanged** — never invents H/L/normal, never downgrades |
+
+### NR-164 simulated as a bare NOT NULL (PostgreSQL)
+
+| write path | result |
+|---|---|
+| `/test-results/` with a resolved test type | `INSERT 0 1` |
+| `order_service` before the fix (column omitted) | **ERROR: violates not-null** |
+| `/device/results` before the fix (column omitted) | **ERROR: violates not-null** |
+| either path **after** the fix, uncatalogued test (`tt is None`) | **ERROR: violates not-null** |
+| rows surviving | **1 of 4** |
+
+### IA-026 (PostgreSQL) — `PATCH /results/{id}` with `unit` only
+
+| stage | row |
+|---|---|
+| before | `Potassium \| 7.5 \| mmol/L \| 3.5 \| 5.1 \| critical \| v1` |
+| after (pre-fix) | `Potassium \| (null) \| mmol/L \| (null) \| (null) \| critical \| v2` |
+| audit row | "Updated laboratory result with CAS version 1" |
+
+### Negative proofs
+
+| step | result |
+|---|---|
+| IA-024 baseline | 3 failed, 19 passed |
+| after the override | 22 passed |
+| remove the override **call**, keep the import | **1 failed** — after the guard was fixed |
+| *(first attempt: 22 passed — the string-match guard matched the import; see R-30)* | guard rewritten to AST |
+| remove only the `resolve_test_type` call, keep the import | 1 failed |
+| break the override's contract (allow downgrade) | 1 failed |
+| IA-026 baseline | 3 failed, 5 passed |
+| after the PATCH fix | 8 passed |
+| revert the `unit` guard alone | 1 failed |
+| revert to the all-fields literal payload | 6 failed |
+| all restored, both files | **30 passed** |
+
+### Regression surface
+
+```
+tests/test_device_routes.py tests/test_comprehensive.py
+tests/test_compliance_integrity.py tests/test_fhir_comprehensive.py
+tests/test_clinical_safety.py tests/verification/
+  -> 333 passed, 145 skipped
+```
+
+## API Contract Drift — first pass (candidate set and one finding)
+
+STATIC VERIFIED against the served OpenAPI schema and the shared `MetaData`.
+**No test file added yet:** IA-027's remedy depends on NR-022, so a guard would
+prejudge it.
+
+| probe | result |
+|---|---|
+| served ops declaring `string` for an `int`-PK entity (priority entities) | **35** — a candidate set, not findings |
+| of those, `/ehr/*` (already BROKEN per RB-3) | 18 — latent, not live |
+| proven false positives | radiology (`Patient.health_id == patient_id`, correctly a string); critical care (its own column is `String(100)`) |
+| independently reproduces IA-012 (Account 1's) | `/pharmacy/dispense/dispense-records/{patient_id}` → INDEPENDENTLY_VERIFIED |
+| tables in the shared MetaData | 564 |
+| tables carrying `patient_id` | **119** |
+| `str` → FK `national_patients.id` | 65 |
+| `str` → **no FK** | **28** (`blood_bank_*`, `critical_care_*`) |
+| `int` → FK `patients.id` | 24 |
+| `int` → **no FK** | **2** (`bed_assignments`, `hospital_surgical_safety_checklists`) |
+| total with no referential constraint | **30** |

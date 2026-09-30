@@ -37,7 +37,11 @@ from ..security.dependencies import get_current_user, require_permission
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
 from ..services.critical_alerts import check_critical
-from ..services.interpretation import get_flag, interpret_result
+from ..services.interpretation import (
+    apply_critical_override,
+    get_flag,
+    interpret_result,
+)
 from ..services.test_catalog import resolve_test_type
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])
@@ -330,6 +334,9 @@ def create_test_result(
     flag = "unknown"
     if data.value is not None and normal_low is not None and normal_high is not None:
         flag = get_flag(data.value, normal_low, normal_high, test_name=data.test_name)
+    # A catalogued test gets its flag above; one the catalog does not carry can
+    # still be critical, and check_critical needs only a name and a value.
+    flag = apply_critical_override(flag, data.test_name, data.value)
 
     # Unique result token
     token = secrets.token_urlsafe(32)
