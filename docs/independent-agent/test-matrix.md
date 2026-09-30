@@ -305,3 +305,141 @@ python3.13 -m pytest tests/ -q -p no:randomly \
 ```
 
 Identical failure, and the pass count differs by exactly the 17 tests removed.
+
+## IA-019 / IA-020 / IA-021 / IA-022 — lab result workflows
+
+`backend/tests/verification/test_lab_result_catalog_resolution.py` — 15 tests,
+**Python 3.13**. Pure-function and AST guards (no DB); the consequence probes are
+**PostgreSQL** on an isolated throwaway database (`ia019_probe`), never
+`gula_canon` and never a production database.
+
+### Schema truth (PostgreSQL, `gula_agent2`, head `20260916_0001`)
+
+| probe | result |
+|---|---|
+| `lab_results.test_type_id` nullability, `information_schema` | **YES (nullable)** |
+| CHECK constraints on `lab_results` | **none** — `pg_constraint` lists 2 FKs, 1 PK, 2 token uniques |
+| migrations mentioning `test_type_id` | 2, **neither applies NOT NULL** |
+| `test_type_id` in the three worktrees (`gula-audit`, `gula-platform`, `gula-p02-proof`) | `nullable=True` in **all three** |
+| `lab_results.version` | `NOT NULL DEFAULT 1` |
+
+### Write-path matrix
+
+| path | passes `test_type_id`? (before → after) |
+|---|---|
+| `app/routes/test_results.py:362` | yes → yes |
+| `app/services/order_service.py:420` | **no** → yes |
+| `app/routes/device_results.py:96` | **no** → yes |
+| `app/core/bootstrap/demo_data.py:185` | **no** → yes |
+
+### IA-019 consequence (PostgreSQL)
+
+| probe | result |
+|---|---|
+| results stored for one patient, one per write path | 3 |
+| returned by the served query with `category=Chemistry` | **1** |
+| the two dropped rows | the order path's and the analyzer's, both `test_type_id IS NULL` |
+
+### IA-020 consequence (in-process)
+
+| probe | result |
+|---|---|
+| `check_critical("potassium", 7.5)` | **CRITICAL** (`critical_high`) — needs only name + value |
+| `get_flag(7.5, None, None, "potassium")` | `"unknown"` — returns *before* the critical check |
+| `get_flag(7.5, 3.5, 5.1, "potassium")` | `"critical"` |
+| analyzer path, no ranges sent (before fix) | `flag = None`, `get_flag` never called |
+| same for glucose 500, haemoglobin 4.0 | identical outcome |
+| consumers selecting `flag == "critical"` | `critical_alerts.py` ×3, `stats.py` ×3, citizen portal ×2, compliance |
+
+### IA-021 consequence (PostgreSQL) — `GET /compliance/dhis2/aggregate`
+
+| probe | result |
+|---|---|
+| stored flags | `H`, `L`, `critical`, `normal`, `unknown`, NULL (one each) |
+| export output | `count=6`, **`abnormal_high=0`**, **`abnormal_low=0`**, `normal=2` |
+| rows in no bucket at all | **4 of 6** |
+| the NULL-flagged critical potassium (8.1) | counted as **normal** |
+| `get_flag` full vocabulary | `{normal, H, L, critical, unknown}` — none of the four bucket values |
+
+### IA-022 (static)
+
+| bus | production subscribers |
+|---|---|
+| kernel `EventBus` | **0** |
+| `IdentityEventBus` | **0** |
+| `shared.events` | **0** — the only `@events.on` in the tree is inside a docstring |
+
+### Negative proof
+
+| step | result |
+|---|---|
+| BASELINE, resolver extracted, 3 paths unfixed | **6 failed, 9 passed** |
+| after the fix | **15 passed** |
+| REVERT the analyzer path | 2 failed (its two guards) |
+| RESTORE | 15 passed |
+| ADD a duplicate resolver definition | 1 failed (single-resolver guard) |
+| RESTORE | **15 passed** |
+
+Note on the baseline: the *first* attempt errored at collection because
+`app/services/test_catalog.py` did not exist yet. That is a collection error,
+not a test failure, and is recorded as such — the baseline above was taken after
+the behaviour-preserving extraction, so the 6 failures are real assertions.
+
+### Regression surface
+
+```
+tests/test_device_routes.py tests/test_comprehensive.py
+tests/test_compliance_integrity.py tests/test_fhir_comprehensive.py
+tests/test_clinical_safety.py tests/verification/
+  -> 326 passed, 145 skipped
+```
+
+### Pre-existing lint, not introduced
+
+`ruff` reports 3 × RUF001/RUF003 (ambiguous `×`) in `app/routes/test_results.py`
+at lines 194/203. The same characters are present at the same lines in the
+committed file (`git show HEAD:...`), so they predate this change; the edit here
+removed a function and added an import and touched neither line.
+
+## IA-023 — analyzer integration as an untrusted boundary
+
+Reachability by importer graph (STATIC VERIFIED); duplicate behaviour in
+PostgreSQL on the isolated `ia019_probe` database. **No test file added:** all
+four remedies change the device contract, so a guard pinning any of them would
+prejudge the decision.
+
+| probe | result |
+|---|---|
+| `app/gateways/lab_device_gateway.py` importers | **0** |
+| what it implements | whitelist (`ALLOWED_DEVICE_IDS`), HMAC-SHA256 over `DEVICE_HMAC_KEY`, replay window + Redis nonce, ±1e6 range / 100-char validation |
+| does it persist? | **no** — returns `{"status": "received"}` |
+| `app/services/device_trust_service.py` importers | **0** |
+| `app/devices/` → `/device-integration/*` | **served** (14 paths, `factory.py:652`), own model tree, does **not** write `LabResult` |
+| served ingress that writes `LabResult` | `POST /device/results` only |
+| `device_id` on that route | `str | None = None`, free text, **stored nowhere**, interpolated into the audit-log detail string |
+| HMAC / nonce / replay / whitelist on that route | **none of the four** |
+| retried submission (same barcode, test, value ×3) | **3 rows** for one logical result |
+| production uniques on `lab_results` (`gula_agent2`) | PK, `token`, `token_hash` — the latter two **per-row random**, so neither constrains a retry |
+| canonical idempotency helper (§32-A/B) used here? | **no** |
+
+### Verified negatives on the same route
+
+| probe | result |
+|---|---|
+| another lab's barcode | **404** — join filters `LabOrder.lab_id == current_user.lab_id` |
+| no token | **401** |
+| > 100 results, or > 100 submissions/min | **400** / rate-limited |
+| locked / cancelled order, rejected sample | refused by `assert_not_locked`, `assert_not_cancelled`, `enforce_transition`, 400 |
+| audit row written | yes, with actor id and role |
+
+## Full-suite state after the lab-result batch (Python 3.13, SQLite per R-11)
+
+```
+python3.13 -m pytest tests/ -q -p no:randomly
+  -> 1 failed, 2887 passed, 185 skipped in 345s
+```
+
+The single failure is again `test_no_module_is_loaded_under_two_names`, proven
+pre-existing by the control run recorded in the previous batch. Arithmetic
+confirms no new failure: the previous batch measured **2872 passed** with the
+same one failure, this batch adds a 15-test file, and 2872 + 15 = **2887**.

@@ -38,6 +38,7 @@ from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
 from ..services.critical_alerts import check_critical
 from ..services.interpretation import get_flag, interpret_result
+from ..services.test_catalog import resolve_test_type
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])
 
@@ -247,28 +248,6 @@ def _get_patient_scoped(db: Session, current_user: LabUser, health_id: str) -> P
     return patient
 
 
-def _fill_ranges_from_catalog(
-    db: Session,
-    test_name: str,
-    test_code: str | None,
-    normal_low: float | None,
-    normal_high: float | None,
-    unit: str | None,
-) -> tuple[float | None, float | None, str | None, TestType | None]:
-    """Populate missing range/unit from the TestType catalog when available."""
-    tt: TestType | None = None
-    if test_code:
-        tt = db.query(TestType).filter(TestType.test_code == test_code).first()
-    if tt is None:
-        tt = db.query(TestType).filter(TestType.test_name.ilike(test_name)).first()
-    if tt is not None:
-        if normal_low is None:
-            normal_low = tt.normal_range_low
-        if normal_high is None:
-            normal_high = tt.normal_range_high
-        if not unit:
-            unit = tt.unit
-    return normal_low, normal_high, unit, tt
 
 
 # ───────────────────────── endpoints ─────────────────────────
@@ -291,7 +270,7 @@ def create_test_result(
     patient = _get_patient_scoped(db, current_user, data.health_id)
 
     # Pull any missing reference data from the catalog.
-    normal_low, normal_high, unit, tt = _fill_ranges_from_catalog(
+    normal_low, normal_high, unit, tt = resolve_test_type(
         db,
         data.test_name,
         data.test_code,

@@ -25,6 +25,7 @@ from ..services.clinical_legacy_read_scope import ClinicalLegacyReadScope
 from ..services.critical_alerts import check_critical
 from ..services.interpretation import get_flag, interpret_result
 from ..services.pdf_report import generate_result_pdf
+from ..services.test_catalog import resolve_test_type
 
 logger = logging.getLogger("gula.orders")
 
@@ -402,16 +403,30 @@ def create_order(
     # Create results
     result_links = []
     for item in results_data:
+        # Resolve the catalog first. It supplies the TestType link and any
+        # reference range the caller omitted, and the clinical flag depends on
+        # both: get_flag returns "unknown" before its critical check when either
+        # bound is missing, so an unresolved range hides a critical value from
+        # every consumer of LabResult.flag. See IA-019 / IA-020.
+        normal_low, normal_high, unit, tt = resolve_test_type(
+            db,
+            item["test_name"],
+            item.get("test_code"),
+            item.get("normal_range_low"),
+            item.get("normal_range_high"),
+            item.get("unit"),
+        )
+
         flag = "unknown"
         if (
             item.get("value") is not None
-            and item.get("normal_range_low") is not None
-            and item.get("normal_range_high") is not None
+            and normal_low is not None
+            and normal_high is not None
         ):
             flag = get_flag(
                 item["value"],
-                item["normal_range_low"],
-                item["normal_range_high"],
+                normal_low,
+                normal_high,
                 test_name=item["test_name"],
             )
 
@@ -419,12 +434,13 @@ def create_order(
 
         result = LabResult(
             order_id=order.id,
+            test_type_id=tt.id if tt else None,
             test_name=item["test_name"],
             value=item.get("value"),
             value_text=item.get("value_text"),
-            unit=item.get("unit"),
-            normal_range_low=item.get("normal_range_low"),
-            normal_range_high=item.get("normal_range_high"),
+            unit=unit,
+            normal_range_low=normal_low,
+            normal_range_high=normal_high,
             flag=flag,
             token=token,
             token_hash=token_h,

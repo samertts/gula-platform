@@ -63,5 +63,7 @@ history rewrite, no branch checkout in the other tree.
 
 | IA-017 / IA-018 | offline sync and conflict resolution, end to end | `findings.md`, `test-matrix.md` | Both **NEEDS_DECISION**. The platform's only served offline-sync endpoint cannot produce a non-zero result and reports `"engine": "active"`; `ConflictResolver.resolve` is called **0** times in a full cycle; `sync_to_edge` reports `records_synced: N` while discarding the payload. Four classes share the name `OfflineSyncEngine`, and the most sophisticated one — the only one with its own test file — has **zero** production importers and 5 real defects |
 
+| Lab Result Workflows | order → test type → specimen → result → validation → report → audit/event, end to end | `findings.md`, `test-matrix.md` | IA-019 and IA-020 **FIXED** (3 of 4 write paths wrote no test-type link; a critical analyzer result was stored unflagged); IA-021 and IA-022 **NEEDS_DECISION** (the MoH DHIS2 export cannot report an abnormal result; three event buses with zero subscribers). Corrects the task premise: `test_type_id` is nullable in all three lineages and in the migrated database — NR-164 did not close it here. 7 verified negatives recorded |
+
 RB-5, RB-4 and RB-6 are not started.
 

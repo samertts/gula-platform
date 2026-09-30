@@ -13,6 +13,7 @@ from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_public
 from ..services.audit_service import log_action
 from ..services.interpretation import get_flag
+from ..services.test_catalog import resolve_test_type
 
 router = APIRouter(prefix="/device", tags=["device"])
 
@@ -77,14 +78,29 @@ def receive_device_results(
 
     created = []
     for item in data.results:
+        # An analyzer sends a value; the reference range lives in the lab's
+        # TestType catalog. Without this lookup the range stays NULL, get_flag
+        # is never reached, and a critically abnormal result is stored with
+        # flag = NULL — invisible to the critical-alert service, the statistics
+        # dashboards, the citizen portal and the compliance export, all of which
+        # select on flag == "critical". See IA-019 / IA-020.
+        normal_low, normal_high, unit, tt = resolve_test_type(
+            db,
+            item.test_name,
+            None,
+            item.normal_range_low,
+            item.normal_range_high,
+            item.unit,
+        )
+
         flag = None
         if (
             item.value is not None
-            and item.normal_range_low is not None
-            and item.normal_range_high is not None
+            and normal_low is not None
+            and normal_high is not None
         ):
             flag = get_flag(
-                item.value, item.normal_range_low, item.normal_range_high, test_name=item.test_name,
+                item.value, normal_low, normal_high, test_name=item.test_name,
             )
 
         import secrets
@@ -95,12 +111,13 @@ def receive_device_results(
 
         result = LabResult(
             order_id=order.id,
+            test_type_id=tt.id if tt else None,
             test_name=item.test_name,
             value=item.value,
             value_text=item.value_text,
-            unit=item.unit,
-            normal_range_low=item.normal_range_low,
-            normal_range_high=item.normal_range_high,
+            unit=unit,
+            normal_range_low=normal_low,
+            normal_range_high=normal_high,
             flag=flag,
             token=token,
             token_hash=hash_token(token),

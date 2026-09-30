@@ -1307,3 +1307,455 @@ Name the canonical offline-sync owner among the four, then retire/supersede the 
 the PERMANENT DATA RULE. If #1 is chosen, defects 1–5 are blockers and belong to Account 2.
 If #2 is chosen, IA-017's disposition applies. The `OfflineSyncEngine` name collision
 itself is the same class of problem as NR-087/NR-088/NR-081 ("one module, one import path").
+
+---
+
+## Lab Result Workflows — audit scope and the NR-164 premise
+
+Workflow traced end to end: Order → TestType → Specimen → result creation →
+validation → update → finalization → report → audit/event. Every production
+construction site of `LabResult` was enumerated (4), plus the served FHIR
+exporters, the canonical national projection, the statistics and compliance
+readers, the critical-alert service, and the analyzer ingress.
+
+**Correction to the task premise, measured in all three lineages.** The brief
+states that `LabResult.test_type_id` cannot be NULL after NR-164. That is not
+true of any lineage available to this container:
+
+| worktree | head | `test_type_id` |
+|---|---|---|
+| `gula-audit` (this lane) | `375be931` | `nullable=True`, `ondelete="SET NULL"` |
+| `gula-platform` (sibling lane, owns NR-164) | `203c85aa` | `nullable=True` |
+| `gula-p02-proof` (integration lineage) | `ce097a0c` | `nullable=True` |
+
+And in the migrated database (`gula_agent2`, head `20260916_0001`),
+`information_schema.columns` reports `is_nullable = YES`, with no CHECK
+constraint — `pg_constraint` for `lab_results` lists only the two foreign keys,
+the primary key, and the two token uniques. Two migrations mention
+`test_type_id` and neither applies NOT NULL. So nothing at the schema level
+prevents a NULL test-type link, and the guarantee has to come from the write
+paths. It did not. NR-164 itself belongs to the sibling lane's register and is
+not re-audited here; this records only what is measurable in this container.
+
+---
+
+## IA-019 — P1 — CONFIRMED_DEFECT — FIXED — three of four result write paths stored no test-type link, and a category-filtered clinical history silently dropped them
+
+| Field | Value |
+|---|---|
+| **ID** | IA-019 |
+| **Severity** | P1 — silent clinical data incompleteness on a served, tenant-scoped PHI endpoint |
+| **State** | CONFIRMED_DEFECT → **FIXED** — RUNTIME VERIFIED (PostgreSQL) + TEST VERIFIED with negative proof |
+| **Files** | `app/services/order_service.py:420`, `app/routes/device_results.py:96`, `app/core/bootstrap/demo_data.py:185` (defective); `app/routes/test_results.py:362` (correct) |
+| **Affected table** | `lab_results.test_type_id` |
+| **Owner** | Account 2 — done |
+
+### The write-path matrix
+
+| path | served route | set `test_type_id`? |
+|---|---|---|
+| `app/routes/test_results.py:362` | `POST /test-results/` | **yes** — `tt.id if tt else None`, after a catalog lookup |
+| `app/services/order_service.py:420` | `POST /batch/orders`, `/results` (via `create_order`) | **no** — keyword omitted entirely |
+| `app/routes/device_results.py:96` | `POST /device/results` (analyzer) | **no** — keyword omitted entirely |
+| `app/core/bootstrap/demo_data.py:185` | boot-time seeding, production models | **no** — keyword omitted entirely |
+
+### Reproduction and consequence — RUNTIME VERIFIED in PostgreSQL
+
+`/test-results/citizen/{health_id}` (`:603`) and `.../timeline` (`:685`) outer-join
+`TestType` and then filter `TestType.category == category`. For a row with a NULL
+link that predicate evaluates to NULL, which is not true, so the row is dropped.
+One patient, three glucose results, one per write path:
+
+```
+=== ALL results for this patient (no category filter) ===
+ id | value | test_type_id | category
+  1 |   180 |            1 | Chemistry     <- POST /test-results/
+  2 |   190 |              |               <- order_service.create_order
+  3 |   200 |              |               <- POST /device/results
+
+=== THE SERVED QUERY with category=Chemistry ===
+ id | value | test_type_id | category
+  1 |   180 |            1 | Chemistry
+
+ total_results | visible_with_category_filter
+             3 |                            1
+```
+
+A clinician filtering a patient's lab history by category sees one of three
+results, with nothing to indicate the other two exist. `TestType` is also the
+only owner of `test_code`, `category` and the Arabic/English interpretation
+text; `lab_results` denormalises just `unit` and the two range bounds. So a
+NULL link also empties `test_code` in `CanonicalObservation`
+(`app/national_data/models/canonical_observation.py:60`, served under
+`/national-data/...`), the national reporting projection.
+
+### The fix
+
+The resolution convention already existed, privately, inside the one correct
+route: `test_code` exact match first (the column is unique), else a
+case-insensitive `test_name` match, and never overwrite a caller-supplied value.
+That function is moved to `app/services/test_catalog.py::resolve_test_type` —
+unchanged in behaviour — and applied to all four paths. No new clinical
+semantics: three paths now behave the way the fourth already did. `None` after
+an honest lookup is still legitimate for an uncatalogued test; what is no longer
+possible is writing NULL without asking.
+
+No schema change, no migration, no response-shape change.
+
+---
+
+## IA-020 — P1 — CONFIRMED_DEFECT — FIXED — a critically abnormal analyzer result was stored unflagged, and every critical-alert consumer reads that flag
+
+| Field | Value |
+|---|---|
+| **ID** | IA-020 |
+| **Severity** | P1 — patient safety. A critical value ingested from an analyzer was invisible to every alerting and dashboard consumer. |
+| **State** | CONFIRMED_DEFECT → **FIXED** — RUNTIME VERIFIED + TEST VERIFIED with negative proof |
+| **Files** | `app/routes/device_results.py:79-107`, `app/services/order_service.py:398-418`, `app/services/interpretation.py:1253` |
+| **Route** | `POST /device/results` (authenticated, tenant-filtered, rate-limited) |
+| **Owner** | Account 2 — done |
+
+### Mechanism
+
+`get_flag` returns `"unknown"` on its **first** branch when either reference
+bound is None — before it ever reaches its `check_critical` call:
+
+```python
+if normal_low is None or normal_high is None:
+    return "unknown"
+# the critical-threshold check lives below this line
+```
+
+Analyzers send values; reference ranges live in the lab's `TestType` catalog.
+Neither the analyzer path nor the order path consulted that catalog, so:
+
+- **analyzer path**: ranges stay NULL, the `if` guard means `get_flag` is never
+  called at all, and `flag` is stored as **NULL**;
+- **order path**: `get_flag` is called and returns **`"unknown"`**.
+
+Meanwhile `check_critical(test_name, value)` needs **only a name and a value** —
+both already in hand on every path. It consults a 37-test medical threshold
+table and is independent of reference ranges.
+
+### Evidence — RUNTIME VERIFIED, in-process
+
+```
+--- potassium = 7.5 (critical_low=2.5, critical_high=6.5) ---
+  check_critical(name, value)                 -> CRITICAL: critical_high
+  ANALYZER  /device/results, no ranges sent   -> flag = None   (get_flag not called at all)
+  MANUAL /test-results/, catalog ranges       -> flag = 'critical'
+  get_flag(value, None, None, test_name)      -> 'unknown'   <- returns before the critical check
+```
+Identical outcome for glucose 500 (critical_high=500) and haemoglobin 4.0
+(critical_low=5.0).
+
+### Why the stored flag is what matters
+
+`RESULT_CRITICAL` events are emitted by the order and manual paths — into a bus
+with no subscribers (see IA-022), so the events change nothing. The **persisted
+`flag`** is the real mechanism, and it is read widely:
+
+| consumer | predicate |
+|---|---|
+| `app/services/critical_alerts.py:108,157,179` | `LabResult.flag == "critical"` (three queries) |
+| `app/routes/stats.py:169,332,363` | critical counts, dashboards |
+| `app/citizen_platform/laboratory.py:93` | citizen-facing critical results |
+| `app/routes/citizen_portal.py:477` | citizen portal |
+| `app/routes/compliance.py:569-571` | MoH abnormality statistics (see IA-021) |
+
+So a critically high potassium arriving from the analyzer — the primary route by
+which a real laboratory produces results — was stored with `flag = NULL` and
+therefore absent from the critical-alert service, the dashboards and the
+patient's own portal.
+
+### The fix
+
+The same `resolve_test_type` call. With the catalog range in place, the existing
+`get_flag` call on each path reaches its critical check and stores
+`"critical"`. The change does not alter `get_flag`, does not invent a
+threshold, and cannot manufacture a critical flag for a normal value —
+`check_critical` fires only on the medical threshold table.
+
+### Negative proof (covers IA-019 and IA-020 together)
+
+```
+BASELINE (resolver extracted, 3 paths unfixed) : 6 failed, 9 passed
+AFTER the fix                                  : 15 passed
+REVERT the analyzer path                       : 2 failed  (its two guards)
+RESTORE                                        : 15 passed
+ADD a duplicate resolver copy                  : 1 failed  (single-resolver guard)
+RESTORE                                        : 15 passed
+```
+
+Relevant regression: `tests/test_device_routes.py`, `test_comprehensive.py`,
+`test_compliance_integrity.py`, `test_fhir_comprehensive.py`,
+`test_clinical_safety.py`, `tests/verification/` → **326 passed, 145 skipped**.
+
+---
+
+## IA-021 — P1 — CONFIRMED_DEFECT — NEEDS_DECISION — the Ministry of Health export cannot report an abnormal result, and counts unflagged criticals as normal
+
+| Field | Value |
+|---|---|
+| **ID** | IA-021 |
+| **Severity** | P1 — national reporting integrity. Not fixed: the correct bucket set is a response-shape decision. |
+| **State** | CONFIRMED_DEFECT — RUNTIME VERIFIED (PostgreSQL) — **not fixed** |
+| **File** | `backend/app/routes/compliance.py:569-571` |
+| **Route** | `GET /compliance/dhis2/aggregate` — "DHIS2 aggregate data export for MoH reporting" |
+| **Owner** | Human Decision |
+
+### The vocabulary does not exist
+
+`get_flag` is the only writer of computed flags. Its complete output vocabulary
+is `{"normal", "H", "L", "critical", "unknown"}`. The export classifies:
+
+```python
+abnormal_high = case((LabResult.flag.in_(["high", "critical_high"]), 1), else_=0)
+abnormal_low  = case((LabResult.flag.in_(["low",  "critical_low"]),  1), else_=0)
+normal        = case(((LabResult.flag == "normal") | (LabResult.flag.is_(None)), 1), else_=0)
+```
+
+`"high"`, `"critical_high"`, `"low"` and `"critical_low"` are **never produced by
+any writer**. So `abnormal_high` and `abnormal_low` are structurally zero, and
+`flag IS NULL` — which is exactly what the analyzer path used to store for a
+critical value — is counted as **normal**.
+
+### Evidence — RUNTIME VERIFIED in PostgreSQL
+
+Six results in the real flag vocabulary, including an analyzer-ingested critical
+potassium of 8.1 with `flag = NULL`:
+
+```
+=== what is actually stored ===
+ H | 1 ; L | 1 ; critical | 1 ; normal | 1 ; unknown | 1 ; (null) | 1
+
+=== THE MoH DHIS2 EXPORT as compliance.py:569-571 computes it ===
+ test_name | count | abnormal_high | abnormal_low | normal
+ Potassium |     6 |             0 |            0 |      2
+
+=== how many stored rows land in NO bucket at all ===
+ 4
+```
+
+Four of six rows are counted in none of the three buckets, so the buckets do not
+sum to the count; the one genuinely critical result is reported as neither high
+nor low; and the unflagged critical is reported as normal. This is an export
+described in its own docstring as feeding "the MoH DHIS2 national health
+information system" across "1,848 health institutions".
+
+IA-020's fix reduces how often `flag IS NULL` occurs but does not repair this
+query: `H`, `L`, `critical` and `unknown` still fall outside every bucket.
+
+### Why I did not fix it
+
+Aligning the reader to the writer is mechanical for three of the five values
+(`normal`, `H` → high, `L` → low). `"critical"` is not: `get_flag` returns a
+bare `"critical"` that does not say high or low, so it cannot be assigned to
+either bucket from the flag alone, and `"unknown"` is a fourth state the export
+has no field for. Doing this correctly adds response fields — an API
+response-shape change, which `CLAUDE.md` places under "Requires human
+approval". Guessing a bucket for `"critical"` would put fabricated
+directionality into a ministry submission.
+
+This is the same root cause as **R-17**: `lab_results.flag` is unconstrained
+free text with four writers and no closed vocabulary.
+
+### Next action
+
+Decide the bucket set for the MoH export (options: add `critical` and `unknown`
+fields; or emit a flag-distribution map keyed by the real vocabulary, as
+`stats.py:222-230` already does). Whichever is chosen, `flag IS NULL` must stop
+being counted as normal.
+
+---
+
+## IA-022 — P2 — CONFIRMED_DEFECT — NEEDS_DECISION — GULA has three in-process event buses and not one production subscriber on any of them
+
+| Field | Value |
+|---|---|
+| **ID** | IA-022 |
+| **Severity** | P2 — every domain event emitted by the platform is delivered to nobody. Extends IA-013/IA-014 from the kernel bus to all three. |
+| **State** | CONFIRMED_DEFECT — STATIC VERIFIED — not fixed |
+| **Owner** | Human Decision (jointly with IA-013) |
+
+| bus | module | emit API | production subscribers |
+|---|---|---|---|
+| kernel `EventBus` | `app/kernel/event_bus/bus.py` | `publish(Event)` | **0** (IA-013 correction) |
+| `IdentityEventBus` | `app/identity/events.py` | `publish(type, payload)` | **0** — the three `on_*` decorators are never applied |
+| `shared.events` | `shared/events/bus.py`, re-exported by `app/core/events.py` | `emit(name, payload)` | **0** |
+
+For `shared.events`, the only `@events.on(...)` occurrence anywhere in
+`backend/app/` or `shared/` is **inside a docstring** — the usage example at
+`app/core/events.py:9`. So `ORDER_CREATED`, `ORDER_VALIDATED`, `ORDER_CANCELLED`,
+`RESULT_CRITICAL` and `SAMPLE_REJECTED` are emitted into a bus with no handlers.
+
+This is why IA-020's severity rests on the persisted `flag` and not on the
+missing `RESULT_CRITICAL` emission: adding that emission to the analyzer path
+would have changed nothing observable. It also means the critical-alert
+*notification* path, as distinct from the stored flag, does not exist on any
+route.
+
+### Next action
+
+Fold into the IA-013 decision: three buses, one of which (`outbox_service.py`
+over the present `outbox_events` table, with a running worker) is the only
+durable mechanism that works. Deciding which survives is one decision, not
+three.
+
+---
+
+## Lab Result Workflows — verified negatives (NO DEFECT FOUND, with evidence)
+
+Recorded because absence of a finding is a result. Each was probed adversarially.
+
+| probe | outcome |
+|---|---|
+| **Analyzer tenant isolation** | **NO DEFECT FOUND.** `POST /device/results` resolves the sample via `.join(LabOrder).filter(Sample.barcode == …, LabOrder.lab_id == current_user.lab_id)`. A barcode belonging to another lab cannot be written to. |
+| **Analyzer authentication** | **NO DEFECT FOUND.** `Depends(get_current_user)`; unauthenticated calls are rejected. Rate-limited to 100/min per IP, max 100 results per submission. |
+| **Order state machine on ingestion** | **NO DEFECT FOUND.** `assert_not_locked`, `assert_not_cancelled`, `enforce_transition(order.status, "completed")` all run before any result is created; rejected samples are refused with 400. |
+| **Analyzer audit trail** | **NO DEFECT FOUND.** `log_action(action="device_results", resource_type="lab_order", resource_id=order.id, user_id=…, user_role=…)` on every submission. |
+| **Served FHIR Observation exporter** | **NO DEFECT FOUND, and better than its unreached sibling.** `/compliance/fhir/observation/{order_id}` emits `"code": {"text": r.test_name}` with no `coding` block, so it makes no LOINC claim it cannot support, and it filters by `LabOrder.lab_id == current_user.lab_id`. |
+| **`FHIRObservationMapper` LOINC claim** | **latent, already covered by IA-011.** `app/national/fhir/observation.py:17` emits `{"system": "http://loinc.org", "code": result.get("test_code", "")}` — asserting LOINC for what is GULA's own `test_types.test_code`, and `None` when unresolved. Its only caller is `app/national/tests/unit/test_fhir.py`; **no production caller**, so this is IA-011's unreached mapper, not a live defect. Re-confirmed rather than re-raised. |
+| **Optimistic locking column** | **present and correct in shape.** `lab_results.version` is `NOT NULL DEFAULT 1` physically. Result *creation* is an insert, so the version column is not in play on the paths audited here; the update paths were not exercised in this batch and remain open (see next action). |
+
+### Open, carried forward from this batch (not yet classified)
+
+| item | state |
+|---|---|
+| `POST /device/results` has no idempotency: no dedup key, and the only uniques on `lab_results` are the two per-row random tokens. A retried analyzer submission creates duplicate results. | **DISCOVERED** — needs reachability/impact work and comparison with the canonical idempotency helper the programme built in §32-A/B |
+| `device_id` is accepted as free text, stored nowhere, and written into the audit-log detail string as if it were provenance. `DEVICE_HMAC_KEY` is a mandated platform secret (`CLAUDE.md` invariant 7) that this route does not use. | **DISCOVERED** — analyzer identity is unauthenticated; needs its own pass |
+| Result **update** and **validation/finalization** paths (optimistic locking, status transitions, audit on mutation) were mapped but not adversarially exercised. | **not audited in this batch** |
+
+---
+
+## IA-023 — P1 — CONFIRMED_DEFECT — NEEDS_DECISION — the analyzer trust boundary exists, is fully implemented, and nothing calls it
+
+| Field | Value |
+|---|---|
+| **ID** | IA-023 |
+| **Severity** | P1 — the served analyzer ingress has no device authentication, no replay protection and no idempotency, while the module that implements all three is unreachable. |
+| **State** | CONFIRMED_DEFECT — STATIC VERIFIED (reachability) + RUNTIME VERIFIED (duplicate behaviour) — **not fixed** |
+| **Files** | `app/gateways/lab_device_gateway.py` (hardened, unreached); `app/routes/device_results.py` (served, unhardened); `app/services/device_trust_service.py` (unreached) |
+| **Route** | `POST /device/results` |
+| **Owner** | Human Decision |
+
+### Two analyzer boundaries, and the wrong one is served
+
+`app/gateways/lab_device_gateway.py` documents and implements a four-layer
+security model:
+
+1. input validation — type, length, numeric range (`±1_000_000`, 100-char strings);
+2. device whitelist — `ALLOWED_DEVICE_IDS`;
+3. **HMAC-SHA256** over `"{device_id}:{sample_id}:{test}:{value}:{timestamp}"` keyed
+   with `DEVICE_HMAC_KEY`;
+4. **replay protection** — a `REPLAY_WINDOW_SECONDS` timestamp window plus a
+   per-message `nonce`, tracked in Redis with a TTL.
+
+`DEVICE_HMAC_KEY` is one of the five secrets `CLAUDE.md` invariant 7 says must
+have no fallback. **`lab_device_gateway` has zero importers** anywhere in `app/`,
+and it persists nothing — `receive_device_result` validates, authenticates and
+returns a normalised dict with `"status": "received"`.
+
+The served ingress, `POST /device/results`, has none of the four layers:
+
+| control | hardened gateway (unreached) | served route |
+|---|---|---|
+| device whitelist | `ALLOWED_DEVICE_IDS` | **none** |
+| message HMAC | `DEVICE_HMAC_KEY` | **none** |
+| replay window | `REPLAY_WINDOW_SECONDS` | **none** |
+| nonce / dedup | Redis nonce with TTL | **none** |
+| numeric range validation | `±1_000_000` | Pydantic `float | None` only |
+| `device_id` handling | required and verified when keyed | free text, **never stored** |
+
+`app/services/device_trust_service.py` (fingerprinting, trust levels, trusted
+device registry) also has **zero importers**. `app/devices/` → `/device-integration/*`
+**is** served (14 paths, wired at `app/factory.py:652`) but owns a separate model
+tree (`integrated_devices`, `device_gateways`, `device_connectors`,
+`device_protocol_profiles`, `device_events`, `device_outbox_messages`, …) and does
+**not** write `LabResult`.
+
+### `device_id` is recorded as provenance without being verified
+
+`DeviceSubmission.device_id` is `str | None = None`. It is written into the audit
+trail —
+
+```python
+details=f"Device {data.device_id or 'unknown'}: {len(created)} results via barcode {data.barcode}",
+```
+
+— and stored nowhere else. So the immutable, hash-chained audit log records an
+unauthenticated, caller-supplied string as the identity of the instrument that
+produced a clinical result. Any authenticated lab user can submit results
+claiming any analyzer. This is not anonymous spoofing — the route requires a
+valid session and is correctly tenant-scoped — but *device* provenance in the
+audit trail is unverifiable while being presented as fact.
+
+### No idempotency: a retry duplicates clinical results
+
+`lab_results` carries three uniqueness constraints in the migrated database
+(`gula_agent2`): the primary key, `lab_results_token_key` and
+`lab_results_token_hash_key`. **Both token uniques are per-row random values**
+(`secrets.token_urlsafe(32)` generated inside the loop), so neither can collide
+across submissions, and nothing keys on submission identity —
+`(barcode, device_id, nonce)` or `(order_id, test_name, value)`. Re-posting the
+same submission therefore inserts fresh rows:
+
+```
+=== a retried analyzer submission: same barcode, same test, same value, three times ===
+ rows_for_one_logical_result
+                           3
+```
+
+(RUNTIME VERIFIED in PostgreSQL on an isolated probe database. The constraint
+list printed by that probe is the probe table's own, not production's; the
+production constraint set was read separately from `gula_agent2` and is as
+described above.)
+
+An analyzer that retries on a timeout — the normal behaviour of instrument
+middleware — produces duplicate results for one specimen. Combined with IA-020's
+fix, a duplicated critical result now also duplicates the critical flag.
+
+The programme already built a canonical idempotency helper (§32-A/B, applied to
+`/samples` and `/batch/orders`). `POST /device/results` does not use it.
+
+### Why I did not fix it
+
+Every remedy changes the contract devices must satisfy:
+
+- **A. Wire the existing gateway.** Call `receive_device_result` from the route.
+  Correct, and it is what the module was written for — but with `DEVICE_HMAC_KEY`
+  set, devices must send `signature`, `timestamp` and `nonce`, which the current
+  `DeviceResult` schema has no fields for. Existing analyzers would break until
+  reconfigured. That is a deployment decision, not a code decision.
+- **B. Apply the §32-A/B idempotency helper only.** Closes the duplicate-result
+  half without touching authentication. Needs a submission identity chosen
+  (`barcode + device_id + nonce`? a client-supplied `Idempotency-Key`?), which is
+  an API contract addition.
+- **C. Persist `device_id` on the result** so provenance is at least recorded
+  rather than only narrated in an audit string. Needs a migration — a schema
+  change, which `CLAUDE.md` places under "Requires human approval".
+- **D. Retire `lab_device_gateway` and `device_trust_service`** as superseded, if
+  the decision is that session authentication is the intended boundary. Under the
+  PERMANENT DATA RULE that is retire/supersede, not delete.
+
+Guessing here would either break live instruments or bless an unauthenticated
+boundary by silence. This is the same shape as IA-018: a hardened implementation
+sits unreached beside a crude served one.
+
+### Next action
+
+Decide A–D. If A, the `DeviceResult`/`DeviceSubmission` schemas need
+`signature`/`timestamp`/`nonce` and a rollout plan for already-deployed analyzers.
+
+---
+
+## Analyzer Integration — verified negatives (NO DEFECT FOUND, with evidence)
+
+| probe | outcome |
+|---|---|
+| **Cross-tenant result injection by barcode** | **NO DEFECT FOUND.** The sample lookup joins `LabOrder` and filters `LabOrder.lab_id == current_user.lab_id`; another lab's barcode is a 404. |
+| **Unauthenticated submission** | **NO DEFECT FOUND.** `Depends(get_current_user)`; 401 without a token. |
+| **Submission volume** | **NO DEFECT FOUND.** `rate_limit_public(request, max_per_minute=100)` and a hard 400 above 100 results per submission. |
+| **Writing to a locked, cancelled or rejected workflow** | **NO DEFECT FOUND.** `assert_not_locked`, `assert_not_cancelled`, `enforce_transition(order.status, "completed")` run before any insert; a rejected sample is refused with 400. |
+| **Audit coverage of the ingestion itself** | **NO DEFECT FOUND.** `log_action` is called on every submission with actor id and role. Only the *device* identity within it is unverified (IA-023). |
+| **`/device-integration/*` writing lab results** | **NO DEFECT FOUND** — it does not touch `LabResult`; it is a separate device-management surface, not a result ingress. |
