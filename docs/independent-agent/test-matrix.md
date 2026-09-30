@@ -48,3 +48,53 @@ are recorded here so the numbers can be re-derived.
 | IA-005 prediction check | SQLite, records seeded | 2 exposed + 2 unexposed operations | 4/4 as predicted, both directions |
 | IA-005 blast radius | — | tables in `SHARED_METADATA` with a `metadata` column | 124 |
 | head-DB integrity after the pass | `gula_agent2` | tables / head / rows added | 423 / `20260916_0001` / 0 — unchanged |
+
+## IA-005 — serializer regression (2026-09-30)
+
+`backend/tests/verification/test_orm_metadata_column_serialization.py`, 13 tests,
+dialect-free. Written **before** the fix.
+
+| stage | result |
+|---|---|
+| baseline (unfixed) | **9 failed**, 4 passed |
+| after the fix | **13 passed** |
+| perturbation (`getattr(instance, col.name)` restored) | **9 failed**, 4 passed |
+| restored | **13 passed** |
+
+The 4 passing throughout are the no-collateral-change and population guards, which
+must hold in both states — they are what stops the suite passing vacuously.
+
+| wider check | result |
+|---|---|
+| affected models with a `to_dict()` | **119 / 119** serialise safely and JSON-encode |
+| `MetaData`/`Table`/`SchemaItem` anywhere in any payload | **none** (recursive scan) |
+| `/ehr` code-path probe, 86 operations (SQLite) | `RecursionError` **27 → 1**; `200` **8 → 35** |
+| seeded-record probe | `RecursionError` → **200** with `metadata` = the column value |
+| `tests/verification/` + `tests/independent/` | **104 passed, 145 skipped, 0 failed** |
+
+**Dialect caveat, recorded because it limits every row above:** `tests/conftest.py:28`
+forces `DATABASE_URL` to `sqlite:///:memory:`, so the backend suite is SQLite
+evidence. Passing a PostgreSQL URL does not override it — it hung the run and that
+run is void (ENVIRONMENT, not a code defect).
+
+### Full backend suite, with the IA-005 fix in place
+
+`pytest tests/ -q` — **1 failed, 2846 passed, 185 skipped** in 318 s.
+
+The single failure is **pre-existing and not a regression from IA-005**, proven
+rather than asserted:
+
+| step | result |
+|---|---|
+| `tests/verification/test_single_import_path.py::test_no_module_is_loaded_under_two_names` in the full suite | **FAILED** — `backend.app.integration`, `.connectors`, `.connectors.ntfy` are loaded under both `app.*` and `backend.app.*` |
+| the same test in isolation | **passes** — the failure is order-dependent, triggered by the kernel tests |
+| the same reproducer with the IA-005 change **stashed** | **FAILED identically**, same three modules |
+| restored | fix green, 13/13 |
+
+So it is the NR-087 guard catching a real, order-dependent shadow introduced by
+the kernel tests' dynamic connector loading — a genuine open defect in its own
+right, and untouched by this change. The guard is doing its job; `KNOWN_SHADOWED`
+was pinned from a single-file run, which is why a whole-suite run surfaces more.
+
+Recorded as an **order-dependency limitation of my own guard**: pinning an exact
+set measured in isolation understates what the assembled suite loads.

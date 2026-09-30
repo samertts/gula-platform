@@ -51,5 +51,7 @@ history rewrite, no branch checkout in the other tree.
 | RB-2 | ORM ↔ migration reconciliation | `orm-migration-reconciliation.md` | RECONCILED — 780 mapped / 423 physical / 371 absent / 14 orphan; accepted for inventory; IA-004 raised |
 | RB-3 | the served `/ehr` surface, end to end | `rb3-ehr-surface-audit.md` | AUDITED — 53 BROKEN, 1 PARTIAL, 0 REAL of 54 paths; IA-005 (P0) and IA-006 (P1) raised |
 
+| IA-005 / IA-006 | remediation of the two findings RB-3 raised | `ia005-ia006-remediation.md` | IA-005 **RESOLVED** (mapper-driven serializer across 12 ORM bases); IA-006 **OPEN**, zero migrations authored — ADR-016 forbids the tables; IA-007 raised |
+
 RB-5, RB-4 and RB-6 are not started.
 

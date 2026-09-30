@@ -11,6 +11,7 @@ from shared.models import (
     SoftDeleteMixin,
     TenantMixin,
     TimestampMixin,
+    serialize_columns,
 )
 
 from ..database import Base
@@ -23,4 +24,5 @@ __all__ = [
     "SoftDeleteMixin",
     "TenantMixin",
     "TimestampMixin",
+    "serialize_columns",
 ]

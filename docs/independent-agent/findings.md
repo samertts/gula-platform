@@ -160,7 +160,8 @@ enlarged the walked object; the defect is independent of it and predates it.
 
 **Exposure.** 59 of the 86 served `/ehr` operations (measured statically over the
 AST; validated against runtime 4/4 including two negatives). Platform-wide,
-**124 tables** in `SHARED_METADATA` carry a column named `metadata`; every route
+**137 tables** across every registry carry a column named `metadata` (RB-3 said 124,
+which counted only `SHARED_METADATA`); every route
 returning `to_dict()` on one of them is affected. Named examples outside EHR:
 `ai_conversations`, `ai_agent_executions`, `ai_embeddings`, and the `cc_*`
 care-continuum cluster. **The non-`/ehr` route count is UNKNOWN — not measured.**
@@ -170,9 +171,20 @@ Where a serialiser tolerates the object, a clinical response silently carries a
 schema registry in place of the record's own metadata — a wrong value presented as
 data.
 
-**Status:** OPEN, deliberately not fixed in this lane. `shared/models/base.py` is
-shared surface, and changing a serialiser used by 124 tables is an API
-response-shape change, which `CLAUDE.md` puts behind human approval.
+**Status: RESOLVED** — see `ia005-ia006-remediation.md` Part 1. One canonical
+mapper-driven `serialize_columns()` in `shared/models/base.py`; the other 11 ORM
+bases delegate to it (14 files, net −21 lines). The output key stays the physical
+column name, so no response shape changed. Proven by
+`tests/verification/test_orm_metadata_column_serialization.py`: 9 failed before,
+13 passed after, 9 failed again on a one-line perturbation, 13 passed on restore.
+119 of 119 affected models with a `to_dict()` now serialise safely with no schema
+object anywhere in any payload; the `/ehr` code-path probe went from 27
+`RecursionError`s to 1 (a harness limitation).
+
+**Count corrected:** this entry first said 124 tables, which counted only
+`SHARED_METADATA`. With every registry walked and the app assembled it is **137**
+tables / 137 models, of which 119 have a `to_dict()`. Direction and severity were
+right; the number was low.
 
 ---
 
@@ -193,9 +205,64 @@ It is also the silent arm of IA-004: the FK to `national_patients` is skipped
 without a trace because the target does not exist. RB-3 confirms IA-004
 independently.
 
-**Status:** OPEN. Remediation needs the schema-ownership decision RB-2 escalated,
-and the options are set out in `rb3-ehr-surface-audit.md` §14. IA-004 itself
-remains OPEN/P1 and was not fixed here.
+**Status: OPEN, and deliberately without migrations.** `docs/adr/ADR-016-national-ehr.md`
+(Status **Accepted**, 2026-07-15, not superseded) decides the opposite of what a
+migration would build: *"Zero database duplication — **No new EHR tables**"*, and
+*"Must not duplicate or replace existing GULA database tables."* Authoring 18
+`ehr_*` migrations would implement precisely the data silo that accepted ADR
+forbids.
+
+The real contradiction is inside ADR-016: its Phase 2 mandates *"write support"*
+for Condition / Medication / Immunization resources while also forbidding new EHR
+tables, and it never says where a newly authored clinical note or allergy is
+persisted — GULA's existing schema is lab-centric and cannot hold one. Phase 2 as
+written is unsatisfiable under the ADR's own constraint. Either the constraint or
+the phase must move, and that is an architecture-committee decision.
+
+Classification of all 19 absent tables, on evidence: **A=0, B=0, C=1, D=0, E=18,
+F=0**. Only class A may receive a migration and it is empty, so **none was
+authored**. `ehr_patient_timeline` is class C — a projection with no projector
+anywhere in `app/`. `national_patients` is class E with its own decision: hub of
+66 foreign keys, while `nhop-platform` owns `citizens` per `CLAUDE.md` and ADR-016
+composes the Patient from `patients`/`lab_results`/`lab_orders`/`visits`, never
+from it. Full matrix in `ia005-ia006-remediation.md` Part 2.
+
+IA-004 itself remains OPEN/P1 and was not modified.
+
+---
+
+## IA-007 — P1 — invoice generation crashes on the same `metadata` attribute collision
+
+`app/insurance/financial/engine.py:840-842`:
+
+```python
+metadata = claim.metadata or {}          # the MetaData registry, and it is truthy
+metadata["invoice_number"] = invoice_number
+claim.metadata = metadata                 # never reaches the column
+```
+
+`InsuranceClaim` maps table `ins_claims`, whose physical `metadata` column is
+mapped as `extra_metadata`. Executed, line 841 raises:
+
+```
+TypeError: 'MetaData' object does not support item assignment
+```
+
+So `generate_invoice()` cannot return, and `batch_invoices()` fails with it. Had
+the assignment succeeded it would still have been lost: `claim.metadata = ...`
+shadows a class attribute and never reaches the mapped column, so the following
+`self._db.commit()` would persist no invoice number — the NR-064/065 shape again.
+
+IA-005's fix does not reach this: direct attribute access never goes through
+`to_dict()`. The repair is two identifiers (`claim.extra_metadata`), but invoice
+generation is billing logic, which `CLAUDE.md` places behind human approval.
+
+A systematic AST sweep over `app/` for the same shape found 13 other candidate
+sites; **all 13 are correct** (`model.metadata_ = domain.metadata` in the national
+platform repositories, reading a domain dataclass and writing the mapped
+attribute). This is the one live instance found.
+
+**Status:** OPEN, not fixed in this lane. Patch specified above.
 
 ---
 
@@ -211,3 +278,9 @@ rate, and three of this pass's five leads died on reading.
 | Invariant #6, the `LabResult` optimistic lock | a real compare-and-swap at `services/order_service.py:583-597` (`filter(LabResult.version == expected_version)` with `version + 1`); no `.update()` on a `LabResult` query bypasses it, and the other writes are creates, which have no prior version |
 | `app/reference/routes/results.py:64-65` mutating `result.is_critical` / `result.flagged` in a route | **not** an ORM write: `result` is a `LabResultDomain` in-memory object in an exception handler, serialised to the response. No optimistic-lock bypass |
 | the 17 `/citizen-platform/{citizen_id}` routes | correctly authorized by the router-level dependency (see IA-002) |
+| `integration/base.py::UplinkBase.to_dict()` and `research_platform/research.py`, both hard-coding `"metadata": self.metadata` | **not defects** — both classes are dataclasses, so `.metadata` is a genuine field |
+| `governance/identity_governance.py::IdentityRecord.metadata[...]` and `rules_engine/api/routes.py:217` `rule.metadata = ...` | **not defects** — `IdentityRecord` and `RuleDefinition` are dataclasses |
+| `document_intelligence/.../wiring.py:602` `field.metadata.get("unit")` | **not a defect** — `field` is an extracted-field domain object, not a mapped instance |
+| the 13 `.metadata` sites in `app/national/*/infrastructure/repository.py` | **correct code** — each pairs `model.metadata_ =` with a read from a domain dataclass, which is how the contract is meant to be used |
+| any physical column other than `metadata` whose name differs from its mapped attribute | **none** across all 780 mapped classes, and no column is unmapped — which is why the IA-005 fix has no collateral effect |
+

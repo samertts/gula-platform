@@ -1,10 +1,52 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
 from backend.app._compat import UTC
 from sqlalchemy import Boolean, Column, DateTime, Integer
+from sqlalchemy import inspect as sa_inspect
+
+
+def serialize_columns(
+    instance: Any,
+    *,
+    redact: Callable[[str], bool] | None = None,
+) -> dict[str, Any]:
+    """Serialise a mapped instance's columns, keyed by **physical column name**.
+
+    Resolving the value through the mapper rather than through ``col.name`` is not a
+    stylistic choice. A declarative class already owns the attribute ``metadata`` —
+    SQLAlchemy puts the base's :class:`~sqlalchemy.MetaData` registry there — so a
+    model that needs a *column* called ``metadata`` must map it under a different
+    Python name (``metadata_``, or ``extra_metadata``). ``getattr(self, col.name)``
+    then returns the registry instead of the column value, and any JSON encoder walks
+    that object graph until the stack is exhausted.
+
+    The output key stays the physical column name, which is what every base has always
+    emitted and what clients already consume. Only the lookup changes.
+
+    ``redact`` receives the physical column name and, when it returns True, the value
+    is replaced by ``"[REDACTED]"`` and never read into the payload.
+    """
+    attr_by_column: dict[str, str] = {}
+    for attr_key, column in sa_inspect(type(instance)).columns.items():
+        attr_by_column.setdefault(column.name, attr_key)
+
+    result: dict[str, Any] = {}
+    for col in instance.__table__.columns:
+        if redact is not None and redact(col.name):
+            result[col.name] = "[REDACTED]"
+            continue
+        attr_key = attr_by_column.get(col.name)
+        # A column absent from the mapper has no value on the instance. Reading it by
+        # its physical name is exactly the bug above, so report it as unset instead.
+        val = getattr(instance, attr_key) if attr_key is not None else None
+        if isinstance(val, datetime):
+            val = val.isoformat()
+        result[col.name] = val
+    return result
 
 
 class TimestampMixin:
@@ -34,13 +76,7 @@ class BaseEntityMixin:
     """Shared utility methods for SQLAlchemy model instances."""
 
     def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+        return serialize_columns(self)
 
     def soft_delete(self) -> None:
         self.is_deleted = True

@@ -11,6 +11,7 @@ from sqlalchemy import Column, DateTime
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
+from shared.models import serialize_columns
 
 GovernanceBase = declarative_base()
 
@@ -46,13 +47,7 @@ class GovernanceBaseEntity(GovernanceTimestampMixin, GovernanceBase):
     __abstract__ = True
 
     def to_dict(self) -> dict[str, Any]:
-        result = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+        return serialize_columns(self)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={getattr(self, 'id', 'N/A')}>"
