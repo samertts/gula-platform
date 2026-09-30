@@ -18,20 +18,18 @@ from app.blood_bank.exceptions import (
 )
 from app.blood_bank.infrastructure.models import (
     BloodRequestModel,
+    BloodReservationModel,
     BloodUnitModel,
     CrossmatchModel,
-    TransfusionModel,
     PatientBloodSampleModel,
-    BloodReservationModel,
-    TransfusionReactionModel,
-    BloodReturnModel,
-    BloodDiscardModel,
+    TransfusionModel,
 )
 from app.clinical.command_guard import ClinicalCommandGuard
 from app.clinical.failure_injection import maybe_fail
 from app.database import get_db
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user, require_permission
+from shared.models import serialize_columns
 
 router = APIRouter(
     prefix="/blood-bank",
@@ -635,7 +633,9 @@ def _request_to_dict(r: Any) -> dict[str, Any]:
 # ---- Phase 2 operational endpoints ----
 
 def _phase2_dict(model: Any) -> dict[str, Any]:
-    return model.to_dict() if hasattr(model, "to_dict") else {c.name: getattr(model, c.name) for c in model.__table__.columns}
+    # The fallback resolves through the mapper: reading by `c.name` returns the
+    # declarative MetaData registry for a column named "metadata". See IA-005.
+    return model.to_dict() if hasattr(model, "to_dict") else serialize_columns(model)
 
 
 @router.post("/samples", status_code=status.HTTP_201_CREATED)

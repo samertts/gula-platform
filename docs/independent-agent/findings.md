@@ -171,7 +171,46 @@ Where a serialiser tolerates the object, a clinical response silently carries a
 schema registry in place of the record's own metadata — a wrong value presented as
 data.
 
-**Status: RESOLVED** — see `ia005-ia006-remediation.md` Part 1. One canonical
+**Status: RESOLVED** — see `ia005-ia006-remediation.md` Part 1 **and
+`ia005-ia006-addendum.md`**, which found five further live sites and corrected a
+wrong conclusion this entry first recorded.
+
+**Correction — `col.key` is not the mapped attribute.** This entry first reported
+`app/nursing/routes.py::_model_to_dict` as immune because it reads
+`getattr(instance, c.key)`. That was wrong: for `metadata_ = Column("metadata", ...)`
+SQLAlchemy leaves **both** `col.name` and `col.key` as `"metadata"`, and only the
+mapper carries `metadata_`. Measured: `type(getattr(NursingTask(), c.key))` is
+`MetaData`. So `col.key` was equally defective, and the first guard — which matched
+only `col.name` — passed it. The guard now matches both.
+
+**Five further sites, all on tables that physically exist:**
+`app/nhdw/offline.py:265` (offline device sync; **all 13** synced `nhdw_*` tables
+carry the column), the three `_model_to_dict` helpers in `app/nursing/routes.py:40`,
+`app/nhdw/routes.py:56` and `app/routes/hospital.py:264`, and the
+`app/blood_bank/api/routes.py:638` fallback. All five now delegate to
+`serialize_columns`, which gained `exclude` and `isoformat_dates` so each caller's
+behaviour is preserved exactly. `app/contracts/generator.py:152` was checked and is
+**not** a defect — it reads column types, never instance values.
+
+This raises IA-005's real severity: the reachable blast radius was **not** mostly
+the dormant `/ehr` surface. Offline clinical sync, nursing, hospital ward management
+and blood bank all run on tables that exist, so these were live failures.
+
+**Exposure, now measured rather than UNKNOWN:** of the 137 affected models, **34**
+are HIGH risk (served endpoint + serializer), of which **10** sit on tables present
+in the head database. Exposure spans `/nursing`, `/pharmacy`, `/care-continuum`,
+`/fhir`, `/national-data`, `/citizen-platform`, `/radiology`, `/lims`, `/compliance`,
+`/patient-card`, `/test-results`, `/authz`, `/admin`, `/health-data`,
+`/intelligence`, `/public-health` — not just `/ehr`. Full matrix in
+`ia005-impact-matrix.md`.
+
+**Contract completed:** of 2 103 served operations only **135** declare a response
+schema and **1 968** are untyped, so `to_dict()` *is* the response contract; `/ehr`
+declares **0**. The 4 declared schemas with a metadata-ish property use
+`safe_metadata`, a separate billing field. No JSON key changed anywhere — only the
+value, from a schema registry to the column's value.
+
+Original first-pass record follows. One canonical
 mapper-driven `serialize_columns()` in `shared/models/base.py`; the other 11 ORM
 bases delegate to it (14 files, net −21 lines). The output key stays the physical
 column name, so no response shape changed. Proven by

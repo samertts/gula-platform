@@ -53,5 +53,7 @@ history rewrite, no branch checkout in the other tree.
 
 | IA-005 / IA-006 | remediation of the two findings RB-3 raised | `ia005-ia006-remediation.md` | IA-005 **RESOLVED** (mapper-driven serializer across 12 ORM bases); IA-006 **OPEN**, zero migrations authored — ADR-016 forbids the tables; IA-007 raised |
 
+| IA-005 addendum | full serializer sweep, 137-model impact matrix, per-operation EHR verification | `ia005-ia006-addendum.md`, `ia005-impact-matrix.md`, `ia006-per-operation.md` | 5 further live sites fixed; `col.key` conclusion corrected; exposure measured (34 HIGH, 10 live) |
+
 RB-5, RB-4 and RB-6 are not started.
 

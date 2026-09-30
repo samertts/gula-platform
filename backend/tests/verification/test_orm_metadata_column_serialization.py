@@ -200,3 +200,94 @@ def test_real_ehr_models_serialise_metadata_safely(model_name):
     payload = row.to_dict()
     assert payload["metadata"] == {"k": "v"}
     assert jsonable_encoder(payload)["metadata"] == {"k": "v"}
+
+
+# ── every column-walking serializer in the codebase, not just the ORM bases ───
+
+def _column_walking_serializers():
+    """Source sites that iterate `__table__.columns` and read values off an instance.
+
+    Such a site must resolve through the mapper. Both `getattr(obj, col.name)` and
+    `getattr(obj, col.key)` are the IA-005 defect: for
+    `metadata_ = Column("metadata", ...)` **both** attributes are `"metadata"`, so
+    either lookup returns the registry. Only the mapper knows the value lives under
+    `metadata_`.
+    """
+    import pathlib
+    import re
+
+    hits = []
+    for path in sorted(pathlib.Path("app").rglob("*.py")):
+        try:
+            src = path.read_text()
+        except OSError:
+            continue
+        for match in re.finditer(r"for (\w+) in [\w.]*__table__\.columns", src):
+            var = match.group(1)
+            window = src[match.end():match.end() + 400]
+            pattern = r"getattr\(\s*\w+\s*,\s*" + re.escape(var) + r"\.(name|key)\s*\)"
+            if re.search(pattern, window):
+                line = src[: match.start()].count("\n") + 1
+                hits.append(f"{path}:{line}")
+    return hits
+
+
+def test_no_serializer_reads_a_column_value_by_its_physical_name():
+    """`getattr(obj, col.name)` yields the MetaData registry for a `metadata` column.
+
+    Five sites carried this beyond the ORM bases: `app/nhdw/offline.py` (all 13
+    offline-sync tables have the column), the three `_model_to_dict` route helpers in
+    nursing / nhdw / hospital, and the blood-bank fallback. Pinned as an empty set: a
+    new copy anywhere fails here.
+    """
+    offenders = _column_walking_serializers()
+    assert offenders == [], (
+        "these sites read a column value by its physical name instead of through the "
+        f"mapper, so a column named `metadata` yields the registry: {offenders}"
+    )
+
+
+def test_offline_sync_payload_carries_the_column_value():
+    """The nhdw offline-sync serialiser must emit the value, keyed by column name."""
+    from shared.models import serialize_columns
+
+    row = _WithMetadataColumn(id=11, name="n", metadata_={"unit": "mg"})
+    payload = serialize_columns(row)
+    assert payload["metadata"] == {"unit": "mg"}
+    _assert_no_schema_objects(payload, "offline-sync payload")
+    jsonable_encoder(payload)
+
+
+def test_there_is_one_external_key_convention_and_it_is_the_column_name():
+    """Every serializer emits the physical column name, so the external key is `metadata`.
+
+    An earlier reading of this code assumed `col.key` was the mapped attribute and that
+    the route helpers therefore emitted `metadata_`. That is wrong: for
+    `metadata_ = Column("metadata", ...)` SQLAlchemy leaves `col.key == col.name ==
+    "metadata"`, and only the mapper carries `metadata_`. There is one convention, and
+    both lookups were equally defective.
+    """
+    row = _WithMetadataColumn(id=12, name="n", metadata_="v")
+    column = row.__table__.columns["metadata"]
+    assert column.name == "metadata"
+    assert column.key == "metadata", "col.key is not the mapped attribute"
+    assert [k for k, c in type(row).__mapper__.columns.items() if c.name == "metadata"] == [
+        "metadata_"
+    ], "only the mapper knows the attribute"
+    assert row.to_dict()["metadata"] == "v"
+
+
+def test_route_helper_shape_resolves_through_the_mapper():
+    """The nursing / nhdw / hospital helper shape: excluded keys plus ISO dates."""
+    from shared.models import serialize_columns
+
+    row = _WithMetadataColumn(id=13, name="n", metadata_={"k": "v"})
+    payload = serialize_columns(
+        row,
+        exclude={"lab_id", "is_deleted", "deleted_at", "version"},
+        isoformat_dates=True,
+    )
+    assert payload["metadata"] == {"k": "v"}
+    assert "version" not in payload
+    _assert_no_schema_objects(payload, "route-helper payload")
+    jsonable_encoder(payload)

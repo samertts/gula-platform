@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import datetime
+from collections.abc import Callable, Container
+from datetime import date, datetime
 from typing import Any
 
 from backend.app._compat import UTC
@@ -13,6 +13,8 @@ def serialize_columns(
     instance: Any,
     *,
     redact: Callable[[str], bool] | None = None,
+    exclude: Container[str] = (),
+    isoformat_dates: bool = False,
 ) -> dict[str, Any]:
     """Serialise a mapped instance's columns, keyed by **physical column name**.
 
@@ -27,8 +29,16 @@ def serialize_columns(
     The output key stays the physical column name, which is what every base has always
     emitted and what clients already consume. Only the lookup changes.
 
+    Neither ``col.name`` nor ``col.key`` is the mapped attribute: for
+    ``metadata_ = Column("metadata", ...)`` both are ``"metadata"``, and only the
+    mapper knows the value lives under ``metadata_``. Route helpers that walked
+    ``col.key`` were affected exactly as the bases were.
+
     ``redact`` receives the physical column name and, when it returns True, the value
-    is replaced by ``"[REDACTED]"`` and never read into the payload.
+    is replaced by ``"[REDACTED]"`` and never read into the payload. ``exclude`` drops
+    columns from the payload entirely. ``isoformat_dates`` additionally renders plain
+    ``date`` values as ISO strings, which the route helpers did and the bases did not;
+    each caller keeps its own behaviour.
     """
     attr_by_column: dict[str, str] = {}
     for attr_key, column in sa_inspect(type(instance)).columns.items():
@@ -36,6 +46,8 @@ def serialize_columns(
 
     result: dict[str, Any] = {}
     for col in instance.__table__.columns:
+        if col.name in exclude:
+            continue
         if redact is not None and redact(col.name):
             result[col.name] = "[REDACTED]"
             continue
@@ -43,7 +55,7 @@ def serialize_columns(
         # A column absent from the mapper has no value on the instance. Reading it by
         # its physical name is exactly the bug above, so report it as unset instead.
         val = getattr(instance, attr_key) if attr_key is not None else None
-        if isinstance(val, datetime):
+        if isinstance(val, datetime) or (isoformat_dates and isinstance(val, date)):
             val = val.isoformat()
         result[col.name] = val
     return result
