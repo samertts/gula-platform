@@ -5,9 +5,9 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 85,
+    "total": 86,
     "P0": 37,
-    "P1": 31,
+    "P1": 32,
     "P2": 14,
     "P3": 3
   },
@@ -3204,6 +3204,41 @@
       "blocker": "no",
       "evidence_strength": "VERIFIED (the residual set was measured in the assembled app after the NR-087 repair, and every importer was located by grep)",
       "notes": "Deliberately left out of NR-087's commit: widening that change into shared/ and a separate service would have mixed a proven mechanical repair with an unmade architectural decision."
+    },
+    {
+      "id": "NR-089",
+      "category": "False success / Generated scaffolding",
+      "domain": "Platform (app/capabilities, app/engineering/generators/capability.py)",
+      "priority": "P1",
+      "status": "PARTIALLY FIXED — every false claim is now an honest state; whether the subsystem is implemented or retired is a decision and stays OPEN",
+      "title": "Every generated capability reported success without doing anything, and its generated test asserted exactly that",
+      "root_cause": "The capability generator emitted bodies that claim work it never performed: `execute()` returned a hard-coded {\"success\": True}, `validate()` returned True for any input, `health()` returned \"ok\" unconditionally, the generated `health.py` route returned \"ok\" and ready True, and the generated `routes.py` returned {\"success\": True} for create/update/delete. The generated unit test then asserted `result[\"success\"] is True`, so the stub certified itself.",
+      "evidence": "All 10 capabilities carried the identical generated bodies, verified verbatim before rewriting (the rewrite refused any file that did not match). `app/capabilities/*/tests/` is outside `testpaths = tests`, so the self-certifying tests are not in the default suite, but pointing pytest at the tree ran them: at HEAD 9 failed / 12 passed / 9 errors, the 9 failures being the packages NR-087 could not import. After this repair: 31 passed / 0 failed, same 9 pre-existing errors. The generator was then proven by generation, which is what found two further defects in it: `_ROUTES_TPL` used the HYPHENATED url prefix for Python function names, so `async def list_probe-capability(` is a SyntaxError for any multi-word capability -- the existing files use the underscored form, so the template had regressed away from its own output -- and `_HEALTH_TPL` returned \"ok\". A fresh generation now produces 8 files that all compile with no return claiming success anywhere.",
+      "affected_components": "app/engineering/generators/capability.py (5 templates: capability, __init__, routes, health, unit test); app/capabilities/*/capability.py (10); app/capabilities/*/health.py (10); app/capabilities/*/tests/test_unit.py (10)",
+      "affected_users": "",
+      "clinical_impact": "None reachable: nothing in the platform calls any capability class, and no capability health or CRUD router is mounted. The one capability with real served routes, fhir_interoperability, has a hand-written routes.py -- checked before assuming, because its generated sibling would have been a served stub.",
+      "security_impact": "`validate()` returning True for any input is a gate that passes everything. Unreachable today, and removed rather than left for the first caller to trust.",
+      "data_integrity_impact": "",
+      "operational_impact": "0 of 10 capabilities are registered with the kernel's CapabilityRegistry and only fhir_interoperability is referenced by factory.py at all, so `health[\"capabilities\"]` in kernel/integration.py reports on an empty registry. The subsystem is scaffolding, and it now says so.",
+      "scalability_impact": "",
+      "legal_impact": "",
+      "intersections": "NR-087 made 9 of these importable, so this false surface became reachable where it had been failing closed -- which is why it is removed now rather than noted; NR-098 (containing a served stub) and the §32-D pass (converting hard-coded PASS claims into measurable states) are the precedents for the shape of this repair; NR-053 (prove the generator by generation) is the control that caught the routes template.",
+      "contradictions": "",
+      "recommended_fix": "Done for the claims: execute() and validate() raise NotImplementedError naming the capability, health() and the health route report \"not_implemented\" and ready False (a probe should answer, not raise), the routes template raises instead of returning success, and the generated unit test pins the raise instead of asserting success. All five templates fixed at the source so nothing new is born lying. STILL A DECISION: implement the nine capabilities, or retire the tree. Do not implement them speculatively -- the domains they name (workflow engine, consent, storage, search, reporting, provider and encounter management, clinical foundation, document management) overlap subsystems that already exist elsewhere in app/.",
+      "minimal_safe_fix": "",
+      "verification_method": "Generate a capability into a temp directory and assert every emitted file compiles and no emitted return claims success; run app/capabilities and assert the unit tests pin NotImplementedError rather than success.",
+      "acceptance_criteria": "No generated artefact claims a result it did not produce, and a capability that is not implemented fails loudly or reports not_implemented.",
+      "regression_risk": "Low and bounded: nothing calls these. The 9 remaining errors under app/capabilities are pre-existing and untouched -- the generated integration tests reference a `client` fixture that does not exist there, and a route prefix that is mounted nowhere.",
+      "owner": "Abu Ali for the claims; the subsystem's disposition needs the owner",
+      "related_tests": "app/capabilities/*/tests/test_unit.py (30 tests, repointed); backend/tests/verification/test_single_import_path.py::test_the_capability_generator_emits_a_relative_import",
+      "related_files": "app/engineering/generators/capability.py",
+      "related_adrs": "",
+      "wave": "",
+      "complexity": "low for the claims, high for the disposition",
+      "can_fix_now": "claims done; disposition no",
+      "blocker": "no",
+      "evidence_strength": "VERIFIED (before/after measured by running the tree at HEAD in a detached worktree and after; the generator proven by generating and compiling, not by reading it)",
+      "notes": "A mistake of mine worth recording because it is specific to editing a code generator: my first repair put a triple-quoted docstring inside a triple-quoted template, and its nested \"ok\" closed the template early -- valid in the output, a SyntaxError in the generator. py_compile caught it only because I ran the generator; the capability tests had passed regardless, since they never import the generator. Generated code must be verified by generating it."
     }
   ]
 }
