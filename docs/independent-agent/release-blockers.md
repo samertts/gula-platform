@@ -34,11 +34,13 @@ database (IA-003).
 
 | id | sev | state | one line |
 |---|---|---|---|
-| IA-004 | P1 | OPEN, untouched by instruction | `20260811_0002` skips four FKs silently when the target table is absent |
+| IA-004 | — | **SPLIT** after re-verification; migration untouched | `citizen_id` arm **CLOSED** (ALREADY_FIXED by `20260914_0001`/NR-064 → `niam_persons`, independently verified); `patient_id` arm **BLOCKED on NR-022** |
 | IA-005 | P0 | **FIXED**, test + runtime verified | 17 serializers returned the `MetaData` registry for a column named `metadata`; 137 models affected |
 | IA-006 | P1 | **NEEDS_DECISION** | ADR-016 forbids new EHR tables while its Phase 2 mandates EHR write support; 0 migrations authored |
 | IA-007 | P3 | **FIXED** | the generated invoice number never reached the claim; unreachable today, latent data loss once `ins_*` is migrated |
 | IA-008 | P1 | OPEN, methodology | this lane is 176 commits behind the lineage that built the head DB; conformance measurements here produce false positives |
 | IA-009 | P1 | OPEN, awaiting owner | on the matched pair, 26 present tables are unwritable through the ORM — radiology 17/17, nhdw 14, fin 3 |
 | IA-010 | P2 | **NEEDS_DECISION** | the audit chain resists modification (DB triggers) but a NULL-hash row verifies as intact; legacy rows make NULL legitimate |
+| IA-012 | P2 | **CONFIRMED_DEFECT**, owner Account 1 | served `GET /pharmacy/dispense/dispense-records/{patient_id}` declares `str` against an `INTEGER` column → `DataError`/500 on a ULID id, in the shipping lineage |
+| national_patients | — | **BLOCKED on NR-022** | not a new decision: `20260914_0001`'s docstring already defers the clinical subject to NR-022; evidence package delivered |
 | IA-011 | P2 | **NEEDS_DECISION** | two FHIR Observation builders with different contracts; no canonical `lab_results.flag` vocabulary; the unreached builder reports abnormal results as Normal |

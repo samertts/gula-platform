@@ -332,6 +332,44 @@ in for the absent tables.
 
 ---
 
+## IA-004 — re-verified after new evidence — one arm CLOSED, one arm BLOCKED
+
+Re-checked against `gula_agent2`, because the user asked and because new evidence appeared.
+**IA-004's own migration was not modified.**
+
+`20260811_0002_citizen_relationship_foundation.py` declared four FKs behind `_has_table`.
+Physical state now:
+
+| declared FK | target | present in head DB? |
+|---|---|---|
+| `fk_citizen_relationship_user` → `users` | exists | **yes, created** |
+| `fk_citizen_relationship_lab_user` → `lab_users` | exists | **yes, created** |
+| `fk_citizen_relationship_citizen` → `national_citizens` | absent | **superseded** — see below |
+| `fk_citizen_relationship_patient` → `national_patients` | absent | **no FK on the column** |
+
+**`citizen_id` arm: CLOSED — ALREADY_FIXED by Account 1, INDEPENDENTLY_VERIFIED here.**
+`20260914_0001_citizen_relationship_person_fk.py` (NR-064) re-pointed it to `niam_persons`,
+on NR-022's finding that a natural person is `niam_persons`. Both sides are `VARCHAR(26)`,
+so the constraint is enforceable. Verified present in `gula_agent2` as
+`fk_citizen_relationship_person (citizen_id -> niam_persons)`. That migration is **not in
+this lane** (IA-008) — it exists only in the integration lineage.
+
+**`patient_id` arm: BLOCKED architectural, owned by NR-022.** No FK exists on the column.
+The migration author deliberately left it, and states why in the docstring — the built
+clinical patient table keys on `INTEGER` against this `VARCHAR(26)` column, so there is no
+target until NR-022 decides the clinical subject. This lane reached the same conclusion
+independently from the physical schema; the convergence is recorded as corroboration, not
+as a new finding.
+
+**So IA-004 should no longer be carried as one item.** Its silent-skip *mechanism* remains
+worth a guard (a migration that cannot create a declared FK should say so, not pass), but
+its two concrete arms now have different states.
+
+**Next action:** none for this lane. The `patient_id` arm moves to NR-022; the mechanism
+question is Account 1's migration-policy call.
+
+---
+
 ## IA-008 — P1 — this lane cannot measure ORM↔schema conformance, because the head database was built from a different lineage
 
 `gula_agent2` was migrated from the integration lineage `ce097a0c`
@@ -579,6 +617,56 @@ interpretation is exactly the semantics prohibition:
 
 **Status:** OPEN / NEEDS_DECISION. Nothing changed. A safe fix is not available without
 (1) and (2), and deleting a builder is a deletion this lane does not take.
+
+---
+
+## IA-012 — P2 — CONFIRMED_DEFECT — a served pharmacy read declares a string patient id against an INTEGER column
+
+**Found in the lineage that ships**, not in this lane — so unlike the retracted pharmacy
+drift (IA-008) this one is real where it counts.
+
+| field | value |
+|---|---|
+| **ID** | IA-012 |
+| **severity** | P2 |
+| **state** | CONFIRMED_DEFECT (RUNTIME_VERIFIED) — not fixed |
+| **file** | `backend/app/pharmacy/routes.py:1262-1264`, lineage `ce097a0c` |
+| **symbol / route** | `get_dispense_records` — `GET /pharmacy/dispense/dispense-records/{patient_id}` |
+| **owner** | **Account 1** (pharmacy is their active area) |
+
+**Reproduction**, against `gula_agent2`, ORM `DispenseRecord.patient_id` is `INTEGER`:
+
+| filter value | result |
+|---|---|
+| `"5"` (numeric string) | OK, 0 rows — PostgreSQL assignment-casts it |
+| `"01ARZ3NDEKTSV4RRFFQ69G5FAV"` (ULID) | **`DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type integer`** |
+| `5` (int) | OK, 0 rows |
+
+The path parameter is declared `patient_id: str`, and the served OpenAPI schema confirms
+`('patient_id', 'string')`. So any caller passing a national/ULID patient id gets an
+unhandled `DataError` — a 500, where 404 or 422 is the correct answer.
+
+**Why it is live and not cross-lane.** The rest of the pharmacy write surface in that same
+lineage correctly declares `patient_id: int | None`. The file is split **5 `str` against 5
+`int`**, and this is one of the `str` sites on a served route.
+
+**Affected data / users:** read-only, no data loss and no cross-tenant exposure — the
+query still filters by the service's own scope. The impact is availability and contract
+correctness: a documented endpoint answers 500 for an id shape the platform itself mints
+elsewhere (`POSSaleCreate.patient_id: str | None`).
+
+**Existing mitigation:** none found. No `DataError` handler converts it to 4xx.
+
+**Tests:** none cover this route with a non-numeric id.
+
+**Architectural dependency:** the correct declared type follows from **NR-022** — if the
+clinical subject becomes `patients.id INTEGER`, this should be `int`; if it becomes a ULID
+table, the column changes instead. So the *type* is NR-022's, but **rejecting a
+non-integer with 422 rather than 500 is correct under either outcome**.
+
+**Next action:** Account 1 — either declare `patient_id: int` (FastAPI then answers 422
+automatically) or validate and return 404. This lane did not change it: pharmacy routes are
+Account 1's active area and the file is theirs.
 
 ---
 

@@ -57,5 +57,7 @@ history rewrite, no branch checkout in the other tree.
 
 | IA-006 decision package | 18-table architectural decision matrix, `national_patients` analysis | `ia006-decision-package.md` | **NEEDS_DECISION** — one question, not eighteen; zero migrations; lane-independence verified |
 
+| national_patients | end-to-end trace + historical archaeology | `national-patients-decision-package.md` | **BLOCKED on NR-022** — already the programme's own named decision; pharmacy identity is **coherent** in the shipping lineage (NO DEFECT FOUND) |
+
 RB-5, RB-4 and RB-6 are not started.
 

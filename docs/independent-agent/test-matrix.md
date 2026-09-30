@@ -164,3 +164,21 @@ Runtime, against `gula_agent2`; every write rolled back (table verified back to 
 | `lab_results.test_code` exists? | **no** — the column is on `test_types` |
 | `FHIRObservationMapper` production callers | **none** — 2 re-exports, 1 unit test |
 | `lab_results.flag` writers | 4 disagreeing vocabularies, no enum, no validation |
+
+## national_patients / IA-004 / IA-012 (2026-09-30)
+
+All runtime probes against `gula_agent2`; nothing written (all tables held 0 rows before
+and after).
+
+| probe | lineage | result |
+|---|---|---|
+| FK columns naming `national_patients`, live vs dormant | this lane | 4 live / 61 dormant, 63 of 65 NOT NULL |
+| physical FK target of the 3 pharmacy `patient_id` columns | — | all → `patients.id`, type `INTEGER` |
+| pharmacy route request schema | **integration `ce097a0c`** | `patient_id: int \| None` — **coherent with the column; NO DEFECT FOUND** |
+| pharmacy route request schema | this lane | `patient_id: str` — cross-lane staleness (IA-008) |
+| `filter(DispenseRecord.patient_id == "5")` | integration | OK, 0 rows (assignment cast) |
+| `filter(... == "01ARZ…")` | integration | **`DataError: invalid input syntax for type integer`** → IA-012 |
+| `filter(... == 5)` | integration | OK, 0 rows |
+| served OpenAPI type of that path param | integration | `('patient_id', 'string')` — served, and wrong |
+| `niam_citizen_relationships` FK constraints | — | `…_person (citizen_id → niam_persons)` **present**; `patient_id` has **no FK** |
+| `20260914_0001_citizen_relationship_person_fk.py` present? | integration **yes**, this lane **no** | IA-004 `citizen_id` arm closed only in the shipping lineage |
