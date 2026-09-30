@@ -59,5 +59,9 @@ history rewrite, no branch checkout in the other tree.
 
 | national_patients | end-to-end trace + historical archaeology | `national-patients-decision-package.md` | **BLOCKED on NR-022** — already the programme's own named decision; pharmacy identity is **coherent** in the shipping lineage (NO DEFECT FOUND) |
 
+| IA-014 / IA-015 / IA-016 | kernel event bus reachability, protocol and admin surface | `ia014-ia016-decision-package.md` | IA-015 **FIXED** (dead `hasattr` probe on 89 served paths / 115 ops); IA-013a **FIXED** (unbounded `EventStore`); IA-014 and IA-016 **NEEDS_DECISION** — IA-016 deliberately unfixed because the obvious one-line repair raises `AttributeError` on 130 served ops in 4 clinical domains. Corrects IA-013's subscriber claim: **zero** kernel-bus subscribers exist in production code |
+
+| IA-017 / IA-018 | offline sync and conflict resolution, end to end | `findings.md`, `test-matrix.md` | Both **NEEDS_DECISION**. The platform's only served offline-sync endpoint cannot produce a non-zero result and reports `"engine": "active"`; `ConflictResolver.resolve` is called **0** times in a full cycle; `sync_to_edge` reports `records_synced: N` while discarding the payload. Four classes share the name `OfflineSyncEngine`, and the most sophisticated one — the only one with its own test file — has **zero** production importers and 5 real defects |
+
 RB-5, RB-4 and RB-6 are not started.
 

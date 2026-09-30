@@ -39,12 +39,22 @@ router = APIRouter(
 )
 
 
+def _resolve_event_bus(kernel):
+    """Reuse the kernel's registered EventBus rather than a per-request one.
+
+    Imported lazily to keep this module free of a kernel import at load time.
+    See IA-015.
+    """
+    from app.kernel.event_bus.bus import resolve_event_bus
+
+    return resolve_event_bus(kernel)
+
+
 def _get_service(db: Session = Depends(get_db)) -> DocumentPlatformService:
     from app.kernel import Kernel
-    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
-    event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)
+    event_bus = _resolve_event_bus(kernel)
     doc_repo = SQLAlchemyDocumentRepository(db)
     ver_repo = SQLAlchemyDocumentVersionRepository(db)
     sig_repo = SQLAlchemyElectronicSignatureRepository(db)

@@ -22,6 +22,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger("gula.kernel.event_bus")
 
 
+def resolve_event_bus(kernel: Kernel) -> EventBus:
+    """Return the kernel's registered EventBus, or a standalone one.
+
+    The Kernel keeps its subsystems in ``_components`` and hands them out
+    through ``get_component()``; it never assigns them as attributes. Callers
+    that probed ``hasattr(kernel, "event_bus")`` therefore always took the
+    fallback branch and published onto a throwaway bus. See IA-015.
+    """
+    existing = kernel.get_component("event_bus")
+    if existing is not None:
+        return existing
+    return EventBus(kernel)
+
+
 class EventBus:
     def __init__(self, kernel: Kernel):
         self.kernel = kernel

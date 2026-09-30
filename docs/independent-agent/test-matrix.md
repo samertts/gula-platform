@@ -198,5 +198,110 @@ In-process probe, no database.
 | `EventStore.count()` after 6 / after 506 | 6 / **506** — unbounded, never evicted |
 | publishers found | 8+: plugin API, SDK, and 6 national services |
 | `search_platform` tables present? | **yes** (`national_search_results`, `national_search_saved_searches`) → a live publisher |
-| subscribers found | `identity/events.py` ×3 (`person.created`, `account.created`, `identity.verified`), `health_data/streaming/pipeline.py` |
+| subscribers found | **CORRECTED: zero in production code.** The two sites originally listed were both wrong — `identity/events.py` uses a separate `IdentityEventBus` class, and `EventBusSource` (the only kernel-bus subscriber) is never constructed. Every kernel-bus `.subscribe()` in the tree is in `backend/tests/`. See the IA-013 correction. |
 | durable alternative exists? | **yes** — `outbox_service.py` over the present `outbox_events`, with `OutboxWorker` started in two places |
+
+## IA-014 / IA-015 / IA-016 — kernel event bus reachability
+
+`backend/tests/verification/test_kernel_event_bus_reachability.py` — 17 tests.
+Run with **Python 3.13** (see the interpreter note below). SQLite/no-DB; the reachability
+figures come from the app's own served OpenAPI schema.
+
+| probe | result |
+|---|---|
+| `hasattr(kernel, "event_bus")` | **False** — before boot, after boot, and after `register_component("event_bus", bus)` |
+| `kernel.__dict__` keys | `_components`, `_services`, `_start_time`, `config`, `state` — no `event_bus` |
+| `get_component("event_bus") is bus` | True — this is the real contract |
+| the six national providers resolved | **a fresh throwaway bus**, not the registered one |
+| throwaway bus `_subscribers` | `{}` |
+| throwaway bus after request (weakref) | garbage-collected |
+| served paths / ops on the six (IA-015) | **89 paths / 115 operations** |
+| `hasattr(x, "event_bus")` occurrences, AST scan of `app/` | 14 before → **8 after** (the 8 are IA-016, pinned) |
+| served paths / ops on the 8 (IA-016) | **138 paths / 130 operations**, `event_bus=None` always |
+| kernel `EventBus` public API | `publish`, `subscribe`, `unsubscribe` — **no `emit`** |
+| the 8 services with `event_bus=None` | `_emit()` no-ops silently, event lost |
+| the 8 services with a real bus injected | **`AttributeError: 'EventBus' object has no attribute 'emit'`** — the trap |
+| 10 failing publishes → outbox / DLQ / retry | **0 / 0 / 0** — what the two served admin endpoints report |
+| `/kernel/events/outbox`, `/kernel/events/dlq` served? | **yes**, both, `require_permission("system:admin")` |
+| `EventStore` after 500 saves, bound 50 | **50** (was 500 — unbounded) |
+| eviction order | oldest-first; re-saving an id does not grow the store |
+| eviction vs dispatch | 100 publishes past a bound of 10 → 100 handler invocations, store 10 |
+| kernel `EventStore` readers in `app/` | **only** `bus.py:41 store.save` — bounding is collateral-free |
+
+### Negative proof
+
+| step | result |
+|---|---|
+| BASELINE (before any fix) | 13 failed, 3 passed |
+| after both fixes | **17 passed** |
+| REVERT the `EventStore` bound | 5 failed |
+| RESTORE | 17 passed |
+| REVERT `search_platform`'s probe | 3 failed (behavioural + spread guard + fallback) |
+| RESTORE | **17 passed** |
+
+### Interpreter note — ENVIRONMENT, and it bounds earlier evidence
+
+`python3` in this container is **3.11.15**, but the codebase requires **3.12+**:
+`app/identity/repositories/base.py:11` uses PEP 695 syntax (`class
+IdentityRepositoryBase[T: IdentityBaseEntity]`), which is a `SyntaxError` under 3.11.
+
+Consequence for this lane's earlier numbers: `tests/test_niam.py` and anything else
+importing the identity repositories **failed at collection**, not at assertion, under the
+interpreter I had been using. Under `python3.13` the same selection runs clean:
+
+```
+python3.11 -m pytest tests/kernel tests/kernel_hardening tests/test_outbox_service.py tests/test_niam.py
+  -> Interrupted: 1 error during collection (SyntaxError)
+python3.13 -m pytest <same> + the new file
+  -> 155 passed
+```
+
+Quote the interpreter with any suite count from this lane, alongside the dialect (R-11).
+
+## IA-017 / IA-018 — offline sync and conflict resolution
+
+Runtime probes under **Python 3.13**, in-process. Reachability from the served OpenAPI
+schema and from importer graphs (STATIC VERIFIED). **No test file was added:** the
+disposition of both findings is an open decision, and a guard pinning either shape would
+prejudge it. The probes are reproducible from the evidence below.
+
+| probe | result |
+|---|---|
+| served paths matching `sync` | 3 → only **`POST /integration/offline/sync`** is offline sync |
+| served paths matching `offline` | 2 → the other is `/lims/instruments/{id}/offline`, unrelated |
+| `configure()` called at startup? | **yes**, via `IntegrationPlatform.register_routes` — the engine is live, not `None` |
+| `POST /integration/offline/sync` without a token | **401** `AUTHENTICATION_REQUIRED` — correctly gated |
+| `sync_all()` ×3 on the live engine | `{'synced': 0, 'failed': 0, 'results': []}` every time |
+| `get_status()` | `{'queue': {}, ..., 'edge_nodes': 0, 'engine': 'active'}` |
+| `/integration/health` | `"offline_engine": true` |
+| `OfflineQueueEntry` constructed outside `integration/offline.py` | **none** |
+| `store_forward` referenced outside `integration/offline.py` | **none** |
+| callers of `sync_from_edge` / `register_edge_node` / `sync_to_edge` | **none, anywhere** |
+| `sync_to_edge` on an unregistered node | `{'success': False, 'error': 'Unknown edge node'}` — fails closed |
+| `sync_to_edge` on a registered node, 2 records | `{'success': True, 'records_synced': 2}` — **queue still empty**, no attribute holds the payload |
+| `sync_from_edge` on a registered node, 2 records | `{'success': True, 'records_received': 2}`, queue `{'pending': 2}` — this one does enqueue |
+| `ConflictResolver.resolve` calls in a full enqueue+sync cycle | **0** — `sync_all` never consults it |
+| `/edge/*` served paths, DB-backed? | 15 paths, **yes** — `db.query(EdgeDevice)`, `db.commit()`, `db.refresh()` |
+| classes named `OfflineSyncEngine` | **4** — `services/offline_sync_service.py`, `integration/offline.py`, `core/sync_engine.py`, `citizen_platform/offline.py` |
+| production importers of `services/offline_sync_service.py` | **0** — only `tests/test_offline_sync.py` |
+| production importers of `core/sync_engine.py` | **0** |
+
+### Full-suite state after IA-013a / IA-015 (Python 3.13, SQLite per R-11)
+
+```
+python3.13 -m pytest tests/ -q -p no:randomly
+  -> 1 failed, 2872 passed, 185 skipped in 343s
+```
+
+The single failure is `tests/verification/test_single_import_path.py::test_no_module_is_loaded_under_two_names`
+(`backend.app.integration{,.connectors,.connectors.ntfy}` loaded under two names).
+**Proven pre-existing, not caused by this change**, by a control run of the same suite with
+the new test file excluded:
+
+```
+python3.13 -m pytest tests/ -q -p no:randomly \
+  --ignore=tests/verification/test_kernel_event_bus_reachability.py
+  -> 1 failed, 2855 passed, 185 skipped in 328s     # 2872 - 17 = 2855, same failure
+```
+
+Identical failure, and the pass count differs by exactly the 17 tests removed.

@@ -727,10 +727,26 @@ national services — `rules_engine`, `observability`, `document_platform`,
 (`national_search_results`, `national_search_saved_searches`), so at least one publisher
 sits on live schema.
 
-**Subscribers exist:** `app/identity/events.py` registers handlers for `person.created`,
-`account.created` and `identity.verified`; `app/health_data/streaming/pipeline.py:35`
-subscribes dynamically. So the loss is not hypothetical — if an identity handler raises,
-the event is logged and dropped while the publisher has already committed.
+**CORRECTION (2026-09-30, during IA-014/IA-015/IA-016).** The original text of this
+finding claimed kernel-bus subscribers exist and cited two sites. Both citations were
+wrong, and I withdraw the claim:
+
+- `app/identity/events.py` does **not** use the kernel bus. It defines its own 20-line
+  `IdentityEventBus` with its own `_handlers` dict and a different signature
+  (`publish(event_type, payload)` vs the kernel's `publish(event)`). Its three handlers
+  never touch `app.kernel.event_bus`.
+- `app/health_data/streaming/pipeline.py:35` does subscribe on a kernel `EventBus`, but
+  the subscription lives in `EventBusSource.start()`, and `EventBusSource` has **zero
+  construction sites** anywhere in the repository. It never runs.
+
+Measured correctly: **there are no kernel-`EventBus` subscribers in production code at
+all.** Every `.subscribe()` on a kernel bus in the tree is inside `backend/tests/`.
+
+This makes the finding *worse*, not better, but differently worse than I first wrote.
+No handler can fail, because no handler is registered — so the failure mode is not
+"a handler raises and the event is dropped", it is "every publish in the platform is
+delivered to nobody." The retry/DLQ gap below is still real, but it is currently
+unreachable for want of a subscriber; the *delivery* gap is what is live.
 
 ### The architectural duplication
 
@@ -804,5 +820,490 @@ rate, and three of this pass's five leads died on reading.
 | the served Observation builder's `H`/`L`/`N` interpretations | **correct and conformant** v3-ObservationInterpretation codes |
 | `FHIRObservationMapper.from_lab_result` reachability | **no production caller** — two `__init__` re-exports and one unit test; the clinical inversion is latent, not live |
 | `app/services/outbox_service.py` — the DB-backed outbox | **real and wired** — `outbox_events` present, `OutboxWorker` started from both `worker.py` and `core/startup.py`, `emit_to_outbox` used by claims, data platform and national streaming |
-| kernel-bus subscribers | **they exist** — `identity/events.py` (3 handlers) and `health_data/streaming/pipeline.py`; the silent loss is therefore reachable, not theoretical |
+| kernel-bus subscribers | **none exist in production code** — WITHDRAWN AND CORRECTED, see the correction note in IA-013. `identity/events.py` uses a separate `IdentityEventBus` class; `EventBusSource` (the only kernel-bus subscriber) is never constructed. Every kernel-bus `.subscribe()` in the tree is in `backend/tests/`. |
 
+
+---
+
+## IA-014 — P2 — CONFIRMED_DEFECT — two served admin endpoints report the event pipeline as healthy by construction
+
+| Field | Value |
+|---|---|
+| **ID** | IA-014 |
+| **Severity** | P2 (false-green observability; no data loss of its own) |
+| **State** | CONFIRMED_DEFECT — RUNTIME VERIFIED — **not fixed**, needs a response-shape decision |
+| **File** | `backend/app/kernel/routes.py:112-138` |
+| **Symbol / route** | `kernel_outbox` → `GET /kernel/events/outbox`; `kernel_dead_letter_queue` → `GET /kernel/events/dlq` |
+| **Owner** | Human Decision (response shape) |
+
+### What it is
+
+Both endpoints are served (confirmed in the app's own OpenAPI schema, 1794 paths) and
+both are gated on `require_permission("system:admin")`, so they are operator-facing:
+
+```python
+pending = len(eb.outbox.list_pending())      # /kernel/events/outbox
+for entry in eb.dead_letter_queue.list_all() # /kernel/events/dlq
+```
+
+`EventBus.publish()` writes to neither `outbox` nor `dead_letter_queue` (IA-013). So both
+endpoints return a hard-coded-by-construction zero for the life of the process, no matter
+what happens to any event.
+
+### Evidence — RUNTIME VERIFIED, in-process, no DB
+
+Registered a handler that raises, published 10 events into it, then read exactly what the
+two endpoints read:
+
+```
+failing handler invocations                  : 10
+outbox pending (what /events/outbox reports) : 0
+dlq entries  (what /events/dlq reports)      : 0
+retry_queue entries                          : 0
+```
+
+### Why this is not just a restatement of IA-013
+
+IA-013 is about events being lost. IA-014 is about the **operator's only view of that loss
+reporting the opposite.** An admin watching `/kernel/events/dlq` for trouble sees a
+permanently empty dead-letter queue and concludes the event pipeline is healthy. That is
+the false-green pattern the standing rules forbid, on a monitoring surface.
+
+### Correction to my own earlier note
+
+In the IA-013 report I listed "`publish` should not construct eight unused components" as
+safe, unblocked work. **That was wrong and I am withdrawing it.** Two of the eight —
+`outbox` and `dead_letter_queue` — are read by these two served admin endpoints. Deleting
+them would delete the only operator-facing view of the event pipeline and turn a
+misreporting endpoint into a 500. They are not *unused*; they are **read but never
+written**, which is precisely the defect. The correct disposition is to wire the writes or
+to make the endpoints state their own wiring — not to remove the components.
+
+### Why I did not fix it
+
+The honest fix is for each endpoint to report that the outbox is not wired, rather than
+report `0`. That changes a served response shape, which `CLAUDE.md` places under "Requires
+human approval". Two shapes are defensible (`{"pending": 0, "wired": false}` vs. a 501),
+and picking one is the committee's call, not mine. Pinned by
+`test_documented_gap_admin_endpoints_read_components_publish_never_writes`.
+
+### Next action
+
+Decide the response shape for an unwired pipeline. Blocked by the IA-013 decision: if
+`publish` is wired to the outbox, IA-014 closes on its own.
+
+---
+
+## IA-015 — P2 — CONFIRMED_DEFECT — FIXED — six served route groups published onto a throwaway event bus
+
+| Field | Value |
+|---|---|
+| **ID** | IA-015 |
+| **Severity** | P2 (no clinical data loss — the bus has no subscribers; wasted work and a dead branch on 115 served operations) |
+| **State** | CONFIRMED_DEFECT → **FIXED** — RUNTIME VERIFIED + TEST VERIFIED with negative proof both directions |
+| **Files** | `app/national/{rules_engine,observability,document_platform,scheduling_platform,background_platform,search_platform}/api/routes.py` |
+| **Symbol** | `_get_service` (the FastAPI dependency provider in each) |
+| **Owner** | Account 2 — done |
+
+### Root cause
+
+All six resolved the bus with the same line:
+
+```python
+event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)
+```
+
+`Kernel` keeps its subsystems in `self._components` and hands them out through
+`get_component()`. It **never** assigns them as attributes. The bootloader registers the
+bus with `self.kernel.register_component("event_bus", eb)`. So `hasattr(kernel,
+"event_bus")` is False for the entire life of the process — before boot, after boot, and
+after registration — and the preferred branch is unreachable code. Every request took the
+fallback, built a fresh `EventBus`, published into it, and dropped it at end of request.
+
+### Evidence — RUNTIME VERIFIED
+
+```
+hasattr(kernel, 'event_bus')       : False
+kernel.__dict__ keys               : ['_components','_services','_start_time','config','state']
+after register_component, hasattr  : False          <- registration does not create the attribute
+get_component('event_bus') is bus  : True
+chosen is the registered bus       : False
+chosen is a fresh throwaway bus    : True
+throwaway bus subscribers          : {}
+throwaway bus still alive after req: False          <- garbage-collected with the request
+```
+
+### Blast radius — measured against the served OpenAPI schema
+
+| Module | Prefix | Served paths | Served ops building a bus |
+|---|---|---|---|
+| rules_engine | `/national/rules` | 11 | 13 |
+| observability | `/national/observability` | 19 | 26 |
+| document_platform | `/national/documents` | 14 | 18 |
+| scheduling_platform | `/national/scheduling` | 20 | 27 |
+| background_platform | `/national/jobs` | 14 | 17 |
+| search_platform | `/national/search` | 11 | 14 |
+| **Total** | | **89** | **115** |
+
+### The fix
+
+One canonical resolver, `resolve_event_bus(kernel)` in `app/kernel/event_bus/bus.py`,
+which asks `get_component("event_bus")` and falls back to a standalone bus only when the
+kernel genuinely has none (`enable_event_bus=False`, or a pre-boot kernel). Each of the
+six modules gained a three-line `_resolve_event_bus` wrapper that keeps the existing
+lazy-import discipline, and the dead `hasattr` branch and its now-unused `EventBus` import
+were removed.
+
+### Coupling: this fix required IA-013a
+
+Repairing the probe means 115 served operations now publish onto the **process-wide**
+bus instead of a per-request one. With `EventStore` unbounded, that converts a
+per-request throwaway dict into a process-lifetime leak. The `EventStore` bound below is
+therefore a **precondition** of this fix, not an independent tidy-up. Both landed
+together.
+
+### Honest limit on the benefit
+
+Because there are no kernel-bus subscribers at all (see the IA-013 correction), this fix
+changes nothing observable today beyond bounded memory and a working guard. Its value is
+that the branch the author wrote now actually runs, and that any future subscriber will
+receive events rather than watching them vanish. I am not claiming a delivery improvement
+that no subscriber can observe.
+
+### Negative proof
+
+```
+BASELINE (before fix)  : 13 failed, 3 passed
+AFTER fix              : 17 passed
+REVERT store.py bound  :  5 failed (all four bound tests + the bus-usability test)
+RESTORE                : 17 passed
+REVERT search_platform :  3 failed (its behavioural test, the spread guard, the fallback test)
+RESTORE                : 17 passed
+```
+
+---
+
+## IA-016 — P1 — CONFIRMED_DEFECT — NOT FIXED — 130 served operations pass `event_bus=None` permanently, and the obvious repair breaks clinical routes
+
+| Field | Value |
+|---|---|
+| **ID** | IA-016 |
+| **Severity** | P1 — **as a trap**, not as a live failure. Nothing fails today; the plausible one-line fix causes `AttributeError` on served clinical write paths. |
+| **State** | CONFIRMED_DEFECT — RUNTIME VERIFIED — **deliberately not fixed** |
+| **Files** | `app/{biomedical,blood_bank,command_center,critical_care,ems,lifecycle_platform,pilot_platform,public_health}/api/routes.py` |
+| **Symbol** | `_get_service` in each; `<Service>._emit` in the matching `application/service.py` |
+| **Owner** | Human Decision |
+
+### What it is
+
+These eight carry the same unsatisfiable probe as IA-015, but with a **different
+fallback**:
+
+```python
+event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
+```
+
+So `event_bus` is always `None`. The services are typed `event_bus: Any = None` and emit
+through:
+
+```python
+def _emit(self, event) -> None:
+    if self.event_bus:
+        self.event_bus.emit(event.event_type, event.__dict__)
+```
+
+The guard is always False, so `_emit` is a permanent no-op and every domain event in these
+eight domains is discarded before it reaches anything.
+
+### The trap
+
+The kernel `EventBus` public API is `publish` / `subscribe` / `unsubscribe`. **There is no
+`emit`.** So the moment anyone repairs the probe the way IA-015 was repaired, `if
+self.event_bus:` becomes True and `.emit()` raises `AttributeError` — on served clinical
+routes.
+
+### Evidence — RUNTIME VERIFIED
+
+```
+kernel EventBus public API: ['publish', 'subscribe', 'unsubscribe']
+hasattr(bus, 'emit')      : False
+
+public_health  event_bus=None  -> _emit() silently no-ops (event lost)
+public_health  event_bus=BUS   -> AttributeError: 'EventBus' object has no attribute 'emit'   <-- REGRESSION
+blood_bank     event_bus=None  -> _emit() silently no-ops (event lost)
+blood_bank     event_bus=BUS   -> AttributeError: 'EventBus' object has no attribute 'emit'   <-- REGRESSION
+critical_care  event_bus=None  -> _emit() silently no-ops (event lost)
+critical_care  event_bus=BUS   -> AttributeError: 'EventBus' object has no attribute 'emit'   <-- REGRESSION
+```
+
+### Blast radius — measured against the served OpenAPI schema
+
+| Module | Prefix | Served paths | Served ops passing `event_bus=None` |
+|---|---|---|---|
+| biomedical | `/biomedical` | 17 | 20 |
+| blood_bank | `/blood-bank` | 29 | 11 |
+| command_center | `/command-center` | 9 | 12 |
+| critical_care | `/critical-care` | 20 | 12 |
+| ems | `/ems` | 21 | 25 |
+| lifecycle_platform | `/lifecycle` | 15 | 18 |
+| pilot_platform | `/pilot-platform` | 13 | 14 |
+| public_health | `/public-health` | 14 | 18 |
+| **Total** | | **138** | **130** |
+
+Four of the eight are clinical or emergency domains: blood bank, critical care, EMS,
+public-health surveillance.
+
+### Why I did not fix it
+
+Two protocols are in the tree (`publish(Event)` and `emit(name, dict)`) and choosing which
+one the kernel bus speaks is an architecture decision with a real blast radius. Options,
+not recommendations:
+
+- **A.** Adapt at the boundary: inject a thin adapter exposing `emit(name, dict)` that
+  builds an `Event` and calls `publish`. Smallest change; leaves two protocols alive.
+- **B.** Add `emit` to the kernel `EventBus` as an alias. Simple; blesses a second public
+  protocol on the kernel's own API.
+- **C.** Convert the eight services to `publish(Event)`. Cleanest end state; touches eight
+  service modules including four clinical ones, so it needs its own test pass.
+
+None of these can be chosen without also settling IA-013 (does the kernel bus deliver
+durably?), because option C's value depends on the answer.
+
+### How the finding is protected from a well-meaning fix
+
+`test_the_hasattr_event_bus_probe_has_not_spread` pins the offender set to exactly these
+eight files with a comment pointing here, so:
+
+- a **ninth** module growing the probe fails the test;
+- one of the eight **disappearing** fails the test, forcing whoever repaired it to read
+  IA-016 and confirm they did more than flip the probe.
+
+`test_documented_gap_emit_protocol_services_cannot_accept_the_kernel_bus` asserts
+`not hasattr(EventBus, "emit")`, so if someone takes option B the test fails and points at
+this finding for closure.
+
+I deliberately did **not** write a guard demanding these eight be repaired. A guard that
+pressures an engineer into a change I have runtime proof breaks clinical routes would be
+worse than no guard.
+
+### Next action
+
+Committee picks A, B or C, jointly with the IA-013 decision.
+
+---
+
+## IA-013a — P2 — CONFIRMED_DEFECT — FIXED — the kernel EventStore grew without bound
+
+| Field | Value |
+|---|---|
+| **ID** | IA-013a (sub-item of IA-013, independently fixable) |
+| **Severity** | P2 — unbounded memory on a process-lifetime singleton |
+| **State** | CONFIRMED_DEFECT → **FIXED** — TEST VERIFIED with negative proof |
+| **File** | `backend/app/kernel/event_bus/store.py` |
+| **Symbol** | `EventStore.__init__`, `EventStore.save` |
+| **Owner** | Account 2 — done |
+
+`EventStore` was a plain `dict` with no eviction. Measured before the fix: 506 events
+retained after 506 publishes, growing linearly forever. The store is held by the kernel's
+process-wide bus, so this is a worker-lifetime leak, and it is what made the IA-015 repair
+unsafe until fixed.
+
+Fixed with `DEFAULT_MAX_EVENTS = 10_000` and oldest-first eviction, plus an
+`evicted_count` property and a one-time warning when the bound is first reached.
+
+**Collateral check — STATIC VERIFIED.** Nothing in `app/` reads the kernel `EventStore`
+except `bus.publish` → `store.save`. `grep` for `.store.`, `list_by_name` and
+`KernelEventStore` across `app/` returns only `bus.py:41`. `HealthEventStore` accepts a
+`kernel_store` argument but keeps its own dicts and never reads it, and
+`app/health_data/event_store/subscriptions.py` replays from `HealthEventStore`, not from
+the kernel store. So bounding the kernel store cannot truncate anything another component
+depends on.
+
+---
+
+## IA-017 — P2 — CONFIRMED_DEFECT — the served offline-sync endpoint cannot sync anything, and reports itself active
+
+| Field | Value |
+|---|---|
+| **ID** | IA-017 |
+| **Severity** | P2 — no data loss today (nothing reaches it); false capability + false health on an admin surface. One method is a latent fake-green write-discard. |
+| **State** | CONFIRMED_DEFECT — RUNTIME VERIFIED — not fixed (disposition is a decision, see below) |
+| **File** | `backend/app/integration/offline.py`; `backend/app/integration/routes.py:250`; `backend/app/platform/sync.py` |
+| **Symbol / route** | `OfflineSyncEngine.sync_all` → `POST /integration/offline/sync`; `EdgeSyncEngine.sync_to_edge`; `ConflictResolver.resolve` |
+| **Auth** | `require_permission("system:admin")` at router level — **correctly gated**, 401 without a token (verified) |
+| **Owner** | Human Decision (retire vs. wire) |
+
+### Reachability — measured, not assumed
+
+The whole platform serves exactly **one** offline-sync path. From the served OpenAPI schema
+(1794 paths): `sync` matches 3 paths, of which `/compliance/time-sync` and
+`/contracts/asyncapi.json` are unrelated, leaving **`POST /integration/offline/sync`**.
+`offline` matches 2, the second being `/lims/instruments/{id}/offline`, a different feature.
+
+`configure()` **is** called — `IntegrationPlatform.register_routes` invokes it — so the
+engine is live at import time, not `None`:
+
+```
+AFTER IMPORT  _offline_sync is: <app.integration.offline.OfflineSyncEngine object ...>
+AFTER STARTUP _offline_sync is: <same object>
+POST /integration/offline/sync (no auth) -> 401 AUTHENTICATION_REQUIRED
+```
+
+### What the endpoint does — RUNTIME VERIFIED
+
+```
+sync_all() -> {'synced': 0, 'failed': 0, 'results': []}
+sync_all() -> {'synced': 0, 'failed': 0, 'results': []}
+sync_all() -> {'synced': 0, 'failed': 0, 'results': []}
+store_forward queue size: {}
+get_status(): {'queue': {}, 'sync': {...}, 'edge_nodes': 0, 'engine': 'active'}
+```
+
+It drains `StoreForwardEngine._queue`, an in-memory list. **Nothing populates that queue.**
+STATIC VERIFIED: `OfflineQueueEntry` is constructed nowhere outside
+`app/integration/offline.py`, and `store_forward` is referenced nowhere outside it. The one
+producer is `EdgeSyncEngine.sync_from_edge`, which has **no callers** anywhere in `app/` or
+`services/`. And no edge node can be registered, because `register_edge_node` has no
+callers either, so both edge methods fail closed on an unregistered node:
+
+```
+sync_to_edge("node-1", [...])   -> {'success': False, 'error': 'Unknown edge node: node-1'}
+sync_from_edge("node-1", [...]) -> {'success': False, 'error': 'Unknown edge node: node-1'}
+```
+
+So `POST /integration/offline/sync` is **structurally incapable of a non-zero result**, and
+`get_status()` nevertheless reports `"engine": "active"` while `/integration/health` reports
+`"offline_engine": true`. Same shape as IA-014: an admin surface whose only possible answer
+is the healthy one.
+
+### The latent write-discard — `sync_to_edge`
+
+Forcing the unreachable state (registering a node directly) shows the payload is dropped:
+
+```
+sync_to_edge("node-1", [2 records]) -> {'success': True, 'node_id': 'node-1', 'records_synced': 2}
+store_forward queue after sync_to_edge: {}
+EdgeSyncEngine attrs: ['_conflict_resolver', '_edge_nodes', '_last_sync', '_store_forward']
+```
+
+It reports **2 records synced**, stores nothing, and has no attribute in which it could
+have. The method body only stamps `_last_sync[node_id]` and returns `len(data)`. This is
+the NR-084 pattern (`POST /fhir` bundles reporting 201 and discarding every write), and it
+is latent only because nothing calls it. Whoever wires edge sync inherits it silently.
+
+### Conflict resolution is never consulted
+
+`ConflictResolver` supports `last_write_wins`, `first_write_wins`, `merge` and `manual`.
+Instrumenting `resolve` and running a full enqueue-then-sync cycle:
+
+```
+ConflictResolver.resolve call count during a full enqueue+sync cycle: 0
+```
+
+`sync_all()` never calls it. There is no conflict detection in the served sync path at all
+— no version compare, no vector clock, nothing. `ConflictResolver` is constructed, held by
+two objects, and never invoked. `app/platform/sync.py::SyncService.resolve_conflicts`
+(version-compare LWW) is likewise never called from `sync_all`.
+
+### The real capability is elsewhere
+
+`/edge/*` serves 15 paths from `app/routes/edge.py` and is genuinely database-backed
+(`db.query(EdgeDevice)`, `db.commit()`, `db.refresh()`). So GULA does have a real
+edge/offline surface; `app/integration/offline.py` is a second, non-functional one beside
+it. Nothing here says the platform lacks offline sync — it says this endpoint is not it.
+
+### Why I did not fix it
+
+Two defensible dispositions, and choosing is not mine:
+
+- **Retire** the `app/integration/offline.py` surface (or the one endpoint), since `/edge/*`
+  already provides the capability. Removing a served admin endpoint is an API-shape change.
+- **Wire** it: give `StoreForwardEngine` persistence, call `sync_from_edge` from a real
+  ingress, and make `sync_all` consult `ConflictResolver`. That is a subsystem build, and
+  it needs the conflict-resolution semantics decided first (see IA-018).
+
+Either way, `sync_to_edge` returning `records_synced: N` while discarding the payload should
+not survive: it is a fake-green regardless of which disposition wins.
+
+### Next action
+
+Decide retire vs. wire. Under the PERMANENT DATA RULE, "retire" means retire/supersede the
+module, not delete data — there is no data here to lose, the queues are in-memory.
+
+---
+
+## IA-018 — P2 — CONFIRMED_DEFECT — four different classes named `OfflineSyncEngine`, and the most credible one is dead code with real defects
+
+| Field | Value |
+|---|---|
+| **ID** | IA-018 |
+| **Severity** | P2 — latent. The defective engine has zero production importers; the hazard is adoption. |
+| **State** | CONFIRMED_DEFECT — STATIC VERIFIED (reachability) — not fixed |
+| **Files** | `app/services/offline_sync_service.py`, `app/integration/offline.py`, `app/core/sync_engine.py`, `app/citizen_platform/offline.py` |
+| **Owner** | Human Decision (canonical owner), then Account 2 |
+
+### Four classes, one name, four meanings
+
+| # | Class | Semantics | Production importers |
+|---|---|---|---|
+| 1 | `app/services/offline_sync_service.py:74` | vector clocks, LWW / timestamp-merge / "CRDT" / manual resolution, per-operation signatures | **0** — only `tests/test_offline_sync.py` |
+| 2 | `app/integration/offline.py:166` | store-and-forward + edge sync | 2 (`integration.py`, `routes.py`) — **served**, see IA-017 |
+| 3 | `app/core/sync_engine.py:19` | — | **0** |
+| 4 | `app/citizen_platform/offline.py:109` | a read-through **cache** (`cache_data`/`get_cached_data`), not a sync engine at all | 2 (`sdk.py`, `integration.py`) |
+
+This is the R-16 trap in its sharpest form, and I walked into it: I read and analysed #1
+first — it is in `app/services/`, the documented "Business logic layer", it is the most
+sophisticated of the four, and it is the only one with a dedicated test file — and drew
+conclusions before checking that **nothing imports it.** The served engine is #2, which is
+far cruder. Severity assessed from sophistication and location would have been badly wrong.
+
+### Defects in #1 — real, and latent because nothing calls it
+
+Recorded so that adoption does not inherit them silently. Not fixed: fixing dead code ahead
+of a canonical-owner decision would be work aimed at the wrong artefact.
+
+1. **The "signature" is unauthenticated by default.**
+   `_sign_operation` = `sha256(op_id : json(data) : device_id : self._device_secret)` and
+   the constructor default is `device_secret=""`. With the default, every input is public,
+   so any client can compute a valid value and `_verify_signature` establishes nothing. It
+   is also a bare SHA-256 of concatenated fields, not an HMAC, and the secret is **one per
+   engine**, so even when set, device A can forge device B's operations. The platform
+   already mandates a `DEVICE_HMAC_KEY` with no fallback (`CLAUDE.md` security invariant 7);
+   this module does not use it.
+2. **Conflict resolution does not converge.** `receive_operation` sets the incoming op to
+   `CONFLICT` and stores a `ConflictRecord`, but never adds the op to `_operations` and
+   never advances the vector clock. `resolve_conflict` then writes the merge into
+   `conflict.merged_data` and returns it — and updates neither `_operations` nor
+   `_vector_clocks`. So a resolved conflict is invisible to every subsequent
+   `_detect_conflict`, which still compares against the pre-conflict operation. Resolution
+   produces a return value and a log line, and no state any later sync can read.
+3. **`CRDT_MERGE` is not a CRDT.** It is first-writer-wins per key, iterating
+   `(operation_a, operation_b)` in tuple order and keeping `a`'s value on collision.
+   `operation_a` is whichever operation happened to be in `_operations` first, so the
+   result depends on arrival order — the exact property a CRDT exists to eliminate. Two
+   replicas resolving the same conflict can diverge. The name asserts a guarantee the code
+   does not provide.
+4. **LWW is decided by the device's wall clock.** `create_operation` stamps
+   `timestamp=time.time()` on the device, and `LAST_WRITE_WINS` — the default set by
+   `_detect_conflict` — picks the larger. A device with a fast clock wins every conflict it
+   enters, indefinitely, and the loser's data is discarded with no archive. Against the
+   PERMANENT DATA RULE ("archive/deactivate/retire/supersede instead"), discarding the
+   losing write is the part to decide deliberately, not a detail.
+5. **`EncryptedSyncStore` stores plaintext by default.** `_encrypt` returns its input
+   unchanged when `self._key` is falsy, and the constructor default is `encryption_key=""`.
+   A store named "Encrypted", used for an offline device cache, is a no-op cipher unless a
+   key is passed. `_derive_key` is also `base64(sha256(key))` with no KDF or salt.
+
+### What is NOT claimed
+
+- No claim that offline sync is broken in production: **nothing runs this module.**
+- No claim that patient data is exposed: `EncryptedSyncStore` has no production caller
+  either.
+- No claim about `#4` beyond its name — it is a cache and behaves like one.
+
+### Next action
+
+Name the canonical offline-sync owner among the four, then retire/supersede the rest per
+the PERMANENT DATA RULE. If #1 is chosen, defects 1–5 are blockers and belong to Account 2.
+If #2 is chosen, IA-017's disposition applies. The `OfflineSyncEngine` name collision
+itself is the same class of problem as NR-087/NR-088/NR-081 ("one module, one import path").
