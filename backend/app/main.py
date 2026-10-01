@@ -116,6 +116,24 @@ def health_status():
     except Exception:
         redis_error = "redis_check_failed"
 
+    # The test-type catalog is seeded non-fatally, so its absence never reaches
+    # `reason`. This page exists to explain why a deployment is not usable, and
+    # a deployment with no catalog cannot interpret a result — so it says so
+    # here rather than leaving the operator to infer it from empty responses.
+    catalog_available = False
+    catalog_error = None
+    try:
+        from .database import SessionLocal
+        from .models import TestType
+
+        _cdb = SessionLocal()
+        try:
+            catalog_available = _cdb.query(TestType.id).first() is not None
+        finally:
+            _cdb.close()
+    except Exception:
+        catalog_error = "catalog_check_failed"
+
     ready, reason = is_system_ready()
     pool = get_pool_status()
     sys_h = sys_health.to_dict()
@@ -124,6 +142,10 @@ def health_status():
         "ready": ready,
         "reason": reason,
         "system_ready_flag": system_ready,
+        "test_type_catalog": {
+            "available": catalog_available,
+            "error": catalog_error,
+        },
         "database": {
             "connected": db_ok,
             "error": db_error,
@@ -204,6 +226,28 @@ def health_deep():
     except Exception:
         queue_err = "queue_check_failed"
 
+    # ── 3b. Test-type catalog availability ───────────────────────────────────
+    # Seeding this catalog is deliberately non-fatal — startup_guard treats it
+    # as optional data and logs the failure — so a deployment whose seed failed
+    # reported GREEN while being unable to interpret a single result: no
+    # reference range, no H/L grading, every lab_results.test_type_id NULL, and
+    # the category-filtered history views empty. Nothing on this page said so.
+    # "Available" is "the catalog holds at least one row", which is the same
+    # question startup_guard asks before seeding — not a count, because no
+    # minimum catalog size is documented anywhere.
+    catalog_available, catalog_err = True, None
+    try:
+        from .database import SessionLocal
+        from .models import TestType
+
+        _db3 = SessionLocal()
+        try:
+            catalog_available = _db3.query(TestType.id).first() is not None
+        finally:
+            _db3.close()
+    except Exception:
+        catalog_available, catalog_err = False, "catalog_check_failed"
+
     # ── 4. Memory RSS ────────────────────────────────────────────────────────
     rss_mb = 0.0
     try:
@@ -250,6 +294,13 @@ def health_deep():
         issues.append("redis_slow")
     if queue_backlog > 100:
         issues.append("queue_backlog_high")
+    if not catalog_available:
+        # Degraded, not RED: the platform still accepts and stores results, and
+        # criticality for a documented analyte survives via check_critical. What
+        # is lost is reference-range interpretation. RED is reserved for a
+        # component being down, and it drives the alert loop and the rollback
+        # workflow — an empty catalog is an operator task, not a failed process.
+        issues.append("test_type_catalog_unavailable")
     if rss_mb > 800:
         issues.append("memory_high")
     if degraded:
@@ -270,6 +321,7 @@ def health_deep():
             "database": {"ok": db_ok, "latency_ms": db_ms, "error": db_err},
             "redis": {"ok": red_ok, "latency_ms": red_ms, "error": red_err},
             "queue": {"backlog": queue_backlog, "error": queue_err},
+            "test_type_catalog": {"available": catalog_available, "error": catalog_err},
         },
         "process": {
             "memory_rss_mb": rss_mb,

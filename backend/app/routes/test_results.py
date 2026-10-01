@@ -216,7 +216,7 @@ def _validate_payload(
                 },
             )
         # Critical value hint (informational — the client may want to confirm)
-        crit = check_critical(test_name, value)
+        crit = check_critical(test_name, value, tt.test_code if tt else None)
         if crit:
             warnings.append(
                 {
@@ -333,10 +333,21 @@ def create_test_result(
     # Compute clinical flag (smart_analysis via get_flag + critical_alerts)
     flag = "unknown"
     if data.value is not None and normal_low is not None and normal_high is not None:
-        flag = get_flag(data.value, normal_low, normal_high, test_name=data.test_name)
+        flag = get_flag(
+            data.value,
+            normal_low,
+            normal_high,
+            test_name=data.test_name,
+            test_code=tt.test_code if tt else None,
+        )
     # A catalogued test gets its flag above; one the catalog does not carry can
     # still be critical, and check_critical needs only a name and a value.
-    flag = apply_critical_override(flag, data.test_name, data.value)
+    flag = apply_critical_override(
+        flag,
+        data.test_name,
+        data.value,
+        tt.test_code if tt else None,
+    )
 
     # Unique result token
     token = secrets.token_urlsafe(32)

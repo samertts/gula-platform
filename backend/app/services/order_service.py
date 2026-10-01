@@ -428,10 +428,16 @@ def create_order(
                 normal_low,
                 normal_high,
                 test_name=item["test_name"],
+                test_code=tt.test_code if tt else None,
             )
         # Criticality does not depend on a range existing: 24 of the 37 tests
         # with documented thresholds have no catalog entry to supply one.
-        flag = apply_critical_override(flag, item["test_name"], item.get("value"))
+        flag = apply_critical_override(
+            flag,
+            item["test_name"],
+            item.get("value"),
+            tt.test_code if tt else None,
+        )
 
         token, token_h = _generate_unique_token(db)
 
@@ -583,16 +589,20 @@ def update_result(
     proposed_low = normal_range_low if normal_range_low is not None else result.normal_range_low
     proposed_high = normal_range_high if normal_range_high is not None else result.normal_range_high
     proposed_flag = result.flag
+    # The stored link carries the catalog's analyte key, which is how a result
+    # reported under a qualified catalog name reaches its documented threshold.
+    stored_code = result.test_type.test_code if result.test_type else None
     if proposed_value is not None and proposed_low is not None and proposed_high is not None:
         proposed_flag = get_flag(
             proposed_value,
             proposed_low,
             proposed_high,
             test_name=result.test_name,
+            test_code=stored_code,
         )
     # An update must not drop a criticality the reference range cannot express.
     proposed_flag = apply_critical_override(
-        proposed_flag, result.test_name, proposed_value,
+        proposed_flag, result.test_name, proposed_value, stored_code,
     )
 
     # PATCH semantics: a field the caller did not send is left untouched.

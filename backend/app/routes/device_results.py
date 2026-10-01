@@ -100,11 +100,20 @@ def receive_device_results(
             and normal_high is not None
         ):
             flag = get_flag(
-                item.value, normal_low, normal_high, test_name=item.test_name,
+                item.value,
+                normal_low,
+                normal_high,
+                test_name=item.test_name,
+                test_code=tt.test_code if tt else None,
             )
         # An analyzer reporting troponin or INR has no catalog entry to give it a
         # range, but the threshold table still knows those tests are critical.
-        flag = apply_critical_override(flag, item.test_name, item.value)
+        flag = apply_critical_override(
+            flag,
+            item.test_name,
+            item.value,
+            tt.test_code if tt else None,
+        )
 
         import secrets
 
