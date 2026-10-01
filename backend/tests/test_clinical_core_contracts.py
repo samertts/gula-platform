@@ -53,6 +53,9 @@ def test_core_contract_registry_contains_the_safe_golden_path_domains() -> None:
         "financial-settlement",
         "pharmacy-controlled-policy",
         "pharmacy-recall",
+        "national-integration-message",
+        "national-reconciliation",
+        "national-manual-review",
     ]
     assert get_contract("appointment") is APPOINTMENT
     assert get_contract("financial-payment").allows("PENDING", "CAPTURED")
@@ -62,6 +65,9 @@ def test_core_contract_registry_contains_the_safe_golden_path_domains() -> None:
     assert get_contract("lis-analyzer").allows("ACTIVE", "QUARANTINED")
     assert not get_contract("lis-analyzer").allows("QUARANTINED", "ACTIVE")
     assert get_contract("pharmacy-controlled-policy").allows("PENDING_POLICY_REVIEW", "APPROVED_BY_POLICY")
+    assert get_contract("national-integration-message").allows("ROUTED", "DEAD_LETTER")
+    assert get_contract("national-reconciliation").allows("CONFLICT", "RESOLVED")
+    assert get_contract("national-manual-review").allows("IN_REVIEW", "ESCALATED")
 
 
 def test_state_machine_rejects_invalid_transitions() -> None:

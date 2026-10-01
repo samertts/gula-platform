@@ -300,6 +300,35 @@ jobs:
           cd backend
           python -m pytest tests/ -v --timeout=60 -x 2>&1
 
+  device-bridge-tests:
+    name: Device Bridge Tests
+    runs-on: ubuntu-latest
+    needs: [syntax-gate]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install service dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
+          pip install -e services/device_bridge
+      - name: Run isolated device bridge suite
+        working-directory: services/device_bridge
+        env:
+          LABLINK_API_KEY: synthetic-ci-device-key
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/services/device_bridge
+        run: python -m pytest -q tests/ --junitxml=device-bridge-junit.xml
+      - name: Upload device bridge test report
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: device-bridge-junit
+          path: services/device_bridge/device-bridge-junit.xml
+          if-no-files-found: error
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest

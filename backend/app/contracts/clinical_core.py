@@ -439,6 +439,49 @@ FINANCIAL_SETTLEMENT = ContractDefinition(
     external_dependencies=("payment-provider", "insurance-provider"),
 )
 
+NATIONAL_INTEGRATION_MESSAGE = ContractDefinition(
+    contract_id="CONTRACT-041",
+    domain="national-integration-message",
+    states=("RECEIVED", "VALIDATED", "ROUTED", "APPLIED", "REJECTED", "DEAD_LETTER"),
+    transitions={
+        "RECEIVED": ("VALIDATED", "REJECTED"),
+        "VALIDATED": ("ROUTED", "REJECTED"),
+        "ROUTED": ("APPLIED", "DEAD_LETTER", "REJECTED"),
+        "APPLIED": (),
+        "REJECTED": (),
+        "DEAD_LETTER": (),
+    },
+    external_dependencies=("national-provider",),
+)
+
+NATIONAL_RECONCILIATION = ContractDefinition(
+    contract_id="CONTRACT-042",
+    domain="national-reconciliation",
+    states=("OPEN", "MATCHED", "CONFLICT", "RESOLVED", "ESCALATED"),
+    transitions={
+        "OPEN": ("MATCHED", "CONFLICT", "ESCALATED"),
+        "CONFLICT": ("RESOLVED", "ESCALATED"),
+        "ESCALATED": ("RESOLVED",),
+        "MATCHED": ("RESOLVED",),
+        "RESOLVED": (),
+    },
+    external_dependencies=("national-provider",),
+)
+
+NATIONAL_MANUAL_REVIEW = ContractDefinition(
+    contract_id="CONTRACT-043",
+    domain="national-manual-review",
+    states=("QUEUED", "ASSIGNED", "IN_REVIEW", "APPROVED", "REJECTED", "ESCALATED"),
+    transitions={
+        "QUEUED": ("ASSIGNED", "ESCALATED"),
+        "ASSIGNED": ("IN_REVIEW", "ESCALATED"),
+        "IN_REVIEW": ("APPROVED", "REJECTED", "ESCALATED"),
+        "APPROVED": (),
+        "REJECTED": (),
+        "ESCALATED": (),
+    },
+)
+
 PHARMACY_CONTROLLED_POLICY = ContractDefinition(
     contract_id="CONTRACT-038",
     domain="pharmacy-controlled-policy",
@@ -471,6 +514,7 @@ CORE_CONTRACTS: tuple[ContractDefinition, ...] = (
     LIS_ANALYZER, LIS_QC, FINANCIAL_COVERAGE, FINANCIAL_ELIGIBILITY,
     FINANCIAL_PREAUTH, FINANCIAL_CLAIM, FINANCIAL_PAYMENT, FINANCIAL_REFUND,
     FINANCIAL_SETTLEMENT, PHARMACY_CONTROLLED_POLICY, PHARMACY_RECALL,
+    NATIONAL_INTEGRATION_MESSAGE, NATIONAL_RECONCILIATION, NATIONAL_MANUAL_REVIEW,
 )
 
 CONTRACTS_BY_DOMAIN = {contract.domain: contract for contract in CORE_CONTRACTS}

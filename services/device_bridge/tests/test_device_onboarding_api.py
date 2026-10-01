@@ -1,8 +1,16 @@
 import app.main as main
+import pytest
 from app.core.connection_pool import ConnectionPool
 from app.core.device_manager import DeviceManager
-from app.security.auth import DEFAULT_API_KEY
+from app.security.auth import API_KEY_ENV
 from fastapi.testclient import TestClient
+
+SYNTHETIC_API_KEY = "synthetic-device-test-key"
+
+
+@pytest.fixture(autouse=True)
+def configure_synthetic_api_key(monkeypatch):
+    monkeypatch.setenv(API_KEY_ENV, SYNTHETIC_API_KEY)
 
 
 class FakeConnector:
@@ -27,7 +35,7 @@ class DummyDeviceManager(DeviceManager):
 
 def test_scan_endpoint_returns_plan() -> None:
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = {"x-api-key": SYNTHETIC_API_KEY}
 
     response = client.post(
         "/devices/onboarding/scan",
@@ -56,7 +64,7 @@ def test_execute_endpoint_registers_device(monkeypatch) -> None:
     monkeypatch.setattr(main, "device_manager", DummyDeviceManager(pool=ConnectionPool()))
 
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = {"x-api-key": SYNTHETIC_API_KEY}
     response = client.post(
         "/devices/onboarding/execute",
         json={
@@ -85,7 +93,7 @@ def test_execute_endpoint_validates_tcp_requirements(monkeypatch) -> None:
     monkeypatch.setattr(main, "device_manager", DummyDeviceManager(pool=ConnectionPool()))
 
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = {"x-api-key": SYNTHETIC_API_KEY}
 
     response = client.post(
         "/devices/onboarding/execute",
@@ -112,7 +120,7 @@ def test_execute_endpoint_supports_dry_run_mode(monkeypatch) -> None:
     monkeypatch.setattr(main, "device_manager", DummyDeviceManager(pool=ConnectionPool()))
 
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = {"x-api-key": SYNTHETIC_API_KEY}
     response = client.post(
         "/devices/onboarding/execute",
         json={
