@@ -671,3 +671,43 @@ def test_the_parser_does_not_retain_a_message_identity_to_deduplicate_on():
     assert "sequence" not in fields
     assert "message_id" not in fields
     assert fields == {"type", "raw", "patient_id", "patient_name", "test_code", "value", "unit"}
+
+
+# ── IA-046: no CI job runs any of this ──────────────────────────────────────
+
+
+def test_no_workflow_covers_this_service_yet():
+    """A ratchet on the gap, not on the fix.
+
+    Nothing in .github/workflows/ runs this suite, lints it, or builds its image;
+    the only gate it passes is the syntax-gate's `compile()` sweep over
+    `services/`. The prepared job is in docs/CI_COVERAGE_GAP.md and is NOT
+    applied, because CLAUDE.md puts `.github/workflows/` behind human approval.
+
+    When someone applies it this test fails, which is the point: it says to come
+    back, delete this test, and record in that document that the gap is closed.
+    """
+    workflows = _SERVICE.parents[1] / ".github" / "workflows"
+    if not workflows.is_dir():
+        pytest.skip("no workflow directory in this checkout")
+
+    referencing = sorted(
+        path.name
+        for path in workflows.glob("*.yml")
+        if "device_bridge" in path.read_text(errors="replace")
+        or "device-bridge" in path.read_text(errors="replace")
+    )
+    assert referencing == [], (
+        f"a workflow now references this service ({referencing}); if the prepared "
+        "job was applied, update docs/CI_COVERAGE_GAP.md and remove this test"
+    )
+
+
+def test_the_prepared_patch_is_recorded():
+    """The finding must not exist only in a commit message."""
+    doc = _SERVICE / "docs" / "CI_COVERAGE_GAP.md"
+    text = doc.read_text()
+    assert "PREPARED, NOT APPLIED" in text
+    assert "device-bridge:" in text, "the document must carry the actual job"
+    assert "### Rollback" in text
+    assert "pyserial" in text, "the one uncertain step must stay flagged"
