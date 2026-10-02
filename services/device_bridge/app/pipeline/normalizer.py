@@ -5,7 +5,7 @@ from datetime import datetime
 
 from app.pipeline.parser_engine import ParsedResult
 
-from backend.app._compat import UTC
+from app._compat import UTC
 
 TEST_NAME_MAP = {
     "HEMOGLOBIN": "Hemoglobin",

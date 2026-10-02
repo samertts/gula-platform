@@ -424,3 +424,90 @@ def test_an_unset_backend_url_does_not_become_an_empty_base_url():
         else:
             os.environ["GULA_BACKEND_URL"] = previous
         importlib.reload(main)
+
+
+# ── IA-044: the image could not import the application at all ───────────────
+
+
+def test_the_app_imports_with_only_its_own_tree_on_the_path():
+    """The Dockerfile's build context is this directory and it copies only
+    `app/`, so `backend` is not in the image. Four modules imported
+    `backend.app._compat` for UTC, and `import app.main` raised
+
+        ModuleNotFoundError: No module named 'backend'
+
+    which means the published image could not start: the compose healthcheck
+    polls /health, which never answered, so the documented
+    `docker compose --profile device-bridge up device-bridge` could not come up.
+
+    Every local test run put the repository root on PYTHONPATH, which satisfied
+    the import and hid the failure for as long as nobody ran the image. This
+    test reproduces the image's module path in a subprocess -- a clean
+    environment with only this directory importable -- because that is the only
+    way to observe it from inside a test run that has the root on the path.
+    """
+    import os
+    import subprocess
+    import sys
+
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in {"PYTHONPATH", "PYTHONHOME"}
+    }
+    env["LABLINK_API_KEY"] = "import-probe-key"
+    completed = subprocess.run(
+        [sys.executable, "-c", "import sys; sys.path.insert(0, '.'); import app.main"],
+        cwd=_SERVICE,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, (
+        "the application cannot be imported with the module path the image has:\n"
+        + completed.stderr[-2000:]
+    )
+
+
+def test_no_module_imports_from_a_sibling_tree():
+    """The ratchet on the root cause. A service whose image contains only its own
+    `app/` tree must not import from `backend/` or `shared/`."""
+    offenders = []
+    for path in (_SERVICE / "app").rglob("*.py"):
+        if "__pycache__" in path.parts:
+            continue
+        for lineno, line in enumerate(path.read_text().splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith(("from backend", "import backend", "from shared", "import shared")):
+                offenders.append(f"{path.relative_to(_SERVICE).as_posix()}:{lineno}: {stripped}")
+    assert offenders == [], offenders
+
+
+def test_the_local_compat_shim_gives_a_real_utc():
+    """The copy it replaced had a dead branch that would have raised: for
+    Python < 3.11 it read `UTC = UTC`, a self-reference. Unreachable on 3.11+,
+    but a trap, so the local copy uses timezone.utc there."""
+    import datetime
+
+    from app._compat import UTC, StrEnum
+
+    assert UTC is datetime.UTC
+    assert datetime.datetime.now(UTC).tzinfo is not None
+    assert issubclass(StrEnum, str)
+
+    source = (_SERVICE / "app" / "_compat.py").read_text()
+    assert "UTC = UTC" not in source, "the self-referential fallback is back"
+    assert "UTC = timezone.utc" in source
+
+
+def test_pyserial_is_declared_as_a_dependency():
+    """`from serial import Serial` in app/connectors/base.py is lazy, so a
+    missing pyserial breaks the first serial analyzer connection rather than
+    startup. It was declared nowhere.
+
+    UNVERIFIED by this test, and said so in the finding: the Dockerfile installs
+    an explicit package list that still omits pyserial, and no image could be
+    built here to confirm a fix, so only the declaration is asserted.
+    """
+    pyproject = (_SERVICE / "pyproject.toml").read_text()
+    assert "pyserial" in pyproject
