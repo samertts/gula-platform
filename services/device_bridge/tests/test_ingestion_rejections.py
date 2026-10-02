@@ -662,15 +662,40 @@ def test_an_identical_frame_sent_twice_produces_two_results(monkeypatch):
 
 
 def test_the_parser_does_not_retain_a_message_identity_to_deduplicate_on():
-    """The blocker behind the finding above, asserted so it is not guessed at:
-    ASTMRecord keeps no sequence number or message id, so there is nothing to
-    deduplicate on even if a policy existed."""
+    """The blocker behind the finding above, asserted so it is not guessed at.
+
+    IA-050 added the fields the R record already carried, including its own
+    `sequence`. That sharpens this assertion rather than weakening it: a record
+    sequence is per-message and restarts at 1 in every message, so two
+    retransmissions of the same message carry identical sequences and two
+    different messages can too. It is not a message identity.
+
+    What would be one -- an ASTM header message-control-id, or a session-level
+    frame number -- is still not retained anywhere, so there remains nothing to
+    deduplicate on. Exactly-once delivery stays unsupported, and claiming it
+    would need both that identity and a durable store to remember it in
+    (IA-040).
+    """
     from app.pipeline.parser_engine import ASTMRecord
 
     fields = set(ASTMRecord.__dataclass_fields__)
-    assert "sequence" not in fields
     assert "message_id" not in fields
-    assert fields == {"type", "raw", "patient_id", "patient_name", "test_code", "value", "unit"}
+    assert "message_control_id" not in fields
+    assert "frame_number" not in fields
+    assert fields == {
+        "type", "raw", "patient_id", "patient_name", "test_code", "value", "unit",
+        "sequence", "reference_range", "abnormal_flags", "nature_of_abnormality",
+        "result_status", "completed_at",
+    }, "the retained field set changed; re-check whether a message identity now exists"
+
+    # And the header record, which is where a message control id would live, is
+    # parsed into nothing but its raw text.
+    from app.pipeline.parser_engine import ASTMParser
+
+    header = ASTMParser().parse_line("1H|\\^&|||Dev|||||P|1")
+    assert header.type == "header"
+    assert header.sequence is None
+    assert header.test_code is None
 
 
 # ── IA-046: no CI job runs any of this ──────────────────────────────────────

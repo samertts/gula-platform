@@ -137,11 +137,20 @@ class DataPipeline:
                         test_code=canonical,
                         value=float(row["value"]),
                         unit=row["unit"],
+                        # IA-050: carried through verbatim. `.get` rather than
+                        # `[...]` because a vendor adapter may rebuild the row
+                        # dict, and a missing key must not turn a usable result
+                        # into a rejection.
+                        reference_range=row.get("reference_range", ""),
+                        abnormal_flags=row.get("abnormal_flags", ""),
+                        result_status=row.get("result_status", ""),
+                        completed_at=row.get("completed_at", ""),
                     )
                     normalized = self.normalizer.transform(
                         parsed,
                         patient_id=row_patient_id,
                         device_id=device_id,
+                        nature_of_abnormality=row.get("nature_of_abnormality", ""),
                     )
                 except Exception as exc:
                     # Per row, not per frame: one unparseable value used to abandon
