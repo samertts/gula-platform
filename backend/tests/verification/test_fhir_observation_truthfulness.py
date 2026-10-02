@@ -256,3 +256,186 @@ def test_a_cross_tenant_observation_is_not_distinguishable_from_a_missing_one():
     # Positive control: the tenant predicate must still be there. Answering 404
     # for everything would also pass the assertions above.
     assert "LabOrder.lab_id == current_user.lab_id" in source
+
+
+# ── IA-033 the search lost real matches to its own LIMIT ─────────────────────
+#
+# `fhir_search_observation` fetched the newest 100 results and only then applied
+# `test_matches_code` in Python, so a match older than the newest 100 vanished and
+# the Bundle reported total: 0. Measured on PostgreSQL: 121 results for one
+# patient, 1 of them Glucose, 0 returned.
+#
+# The naive repair — ILIKE %query% — would have introduced two new defects, so
+# the tests below pin against both: a caller's `%` must not become a wildcard,
+# and a LOINC code query must still resolve to the test's local name.
+
+
+def _python_authority(name: str, query: str) -> bool:
+    """What test_matches_code accepts — the single authority on a match."""
+    from app.fhir.terminology import test_matches_code
+
+    return test_matches_code(name, query)
+
+
+def _sql_superset_admits(name: str, query: str) -> bool:
+    """Simulate the SQL predicate the route builds, with LIKE semantics.
+
+    Mirrors `lower(test_name) IN (exact_names) OR lower(test_name) LIKE
+    '%substring%' ESCAPE '\\'` so the superset property can be asserted without
+    a database and identically on SQLite and PostgreSQL.
+    """
+    from app.fhir.terminology import search_narrowing
+
+    narrowing = search_narrowing(query)
+    if narrowing.matches_everything:
+        return True
+    # Mirrors func.lower(func.trim(test_name)) in the route.
+    lowered = (name or "").strip().lower()
+    if narrowing.exact_names and lowered in narrowing.exact_names:
+        return True
+    if narrowing.substring is not None:
+        literal = (
+            narrowing.substring.replace("\\%", "%")
+            .replace("\\_", "_")
+            .replace("\\\\", "\\")
+        )
+        return literal in lowered
+    return False
+
+
+_NAME_CORPUS = (
+    "Glucose", "Glucose (Fasting)", "glucose", "GLUCOSE", "Blood Glucose",
+    "Total Cholesterol", "LDL Cholesterol", "Potassium", "ALT (SGPT)",
+    "Hemoglobin", "Urea (BUN)", "Vitamin D", "100% Pure Test", "under_score test",
+    "Glucose  Fasting", "  Potassium  ", "", "Test%Name",
+)
+_QUERY_CORPUS = (
+    "glucose", "Glucose", "GLUCOSE", "cholesterol", "total cholesterol",
+    "cholesterol total", "potassium", "alt", "sgpt", "2345-7", "2823-3",
+    "9999-9", "zzznosuch", "%", "_", "Gluc%se", "100%", "under_score",
+    "", "   ", "a",
+)
+
+
+@pytest.mark.parametrize("name", _NAME_CORPUS)
+@pytest.mark.parametrize("query", _QUERY_CORPUS)
+def test_the_sql_narrowing_is_a_superset_and_never_drops_a_match(name, query):
+    """The invariant the whole design rests on.
+
+    The database filter may admit rows the authority then rejects. It must never
+    reject a row the authority would accept — that is exactly the false negative
+    IA-033 was. 18 names x 21 queries = 378 combinations.
+    """
+    if _python_authority(name, query):
+        assert _sql_superset_admits(name, query), (
+            f"SQL narrowing would drop name={name!r} for query={query!r}, "
+            "which test_matches_code accepts — a false negative"
+        )
+
+
+@pytest.mark.parametrize("wildcard", ["%", "_", "Gluc%se", "100%", "under_score", "%%%"])
+def test_a_caller_query_cannot_act_as_a_like_pattern(wildcard):
+    """IA-033's trap: ILIKE %query% turns code=% into "every test on file"."""
+    from app.fhir.terminology import search_narrowing
+
+    narrowing = search_narrowing(wildcard)
+    assert not narrowing.matches_everything
+    if narrowing.substring is not None:
+        bare = narrowing.substring.replace("\\%", "").replace("\\_", "").replace("\\\\", "")
+        assert "%" not in bare and "_" not in bare, (
+            f"unescaped wildcard survives in {narrowing.substring!r}"
+        )
+
+
+def test_a_loinc_code_query_still_resolves_to_the_local_names():
+    """The capability a plain name predicate cannot express, kept intact."""
+    from app.fhir.terminology import search_narrowing
+
+    narrowing = search_narrowing("2345-7")
+    assert "glucose" in narrowing.exact_names
+    assert "blood glucose" in narrowing.exact_names
+    # And an unknown code resolves to no names, so it matches nothing.
+    assert search_narrowing("9999-9").exact_names == ()
+
+
+def test_an_empty_query_imposes_no_restriction():
+    from app.fhir.terminology import search_narrowing
+
+    for blank in ("", "   ", None):
+        assert search_narrowing(blank).matches_everything is True
+
+
+def test_a_nonempty_query_always_restricts_something():
+    """Positive control. A narrowing that restricts nothing for a real query
+    would silently return every result — the opposite failure."""
+    from app.fhir.terminology import search_narrowing
+
+    for query in ("glucose", "2345-7", "%", "zzz"):
+        narrowing = search_narrowing(query)
+        assert not narrowing.matches_everything
+        assert narrowing.exact_names or narrowing.substring is not None
+
+
+# ── the route: the filter must reach SQL, before the limit ───────────────────
+
+
+def _search_source() -> str:
+    for node in ast.walk(ast.parse(_ROUTES.read_text())):
+        if isinstance(node, ast.FunctionDef) and node.name == "fhir_search_observation":
+            return ast.unparse(node)
+    raise AssertionError("fhir_search_observation not found")
+
+
+def test_the_code_filter_is_applied_before_the_limit():
+    """The defect was ordering: filter after LIMIT drops matches."""
+    source = _search_source()
+    filter_at = source.find("search_narrowing(code)")
+    limit_at = source.find(".limit(")
+    assert filter_at != -1, "the route no longer narrows in SQL"
+    assert limit_at != -1
+    assert filter_at < limit_at, "the code filter must restrict the query, not the page"
+
+
+def test_the_route_escapes_the_like_pattern():
+    assert 'escape="\\\\"' in _search_source() or "escape='\\\\'" in _search_source()
+
+
+def test_a_nonempty_query_with_no_branch_fails_closed():
+    """Returning everything for a query we cannot translate is the wrong default."""
+    assert "sa.false()" in _search_source()
+
+
+def test_the_route_no_longer_requeries_the_order_per_result():
+    """IA-034: the loop issued one SELECT per result for an order it had joined."""
+    source = _search_source()
+    assert "db.query(LabResult, LabOrder)" in source
+    assert "db.query(LabOrder).filter(LabOrder.id == r.order_id)" not in source
+
+
+def test_a_truncated_page_does_not_publish_a_false_total():
+    """IA-033b. Bundle.total means the number of matches, not the page size."""
+    source = _search_source()
+    assert "has_more" in source
+    assert "'relation': 'next'" in source or '"relation": "next"' in source
+
+
+def test_the_search_is_still_tenant_scoped():
+    """Positive control: the fix must not have widened the tenant boundary."""
+    assert "LabOrder.lab_id == current_user.lab_id" in _search_source()
+
+
+def test_the_route_normalises_the_name_the_way_the_authority_does():
+    """Pins trim() in the SQL itself, not in the Python simulation above.
+
+    The superset property test models the predicate in Python, so it cannot see
+    whether the route actually emits trim() — removing func.trim from the route
+    left that test green, which made it non-load-bearing for this fix. The
+    authority strips before resolving a LOINC alias, so a row stored as
+    "  Potassium  " matches code 2823-3; an untrimmed comparison drops it.
+    """
+    source = _search_source()
+    assert "func.trim(LabResult.test_name)" in source, (
+        "the SQL must trim the name before comparing it to the alias list, or a "
+        "whitespace-padded test name is dropped from a LOINC code search"
+    )
+    assert "func.lower(func.trim(" in source, "normalise with lower(trim(...)), in that order"

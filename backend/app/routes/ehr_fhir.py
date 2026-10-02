@@ -5,11 +5,13 @@ from html import escape
 import json
 import logging
 from typing import Any
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import func
+import sqlalchemy as sa
+from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -32,6 +34,7 @@ from ..fhir.terminology import (
     interpretation_concept,
     observation_code,
     observation_status,
+    search_narrowing,
     test_matches_code,
 )
 from ..models.audit_log import AuditLog
@@ -447,6 +450,8 @@ def fhir_search_observation(
     code: str | None = Query(None, alias="code"),
     category: str | None = Query(None, alias="category"),
     date: str | None = Query(None, alias="date"),
+    count: int = Query(100, alias="_count", ge=1, le=500),
+    offset: int = Query(0, alias="_offset", ge=0),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -454,32 +459,77 @@ def fhir_search_observation(
         "resourceType": "Bundle",
         "type": "searchset",
         "entry": [],
-        "total": 0,
     }
+    # The order is joined and kept, not re-fetched per row: the previous loop
+    # issued one SELECT per result to recover an order it had already joined.
     q = (
-        db.query(LabResult)
-        .join(LabOrder)
+        db.query(LabResult, LabOrder)
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
         .filter(LabOrder.lab_id == current_user.lab_id)
     )
     if patient:
         q = q.filter(LabOrder.patient_id == patient)
-    results = q.order_by(LabResult.created_at.desc()).limit(100).all()
-    if code:
-        results = [result for result in results if test_matches_code(result.test_name, code)]
+
+    # The code filter must restrict the query, not the page. Applying it after
+    # LIMIT meant a match older than the newest 100 results vanished and the
+    # Bundle reported total: 0 for a patient who had one. `search_narrowing`
+    # yields a superset predicate — escaped, so caller text cannot act as a
+    # wildcard — and `test_matches_code` below stays authoritative.
+    narrowing = search_narrowing(code)
+    if not narrowing.matches_everything:
+        # trim() matters and is not cosmetic: the authority normalises the name
+        # before resolving a LOINC alias, so a row stored as "  Potassium  "
+        # matches code 2823-3. Comparing an untrimmed lower() against the alias
+        # list would drop it — a false negative this filter exists to prevent,
+        # and one the superset property test caught. trim() is portable to both
+        # SQLite and PostgreSQL; collapsing interior runs is not, which is why
+        # the substring branch matches a single token rather than the whole query.
+        normalized_name = func.lower(func.trim(LabResult.test_name))
+        branches = []
+        if narrowing.exact_names:
+            branches.append(normalized_name.in_(narrowing.exact_names))
+        if narrowing.substring is not None:
+            branches.append(
+                normalized_name.like(f"%{narrowing.substring}%", escape="\\"),
+            )
+        # No branch at all would mean "no restriction", which for a non-empty
+        # query is the false positive this guards against. Fail closed instead.
+        q = q.filter(or_(*branches)) if branches else q.filter(sa.false())
+
+    # One row beyond the page, so "is there a next page" is known rather than
+    # guessed, and `total` is only published when it is actually the total.
+    rows = (
+        q.order_by(LabResult.created_at.desc(), LabResult.id.desc())
+        .offset(offset)
+        .limit(count + 1)
+        .all()
+    )
+    has_more = len(rows) > count
+    page = rows[:count]
+
     entries = []
-    for r in results:
-        order = (
-            db.query(LabOrder).filter(LabOrder.id == r.order_id).first()
-        )
-        if order:
+    for result, order in page:
+        if test_matches_code(result.test_name, code or ""):
             entries.append(
                 {
-                    "resource": _lab_result_to_observation(r, order),
-                    "fullUrl": f"Observation/{r.id}",
+                    "resource": _lab_result_to_observation(result, order),
+                    "fullUrl": f"Observation/{result.id}",
                 },
             )
     bundle["entry"] = entries
-    bundle["total"] = len(entries)
+
+    if has_more:
+        # FHIR allows Bundle.total to be absent. Publishing the page size as the
+        # total is a lie about the size of the record, so when the set is
+        # truncated the caller is given a next link instead of a false count.
+        params = [f"_count={count}", f"_offset={offset + count}"]
+        if patient:
+            params.append(f"patient={quote(str(patient))}")
+        if code:
+            params.append(f"code={quote(code)}")
+        bundle["link"] = [{"relation": "next", "url": f"Observation?{'&'.join(params)}"}]
+    else:
+        bundle["total"] = offset + len(entries)
     return bundle
 
 

@@ -78,6 +78,79 @@ def test_matches_code(test_name: str | None, query: str) -> bool:
     return candidate.casefold() in normalize_lab_test_name(test_name)
 
 
+@dataclass(frozen=True)
+class SearchNarrowing:
+    """A database-side filter that cannot drop a row ``test_matches_code`` accepts.
+
+    ``matches_everything`` means the query imposes no restriction at all, so the
+    caller must not add a predicate. Otherwise the caller ORs the two branches:
+    rows whose lowercased name is in ``exact_names``, and rows whose lowercased
+    name contains ``substring``.
+    """
+
+    matches_everything: bool
+    exact_names: tuple[str, ...]
+    substring: str | None
+
+
+def search_narrowing(query: str | None) -> SearchNarrowing:
+    """Build a superset filter so a code search can be applied before LIMIT.
+
+    ``fhir_search_observation`` used to fetch the newest 100 results and only
+    then apply ``test_matches_code`` in Python. For a patient with more than 100
+    results that silently dropped real matches: a glucose search returned an
+    empty Bundle with ``total: 0`` while a glucose result was on file. Measured
+    on PostgreSQL — 121 results, 1 of them Glucose, 0 returned.
+
+    Replacing the Python pass with ``ILIKE %query%`` would trade that false
+    negative for two new defects, so it is not what this does:
+
+    * ``%`` and ``_`` in a caller-supplied string are LIKE wildcards, so
+      ``code=%`` would match every test on file. The substring is escaped here
+      and the caller passes ``escape="\\"``.
+    * ``test_matches_code`` also resolves a LOINC *code* — ``2345-7`` matches a
+      result named "Glucose" — which no predicate over ``test_name`` can express.
+      Those names are enumerated into ``exact_names`` instead.
+
+    The contract is one-directional on purpose: this filter is a **superset**, so
+    it may admit rows that ``test_matches_code`` then rejects, and never the
+    reverse. ``test_matches_code`` stays the single authority on what matches;
+    this only makes the database narrow the candidate set before the limit.
+
+    Why a single token is a sound superset: ``normalize_lab_test_name`` differs
+    from ``lower()`` only by collapsing runs of whitespace and trimming, neither
+    of which alters non-whitespace characters or their order. So if the whole
+    query appears in the normalized name, every whitespace-free token of that
+    query appears verbatim in the lowercased name. The longest token is used
+    because it is the most selective. Deliberately no ``regexp_replace``: the
+    test suite runs on SQLite and this must behave identically on both.
+    """
+    candidate = (query or "").strip()
+    if not candidate:
+        return SearchNarrowing(matches_everything=True, exact_names=(), substring=None)
+
+    # A query that is exactly a known LOINC code matches every alias of that
+    # code, however the local catalogue happens to spell the test.
+    exact_names: tuple[str, ...] = ()
+    for entry in _COMMON_LOINC_CODES:
+        if candidate == entry.code:
+            exact_names = entry.aliases
+            break
+
+    tokens = [token for token in candidate.casefold().split() if token]
+    longest = max(tokens, key=len) if tokens else None
+    return SearchNarrowing(
+        matches_everything=False,
+        exact_names=exact_names,
+        substring=_escape_like(longest) if longest else None,
+    )
+
+
+def _escape_like(value: str) -> str:
+    """Escape LIKE metacharacters so a caller's text cannot act as a pattern."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 # ── Observation.status ───────────────────────────────────────────────────────
 #
 # `Observation.status` is required and carries clinical weight: a consumer is
