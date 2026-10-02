@@ -35,6 +35,7 @@ from ..fhir.terminology import (
     observation_code,
     observation_status,
     search_narrowing,
+    service_request_status,
     test_matches_code,
 )
 from ..models.audit_log import AuditLog
@@ -1398,7 +1399,12 @@ def fhir_read_bundle(
             "resource": {
                 "resourceType": "ServiceRequest",
                 "id": str(order.id),
-                "status": order.status or "unknown",
+                # IA-047: this published GULA's internal vocabulary raw. Three of
+                # the four LabOrder states -- pending, validated, cancelled --
+                # are not codes in the ServiceRequest value set at all, and a
+                # withdrawn order went out as "cancelled", which FHIR spells
+                # "revoked".
+                "status": service_request_status(order.status),
                 "intent": "order",
                 "subject": {"reference": f"Patient/{bundle_id}"},
                 "code": {"text": order.test_name or ""},
@@ -1417,7 +1423,10 @@ def fhir_read_bundle(
                 "resource": {
                     "resourceType": "Observation",
                     "id": str(r.id),
-                    "status": "final",
+                    # IA-047: unconditionally "final" on this path. IA-028 fixed
+                    # the single-resource route and this bundle kept asserting a
+                    # verified result for a pending or withdrawn order.
+                    "status": observation_status(order.status),
                     "code": {"text": r.test_name or ""},
                     "subject": {"reference": f"Patient/{bundle_id}"},
                     "valueQuantity": {"value": r.value, "unit": r.unit or ""} if r.value is not None else None,

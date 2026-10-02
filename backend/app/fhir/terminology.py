@@ -264,3 +264,86 @@ def interpretation_concept(
         ],
         "text": flag,
     }
+
+
+# ── ServiceRequest.status ────────────────────────────────────────────────────
+#
+# FHIR R4 ServiceRequest.status is a required binding:
+#   draft | active | on-hold | revoked | completed | entered-in-error | unknown
+#
+# GULA's LabOrder state machine (app/domain/order_state.py) is four states, and
+# three of them are not codes in that value set at all:
+#
+#   pending     the request is in force, awaiting results   -> "active"
+#   completed   results entered                             -> "completed"
+#   validated   verified and locked; the request is served  -> "completed"
+#   cancelled   the order was withdrawn                     -> "revoked"
+#
+# "cancelled" is the trap: FHIR spells a withdrawn request "revoked", so the
+# internal word is not merely unmapped, it is a code this resource does not
+# define. Anything unrecognised resolves to FHIR's own "unknown" and never to
+# "active" -- "active" invites a consumer to act on a request that may have been
+# withdrawn, which is the one direction in which being wrong is unsafe. Same
+# reasoning, and the same mapping, as _map_order_status in app/lims for the LIMS
+# twelve-state machine (IA-036).
+_SERVICE_REQUEST_STATUS_BY_ORDER_STATUS: dict[str, str] = {
+    "pending": "active",
+    "completed": "completed",
+    "validated": "completed",
+    "cancelled": "revoked",
+}
+
+_FALLBACK_SERVICE_REQUEST_STATUS = "unknown"
+
+
+def service_request_status(order_status: str | None) -> str:
+    """Return the FHIR ServiceRequest.status for a GULA LabOrder state."""
+    return _SERVICE_REQUEST_STATUS_BY_ORDER_STATUS.get(
+        (order_status or "").strip().casefold(),
+        _FALLBACK_SERVICE_REQUEST_STATUS,
+    )
+
+
+# ── DiagnosticReport.status ──────────────────────────────────────────────────
+#
+# FHIR R4 DiagnosticReport.status is a required binding:
+#   registered | partial | preliminary | final | amended | corrected |
+#   appended | cancelled | entered-in-error | unknown
+#
+#   pending     ordered, nothing reported yet              -> "registered"
+#   completed   results entered, not yet verified          -> "preliminary"
+#   validated   verified by an authorised person and locked -> "final"
+#   cancelled   the order was withdrawn                    -> "cancelled"
+#
+# "completed" maps to "preliminary", not "final": FHIR reserves "final" for a
+# report "complete and verified by an authorized person", which in GULA is
+# precisely the validated state -- the same reading already applied to
+# Observation.status. Anything unrecognised resolves to "partial", which claims
+# less than the data supports rather than more.
+_DIAGNOSTIC_REPORT_STATUS_BY_ORDER_STATUS: dict[str, str] = {
+    "pending": "registered",
+    "completed": "preliminary",
+    "validated": "final",
+    "cancelled": "cancelled",
+}
+
+_FALLBACK_DIAGNOSTIC_REPORT_STATUS = "partial"
+
+# LabOrder.status is Column(String(20), default="pending") -- nullable, so an
+# absent status is reachable. It means an order exists with no asserted
+# progress, which is exactly FHIR's "registered": "the existence of the report
+# is registered, but there is nothing yet available". The call site this
+# replaced read `order.status or "pending"`, so this also keeps that behaviour
+# rather than quietly reclassifying those rows as "partial".
+_EMPTY_DIAGNOSTIC_REPORT_STATUS = "registered"
+
+
+def diagnostic_report_status(order_status: str | None) -> str:
+    """Return the FHIR DiagnosticReport.status for a GULA LabOrder state."""
+    normalized = (order_status or "").strip().casefold()
+    if not normalized:
+        return _EMPTY_DIAGNOSTIC_REPORT_STATUS
+    return _DIAGNOSTIC_REPORT_STATUS_BY_ORDER_STATUS.get(
+        normalized,
+        _FALLBACK_DIAGNOSTIC_REPORT_STATUS,
+    )

@@ -29,6 +29,11 @@ from app._compat import UTC
 from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, NID_HMAC_KEY
 from ..database import get_db
 from ..models.audit_log import AuditLog
+from ..fhir.terminology import (
+    diagnostic_report_status,
+    observation_status,
+    service_request_status,
+)
 from ..models.lab import Lab
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
@@ -288,7 +293,10 @@ def get_fhir_observations(
         obs = {
             "resourceType": "Observation",
             "id": str(r.id),
-            "status": "final",
+            # IA-047: a fifth instance of IA-028's defect. Unconditionally
+            # "final", so every result of a pending or cancelled order was
+            # published as verified. `order` is in scope here.
+            "status": observation_status(order.status),
             "category": [
                 {
                     "coding": [
@@ -387,13 +395,13 @@ def get_fhir_diagnostic_report(
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
     lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
-    # Determine report status
-    status_map = {
-        "completed": "final",
-        "pending": "registered",
-        "cancelled": "cancelled",
-    }
-    report_status = status_map.get(order.status or "pending", "partial")
+    # IA-047: this local map called a "completed" order's report final, while
+    # FHIR reserves "final" for a report verified by an authorised person --
+    # which in GULA is the validated state, not the completed one. "validated"
+    # was not in the map at all and fell through to "partial", understating a
+    # verified report. The canonical mapping lives in app/fhir/terminology.py
+    # alongside the Observation and ServiceRequest ones.
+    report_status = diagnostic_report_status(order.status)
 
     observations_refs = [
         {"reference": f"Observation/{r.id}", "display": r.test_name} for r in results
@@ -508,7 +516,11 @@ def get_fhir_service_request(
                 "value": str(order_id),
             },
         ],
-        "status": "completed" if order.status == "completed" else "active",
+        # IA-047: this published a validated order and a *cancelled* order both
+        # as "active" -- a withdrawn laboratory request asserted as in force and
+        # ready to be acted upon. Same defect as IA-036 in app/lims, on a third
+        # path.
+        "status": service_request_status(order.status),
         "intent": "original-order",
         "category": [
             {
