@@ -21,6 +21,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("lablink.api")
 
 app = FastAPI(title="LabLink Core", version="0.6.0")
 
@@ -323,8 +324,16 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
         barcode=payload.barcode,
     )
 
-    if pipeline.retry_queue.size() > 0:
-        for item in pipeline.retry_queue.list_all():
+    # Drain with dequeue(), not list_all(). list_all() returns a copy and removes
+    # nothing, so every /ingest re-staged the whole backlog: six identical ingests
+    # against an unreachable GULA produced 21 offline-queue entries and 27 audit
+    # events for six results -- N(N+1)/2, every entry a duplicate of the same
+    # result. RetryQueue.dequeue() existed and was called from nowhere. IA-045.
+    while True:
+        item = pipeline.retry_queue.dequeue()
+        if item is None:
+            break
+        try:
             repository.enqueue_offline(item)
             sync_engine.stage(
                 item_id=str(uuid.uuid4()),
@@ -332,6 +341,15 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
                 payload=item,
                 version=1,
             )
+        except Exception:
+            # Hand-off failed after the item left the queue: put it back rather
+            # than lose the only record that this result never reached GULA.
+            pipeline.retry_queue.enqueue(item)
+            logger.exception(
+                "Failed to stage a retry item; it was returned to the queue",
+                extra={"device_id": item.get("device_id")},
+            )
+            raise
 
     for _ in results:
         repository.save_log(

@@ -511,3 +511,163 @@ def test_pyserial_is_declared_as_a_dependency():
     """
     pyproject = (_SERVICE / "pyproject.toml").read_text()
     assert "pyserial" in pyproject
+
+
+# ── IA-045: the retry queue was never drained, so the backlog multiplied ────
+
+
+def _ingest_over_http(client, headers, chunk: bytes, device_id: str = "AMP-01"):
+    return client.post(
+        "/ingest",
+        json={"patient_id": "FB", "device_id": device_id, "chunk": chunk.decode("latin-1")},
+        headers=headers,
+    )
+
+
+def _fresh_app(monkeypatch, *, backend_url: str):
+    """A reimported app.main with a chosen GULA_BACKEND_URL and empty stores."""
+    import importlib
+    import os
+
+    monkeypatch.setenv("GULA_BACKEND_URL", backend_url)
+    import app.main as main
+
+    main = importlib.reload(main)
+    main.repository.db.results.clear()
+    main.repository.db.logs.clear()
+    main.repository.db.audit_trail.clear()
+    main.repository.db.offline_queue.clear()
+    main.pipeline.sessions.clear()
+    while main.pipeline.retry_queue.dequeue() is not None:
+        pass
+    return main
+
+
+def test_the_offline_backlog_grows_once_per_failure_not_quadratically(monkeypatch):
+    """Measured over HTTP against an unreachable GULA, before the fix:
+
+        ingest   results  offline  audit
+        1        1        1        2
+        2        2        3        5
+        3        3        6        9
+        4        4        10       14
+        5        5        15       20
+        6        6        21       27
+
+    `/ingest` drained the retry queue with `list_all()`, which returns a copy and
+    removes nothing, so every request re-staged the entire backlog -- N(N+1)/2
+    offline entries, every one of them a duplicate of the same haemoglobin
+    result. `RetryQueue.dequeue()` existed and was called from nowhere. In a
+    256 MB container (mem_limit in docker-compose.yml) that is an OOM path, and
+    had the offline queue ever been drained to GULA it would have delivered one
+    result twenty-one times.
+    """
+    import os
+
+    from fastapi.testclient import TestClient
+
+    main = _fresh_app(monkeypatch, backend_url="http://gula.invalid:9")
+    client = TestClient(main.app)
+    headers = {"x-api-key": os.environ["LABLINK_API_KEY"]}
+    frame = _frame(_HEADER + "3R|1|^^^Hb|13.5|g/dL\r")
+
+    observed = []
+    for _ in range(6):
+        response = _ingest_over_http(client, headers, frame)
+        assert response.status_code == 200
+        observed.append(
+            (
+                len(main.repository.db.results),
+                len(main.repository.db.offline_queue),
+            ),
+        )
+
+    assert observed == [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)], (
+        f"the backlog is multiplying again: {observed}"
+    )
+    # Six failed forwards, six records of failure, and nothing left pending.
+    assert main.pipeline.retry_queue.size() == 0
+    assert len(_rows(main.repository.db, "forward_failed")) == 6
+
+
+def test_a_staging_failure_returns_the_item_to_the_queue(monkeypatch):
+    """The second-order attack on the fix. Dequeuing before the hand-off opens a
+    loss window the old code did not have: if staging raises, the only record
+    that a result never reached GULA would be gone. It is put back."""
+    import os
+
+    from fastapi.testclient import TestClient
+
+    main = _fresh_app(monkeypatch, backend_url="http://gula.invalid:9")
+
+    def _explode(*args, **kwargs):
+        raise RuntimeError("staging is down")
+
+    monkeypatch.setattr(main.sync_engine, "stage", _explode)
+
+    client = TestClient(main.app, raise_server_exceptions=False)
+    headers = {"x-api-key": os.environ["LABLINK_API_KEY"]}
+    response = _ingest_over_http(client, headers, _frame(_HEADER + "3R|1|^^^Hb|13.5|g/dL\r"))
+
+    assert response.status_code == 500, "the failure must not be swallowed"
+    assert main.pipeline.retry_queue.size() == 1, (
+        "the retry item was dequeued and then lost when staging failed"
+    )
+
+
+def test_the_drain_uses_dequeue_and_not_list_all():
+    source = _MAIN_SRC.read_text()
+    assert "pipeline.retry_queue.dequeue()" in source
+    assert "for item in pipeline.retry_queue.list_all():" not in source, (
+        "the non-draining iteration is back"
+    )
+
+
+# ── measured delivery semantics, stated rather than claimed ─────────────────
+
+
+def test_an_identical_frame_sent_twice_produces_two_results(monkeypatch):
+    """Not a defect report -- a measurement, so the semantics are on the record.
+
+    The bridge has no idempotency key. A device that retransmits a frame, or a
+    client that retries POST /ingest, produces a second result. The delivery
+    semantics of this ingestion path are therefore AT-LEAST-ONCE WITH
+    DUPLICATION, not exactly-once, and nothing in the service claims otherwise.
+
+    Deduplicating would mean choosing an identity for "the same result", and a
+    content hash would collapse a genuinely repeated measurement -- the same
+    analyte, the same value, the same device, measured twice -- into one. That is
+    a clinical identity rule and is deliberately not invented here; it needs the
+    ASTM message's own sequence/message-id carried through the pipeline, which
+    the parser does not currently retain.
+    """
+    import os
+
+    from fastapi.testclient import TestClient
+
+    main = _fresh_app(monkeypatch, backend_url="http://gula.invalid:9")
+    client = TestClient(main.app)
+    headers = {"x-api-key": os.environ["LABLINK_API_KEY"]}
+    frame = _frame(_HEADER + "3R|1|^^^Hb|13.5|g/dL\r")
+
+    first = _ingest_over_http(client, headers, frame)
+    second = _ingest_over_http(client, headers, frame)
+
+    assert first.json()["processed"] == 1
+    assert second.json()["processed"] == 1
+    assert len(main.repository.db.results) == 2, (
+        "if this is now 1, an idempotency rule was introduced -- check that it "
+        "cannot collapse a genuinely repeated measurement"
+    )
+
+
+def test_the_parser_does_not_retain_a_message_identity_to_deduplicate_on():
+    """The blocker behind the finding above, asserted so it is not guessed at:
+    ASTMRecord keeps no sequence number or message id, so there is nothing to
+    deduplicate on even if a policy existed."""
+    from app.pipeline.parser_engine import ASTMRecord
+
+    fields = set(ASTMRecord.__dataclass_fields__)
+    assert "sequence" not in fields
+    assert "message_id" not in fields
+    assert fields == {"type", "raw", "patient_id", "patient_name", "test_code", "value", "unit"}
