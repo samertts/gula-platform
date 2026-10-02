@@ -12,6 +12,8 @@ Covers:
   - purge_old_events: deletes old done/failed events, keeps recent ones
   - EventBus: handler isolation (one failing handler does not block others)
   - EventBus: emit returns handler count
+  - OutboxWorker.run_once: an event dispatched to zero handlers is counted as
+    undelivered rather than reported as an unqualified success (IA-043)
 """
 from __future__ import annotations
 
@@ -247,7 +249,10 @@ class TestOutboxWorkerRunOnce:
         bus = EventBus()
         with patch("app.services.outbox_service.events", bus):
             summary = OutboxWorker.run_once(db)
-        assert summary == {"processed": 0, "failed": 0, "skipped": 0}
+        # "undelivered" counts events dispatched to zero handlers, which is
+        # currently every event (IA-043). An empty queue dispatches nothing, so
+        # it stays at zero here.
+        assert summary == {"processed": 0, "failed": 0, "skipped": 0, "undelivered": 0}
 
 
 # ── purge_old_events ──────────────────────────────────────────────────────────

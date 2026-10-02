@@ -386,6 +386,11 @@ def create_test_result(
     db.refresh(order)
 
     # Fire critical-value event for downstream notifications.
+    # IA-043: this event currently has no subscriber, so no notification is sent
+    # from here. A critical value reaches a human only when someone reads the
+    # result or polls GET /critical-alerts. Implementing escalation (who is
+    # notified, by which channel, with what retry and what documented read-back)
+    # is clinical policy and is deliberately not invented here.
     if flag == "critical" and data.value is not None:
         events.emit(
             RESULT_CRITICAL,
