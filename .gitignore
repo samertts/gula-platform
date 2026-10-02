@@ -72,3 +72,6 @@ mobile/android/local.properties
 
 # Generated security scan artifacts
 security-audit/checkov.json
+
+# Local multi-agent coordination state
+.gula/

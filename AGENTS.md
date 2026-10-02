@@ -39,3 +39,29 @@ Use OpenSSL, Let's Encrypt, WireGuard before commercial security products.
 3. Always justify external dependencies
 4. Check `docs/constitution/COST_GOVERNANCE.md` for full policy
 5. Check `docs/architecture/` for detailed policies
+
+## Multi-Agent Change Control
+
+When more than one AI agent works on this repository, agents MUST use the
+provider-neutral coordination store under `tools/ai_coordination/` before
+editing code. The store is for code-work metadata only; it must never contain
+PHI, credentials, API keys, or clinical records.
+
+Required sequence:
+
+1. Register the agent with a unique provider/session identity on a non-protected
+   branch: `python -m tools.ai_coordination.cli register --agent-id ... --provider ...`.
+2. Create or claim a task before editing. Claims are leases and prevent two
+   agents from owning the same task concurrently.
+3. Declare the exact repository paths and base commit before writing. An active
+   overlapping intent is rejected; use a separate worktree/branch or coordinate
+   a handoff instead of overwriting another agent.
+4. Send handoff/status messages with commit hashes and test evidence. Close the
+   intent after commit or mark it `conflicted` when review is required.
+5. Never write directly to `main`/`master`, force-push, or merge a different
+   agent's work without an explicit review decision and passing gates.
+
+The SQLite coordination database is local by default at `.gula/coordination.sqlite3`
+and should be ignored by Git. For a shared team environment, point
+`GULA_COORDINATION_DB` at a controlled shared path; do not put it in a public
+repository or expose it over an unauthenticated network.
