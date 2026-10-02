@@ -336,3 +336,131 @@ def test_an_unframed_chunk_is_still_reported_as_unframed():
     rejected = _rows(db, "rejected")
     assert len(rejected) == 1
     assert rejected[0]["error_message"].startswith("unframed_chunk")
+
+
+# ── IA-053: a missing key made every endpoint 500 instead of refusing to start ─
+
+
+def test_a_missing_api_key_prevents_startup_rather_than_500ing_each_request():
+    """IA-053 (P2) — DISCOVERED, REPRODUCED, FIXED, VERIFIED.
+
+    Measured before the fix, with LABLINK_API_KEY unset against a real uvicorn
+    process:
+
+        GET /health   -> 200
+        GET /devices  -> 500, with `SystemExit: 1` from verify_api_key in the log
+
+    `verify_api_key` called sys.exit(1) per request. The SystemExit is raised
+    inside the request, where the ASGI stack turns it into a 500: the process
+    survives, every authenticated endpoint 500s, and the healthcheck keeps
+    passing — so the container looks healthy and does nothing. It fails closed,
+    so it was never an authorization hole; it was undiagnosable.
+
+    And that is the *default* for a documented deployment: docker-compose.yml
+    passes `LABLINK_API_KEY: "${LABLINK_API_KEY:-}"`, so
+    `docker compose --profile device-bridge up device-bridge` with nothing set
+    produces exactly this. The key is also absent from .env.example.
+
+    A missing credential is a configuration error, not a request error, and is
+    now detected at import — where the monolith detects its own (config.py
+    hard-fails on missing secrets).
+    """
+    import os
+    import subprocess
+    import sys
+
+    service_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = {k: v for k, v in os.environ.items() if k not in {"LABLINK_API_KEY", "PYTHONPATH"}}
+    completed = subprocess.run(
+        [sys.executable, "-c", "import sys; sys.path.insert(0,'.'); import app.main"],
+        cwd=service_dir,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0, (
+        "the app imported with no API key configured; it will start, pass its "
+        "healthcheck, and answer 500 on every authenticated request"
+    )
+    assert "LABLINK_API_KEY is not set" in completed.stderr
+    assert "MissingApiKeyError" in completed.stderr
+
+
+def test_the_startup_check_names_what_to_do():
+    from app.security.auth import MissingApiKeyError, require_configured_api_key
+
+    import os
+
+    previous = os.environ.pop("LABLINK_API_KEY", None)
+    try:
+        with pytest.raises(MissingApiKeyError) as excinfo:
+            require_configured_api_key()
+        message = str(excinfo.value)
+        assert "LABLINK_API_KEY" in message
+        assert "docker-compose" in message, "the operator is not told where it comes from"
+    finally:
+        if previous is not None:
+            os.environ["LABLINK_API_KEY"] = previous
+
+
+def test_a_whitespace_only_key_is_treated_as_absent():
+    import os
+
+    from app.security.auth import MissingApiKeyError, require_configured_api_key
+
+    previous = os.environ.get("LABLINK_API_KEY")
+    try:
+        os.environ["LABLINK_API_KEY"] = "   "
+        with pytest.raises(MissingApiKeyError):
+            require_configured_api_key()
+    finally:
+        if previous is None:
+            os.environ.pop("LABLINK_API_KEY", None)
+        else:
+            os.environ["LABLINK_API_KEY"] = previous
+
+
+def test_no_request_path_can_terminate_the_interpreter():
+    """The root-cause ratchet: sys.exit in a request handler is the pattern, not
+    just this one call."""
+    import ast
+    import pathlib
+
+    # By AST, not by text: this file's own first draft matched the sentence in
+    # auth.py's docstring that *describes* the removed sys.exit, which is the
+    # same shape as a ratchet passing on a commented-out line.
+    service = pathlib.Path(__file__).resolve().parents[1]
+    offenders = []
+    for path in (service / "app").rglob("*.py"):
+        if "__pycache__" in path.parts:
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            is_sys_exit = (
+                isinstance(func, ast.Attribute)
+                and func.attr == "exit"
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "sys"
+            )
+            if is_sys_exit:
+                offenders.append(f"{path.relative_to(service).as_posix()}:{node.lineno}")
+    assert offenders == [], (
+        f"sys.exit in served code: {offenders}. Inside a request the ASGI stack "
+        "turns SystemExit into a 500, which is a configuration error disguised "
+        "as a server fault."
+    )
+
+
+def test_a_valid_key_still_authenticates():
+    """Positive control."""
+    import os
+
+    from app.security.auth import verify_api_key
+
+    assert verify_api_key(os.environ["LABLINK_API_KEY"]) == os.environ["LABLINK_API_KEY"]
+    with pytest.raises(Exception):
+        verify_api_key("wrong")
+    with pytest.raises(Exception):
+        verify_api_key(None)
