@@ -63,6 +63,18 @@ class ASTMBuffer:
     def append(self, data: bytes) -> None:
         self._buffer.extend(data)
 
+    def discard_pending(self) -> int:
+        """Drop the retained bytes and return how many there were.
+
+        The buffer stays dumb about policy: it reports what it holds and
+        forgets on request, and the pipeline decides when a partial frame has
+        grown past the point of being a partial frame -- and records the
+        discard, because IA-039's invariant is that nothing is lost silently.
+        """
+        discarded = len(self._buffer)
+        self._buffer.clear()
+        return discarded
+
     @property
     def pending_bytes(self) -> int:
         """Bytes retained for continuation after the last extract_frames().

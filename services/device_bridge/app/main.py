@@ -27,6 +27,9 @@ app = FastAPI(title="LabLink Core", version="0.6.0")
 
 GULA_BACKEND_URL_ENV = "GULA_BACKEND_URL"
 
+# IA-052. See app/pipeline/data_pipeline.py for the other two bounds.
+_MAX_CHUNK_CHARS = max(1, int(os.getenv("LABLINK_MAX_CHUNK_CHARS", str(1024 * 1024))))
+
 repository = ResultRepository(InMemoryDB())
 device_manager = DeviceManager()
 alerts = AlertManager()
@@ -59,7 +62,15 @@ Auth = Annotated[str, Depends(verify_api_key)]
 class IngestRequest(BaseModel):
     patient_id: str = Field(min_length=1)
     device_id: str = Field(min_length=1)
-    chunk: str = Field(min_length=1, description="Raw ASTM chunk; may include control chars")
+    # IA-052: no upper bound at all, in a container capped at 256 MB. An ASTM
+    # E1381 frame is at most 247 bytes, so the default here still admits a
+    # four-thousand-frame batch; it is overridable for an operator who needs
+    # more.
+    chunk: str = Field(
+        min_length=1,
+        max_length=_MAX_CHUNK_CHARS,
+        description="Raw ASTM chunk; may include control chars",
+    )
     vendor: str | None = None
     barcode: str | None = None
 

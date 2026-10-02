@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from app.adapters.registry import AdapterRegistry
 from app.core.retry_queue import RetryQueue
@@ -21,6 +22,27 @@ from app.pipeline.test_mapping import TestMappingEngine
 from app.storage.result_repository import LogRepository, ResultRepository
 
 logger = logging.getLogger("lablink.pipeline")
+
+# IA-052. Three unbounded growth paths, all reachable from the authenticated
+# POST /ingest, in a container docker-compose caps at mem_limit: 256m.
+#
+# An ASTM E1381 frame is at most 247 bytes including its overhead; a long
+# message is sent as several frames, not one enormous one. So a partial frame
+# that has grown past tens of kilobytes is not a partial frame any more -- it is
+# a stream that will never produce one, from a truncated serial read, a
+# malfunctioning instrument, or an authenticated client that never sends an ETX.
+# Measured before the cap: 200 chunks of 8 KiB retained 1,638,600 bytes and
+# wrote zero log rows.
+#
+# Both defaults are generous by two orders of magnitude against the protocol's
+# own frame size, and both are overridable so an operator is never stuck.
+_MAX_PENDING_BYTES = max(1, int(os.getenv("LABLINK_MAX_PENDING_BYTES", "65536")))
+
+# One ASTMDeviceSession is held per device_id, and device_id is caller-supplied
+# with only min_length=1. Measured: 1,000 invented ids held 1,000 sessions, each
+# with its own buffer. A bridge serves one lab's instruments, so this bound sits
+# far above any real device count; the least recently used session is evicted.
+_MAX_SESSIONS = max(1, int(os.getenv("LABLINK_MAX_SESSIONS", "256")))
 
 
 class ASTMDeviceSession:
@@ -71,7 +93,7 @@ class DataPipeline:
             return self._process_legacy_chunk(chunk=chunk, patient_id=patient_id, device_id=device_id)
 
         resolved_patient_id = fallback_patient_id or patient_id or "UNKNOWN"
-        session = self.sessions.setdefault(device_id, ASTMDeviceSession())
+        session = self._acquire_session(device_id)
         session.buffer.append(chunk)
         adapter = self.adapter_registry.resolve(vendor)
 
@@ -81,8 +103,32 @@ class DataPipeline:
         # shared counter read after an await could belong to the other request.
         rejections: list[tuple[str, str, str]] = []
 
+        discarded_oversize = False
+        if session.buffer.pending_bytes > _MAX_PENDING_BYTES:
+            # Recorded, never silently dropped: this is the one place the service
+            # deliberately throws bytes away, so it says so. IA-039's invariant
+            # holds -- a loss leaves a record.
+            discarded = session.buffer.discard_pending()
+            logger.warning(
+                "Discarded an over-long partial ASTM frame",
+                extra={"device_id": device_id, "discarded_bytes": discarded},
+            )
+            rejections.append(
+                (
+                    "partial_frame_too_large",
+                    f"{discarded} bytes retained without a complete frame "
+                    f"(limit {_MAX_PENDING_BYTES}); the buffer was cleared",
+                    "",
+                ),
+            )
+            discarded_oversize = True
+
         frames = session.buffer.extract_frames()
-        if not frames and session.buffer.pending_bytes == 0:
+        # `and not discarded_oversize`: the discard above empties the buffer, so
+        # without this the same loss is reported twice -- once truthfully as
+        # partial_frame_too_large and once as unframed_chunk, which would be the
+        # wrong reason for it. One loss, one record.
+        if not frames and session.buffer.pending_bytes == 0 and not discarded_oversize:
             # No frame was assembled and nothing was kept for continuation, so the
             # assembler found no STX and dropped the bytes. An analyzer speaking
             # the wrong protocol at this port lands here, and used to do so without
@@ -227,6 +273,37 @@ class DataPipeline:
             )
 
         return normalized_results
+
+    def _acquire_session(self, device_id: str) -> ASTMDeviceSession:
+        """Return this device's session, holding at most _MAX_SESSIONS of them.
+
+        IA-052: device_id is caller-supplied, so an unbounded dict of sessions,
+        each with its own frame buffer, is reachable from the authenticated
+        endpoint. Eviction is least-recently-used, and a session evicted while
+        holding a partial frame has those bytes discarded -- so it is logged
+        rather than done quietly.
+        """
+        session = self.sessions.get(device_id)
+        if session is not None:
+            # Re-insert so dict order is least-recently-used order.
+            self.sessions[device_id] = self.sessions.pop(device_id)
+            return session
+
+        while len(self.sessions) >= _MAX_SESSIONS:
+            evicted_id, evicted = next(iter(self.sessions.items()))
+            del self.sessions[evicted_id]
+            logger.warning(
+                "Evicted a device session to stay within the session limit",
+                extra={
+                    "device_id": evicted_id,
+                    "limit": _MAX_SESSIONS,
+                    "discarded_bytes": evicted.buffer.pending_bytes,
+                },
+            )
+
+        session = ASTMDeviceSession()
+        self.sessions[device_id] = session
+        return session
 
     def _process_legacy_chunk(self, *, chunk: str, patient_id: str | None, device_id: str) -> list[NormalizedResult]:
         if not isinstance(self.parser, ParserEngine):
