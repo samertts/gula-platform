@@ -1,6 +1,9 @@
+import os
+
 from app.main import app
-from app.security.auth import DEFAULT_API_KEY
 from fastapi.testclient import TestClient
+
+API_KEY = os.environ["LABLINK_API_KEY"]
 
 
 def test_auth_required() -> None:
@@ -11,7 +14,7 @@ def test_auth_required() -> None:
 
 def test_mode_and_sync_endpoints() -> None:
     client = TestClient(app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = {"x-api-key": API_KEY}
 
     response = client.post("/mode", json={"mode": "hybrid"}, headers=headers)
     assert response.status_code == 200

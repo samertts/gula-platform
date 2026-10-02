@@ -44,6 +44,17 @@ class ASTMBuffer:
     def append(self, data: bytes) -> None:
         self._buffer.extend(data)
 
+    @property
+    def pending_bytes(self) -> int:
+        """Bytes retained for continuation after the last extract_frames().
+
+        Read-only. It is what distinguishes "the rest of this frame has not
+        arrived yet" from "these bytes were discarded": extract_frames clears
+        the buffer outright when it finds no STX, and zero frames plus zero
+        pending bytes is the only way to observe that loss from outside.
+        """
+        return len(self._buffer)
+
     def extract_frames(self) -> list[tuple[bytes, str]]:
         """Return (frame_payload_without_stx_etx, checksum_hex) tuples."""
         frames: list[tuple[bytes, str]] = []

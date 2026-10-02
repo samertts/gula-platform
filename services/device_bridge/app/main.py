@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from typing import Annotated, Literal
 
@@ -15,13 +16,15 @@ from app.pipeline.normalizer import NormalizedResult, Normalizer
 from app.pipeline.parser_engine import ASTMParser
 from app.security.auth import verify_api_key
 from app.storage.db import InMemoryDB
-from app.storage.result_repository import ResultRepository
+from app.storage.result_repository import LogRepository, ResultRepository
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="LabLink Core", version="0.6.0")
+
+GULA_BACKEND_URL_ENV = "GULA_BACKEND_URL"
 
 repository = ResultRepository(InMemoryDB())
 device_manager = DeviceManager()
@@ -30,10 +33,23 @@ sync_engine = SyncEngine()
 mode = CommunicationMode.HYBRID
 onboarding_director = DeviceOnboardingDirector()
 
+# docker-compose passes GULA_BACKEND_URL ("http://gula-backend:8000") and the
+# configuration reference documents it as "used by the device bridge to forward
+# results". Nothing read it: the URL was hardcoded to http://gula.local, a host
+# that does not exist on the compose network, so every forward failed on DNS
+# before it could fail on anything else.
+_gula_base_url = os.getenv(GULA_BACKEND_URL_ENV, "").strip() or "http://gula.local"
+
+# result_repo/log_repo: the pipeline writes into the same store the API serves.
+# Left to its defaults it built its own InMemoryDB, so every row it wrote -- the
+# per-chunk log row and, now, every rejection -- went to a store no endpoint
+# reads, and /ingest had to save the results a second time into this one.
 pipeline = DataPipeline(
     parser=ASTMParser(),
     normalizer=Normalizer(),
-    gula_client=GulaClient(base_url="http://gula.local", lab_id="LAB001"),
+    gula_client=GulaClient(base_url=_gula_base_url, lab_id="LAB001"),
+    result_repo=repository,
+    log_repo=LogRepository(repository.db),
 )
 
 Auth = Annotated[str, Depends(verify_api_key)]
@@ -325,7 +341,8 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
             error_message="",
         )
 
-    repository.save_results(results)
+    # No repository.save_results here: the pipeline now writes into this same
+    # store, so saving again would duplicate every result row.
     return IngestResponse(status="ok", processed=len(results), results=results)
 
 
