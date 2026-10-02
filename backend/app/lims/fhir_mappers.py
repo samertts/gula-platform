@@ -211,17 +211,78 @@ def _map_report_status(status: str) -> str:
 # ── Order → FHIR ServiceRequest ──────────────────────────────────────
 
 
-def order_to_fhir_service_request(order) -> dict:
-    """Map LIMS Order to FHIR R4 ServiceRequest resource."""
+def _map_order_status(status: str | None) -> str:
+    """Map a LIMS order state onto FHIR ServiceRequest.status.
+
+    The source vocabulary is ``lims/state_machine._ORDER_TRANSITIONS``, which is
+    authoritative for this column; the twelve states below are its keys. They are
+    mapped onto FHIR's own codes rather than an invented set:
+
+      in flight, still to be acted upon            -> "active"
+      the requested service was performed          -> "completed"
+      withdrawn ("cancelled" is not a code here)   -> "revoked"
+
+    An unrecognised state resolves to "unknown" — FHIR's own code for "the source
+    system does not know which status applies" — and deliberately not to
+    "active". "active" asserts the request is in force and ready to be acted
+    upon, so defaulting to it would invite a consumer to act on a request that
+    may have been withdrawn. That is the unsafe direction here, exactly as
+    claiming "final" was for an Observation.
+    """
+    mapping = {
+        "pending": "active",
+        "accessioned": "active",
+        "collecting": "active",
+        "collected": "active",
+        "in_transport": "active",
+        "received": "active",
+        "in_progress": "active",
+        "completed": "completed",
+        "validated": "completed",
+        "released": "completed",
+        "corrected": "completed",
+        "cancelled": "revoked",
+    }
+    return mapping.get((status or "").strip().casefold(), "unknown")
+
+
+def order_to_fhir_service_request(order, *, patient_id: int | None) -> dict:
+    """Map LIMS Order to FHIR R4 ServiceRequest resource.
+
+    ``patient_id`` is keyword-only with no default on purpose. It used to be
+    absent and the subject was built as ``Patient/{order.order_id}`` — but
+    ``lims_orders.order_id`` is a foreign key to ``lab_orders.id``, not a
+    patient, so every ServiceRequest named a Patient resource by an *order*
+    primary key. Measured on PostgreSQL: six requests for patient 22 published
+    ``subject: Patient/36`` through ``Patient/41``. Where the two id ranges
+    overlap that resolves to a different real person, attributing a laboratory
+    request to the wrong patient. ``result_to_fhir`` in this same module already
+    reaches the patient correctly through ``specimen.order.patient_id``, and 18
+    of the 19 Patient references in the codebase use a patient id — this was the
+    single outlier.
+
+    No default is the control: a call site that forgets the argument fails
+    loudly rather than silently publishing a wrong-patient reference.
+    """
+    if patient_id is None:
+        # ServiceRequest.subject is 1..1, so there is no honest resource to build
+        # without it — and an order-derived or fabricated reference is precisely
+        # what this signature exists to prevent. lims_orders.order_id is NOT NULL
+        # with ON DELETE CASCADE, so the parent order and its patient always
+        # exist; reaching here means a caller did not resolve them.
+        raise ValueError(
+            f"cannot build ServiceRequest for LIMS order {order.id}: the patient "
+            "could not be resolved, and a Patient reference must not be guessed",
+        )
     resource: dict[str, Any] = {
         "resourceType": "ServiceRequest",
         "id": order.fhir_id or f"lims-sr-{order.id}",
-        "status": "active",
+        "status": _map_order_status(order.order_status),
         "intent": "order",
         "code": _fhir_codeable_concept(
             [_fhir_coding("http://gula.iq/CodeSystem/accession-number", order.accession_number)],
         ),
-        "subject": _fhir_reference(f"Patient/{order.order_id}"),
+        "subject": _fhir_reference(f"Patient/{patient_id}"),
     }
 
     if order.priority == "urgent":

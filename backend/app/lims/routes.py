@@ -946,7 +946,20 @@ def order_fhir(
     ).first()
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
-    return order_to_fhir_service_request(lims_order)
+    # lims_orders.order_id is a foreign key to lab_orders.id, not a patient, so
+    # the subject must be resolved through the parent order. The same tenant
+    # predicate is applied here, so this cannot reach another laboratory's order.
+    patient_id = (
+        db.query(LabOrder.patient_id)
+        .filter(
+            LabOrder.id == lims_order.order_id,
+            LabOrder.lab_id == _lab_id(current_user),
+        )
+        .scalar()
+    )
+    if patient_id is None:
+        raise HTTPException(404, detail="LIMS order not found")
+    return order_to_fhir_service_request(lims_order, patient_id=patient_id)
 
 
 @router.get(
@@ -975,7 +988,20 @@ def order_fhir_bundle(
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
 
-    service_request = order_to_fhir_service_request(lims_order)
+    # The patient is resolved so the mapper's invariant holds, then the subject
+    # is dropped: this endpoint deliberately does not expand patient identity
+    # (see the docstring), which is why the wrong reference was never published
+    # on this path even before it was corrected.
+    bundle_patient_id = (
+        db.query(LabOrder.patient_id)
+        .filter(LabOrder.id == lims_order.order_id, LabOrder.lab_id == lab_id)
+        .scalar()
+    )
+    if bundle_patient_id is None:
+        raise HTTPException(404, detail="LIMS order not found")
+    service_request = order_to_fhir_service_request(
+        lims_order, patient_id=bundle_patient_id,
+    )
     service_request.pop("subject", None)
     resources = [service_request]
     specimens = db.query(lims_models.Specimen).filter(
