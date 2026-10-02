@@ -76,3 +76,118 @@ def test_matches_code(test_name: str | None, query: str) -> bool:
     if mapped and candidate == mapped.code:
         return True
     return candidate.casefold() in normalize_lab_test_name(test_name)
+
+
+# ── Observation.status ───────────────────────────────────────────────────────
+#
+# `Observation.status` is required and carries clinical weight: a consumer is
+# entitled to act on "final". GULA tracks verification on the *order* — a doctor
+# or admin verifying a result sets `lab_orders.status = "validated"` and locks
+# the row — so the order's state is what decides this, and the builder already
+# holds the order.
+#
+# Mapped onto FHIR's own vocabulary rather than an invented one:
+#   pending / completed  results exist but no clinician has verified them
+#                        -> "preliminary" ("initial or interim ... unverified")
+#   validated            verified and locked          -> "final"
+#   cancelled            the order was withdrawn      -> "cancelled"
+#
+# Anything unrecognised resolves to "preliminary", never "final": claiming a
+# result is final is the one direction in which being wrong is unsafe.
+_OBSERVATION_STATUS_BY_ORDER_STATUS: dict[str, str] = {
+    "pending": "preliminary",
+    "completed": "preliminary",
+    "validated": "final",
+    "cancelled": "cancelled",
+}
+
+_FALLBACK_OBSERVATION_STATUS = "preliminary"
+
+
+def observation_status(order_status: str | None) -> str:
+    """Return the FHIR Observation.status for a GULA order state."""
+    return _OBSERVATION_STATUS_BY_ORDER_STATUS.get(
+        (order_status or "").strip().casefold(),
+        _FALLBACK_OBSERVATION_STATUS,
+    )
+
+
+# ── Observation.interpretation ───────────────────────────────────────────────
+
+_INTERPRETATION_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+
+# The codes this system actually defines, with their official displays. GULA's
+# internal flag vocabulary ("critical", "normal", "unknown") is not this
+# vocabulary, and emitting an internal value under this system's URI publishes a
+# code that does not exist in it.
+_INTERPRETATION_DISPLAYS: dict[str, str] = {
+    "H": "High",
+    "L": "Low",
+    "N": "Normal",
+    "HH": "Critical high",
+    "LL": "Critical low",
+    "AA": "Critical abnormal",
+}
+
+
+def interpretation_code(
+    flag: str | None,
+    value: float | None = None,
+    normal_low: float | None = None,
+    normal_high: float | None = None,
+) -> str | None:
+    """Return a v3-ObservationInterpretation code, or None when there is none.
+
+    "H" and "L" are already codes in this system. "normal" is "N". "critical"
+    has no single code because the system distinguishes direction, so direction
+    is read off the data that is already present — a value at or below the lower
+    reference bound is critically low, at or above the upper bound critically
+    high — and falls back to "AA" (Critical abnormal) when no bound is available
+    to decide. That is the system's own code for a critical result of
+    unstated direction; it is not a guess about the clinical meaning.
+
+    GULA's "unknown" flag means the platform could not classify the result.
+    There is no interpretation code for that, so this returns None and the
+    caller omits the element. An absent optional element is honest; a fabricated
+    code is not.
+    """
+    normalized = (flag or "").strip()
+    if not normalized:
+        return None
+    upper = normalized.upper()
+    if upper in ("H", "L"):
+        return upper
+    lowered = normalized.casefold()
+    if lowered == "normal":
+        return "N"
+    if lowered == "critical":
+        if value is not None:
+            if normal_low is not None and value <= normal_low:
+                return "LL"
+            if normal_high is not None and value >= normal_high:
+                return "HH"
+        return "AA"
+    # "unknown", or any flag this function does not recognise.
+    return None
+
+
+def interpretation_concept(
+    flag: str | None,
+    value: float | None = None,
+    normal_low: float | None = None,
+    normal_high: float | None = None,
+) -> dict | None:
+    """Build the Observation.interpretation CodeableConcept, or None."""
+    code = interpretation_code(flag, value, normal_low, normal_high)
+    if code is None:
+        return None
+    return {
+        "coding": [
+            {
+                "system": _INTERPRETATION_SYSTEM,
+                "code": code,
+                "display": _INTERPRETATION_DISPLAYS[code],
+            },
+        ],
+        "text": flag,
+    }

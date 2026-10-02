@@ -28,7 +28,12 @@ from ..ehr.models import (
     MedicationRequest,
     MedicationStatement,
 )
-from ..fhir.terminology import observation_code, test_matches_code
+from ..fhir.terminology import (
+    interpretation_concept,
+    observation_code,
+    observation_status,
+    test_matches_code,
+)
 from ..models.audit_log import AuditLog
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
@@ -378,10 +383,12 @@ def fhir_read_observation(
         .first()
     )
     if not order:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied: observation does not belong to your laboratory",
-        )
+        # 404, not 403. A 403 here distinguished "this id does not exist" from
+        # "it exists but belongs to another laboratory", which is a cross-tenant
+        # existence oracle: iterating ids reveals another lab's result count and
+        # id range. Every sibling FHIR read route in this module already answers
+        # 404 for both cases; Observation was the only one that did not.
+        raise HTTPException(status_code=404, detail="Observation not found")
     return _lab_result_to_observation(result, order)
 
 
@@ -389,7 +396,11 @@ def _lab_result_to_observation(result: LabResult, order: LabOrder) -> dict:
     obs: dict[str, Any] = {
         "resourceType": "Observation",
         "id": str(result.id),
-        "status": "final",
+        # Verification lives on the order: a doctor or admin verifying a result
+        # sets lab_orders.status = "validated" and locks the row. Reporting every
+        # result as "final" told a consumer that an unverified result — and a
+        # result whose order had been *cancelled* — was clinician-validated.
+        "status": observation_status(order.status),
         "code": observation_code(result.test_name),
         "subject": {"reference": f"Patient/{order.patient_id}", "type": "Patient"},
         "effectiveDateTime": _fmt_fhir_datetime(order.created_at),
@@ -409,12 +420,22 @@ def _lab_result_to_observation(result: LabResult, order: LabOrder) -> dict:
         if result.normal_range_high is not None:
             ref["high"] = {"value": result.normal_range_high}
         obs["referenceRange"] = [ref]
-    if result.flag:
-        obs["interpretation"] = [
-            _codeable_concept(result.flag, result.flag, "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"),
-        ]
+    # GULA's flag vocabulary is not v3-ObservationInterpretation's: "critical",
+    # "normal" and "unknown" are not codes in that system, and publishing them
+    # under its URI asserted codes that do not exist. The internal value is kept
+    # as `text` so nothing is lost. See fhir/terminology.interpretation_concept.
+    interpretation = interpretation_concept(
+        result.flag,
+        result.value,
+        result.normal_range_low,
+        result.normal_range_high,
+    )
+    if interpretation is not None:
+        obs["interpretation"] = [interpretation]
     obs["meta"] = {
-        "versionId": "1",
+        # lab_results.version is the optimistic-lock counter, incremented on
+        # every mutation, so an amended result is no longer published as v1.
+        "versionId": str(result.version if result.version is not None else 1),
         "lastUpdated": _fmt_fhir_datetime(result.created_at),
     }
     return obs
