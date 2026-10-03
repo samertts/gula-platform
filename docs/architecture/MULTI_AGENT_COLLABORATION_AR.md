@@ -42,6 +42,12 @@ python -m tools.ai_coordination.cli message send \
 
 python -m tools.ai_coordination.cli message receive --agent-id claude-b
 python -m tools.ai_coordination.cli status
+
+# سجل التدقيق بصيغة JSON
+python -m tools.ai_coordination.cli audit --limit 100
+
+# مراقبة الحالة والأحداث كل ثانيتين؛ أوقفها بـ Ctrl-C
+python -m tools.ai_coordination.cli watch --interval 2
 ```
 
 ## حدود مهمة
@@ -53,3 +59,5 @@ python -m tools.ai_coordination.cli status
 اختبارات `tests/test_ai_coordination.py` تثبت claims المتنافسة، منع تعارض الملفات، الرسائل ذات القراءة مرة واحدة، ومنع الفروع المحمية. الاختبارات تستخدم SQLite مؤقتاً ولا تتصل بالشبكة ولا بأي حساب Claude.
 
 أضيفت لها بوابة CI مستقلة باسم `AI Coordination Tests` وتقرير JUnit، حتى لا تعتمد سلامة بروتوكول التعاون على نجاح اختبارات المجال السريري وحدها.
+
+يكتب `audit` الأحداث غير القابلة للتعديل في جدول `events`، بينما يعرض `watch` الحالة والنوايا النشطة والأحداث الجديدة عبر polling. هذه مراقبة لحظية عملية وليست WebSocket؛ لا توجد حالياً خدمة MCP/HTTP أو منفذ شبكة مفتوح. استخدم `GULA_COORDINATION_DB` نفسه لدى جميع الوكلاء كي يروا الحالة ذاتها.

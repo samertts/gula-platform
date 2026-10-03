@@ -231,6 +231,26 @@ class AgentCoordinator:
             active = db.execute("SELECT intent_id, task_id, agent_id, paths_json, operation, base_commit FROM intents WHERE status = 'active' ORDER BY created_at").fetchall()
         return {"counts": counts, "active_intents": [{"intent_id": r[0], "task_id": r[1], "agent_id": r[2], "paths": json.loads(r[3]), "operation": r[4], "base_commit": r[5]} for r in active]}
 
+    def audit_events(self, limit: int = 100, after: float = 0.0) -> list[dict[str, Any]]:
+        """Return append-only coordination events after a timestamp."""
+        bounded = max(1, min(limit, 500))
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT event_id, event_type, actor_id, payload_json, created_at "
+                "FROM events WHERE created_at > ? ORDER BY created_at, event_id LIMIT ?",
+                (after, bounded),
+            ).fetchall()
+        return [
+            {
+                "event_id": row["event_id"],
+                "event_type": row["event_type"],
+                "actor_id": row["actor_id"],
+                "payload": json.loads(row["payload_json"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
 
 def git_context() -> tuple[str, str]:
     def run(*args: str) -> str:

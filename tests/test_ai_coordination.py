@@ -52,6 +52,15 @@ def test_messages_are_shared_and_marked_read(tmp_path) -> None:
     assert coordinator.receive_messages("claude-b") == []
 
 
+def test_audit_events_are_queryable_after_timestamp(tmp_path) -> None:
+    coordinator = AgentCoordinator(tmp_path / "coord.sqlite3")
+    coordinator.register_agent(_agent("claude-a", "work/claude-a"))
+    events = coordinator.audit_events()
+    assert events[-1]["event_type"] == "agent_registered"
+    assert events[-1]["actor_id"] == "claude-a"
+    assert coordinator.audit_events(after=events[-1]["created_at"]) == []
+
+
 def test_protected_branches_are_rejected(tmp_path) -> None:
     coordinator = AgentCoordinator(tmp_path / "coord.sqlite3")
     with pytest.raises(Exception, match="protected branch"):

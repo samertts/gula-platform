@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import uuid
 
 from .coordination import AgentCoordinator, AgentIdentity, CoordinationError, git_context
@@ -69,6 +70,12 @@ def main(argv: list[str] | None = None) -> int:
     receive.add_argument("--limit", type=int, default=50)
 
     sub.add_parser("status")
+    audit = sub.add_parser("audit")
+    audit.add_argument("--limit", type=int, default=100)
+    audit.add_argument("--after", type=float, default=0.0)
+    watch = sub.add_parser("watch")
+    watch.add_argument("--interval", type=float, default=2.0)
+    watch.add_argument("--once", action="store_true")
     args = parser.parse_args(argv)
     coordinator = _coordinator(args)
     try:
@@ -98,6 +105,18 @@ def main(argv: list[str] | None = None) -> int:
                 _json({"message_id": coordinator.send_message(args.sender_id, body, args.recipient_id, args.kind)})
             else:
                 _json(coordinator.receive_messages(args.agent_id, args.limit))
+        elif args.command == "audit":
+            _json(coordinator.audit_events(args.limit, args.after))
+        elif args.command == "watch":
+            cursor = 0.0
+            while True:
+                events = coordinator.audit_events(100, cursor)
+                _json({"status": coordinator.status(), "events": events})
+                if events:
+                    cursor = events[-1]["created_at"]
+                if args.once:
+                    break
+                time.sleep(max(0.5, args.interval))
         else:
             _json(coordinator.status())
         return 0
