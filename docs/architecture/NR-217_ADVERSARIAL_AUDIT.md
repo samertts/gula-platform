@@ -179,6 +179,73 @@ shape, which CLAUDE.md puts behind human approval. **DECISION GATE.**
 
 ---
 
+## IA-062 — two result stores, one laboratory event, no correlation
+
+**Severity** P1 · **Confidence** CONFIRMED, runtime-reproduced · **Reachability** both halves served
+
+Runtime proof `backend/tests/verification/test_dual_result_store_divergence.py`.
+Negative proof NP-J (add a `lab_result_id` FK → the correlation test fails), restored byte-identically.
+
+One `lab_orders` row, one analyte, a row written to each store. Both persist:
+
+```
+[dual] order=1  core=5.4  lims=9.9  -- both persisted
+```
+
+Divergent values for the same order and test are accepted by both stores, and
+nothing detects it.
+
+### Correlation: none
+
+| Probe | Result |
+|---|---|
+| column in `lab_results` pointing at `lims_results` | none |
+| column in `lims_results` pointing at `lab_results` | none |
+| FK either direction | none |
+| `lab_results` FK targets | `lab_orders.id`, `test_types.id` |
+| `lims_results` FK targets | `lab_orders.id`, `labs.id`, `lab_users.id`, `lims_specimens.id`, `lims_instruments.id` |
+| shared anchor | **`lab_orders.id` only** |
+
+### What the LIMS constraint does and does not protect
+
+`ix_lims_result_specimen` on `(specimen_id, test_code)` is unique and **works**:
+a second LIMS result for the same specimen and test is refused with
+`IntegrityError`. It is scoped to LIMS-owned columns, so it cannot see the core
+store and cannot deduplicate across it. The protection is real and the gap is
+precise.
+
+### Tenancy models differ
+
+```
+lab_results   has lab_id: False   -- tenancy is transitive via order_id -> lab_orders.lab_id
+lims_results  has lab_id: True    -- carries its own tenant column
+```
+
+`lab_results` NOT NULL columns: `id`, `order_id`, `test_name`, `token`, `version`.
+A core-store query that omits the join to `lab_orders` has no tenant column to
+filter on at all; the LIMS store cannot make that mistake. Recorded as an
+asymmetry in the isolation model, not raised as a separate finding — core
+tenant filtering is covered elsewhere.
+
+### Served FHIR consequence
+
+```
+/fhir/Observation/1       id='1'           subject={'reference': 'Patient/1', 'type': 'Patient'}
+/lims/results/1/fhir      id='lims-obs-1'  subject={'reference': 'unknown',   'display': ''}
+```
+
+Disjoint id namespaces, so no resource-id collision — and no way for a consumer
+federating both to tell that the two Observations describe one physical
+laboratory event. **This is not a security leak:** both endpoints are
+authenticated and tenant-scoped, cross-tenant reads return 404, and no
+unauthorised data is reachable. It is a clinical-integrity and
+interoperability defect.
+
+**DECISION GATE.** A correlation identity between the stores is an
+architectural decision (which store is authoritative, and whether a projection
+or a shared identity is introduced). No mapping was invented and no migration
+created.
+
 ## Security findings — `/lims` ingress
 
 Negative result, stated as a bounded measurement rather than a clean bill:
@@ -186,11 +253,13 @@ Negative result, stated as a bounded measurement rather than a clean bill:
 | Control | `/lims/orders/{id}/fhir-bundle` | `/lims/results/{id}/fhir` |
 |---|---|---|
 | Authentication | `require_permission("orders:read")` | `Depends(get_current_user)` |
-| Tenant isolation | `Order.lab_id == lab_id` **and** the LabOrder lookup filters `lab_id` | `Result.lab_id == _lab_id(current_user)` |
+| Unauthenticated | — | **401 measured** |
+| Tenant isolation | `Order.lab_id == lab_id` **and** the LabOrder lookup filters `lab_id` | `Result.lab_id == _lab_id(current_user)` — **404 measured** for another tenant |
+| Existence oracle | — | none: cross-tenant and missing-id are both 404 |
 | Audit | `log_action("export", ...)` then commit | none |
 | PHI expansion | subject deliberately dropped, documented | subject present but references nothing |
 
-Both are tenant-scoped. The read path carries no audit row, which is a
+Both are tenant-scoped, now measured over HTTP rather than read from source. The read path carries no audit row, which is a
 weaker control than the bundle beside it; not raised as a separate finding
 because CLAUDE.md's audit invariant is written for mutations.
 
