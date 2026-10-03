@@ -127,3 +127,55 @@ def test_group_b_repositories_really_use_the_async_protocol_on_it():
         f"the async-with-sync-sessionmaker sites are gone: {counts} -- re-run the runtime probe"
     )
     print(f"\nasync-with-SessionLocal sites: {counts}")
+
+
+# ── IA-058: the platform registry's "workflow" capability ────────────────────
+#
+# app/platform/workflow.py is documented as "Standardized workflow module --
+# wraps national/workflow_runtime" and registers itself as the PlatformRegistry
+# capability "workflow". Its start()/cancel()/get_status() each do
+# `WorkflowRuntimeService()` with no arguments, while the router's own
+# _get_service() passes eight repositories. The eight are required positional
+# parameters, so the capability raises on first call -- a third failure mode,
+# distinct from Group A's missing table and Group B's async-on-sync session.
+#
+# app/platform/workflow.py has no importers of its own; it is reached through
+# the registry, which is why nothing in the suite exercises it.
+
+
+def test_the_platform_workflow_capability_raises_on_first_call():
+    from app.platform.workflow import WorkflowService
+
+    with pytest.raises(TypeError) as excinfo:
+        WorkflowService().start("demo", {"a": 1}, created_by="probe")
+
+    message = str(excinfo.value)
+    assert "missing 8 required positional arguments" in message, message
+    assert "definition_repo" in message
+
+
+def test_the_capability_is_registered_despite_that():
+    """Registered, advertised, and dead -- all three at once."""
+    from app.platform import PlatformRegistry
+    from app.platform.workflow import WorkflowService
+
+    assert isinstance(PlatformRegistry.get("workflow"), WorkflowService)
+
+
+def test_the_router_and_the_wrapper_disagree_on_the_constructor():
+    """The router passes eight repositories; the wrapper passes none."""
+    import inspect
+
+    from app.national.workflow_runtime import WorkflowRuntimeService
+
+    required = [
+        name
+        for name, param in inspect.signature(WorkflowRuntimeService.__init__).parameters.items()
+        if name != "self" and param.default is inspect.Parameter.empty
+    ]
+    assert len(required) == 8, required
+    import app.platform.workflow as wrapper
+
+    assert "WorkflowRuntimeService()" in inspect.getsource(wrapper), (
+        "the wrapper no longer constructs it argument-less; re-measure"
+    )
