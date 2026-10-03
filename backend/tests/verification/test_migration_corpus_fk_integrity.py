@@ -65,7 +65,6 @@ VERSIONS = pathlib.Path(__file__).resolve().parents[2] / "migrations" / "version
 #: either is a schema change behind human approval. Repairing one passes.
 KNOWN_MISSING_TARGETS = frozenset({
     "hospital_operation_theaters",   # 20260820_0004, ORM app/hospital/models/__init__.py:172
-    "national_facilities",           # 20260813_0004, entangled with NR-006
 })
 
 #: Type families PostgreSQL refuses to compare across a foreign key.
@@ -86,8 +85,33 @@ def _callee(node: ast.AST) -> str | None:
     return None
 
 
-def _str_const(node: ast.AST) -> str | None:
-    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+def _str_const(node: ast.AST, consts: dict[str, str] | None = None) -> str | None:
+    """A table name, whether written inline or held in a module constant.
+
+    The constant form is a real false negative this guard had: the first
+    version matched only ast.Constant, so
+    ``op.create_table(_NATIONAL_FACILITIES, ...)`` in 20260813_0004 was
+    invisible and national_facilities was reported as a table no migration
+    creates. It is created, immediately before the foreign key that needs it.
+    Nine create_table sites in the corpus take a non-literal first argument.
+    """
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if consts is not None and isinstance(node, ast.Name):
+        return consts.get(node.id)
+    return None
+
+
+def _module_constants(tree: ast.Module) -> dict[str, str]:
+    """Module-level ``NAME = "string"`` assignments."""
+    found: dict[str, str] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant):
+            if isinstance(node.value.value, str):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        found[target.id] = node.value.value
+    return found
 
 
 @pytest.fixture(scope="module")
@@ -103,6 +127,7 @@ def corpus():
     for path in files:
         source = path.read_text(errors="replace")
         tree = ast.parse(source)
+        consts = _module_constants(tree)
 
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
@@ -110,7 +135,7 @@ def corpus():
             kind = _callee(node)
 
             if kind in ("create_table", "_create_if_missing") and node.args:
-                table = _str_const(node.args[0])
+                table = _str_const(node.args[0], consts)
                 if table is None:
                     continue
                 created.add(table)
@@ -153,12 +178,13 @@ def corpus():
     typed_fks: list[tuple[str, str, str, str, str, int]] = []
     for path in files:
         tree = ast.parse(path.read_text(errors="replace"))
+        consts = _module_constants(tree)
         for node in ast.walk(tree):
             if not (isinstance(node, ast.Call) and _callee(node) in ("create_table", "_create_if_missing")):
                 continue
             if not node.args:
                 continue
-            table = _str_const(node.args[0])
+            table = _str_const(node.args[0], consts)
             if table is None:
                 continue
             candidates = list(node.args[1:])
@@ -243,3 +269,19 @@ def test_every_foreign_key_type_matches_the_column_it_points_at(corpus):
         "a foreign key is declared in a type family PostgreSQL refuses to compare "
         "with its target, which aborts `alembic upgrade head`: " + "; ".join(mismatches)
     )
+
+
+def test_a_table_created_through_a_module_constant_is_seen(corpus):
+    """The false negative this guard shipped with, pinned so it cannot return.
+
+    20260813_0004 creates national_facilities as
+    ``op.create_table(_NATIONAL_FACILITIES, ...)``. A scanner that matches only
+    string literals reports it missing -- which is exactly what the first
+    version of this file did, and what the previous audit cycle published.
+    """
+    assert "national_facilities" in corpus["created"], (
+        "module-constant table names are invisible again; the scan would "
+        "report national_facilities as uncreated, which is false"
+    )
+    assert "clinical_ehr_facility_bindings" in corpus["created"]
+    assert "niam_legacy_account_links" in corpus["created"]
