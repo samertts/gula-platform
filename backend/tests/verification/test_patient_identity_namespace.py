@@ -286,3 +286,83 @@ def test_ia067_explains_the_ehr_medication_addressing(client, db, make_lab, make
     assert "CHAR" in str(pid.type).upper(), pid.type
     print(f"\n[IA-067] ehr_medication_statements.patient_id {pid.type} -> {sorted(targets)}; "
           f"a core patients.id integer cannot address it")
+
+
+def _migrated_table_names() -> set[str]:
+    """Tables a migration creates, resolving module constants.
+
+    The constant form matters: an earlier cycle reported national_facilities as
+    uncreated because the scan matched only string literals, when
+    20260813_0004 creates it as `op.create_table(_NATIONAL_FACILITIES, ...)`.
+    """
+    import ast
+    import pathlib
+
+    versions = pathlib.Path(__file__).resolve().parents[2] / "migrations" / "versions"
+    created: set[str] = set()
+    for path in versions.glob("*.py"):
+        tree = ast.parse(path.read_text(errors="replace"))
+        consts = {
+            target.id: node.value.value
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and node.args):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name not in ("create_table", "_create_if_missing"):
+                continue
+            arg = node.args[0]
+            value = arg.value if isinstance(arg, ast.Constant) else consts.get(getattr(arg, "id", None))
+            if isinstance(value, str):
+                created.add(value)
+    return created
+
+
+def test_the_migration_scan_is_not_inert():
+    """Positive control. A scan that finds nothing would make the next test pass
+    vacuously, which is how a broken measurement looks like a clean result."""
+    created = _migrated_table_names()
+    assert len(created) > 400, len(created)
+    assert "patients" in created, "the core patient table IS migrated"
+    assert "lab_orders" in created
+    # the constant-resolution path must be live, or this scan under-reports
+    assert "national_facilities" in created, (
+        "module-constant table names are invisible again -- the scan under-reports"
+    )
+
+
+def test_ia068_domain_b_has_almost_no_physical_schema():
+    """IA-068. The identity 66 tables depend on is created by no migration.
+
+    This decides IA-067's severity. Domain A is largely migrated; domain B is
+    almost entirely schema-latent, starting with the identity table itself.
+
+        national_patients created by a migration:  False
+        domain B: 66 tables ->  62 without a migration
+        domain A: 35 tables ->  11 without a migration (all dp_* / ins_*)
+    """
+    created = _migrated_table_names()
+    assert "national_patients" not in created, (
+        "national_patients now has a migration -- re-measure IA-067 and IA-068"
+    )
+
+    tables = _all_tables()
+    domain_b = [
+        name for name, table in tables.items()
+        if any(
+            fk.target_fullname.startswith("national_patients.")
+            for c in table.c for fk in c.foreign_keys
+        )
+    ]
+    missing_b = [n for n in domain_b if n not in created]
+    print(f"\n[IA-068] national_patients migrated=False; "
+          f"domain B {len(domain_b)} tables, {len(missing_b)} without a migration")
+    assert len(domain_b) > 50, len(domain_b)
+    assert len(missing_b) >= 60, (len(missing_b), sorted(missing_b)[:5])
