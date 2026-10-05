@@ -202,6 +202,47 @@ def test_4_tenant_b_cannot_read_tenant_a_result(client, seeded):
     assert "not found" in cross.text.lower()
 
 
+def test_4c_a_result_pointing_at_another_tenants_order_names_no_patient(client, db, seeded):
+    """Why the patient resolution repeats the lab_id filter.
+
+    The route already filters ``Result.lab_id == lab_id``, so tenant B cannot
+    reach tenant A's result at all (test_4). This covers the case that filter
+    does not: a result that is legitimately tenant A's, whose ``order_id``
+    points at tenant B's order. Nothing in the API can create that row, but
+    inconsistent data and bugs elsewhere can, and without the second filter the
+    route would resolve -- and publish -- tenant B's patient to tenant A.
+
+    Found by negative proof: removing ``LabOrder.lab_id == lab_id`` failed only
+    the source-level ratchet, which meant the behaviour was unpinned.
+    """
+    from app.lims.models import Result
+
+    a, b = seeded["a"], seeded["b"]
+    crossed = Result(
+        lab_id=a["lab"].id,              # tenant A's row ...
+        specimen_id=a["specimen"].id,
+        order_id=b["order"].id,          # ... pointing at tenant B's order
+        test_code="K",
+        test_name="Potassium",
+        value_numeric=4.1,
+        unit="mmol/L",
+    )
+    db.add(crossed)
+    try:
+        db.flush()
+    except Exception as exc:
+        print(f"\n[4c] the database refused the crossed row: {type(exc).__name__}")
+        pytest.skip("cross-tenant order reference not constructible here")
+
+    response = client.get(f"/lims/results/{crossed.id}/fhir", headers=a["headers"])
+    print(f"\n[4c] A's result -> B's order: {response.status_code} {response.text[:90]}")
+
+    assert response.status_code == 404, response.text
+    # the thing that must never appear: tenant B's patient, published to tenant A
+    assert f"Patient/{b['patient'].id}" not in response.text
+    assert str(b["patient"].id) not in str(response.json().get("subject", ""))
+
+
 def test_4b_unauthenticated_is_refused(client, seeded):
     a = seeded["a"]
     response = client.get(f"/lims/results/{a['result'].id}/fhir")

@@ -1,9 +1,10 @@
 # IA-061 — Adversarial Proof: the LIMS Observation names no patient
 
 **Severity** P1 · **Confidence** CONFIRMED · **Reachability** served, authenticated, tenant-scoped
-**Runtime proof** `backend/tests/verification/test_lims_result_fhir_http.py` (7 scenarios, HTTP)
-**Negative proof** NP-I, restored byte-identically (sha256)
-**Fix status** NOT APPLIED — decision gate below
+**Runtime proof** `backend/tests/verification/test_lims_result_fhir_http.py` (8 scenarios, HTTP)
+**Negative proof** NP-I (defect), NP-P/NP-Q/NP-R (repair), each restored byte-identically (sha256)
+**Fix status** FIXED — `472cdfc4`, local commit on `claude/independent-audit-1`, not pushed
+**Verification** VERIFIED on the served route; see "The repair, as applied" below
 
 ---
 
@@ -123,9 +124,75 @@ Two mechanically obvious repairs:
 (2) matches the established precedent and carries the fail-loud control. It
 also changes a served FHIR response shape — `subject` becomes a real Patient
 reference where clients currently receive `"unknown"` — which CLAUDE.md puts
-behind human approval, and the brief for this cycle forbids changing FHIR
-subject semantics. **Recommended, not applied.**
+behind human approval.
 
-Prepared but withheld: the route-side resolution already exists verbatim at
-`routes.py:952-958` and can be lifted into `result_fhir` without inventing
-anything.
+**Gate resolved.** The user granted authority to apply fixes
+("انا امنحك كافة الصلاحيات", 2026-10-05). Option (2) was applied; option (1)
+was not, and a test now pins `Specimen.order` as absent so the shortcut cannot
+be taken later by accident.
+
+---
+
+## The repair, as applied — `472cdfc4`
+
+`result_to_fhir(result, *, patient_id: int | None)`. Keyword-only, no default.
+`patient_id is None` raises `ValueError`; the `hasattr`/`"unknown"` expression
+is deleted. The stale claim in `order_to_fhir_service_request`'s docstring —
+that `result_to_fhir` "already reaches the patient correctly through
+`specimen.order.patient_id`" — is corrected in place rather than left behind.
+
+Two call sites:
+
+| Site | Resolution | Note |
+|------|-----------|------|
+| `routes.py::result_fhir` | `LabOrder.patient_id` where `LabOrder.id == result.order_id` **and** `LabOrder.lab_id == lab_id` | 404 when unresolvable |
+| `routes.py::order_fhir_bundle` | passes the already-resolved `bundle_patient_id`, then pops `subject` | keeps the documented privacy omission; passes the real id rather than a placeholder |
+
+### Measured, served behaviour after the repair
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| normal result, valid order | 200, `subject.reference = "unknown"` | 200, `subject.reference = "Patient/5"` |
+| result whose parent order row is absent | 200, `"unknown"` | **404** |
+| tenant B reads tenant A's result | 404 | 404 (unchanged) |
+| A's result pointing at B's order | 200, `"unknown"` | **404** |
+| unauthenticated | 401 | 401 (unchanged) |
+| bundle | `subject` absent on all 3 entries | `subject` absent on all 3 entries (unchanged, by design) |
+
+### Negative proofs
+
+| ID | Perturbation | Named test that failed | Restored |
+|----|-------------|------------------------|----------|
+| NP-P | restore the `hasattr`/`"unknown"` expression **and** delete the `None` guard | 7 tests, incl. `test_no_silent_fallback_remains_in_the_mapper_body` and `test_1_2_7_..._names_its_patient` | sha256 OK |
+| NP-Q | `patient_id: int \| None = None` (add a default) | `test_patient_id_is_keyword_only_with_no_default` | sha256 OK |
+| NP-R | drop `LabOrder.lab_id == lab_id` from the resolution | `test_both_call_sites_pass_a_resolved_patient`, then `test_4c_...` | sha256 OK |
+
+**NP-R is worth recording in full, because the first run of it exposed a gap in
+my own proof.** Dropping the tenant filter failed only the *source-level* grep
+ratchet — no behavioural test moved. The filter was therefore unpinned: a
+future edit that removed it would have passed every behavioural test. I wrote
+`test_4c_a_result_pointing_at_another_tenants_order_names_no_patient`, which
+constructs the one row the outer `Result.lab_id` filter does not cover —
+tenant A's result whose `order_id` points at tenant B's order — and re-ran the
+perturbation. Without the filter the route returns **200 and publishes tenant
+B's patient id to tenant A**. With it, 404. That is the behaviour the filter
+buys, and it is now pinned by a test rather than by a grep.
+
+Nothing in the API can create that crossed row today, so this is
+defence-in-depth and not a reachable disclosure; it is recorded as such, not
+as a live cross-tenant leak.
+
+### Suite state
+
+`tests/verification/` — 868 passed, 150 skipped, 2 xfailed (baseline before
+this work: 862 / 150 / 2). `py_compile` clean; `flake8 --select=E9,F821,F811`
+clean.
+
+### What was deliberately not done
+
+- No `Specimen.order` relationship. `test_the_specimen_order_relationship_was_not_added` keeps it that way.
+- No migration, no schema change.
+- No change to the bundle's documented omission of patient identity.
+- IA-062 (the two divergent result stores) is untouched. This repair makes the
+  LIMS Observation name its patient; it does **not** reconcile the LIMS and
+  core result stores, which remain two sources of truth for one order.
