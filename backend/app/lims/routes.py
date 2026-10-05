@@ -1018,7 +1018,12 @@ def order_fhir_bundle(
         lims_models.Result.is_deleted.is_(False),
     ).order_by(lims_models.Result.id).all()
     for result in results:
-        observation = result_to_fhir(result)
+        # bundle_patient_id is already resolved above for the ServiceRequest, and
+        # the subject is dropped here for the same documented reason — this
+        # endpoint deliberately does not expand patient identity. Passing it
+        # anyway keeps the mapper's required argument honest rather than
+        # satisfying it with a placeholder.
+        observation = result_to_fhir(result, patient_id=bundle_patient_id)
         observation.pop("subject", None)
         resources.append(observation)
 
@@ -1456,13 +1461,25 @@ def result_fhir(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    lab_id = _lab_id(current_user)
     result = db.query(lims_models.Result).filter(
         lims_models.Result.id == result_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
+        lims_models.Result.lab_id == lab_id,
     ).first()
     if not result:
         raise HTTPException(404, detail="Result not found")
-    return result_to_fhir(result)
+    # Resolve the patient the way the ServiceRequest routes above already do:
+    # lims_results.order_id is a foreign key to lab_orders.id, and the patient
+    # hangs off that order. The lab_id filter is repeated here so a result whose
+    # parent order belongs to another tenant cannot name that tenant's patient.
+    patient_id = (
+        db.query(LabOrder.patient_id)
+        .filter(LabOrder.id == result.order_id, LabOrder.lab_id == lab_id)
+        .scalar()
+    )
+    if patient_id is None:
+        raise HTTPException(404, detail="Result not found")
+    return result_to_fhir(result, patient_id=patient_id)
 
 
 # ===========================================================================

@@ -75,8 +75,12 @@ def client(app) -> TestClient:
 
 @pytest.fixture()
 def auth_token() -> str:
+    # create_token takes a single claims dict (JWTClaims = dict[str, Any]); the
+    # keyword form this fixture used has never existed in app.security.auth, so
+    # every test depending on it errored at setup. Part of IA-069. The claim
+    # names match app.security.auth.build_token_payload.
     from app.security.auth import create_token
-    return create_token(user_id=1, lab_id=1, role="lab_admin")
+    return create_token({"user_id": 1, "lab_id": 1, "role": "lab_admin", "perm_ver": 1})
 
 
 @pytest.fixture()
