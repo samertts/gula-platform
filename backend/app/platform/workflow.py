@@ -14,11 +14,17 @@ nothing could run.
 
 The repositories are deliberately NOT wired in, for two measured reasons:
 
-1. ``SagaLogRepository`` has no implementation. ``infrastructure/repository.py``
-   provides seven ``SQLAlchemy*`` repositories; the eighth exists only as an
-   ABC at ``domain/repository.py:141``. The subsystem's own router shows this
-   plainly: ``api/routes.py::_get_service`` constructs the service with seven
-   real repositories and ``saga_repo=None`` -- against a parameter annotated
+1. Only two of the eight repositories are real. ``infrastructure/repository.py``
+   *declares* seven ``SQLAlchemy*`` classes, and ``SagaLogRepository`` exists
+   only as an ABC at ``domain/repository.py:141`` -- but of those seven, five
+   perform no persistence whatever (IA-071): ``save`` returned its argument,
+   ``get`` returned None, finders returned ``[]`` and ``delete`` returned
+   ``True``. Measured by AST: only ``SQLAlchemyWorkflowDefinitionRepository``
+   and ``SQLAlchemyWorkflowExecutionRepository`` issue queries.
+
+   The subsystem's own router shows the eighth gap plainly:
+   ``api/routes.py::_get_service`` constructs the service with seven classes
+   and ``saga_repo=None`` -- against a parameter annotated
    ``SagaLogRepository``, not ``SagaLogRepository | None``. So the one working
    construction site in the codebase satisfies that argument with a value its
    own type says is not allowed. Copying that here would propagate the hole,
@@ -29,9 +35,11 @@ The repositories are deliberately NOT wired in, for two measured reasons:
    ``national_saga_logs``. Checked individually against
    ``migrations/versions/``: zero creating migrations each.
 
-So wiring seven of eight repositories would turn a TypeError into a
-``no such table`` error at the first query. That is not a repair, it is the
-same unavailability wearing a different exception. Instead the failure is made
+So wiring these repositories in would turn a TypeError into something worse
+than a ``no such table`` error: five of them would report success and store
+nothing (IA-071), and only the two real ones would fail honestly on the
+missing table. That is not a repair -- it is a trade of a loud failure for a
+silent one. Instead the failure is made
 accurate and the capability stops claiming to exist. Making this work is a
 real piece of build-out -- one repository implementation and one migration --
 not a defect to patch here.

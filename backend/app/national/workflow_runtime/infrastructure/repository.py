@@ -239,71 +239,146 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             return len(result.all())
 
 
-class SQLAlchemyWorkflowExecutionStepRepository(WorkflowExecutionStepRepository):
+#: IA-071. Everything from here down persisted nothing, and unlike the
+#: task_engine equivalent (IA-070) it was REACHABLE AND SERVED.
+#:
+#: Five of this file's seven repository classes contained no SQLAlchemy at all.
+#: Measured by AST over the file: SQLAlchemyWorkflowDefinitionRepository (7
+#: db-touching methods of 10) and SQLAlchemyWorkflowExecutionRepository (6 of
+#: 9) are real; the other five had 20 methods between them and 0 that issue a
+#: query. ``save`` returned its argument, ``get`` returned None, finders
+#: returned [], and ``SQLAlchemyWorkflowTemplateRepository.delete`` returned
+#: ``True`` -- reporting a deletion that never happened.
+#:
+#: The served consequence, measured over HTTP with an authenticated admin:
+#:
+#:     POST /national/workflows/templates
+#:       -> 200 {"success":true,"id":"b4ebd8c9-4a67-440b-bb85-8173b19695a6"}
+#:     GET  /national/workflows/templates
+#:       -> 200 {"items":[],"total":0}
+#:
+#: The endpoint reported success AND minted an id the client could keep, while
+#: storing nothing. GET /national/workflows/approvals/pending likewise answers
+#: 200 {"approvals":[]} whatever has been approved, so an approval can be
+#: recorded as saved and never appear in the pending queue it governs.
+#:
+#: Why this was not repaired by writing queries: no migration creates any of
+#: this subsystem's eight tables (national_workflow_definitions, _executions,
+#: _execution_steps, _approvals, _compensations, _timers, _templates,
+#: national_saga_logs) -- each checked individually against
+#: migrations/versions/, zero creating migrations. Real SQLAlchemy here would
+#: raise "no such table", which is the honest answer but is reached more
+#: cheaply, and without guessing at column names, by refusing outright.
+#:
+#: Correction to IA-058: that finding said this file "provides seven
+#: SQLAlchemy* repositories" and treated the absent SagaLogRepository as the
+#: only gap. Only two of the seven are real. IA-058's conclusion -- do not wire
+#: these into app/platform/workflow.py -- holds and is strengthened; its stated
+#: reason was incomplete.
+
+WORKFLOW_UNAVAILABLE_REASON = (
+    "the national workflow runtime has no persistence: none of its 8 tables "
+    "has a creating migration, and 5 of its 7 repositories were never "
+    "implemented. See IA-071."
+)
+
+
+class WorkflowRepositoryUnavailable(RuntimeError):
+    """Raised instead of reporting a write, a deletion or a read that did not happen."""
+
+
+class _UnavailableWorkflowRepository:
+    """Every method refuses, naming itself.
+
+    Methods are listed explicitly rather than caught by ``__getattr__`` so that
+    a method added to an ABC later surfaces as a normal TypeError at
+    instantiation instead of being absorbed into a refusal.
+    """
+
+    def _refuse(self, operation: str):
+        name = f"{type(self).__name__}.{operation}"
+        logger.warning("[WORKFLOW-RUNTIME] %s refused: %s", name, WORKFLOW_UNAVAILABLE_REASON)
+        return WorkflowRepositoryUnavailable(f"{name} is unavailable: {WORKFLOW_UNAVAILABLE_REASON}")
+
+
+class SQLAlchemyWorkflowExecutionStepRepository(
+    _UnavailableWorkflowRepository, WorkflowExecutionStepRepository,
+):
     async def save(self, step: Any) -> Any:
-        return step
+        raise self._refuse("save")
 
     async def get(self, step_id: str) -> Any:
-        return None
+        raise self._refuse("get")
 
     async def find_by_execution(self, execution_id: str) -> list:
-        return []
+        raise self._refuse("find_by_execution")
 
     async def find_by_status(self, status: str) -> list:
-        return []
+        raise self._refuse("find_by_status")
 
     async def find_by_execution_and_step(self, execution_id: str, step_id: str) -> Any:
-        return None
+        raise self._refuse("find_by_execution_and_step")
 
 
-class SQLAlchemyWorkflowApprovalRepository(WorkflowApprovalRepository):
+class SQLAlchemyWorkflowApprovalRepository(
+    _UnavailableWorkflowRepository, WorkflowApprovalRepository,
+):
     async def save(self, approval: Any) -> Any:
-        return approval
+        raise self._refuse("save")
 
     async def get(self, approval_id: str) -> Any:
-        return None
+        raise self._refuse("get")
 
     async def find_pending_for_user(self, user_id: str) -> list:
-        return []
+        # Answered [] unconditionally, so an approval could be "saved" and then
+        # never appear in the queue that governs it.
+        raise self._refuse("find_pending_for_user")
 
     async def find_by_execution(self, execution_id: str) -> list:
-        return []
+        raise self._refuse("find_by_execution")
 
 
-class SQLAlchemyWorkflowCompensationRepository(WorkflowCompensationRepository):
+class SQLAlchemyWorkflowCompensationRepository(
+    _UnavailableWorkflowRepository, WorkflowCompensationRepository,
+):
     async def save(self, compensation: Any) -> Any:
-        return compensation
+        raise self._refuse("save")
 
     async def get(self, compensation_id: str) -> Any:
-        return None
+        raise self._refuse("get")
 
     async def find_by_execution(self, execution_id: str) -> list:
-        return []
+        raise self._refuse("find_by_execution")
 
 
-class SQLAlchemyWorkflowTimerRepository(WorkflowTimerRepository):
+class SQLAlchemyWorkflowTimerRepository(
+    _UnavailableWorkflowRepository, WorkflowTimerRepository,
+):
     async def save(self, timer: Any) -> Any:
-        return timer
+        raise self._refuse("save")
 
     async def get(self, timer_id: str) -> Any:
-        return None
+        raise self._refuse("get")
 
     async def find_due_timers(self) -> list:
-        return []
+        raise self._refuse("find_due_timers")
 
     async def find_by_execution(self, execution_id: str) -> list:
-        return []
+        raise self._refuse("find_by_execution")
 
 
-class SQLAlchemyWorkflowTemplateRepository(WorkflowTemplateRepository):
+class SQLAlchemyWorkflowTemplateRepository(
+    _UnavailableWorkflowRepository, WorkflowTemplateRepository,
+):
     async def save(self, template: Any) -> Any:
-        return template
+        raise self._refuse("save")
 
     async def get(self, template_id: str) -> Any:
-        return None
+        raise self._refuse("get")
 
     async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
-        return []
+        raise self._refuse("list")
 
     async def delete(self, template_id: str) -> bool:
-        return True
+        # Returned True. A caller had no way to tell this from a real deletion.
+        raise self._refuse("delete")

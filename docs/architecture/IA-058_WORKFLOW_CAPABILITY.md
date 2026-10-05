@@ -72,7 +72,14 @@ This is the decision that matters, so the evidence is given in full.
 
 ### 1. `SagaLogRepository` has no implementation
 
-`app/national/workflow_runtime/infrastructure/repository.py` defines seven:
+**Corrected by IA-071.** This section originally said the file "defines seven"
+working repositories and treated the absent `SagaLogRepository` as the only
+gap. That was wrong in a way that strengthens the conclusion but misstates the
+reason: only **two** of the seven are real. Five perform no persistence at all
+— `save` returned its argument, `get` returned `None`, finders returned `[]`,
+and `delete` returned `True`. See `IA-070`'s sibling finding `IA-071`.
+
+The file *declares* seven `SQLAlchemy*` classes:
 
 ```
 SQLAlchemyWorkflowDefinitionRepository      SQLAlchemyWorkflowCompensationRepository
@@ -124,9 +131,11 @@ against `migrations/versions/` for a `create_table`:
 
 ### The conclusion
 
-Wiring seven of eight repositories would convert a `TypeError` into
-`no such table: national_workflow_definitions` at the first query. **That is
-not a repair — it is the same unavailability wearing a different exception.**
+Wiring these repositories in would convert a `TypeError` into something worse
+than `no such table: national_workflow_definitions`. Per IA-071, five of the
+seven would report success and persist nothing; only the two real ones would
+fail honestly on the missing table. **That is not a repair — it is trading a
+loud failure for a silent one.**
 Making this capability work is build-out: one repository implementation plus one
 migration. Neither is invented here.
 
