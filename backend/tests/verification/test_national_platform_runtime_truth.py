@@ -133,33 +133,54 @@ def test_group_b_repositories_really_use_the_async_protocol_on_it():
 #
 # app/platform/workflow.py is documented as "Standardized workflow module --
 # wraps national/workflow_runtime" and registers itself as the PlatformRegistry
-# capability "workflow". Its start()/cancel()/get_status() each do
+# capability "workflow". Its start()/cancel()/get_status() each did
 # `WorkflowRuntimeService()` with no arguments, while the router's own
-# _get_service() passes eight repositories. The eight are required positional
-# parameters, so the capability raises on first call -- a third failure mode,
-# distinct from Group A's missing table and Group B's async-on-sync session.
+# _get_service() passes eight. The eight are required positional parameters, so
+# the capability raised on first call -- a third failure mode, distinct from
+# Group A's missing table and Group B's async-on-sync session.
+#
+# Correction to what this note first said: the router does not pass eight
+# working repositories. It passes seven, plus `saga_repo=None` against a
+# parameter annotated `SagaLogRepository`, because no implementation of that
+# repository exists. Repaired as IA-058 -- the capability now refuses with that
+# reason instead of raising TypeError, and is registered as unavailable.
 #
 # app/platform/workflow.py has no importers of its own; it is reached through
 # the registry, which is why nothing in the suite exercises it.
 
 
-def test_the_platform_workflow_capability_raises_on_first_call():
-    from app.platform.workflow import WorkflowService
+def test_the_platform_workflow_capability_refuses_with_a_reason():
+    """IA-058, REPAIRED. This asserted the raw TypeError until the fix landed.
 
-    with pytest.raises(TypeError) as excinfo:
+    The capability still cannot run -- that needs a SagaLogRepository
+    implementation and a migration for its eight tables, neither of which this
+    repair invents. What changed is that it now says so. The full repair and
+    its ratchets live in test_platform_workflow_availability.py; this keeps the
+    IA-057 narrative honest about the third failure mode it catalogued.
+    """
+    from app.platform.workflow import WorkflowRuntimeUnavailable, WorkflowService
+
+    with pytest.raises(WorkflowRuntimeUnavailable) as excinfo:
         WorkflowService().start("demo", {"a": 1}, created_by="probe")
 
     message = str(excinfo.value)
-    assert "missing 8 required positional arguments" in message, message
-    assert "definition_repo" in message
+    assert "not wired" in message, message
+    assert "SagaLogRepository" in message, message
+    # and no longer the bare constructor error, which said nothing actionable
+    assert "missing 8 required positional arguments" not in message, message
 
 
-def test_the_capability_is_registered_despite_that():
-    """Registered, advertised, and dead -- all three at once."""
+def test_the_capability_no_longer_advertises_itself_as_working():
+    """It stays registered -- but the listing says it cannot be invoked."""
     from app.platform import PlatformRegistry
     from app.platform.workflow import WorkflowService
+    import app.platform.workflow  # noqa: F401
 
     assert isinstance(PlatformRegistry.get("workflow"), WorkflowService)
+
+    workflow_caps = [c for c in PlatformRegistry.get_capabilities() if c["module"] == "workflow"]
+    assert workflow_caps, "the capability vanished; it should be listed as unavailable, not hidden"
+    assert all(c["available"] is False for c in workflow_caps), workflow_caps
 
 
 def test_the_router_and_the_wrapper_disagree_on_the_constructor():
