@@ -57,6 +57,13 @@ DEFAULT_OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 DEFAULT_OLLAMA_MODEL = "llama3.2:1b"
 DEFAULT_OLLAMA_EMBED_MODEL = "nomic-embed-text"
 
+#: The second free, self-hosted option. vLLM, llama.cpp's server, LocalAI and
+#: text-generation-webui all expose the SAME OpenAI-compatible protocol
+#: (/v1/models, /v1/chat/completions, /v1/embeddings), so one backend covers
+#: every one of them. gateway.py already names vLLM's variable, so it is reused
+#: rather than invented; LOCAL_AI_BASE_URL is accepted as a clearer alias.
+DEFAULT_VLLM_BASE_URL = "http://localhost:8001"
+
 
 class AIProviderUnavailable(RuntimeError):
     """No inference backend is configured, or the configured one failed.
@@ -91,6 +98,17 @@ class AIProvider:
         self._ollama_embed_model = os.getenv(
             "OLLAMA_EMBED_MODEL", DEFAULT_OLLAMA_EMBED_MODEL,
         )
+        self._local_openai_base_url = (
+            os.getenv("LOCAL_AI_BASE_URL")
+            or os.getenv("VLLM_BASE_URL")
+            or DEFAULT_VLLM_BASE_URL
+        ).rstrip("/")
+        # vLLM may be started with --api-key; llama.cpp and LocalAI usually are
+        # not. Empty is normal and is not treated as "unconfigured".
+        self._local_openai_key = os.getenv("VLLM_API_KEY", "")
+        self._local_openai_model = os.getenv("LOCAL_AI_MODEL", "")
+        self._local_openai_embed_model = os.getenv("LOCAL_AI_EMBED_MODEL", "")
+
         self._api_key = api_key or os.getenv("GEMINI_API_KEY", "")
         self._gemini_model = model or os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
 
@@ -106,6 +124,17 @@ class AIProvider:
             logger.info(
                 "AI provider: ollama at %s (model=%s, embed=%s) — self-hosted, no key",
                 self._ollama_base_url, self._ollama_model, self._ollama_embed_model,
+            )
+            return
+
+        discovered = self._local_openai_model_name()
+        if discovered is not None:
+            self._backend = "openai-compatible"
+            self._local_openai_model = self._local_openai_model or discovered
+            logger.info(
+                "AI provider: OpenAI-compatible local server at %s (model=%s) — "
+                "self-hosted, no paid dependency",
+                self._local_openai_base_url, self._local_openai_model,
             )
             return
 
@@ -142,6 +171,43 @@ class AIProvider:
             logger.debug("Ollama probe failed at %s: %s", self._ollama_base_url, exc)
             return False
 
+    def _local_openai_model_name(self) -> str | None:
+        """Probe /v1/models. Returns a servable model id, or None if absent.
+
+        A server that answers with an empty model list is running but has
+        nothing loaded, which is not usable -- so that is None too, rather than
+        a backend that would fail on first use.
+        """
+        try:
+            import httpx
+
+            headers = (
+                {"Authorization": f"Bearer {self._local_openai_key}"}
+                if self._local_openai_key
+                else {}
+            )
+            response = httpx.get(
+                f"{self._local_openai_base_url}/v1/models", headers=headers, timeout=2.0,
+            )
+            if response.status_code != 200:
+                return None
+            models = response.json().get("data") or []
+            if not models:
+                logger.debug(
+                    "OpenAI-compatible server at %s has no models loaded",
+                    self._local_openai_base_url,
+                )
+                return None
+            if self._local_openai_model:
+                return self._local_openai_model
+            return str(models[0].get("id", "")) or None
+        except Exception as exc:
+            logger.debug(
+                "OpenAI-compatible probe failed at %s: %s",
+                self._local_openai_base_url, exc,
+            )
+            return None
+
     @property
     def available(self) -> bool:
         """Whether any backend is configured. Ask this before an AI-only path."""
@@ -151,6 +217,12 @@ class AIProvider:
     def backend(self) -> str | None:
         """``"ollama"``, ``"gemini"`` or None. Goes in result provenance."""
         return self._backend
+
+    def _local_openai_headers(self) -> dict[str, str]:
+        """Bearer only when a key was given. vLLM may require one; llama.cpp does not."""
+        if self._local_openai_key:
+            return {"Authorization": f"Bearer {self._local_openai_key}"}
+        return {}
 
     def _require_backend(self) -> str:
         if self._backend is None:
@@ -185,6 +257,34 @@ class AIProvider:
                 return str(response.json().get("response", ""))
             except Exception as exc:
                 raise AIProviderUnavailable(f"ollama generation failed: {exc}") from exc
+
+        if backend == "openai-compatible":
+            try:
+                import httpx
+
+                response = httpx.post(
+                    f"{self._local_openai_base_url}/v1/chat/completions",
+                    headers=self._local_openai_headers(),
+                    json={
+                        "model": self._local_openai_model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": temperature,
+                    },
+                    timeout=120.0,
+                )
+                response.raise_for_status()
+                choices = response.json().get("choices") or []
+                if not choices:
+                    raise AIProviderUnavailable(
+                        "OpenAI-compatible server returned no choices",
+                    )
+                return str(choices[0]["message"]["content"])
+            except AIProviderUnavailable:
+                raise
+            except Exception as exc:
+                raise AIProviderUnavailable(
+                    f"OpenAI-compatible generation failed: {exc}",
+                ) from exc
 
         try:
             result = self._client.generate_content(
@@ -228,6 +328,32 @@ class AIProvider:
         with a Gemini backend this raises rather than inventing a vector.
         """
         backend = self._require_backend()
+
+        if backend == "openai-compatible":
+            model = self._local_openai_embed_model or self._local_openai_model
+            try:
+                import httpx
+
+                response = httpx.post(
+                    f"{self._local_openai_base_url}/v1/embeddings",
+                    headers=self._local_openai_headers(),
+                    json={"model": model, "input": text},
+                    timeout=60.0,
+                )
+                response.raise_for_status()
+                data = response.json().get("data") or []
+                vector = data[0].get("embedding") if data else None
+            except Exception as exc:
+                raise AIProviderUnavailable(
+                    f"OpenAI-compatible embedding failed: {exc}",
+                ) from exc
+            if not isinstance(vector, list) or not vector:
+                raise AIProviderUnavailable(
+                    f"server at {self._local_openai_base_url} returned no embedding "
+                    f"for model {model!r}; set LOCAL_AI_EMBED_MODEL to a model that "
+                    "serves /v1/embeddings",
+                )
+            return [float(v) for v in vector]
 
         if backend != "ollama":
             raise AIProviderUnavailable(

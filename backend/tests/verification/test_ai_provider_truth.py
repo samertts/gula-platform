@@ -216,6 +216,146 @@ def test_embed_many_returns_one_vector_per_text(ollama_stub):
     assert all(len(v) == 4 for v in vectors)
 
 
+@pytest.fixture()
+def openai_compatible_stub():
+    """A server speaking the OpenAI-compatible protocol.
+
+    vLLM, llama.cpp's server, LocalAI and text-generation-webui all expose the
+    same /v1/models, /v1/chat/completions and /v1/embeddings, so one backend
+    covers every one of them — and one stub tests them all.
+    """
+    import json as _json
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    calls: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def _send(self, payload: dict):
+            body = _json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            calls.append(f"GET {self.path}")
+            if self.path == "/v1/models":
+                self._send({"data": [{"id": "local-model-7b"}]})
+            else:
+                self.send_error(404)
+
+        def do_POST(self):
+            calls.append(f"POST {self.path}")
+            self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            if self.path == "/v1/chat/completions":
+                self._send({"choices": [{"message": {"content": "local-reply"}}]})
+            elif self.path == "/v1/embeddings":
+                self._send({"data": [{"embedding": [0.2, -0.5, 0.9]}]})
+            else:
+                self.send_error(404)
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}", calls
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_a_self_hosted_openai_compatible_server_is_used_when_ollama_is_absent(
+    monkeypatch, openai_compatible_stub,
+):
+    """The second free option. Free before paid, per the Constitution."""
+    from shared.ai.provider import AIProvider
+
+    base_url, calls = openai_compatible_stub
+    monkeypatch.setenv("VLLM_BASE_URL", base_url)
+
+    provider = AIProvider(
+        api_key="a-gemini-key-that-must-be-ignored",
+        ollama_base_url="http://127.0.0.1:1",   # Ollama deliberately absent
+    )
+
+    assert provider.available is True
+    assert provider.backend == "openai-compatible", (
+        "a free self-hosted server was reachable and a paid key was present; "
+        "Zero Paid Dependency requires the free one to win"
+    )
+    assert "GET /v1/models" in calls
+
+
+def test_the_openai_compatible_backend_generates_and_embeds(
+    monkeypatch, openai_compatible_stub,
+):
+    from shared.ai.provider import AIProvider
+
+    base_url, calls = openai_compatible_stub
+    monkeypatch.setenv("VLLM_BASE_URL", base_url)
+    provider = AIProvider(ollama_base_url="http://127.0.0.1:1")
+
+    assert provider.generate("hello") == "local-reply"
+    assert "POST /v1/chat/completions" in calls
+
+    vector = provider.embed("clinical text")
+    assert "POST /v1/embeddings" in calls
+    assert vector == [0.2, -0.5, 0.9]
+    assert len(set(vector)) > 1, "a constant vector is not an embedding"
+
+
+def test_ollama_still_wins_over_the_openai_compatible_server(
+    monkeypatch, ollama_stub, openai_compatible_stub,
+):
+    """Both free options present: Ollama is the documented first choice."""
+    from shared.ai.provider import AIProvider
+
+    ollama_url, _ = ollama_stub
+    local_url, _ = openai_compatible_stub
+    monkeypatch.setenv("VLLM_BASE_URL", local_url)
+
+    assert AIProvider(ollama_base_url=ollama_url).backend == "ollama"
+
+
+def test_a_running_server_with_no_model_loaded_is_not_treated_as_available(monkeypatch):
+    """Running is not the same as usable.
+
+    A server that answers /v1/models with an empty list would fail on first
+    use, so it must not be selected as a backend.
+    """
+    import json as _json
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from shared.ai.provider import AIProvider
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            body = _json.dumps({"data": []}).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        monkeypatch.setenv("VLLM_BASE_URL", f"http://127.0.0.1:{server.server_port}")
+        provider = AIProvider(ollama_base_url="http://127.0.0.1:1")
+        assert provider.backend is None
+        assert provider.available is False
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_ollama_uses_the_documented_endpoints_and_variable():
     source = PROVIDER_FILE.read_text()
     assert "OLLAMA_BASE_URL" in source
