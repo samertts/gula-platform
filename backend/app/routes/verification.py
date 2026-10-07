@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -23,6 +24,8 @@ from ..models.user import User
 from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.redis_client import cache
 from ..services.audit_service import log_action
+
+logger = logging.getLogger("gula.auth.verification")
 
 router = APIRouter(prefix="/auth/verification", tags=["auth / verification"])
 
@@ -97,14 +100,35 @@ def _issue_code(user: User, identifier: str) -> str:
     message = (
         f"Your GULA verification code is {code}. It expires in 15 minutes."
     )
+    from ..notifications.service import get_service
+
     if channel == "email":
-        from ..notifications.service import get_service
-
-        get_service().send_email(user.email, "GULA account verification", message)
+        result = get_service().send_email(user.email, "GULA account verification", message)
     elif user.phone:
-        from ..notifications.service import get_service
+        result = get_service().send_sms(user.phone, message)
+    else:
+        result = None
 
-        get_service().send_sms(user.phone, message)
+    # IA-076. The delivery result used to be discarded, so a deployment with no
+    # SMTP or SMS vendor answered 202 "code sent" having sent nothing. The
+    # client response stays generic on purpose — distinguishing the cases would
+    # leak which identifiers exist — so the failure is recorded server-side
+    # instead, where an operator can act on it.
+    if result is None:
+        logger.error(
+            "[VERIFICATION] No channel available for user_id=%s: channel=%s "
+            "and no phone on record. No code was sent.",
+            user.id,
+            channel,
+        )
+    elif not result.success:
+        logger.error(
+            "[VERIFICATION] Code NOT delivered for user_id=%s over %s: %s. The "
+            "user cannot complete verification until the channel is configured.",
+            user.id,
+            result.channel,
+            result.error,
+        )
     return code
 
 

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from backend.app.integration.connectors.ntfy import NtfyConnector
+from app.integration.connectors.ntfy import NtfyConnector
 
 
 @pytest.mark.asyncio
