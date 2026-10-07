@@ -37,6 +37,7 @@ callers construct without going through the parser.
 from __future__ import annotations
 
 import ast
+import itertools
 import pathlib
 
 import pytest
@@ -240,8 +241,7 @@ def test_no_identity_field_is_defaulted_with_or():
     for node in ast.walk(tree):
         if not (isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or)):
             continue
-        values = node.values
-        for left, right in zip(values, values[1:]):
+        for left, right in itertools.pairwise(node.values):
             names: set[str] = {
                 sub.attr for sub in ast.walk(left) if isinstance(sub, ast.Attribute)
             }

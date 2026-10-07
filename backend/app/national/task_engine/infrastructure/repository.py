@@ -24,7 +24,6 @@ from app.national.task_engine.infrastructure.models import (
     NationalTaskModel,
 )
 
-
 logger = logging.getLogger("gula.national.task_engine.repository")
 
 

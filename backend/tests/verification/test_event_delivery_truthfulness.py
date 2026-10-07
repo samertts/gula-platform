@@ -90,7 +90,7 @@ def _python_sources(root: pathlib.Path) -> list[pathlib.Path]:
 def test_the_canonical_bus_has_no_handlers_after_the_app_is_imported():
     """`import app.main` is what a served process does, so this is the real
     handler table, not a fresh bus."""
-    import app.main  # noqa: F401  — imports every route module
+    import app.main
     from app.core.events import events
 
     registered = {name: len(hs) for name, hs in events._handlers.items() if hs}
@@ -102,7 +102,7 @@ def test_the_canonical_bus_has_no_handlers_after_the_app_is_imported():
 
 @pytest.mark.parametrize("event_name", _CLINICAL_EVENTS)
 def test_emitting_a_clinical_event_reaches_nobody(event_name):
-    import app.main  # noqa: F401
+    import app.main
     from app.core.events import events
 
     assert events.emit(event_name, {}) == 0
@@ -218,21 +218,18 @@ def test_a_subscribed_emission_does_not_warn(caplog):
 def test_the_outbox_counts_a_zero_handler_dispatch_as_undelivered(caplog):
     """End to end through the real worker against a real row."""
     import json
-
-    from app.core.events import EventBus
-    from app.models.outbox import OutboxEvent
-    from app.services.outbox_service import OutboxWorker
-
     from unittest.mock import patch
 
     import app.database as database
+    import app.models.outbox
+    import app.national.domain
+    from app.core.events import EventBus
+    from app.models.outbox import OutboxEvent
     from app.national.base import NationalBase
     from app.orm_topology import own_tables
+    from app.services.outbox_service import OutboxWorker
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-
-    import app.models.outbox  # noqa: F401
-    import app.national.domain  # noqa: F401
 
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     NationalBase.metadata.create_all(engine, tables=own_tables(NationalBase))
@@ -251,9 +248,11 @@ def test_the_outbox_counts_a_zero_handler_dispatch_as_undelivered(caplog):
         )
         session.commit()
 
-        with patch("app.services.outbox_service.events", EventBus()):
-            with caplog.at_level(logging.WARNING, logger="gula.outbox"):
-                summary = OutboxWorker.run_once(session)
+        with (
+            patch("app.services.outbox_service.events", EventBus()),
+            caplog.at_level(logging.WARNING, logger="gula.outbox"),
+        ):
+            summary = OutboxWorker.run_once(session)
 
         assert summary["undelivered"] == 1
         assert summary["processed"] == 1  # it was dispatched; nobody listened

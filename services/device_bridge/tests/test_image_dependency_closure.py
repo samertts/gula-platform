@@ -45,7 +45,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))
-from _dockerfile_packages import packages as dockerfile_packages  # noqa: E402
+from _dockerfile_packages import packages as dockerfile_packages
 
 _SERVICE = pathlib.Path(__file__).resolve().parents[1]
 _APP = _SERVICE / "app"

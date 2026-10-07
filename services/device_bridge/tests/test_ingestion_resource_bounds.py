@@ -105,7 +105,7 @@ def _rows(db: InMemoryDB, status: str) -> list[dict]:
 
 
 def test_an_endless_partial_frame_does_not_grow_without_bound():
-    pipeline, db = _pipeline()
+    pipeline, _db = _pipeline()
     chunk = b"\x02" + b"X" * 8192
     high_water = 0
 
@@ -200,7 +200,7 @@ def test_eviction_is_least_recently_used():
 
 def test_a_devices_own_stream_is_unaffected_by_other_devices_arriving():
     """Eviction must not corrupt an active device's partial frame."""
-    pipeline, db = _pipeline()
+    pipeline, _db = _pipeline()
     payload = (_HEADER + "3R|1|^^^Hb|13.5|g/dL\r").encode("ascii")
     _feed(pipeline, b"\x02" + payload, device_id="ACTIVE")
 
@@ -387,9 +387,9 @@ def test_a_missing_api_key_prevents_startup_rather_than_500ing_each_request():
 
 
 def test_the_startup_check_names_what_to_do():
-    from app.security.auth import MissingApiKeyError, require_configured_api_key
-
     import os
+
+    from app.security.auth import MissingApiKeyError, require_configured_api_key
 
     previous = os.environ.pop("LABLINK_API_KEY", None)
     try:
@@ -458,9 +458,14 @@ def test_a_valid_key_still_authenticates():
     import os
 
     from app.security.auth import verify_api_key
+    from fastapi import HTTPException
 
     assert verify_api_key(os.environ["LABLINK_API_KEY"]) == os.environ["LABLINK_API_KEY"]
-    with pytest.raises(Exception):
-        verify_api_key("wrong")
-    with pytest.raises(Exception):
-        verify_api_key(None)
+    # Named rather than blind (ruff B017): a bare `Exception` would also have
+    # been satisfied by an ImportError or a TypeError, so it asserted far less
+    # than it appeared to. The status code is the thing that matters — a
+    # rejected key must be 401, not a 500.
+    for bad in ("wrong", None):
+        with pytest.raises(HTTPException) as excinfo:
+            verify_api_key(bad)
+        assert excinfo.value.status_code == 401

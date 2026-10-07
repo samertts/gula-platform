@@ -115,7 +115,7 @@ class _StubAsyncClient:
     async def __aexit__(self, *exc_info) -> bool:
         return False
 
-    async def post(self, url, json=None, **kwargs):  # noqa: A002
+    async def post(self, url, json=None, **kwargs):
         raise _CapturedPost({"url": url, "json": json, "kwargs": kwargs})
 
 
@@ -158,7 +158,7 @@ def _captured_post() -> dict:
         holder: dict = {}
 
         class _Recording(_StubAsyncClient):
-            async def post(self, url, json=None, **kwargs):  # noqa: A002
+            async def post(self, url, json=None, **kwargs):
                 holder.update({"url": url, "json": json, "kwargs": kwargs})
                 raise RuntimeError("stop after capture")
 
@@ -203,7 +203,7 @@ def test_the_payload_is_missing_the_fields_the_endpoint_requires():
     missing_top = _SUBMISSION_REQUIRED - set(payload)
     missing_item = _RESULT_REQUIRED - set(payload["results"][0])
 
-    if _RESOLVED_CONTRACT_GAPS >= {"SAMPLE", "TEST"}:
+    if {"SAMPLE", "TEST"} <= _RESOLVED_CONTRACT_GAPS:
         assert missing_top == set() and missing_item == set()
         return
 
@@ -357,7 +357,7 @@ def test_the_inputs_the_decision_now_has_that_it_did_not_before():
     )
 
     # Not parsed anywhere: that would be the invention.
-    assert "12.0-16.0" == record.reference_range
+    assert record.reference_range == "12.0-16.0"
     assert not isinstance(record.reference_range, tuple)
 
 
@@ -369,7 +369,7 @@ def test_no_contract_gap_is_resolved_yet():
     open*; that is a record of the gap, not its resolution. When one is decided
     and implemented, add it here and the matching assertion above becomes a
     requirement instead of a measurement."""
-    assert _RESOLVED_CONTRACT_GAPS == frozenset(), (
+    assert frozenset() == _RESOLVED_CONTRACT_GAPS, (
         f"resolved: {sorted(_RESOLVED_CONTRACT_GAPS)} -- re-read this file's "
         "docstring and confirm each resolved gap now has a real requirement"
     )

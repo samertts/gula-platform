@@ -499,6 +499,16 @@ def test_the_local_compat_shim_gives_a_real_utc():
     assert "UTC = UTC" not in source, "the self-referential fallback is back"
     assert "UTC = timezone.utc" in source
 
+    # `ruff check --fix` reintroduced exactly this defect once: rule UP017
+    # rewrites `timezone.utc` to `datetime.UTC` without noticing it is inside a
+    # `sys.version_info < (3, 11)` branch, where that name does not exist. The
+    # suppression must stay, or the next automated fix run breaks the shim
+    # again — and this test is the only thing that caught it.
+    assert "noqa: UP017" in source, (
+        "the UP017 suppression is gone; a `ruff --fix` run will rewrite the "
+        "pre-3.11 fallback to `UTC = UTC` and the shim will raise NameError"
+    )
+
 
 def test_pyserial_is_declared_as_a_dependency():
     """`from serial import Serial` in app/connectors/base.py is lazy, so a

@@ -122,7 +122,7 @@ def test_every_method_of_every_unavailable_repository_refuses():
     for class_name in UNAVAILABLE_REPOSITORIES:
         cls = _repo(class_name)
         instance = cls()
-        for method_name, method in inspect.getmembers(cls, inspect.isfunction):
+        for method_name, _method in inspect.getmembers(cls, inspect.isfunction):
             if method_name.startswith("_"):
                 continue
             bound = getattr(instance, method_name)

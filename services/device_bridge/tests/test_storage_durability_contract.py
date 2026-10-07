@@ -135,7 +135,7 @@ def test_every_collection_starts_empty(factory, tmp_path):
 def test_two_handles_do_not_share_state(factory, tmp_path):
     """Isolation, so the persistence cases cannot pass by every store being one
     global singleton."""
-    name, build = factory
+    _name, build = factory
     first = build(str(tmp_path / "a.store"))
     second = build(str(tmp_path / "b.store"))
     _write_one_of_everything(first)
@@ -246,7 +246,7 @@ def test_no_store_currently_claims_persistence():
     resolution. When a durable store is registered this test fails, which is the
     cue to re-read docs/DURABILITY_DECISION_PACK.md §7 and close IA-040
     properly."""
-    assert _PERSISTENT_FACTORIES == frozenset(), (
+    assert frozenset() == _PERSISTENT_FACTORIES, (
         "a store now claims to persist; the xfail(strict) markers above must "
         "become hard assertions and IA-040 can be closed with a runtime restart "
         "proof over HTTP, not just this suite"

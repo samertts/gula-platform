@@ -187,7 +187,7 @@ def test_the_compliance_routes_use_the_canonical_mappers():
     assert '"completed" if order.status == "completed" else "active"' not in source
     assert "service_request_status(order.status)" in source
     assert "diagnostic_report_status(order.status)" in source
-    assert 'status_map = {' not in source, "the local report map is back"
+    assert "status_map = {" not in source, "the local report map is back"
 
 
 def test_no_route_module_hardcodes_a_verified_clinical_status():
@@ -251,7 +251,7 @@ def test_the_document_reference_status_is_truthful_because_of_the_read_filter():
     source = inspect.getsource(get_clinical_attachment)
     assert "ClinicalAttachment.is_deleted.is_(False)" in source, (
         "the attachment read is no longer filtered on is_deleted, so the "
-        "hardcoded DocumentReference status \"current\" is now a false claim"
+        'hardcoded DocumentReference status "current" is now a false claim'
     )
 
 

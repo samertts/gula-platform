@@ -28,7 +28,7 @@ else:
     from datetime import timezone
     from enum import Enum
 
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017 — datetime.UTC does not exist on <3.11
 
     class StrEnum(str, Enum):  # noqa: UP042 — Python <3.11 compat
         pass

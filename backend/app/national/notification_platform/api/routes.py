@@ -20,9 +20,9 @@ from app.national.notification_platform.domain.enums import (
     TemplateEngine,
 )
 from app.national.notification_platform.exceptions import (
-    NotificationSchedulingUnavailable,
     ChannelNotAvailableError,
     NotificationNotFoundError,
+    NotificationSchedulingUnavailable,
     QuietHoursBlockedError,
     RateLimitExceededError,
     RecipientNotSpecifiedError,

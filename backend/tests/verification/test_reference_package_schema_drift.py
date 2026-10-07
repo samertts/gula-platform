@@ -73,10 +73,10 @@ KNOWN_PHANTOM_COLUMNS = {
 
 
 def _orm_columns(table: str) -> set[str]:
+    import app.models.lab_order
+    import app.models.lab_result
+    import app.models.patient
     from app.orm_topology import SHARED_METADATA
-    import app.models.lab_order  # noqa: F401
-    import app.models.lab_result  # noqa: F401
-    import app.models.patient  # noqa: F401
 
     assert table in SHARED_METADATA.tables, f"{table} is not in the ORM metadata"
     return {c.name for c in SHARED_METADATA.tables[table].columns}

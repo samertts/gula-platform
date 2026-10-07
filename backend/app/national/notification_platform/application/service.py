@@ -45,9 +45,9 @@ from app.national.notification_platform.domain.repository import (
 )
 from app.national.notification_platform.exceptions import (
     SCHEDULING_UNAVAILABLE_REASON,
-    NotificationSchedulingUnavailable,
     ChannelNotAvailableError,
     NotificationNotFoundError,
+    NotificationSchedulingUnavailable,
     QuietHoursBlockedError,
     RecipientNotSpecifiedError,
     TemplateNotFoundError,

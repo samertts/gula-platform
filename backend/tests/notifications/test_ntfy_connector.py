@@ -3,7 +3,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-
 from app.integration.connectors.ntfy import NtfyConnector
 
 

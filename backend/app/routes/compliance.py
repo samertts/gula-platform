@@ -28,12 +28,12 @@ from app._compat import UTC
 
 from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, NID_HMAC_KEY
 from ..database import get_db
-from ..models.audit_log import AuditLog
 from ..fhir.terminology import (
     diagnostic_report_status,
     observation_status,
     service_request_status,
 )
+from ..models.audit_log import AuditLog
 from ..models.lab import Lab
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult

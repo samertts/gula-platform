@@ -56,7 +56,6 @@ from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
-
 from app._compat import UTC
 
 TASK_SCHEMA = (
@@ -119,7 +118,7 @@ def test_enqueue_accepts_no_schedule_argument():
 class _Gateway(BaseHTTPRequestHandler):
     received: list = []
 
-    def do_POST(self):  # noqa: N802
+    def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         type(self).received.append(json.loads(self.rfile.read(length) or b"{}"))
         self.send_response(200)
@@ -186,9 +185,8 @@ def test_an_immediate_send_still_works(sms_gateway):
 
 def test_the_capability_listing_no_longer_advertises_scheduling():
     """The registry entry is read as a statement about what the platform does."""
+    import app.platform.notifications
     from app.platform import PlatformRegistry
-
-    import app.platform.notifications  # noqa: F401  (registers the module)
 
     capabilities = PlatformRegistry.get_capabilities()
     assert capabilities, "positive control: the registry has capabilities"

@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.pipeline.parser_engine import ParsedResult
-
 from app._compat import UTC
+from app.pipeline.parser_engine import ParsedResult
 
 TEST_NAME_MAP = {
     "HEMOGLOBIN": "Hemoglobin",

@@ -268,7 +268,6 @@ def test_the_kernel_bus_has_publishers_and_no_production_subscribers():
         "backend/app/integration/api_management/portal.py",
         "backend/app/integration/government/government_bus.py",
         "backend/app/integration/connectors/push.py",
-        "backend/app/national/ecosystem/connectors/messaging_connector.py",
     }
     unexpected = set(subscribers) - expected
     assert unexpected == set(), (

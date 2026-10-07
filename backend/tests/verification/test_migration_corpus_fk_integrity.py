@@ -106,11 +106,14 @@ def _module_constants(tree: ast.Module) -> dict[str, str]:
     """Module-level ``NAME = "string"`` assignments."""
     found: dict[str, str] = {}
     for node in tree.body:
-        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant):
-            if isinstance(node.value.value, str):
-                for target in node.targets:
-                    if isinstance(target, ast.Name):
-                        found[target.id] = node.value.value
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    found[target.id] = node.value.value
     return found
 
 
@@ -235,7 +238,7 @@ def test_no_migration_names_an_fk_target_the_corpus_never_creates(corpus):
     new = set(missing) - KNOWN_MISSING_TARGETS
     assert not new, (
         "a migration names a foreign-key target no migration creates, which aborts "
-        f"`alembic upgrade head` on a clean database: "
+        "`alembic upgrade head` on a clean database: "
         + "; ".join(f"{t} at {missing[t][0][0]}:{missing[t][0][1]}" for t in sorted(new))
     )
 

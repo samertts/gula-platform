@@ -87,7 +87,7 @@ EXTERNAL_CHANNELS = ("sms", "email", "whatsapp", "push")
 class _Gateway(BaseHTTPRequestHandler):
     received: list = []
 
-    def do_POST(self):  # noqa: N802
+    def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         type(self).received.append(json.loads(self.rfile.read(length) or b"{}"))
         self.send_response(200)

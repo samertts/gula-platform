@@ -9,10 +9,11 @@ not drift.
 """
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 
 from tests.conftest import auth_headers
-
 
 # ── Phase 1: the mapping layer ──────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ def test_ia065_the_canonical_ulid_is_never_published_in_any_fhir_reference():
         if "citizen_ulid" not in text:
             continue
         # does any FHIR-shaped reference or identifier carry the ULID?
-        for match in re.finditer(r'.*citizen_ulid.*', text):
+        for match in re.finditer(r".*citizen_ulid.*", text):
             line = match.group(0)
             if '"reference"' in line or "Patient/" in line or '"identifier"' in line:
                 hits.append(f"{path.relative_to(root)}: {line.strip()[:90]}")
@@ -210,10 +211,8 @@ def _all_tables():
     for info in pkgutil.walk_packages(app.__path__, prefix="app."):
         if any(s in info.name for s in (".tests", "__pycache__")):
             continue
-        try:
+        with contextlib.suppress(BaseException):
             importlib.import_module(info.name)
-        except BaseException:
-            pass
 
     from app.database import Base
     from app.ehr.base import EHRBase

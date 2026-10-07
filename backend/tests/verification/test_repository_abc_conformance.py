@@ -69,7 +69,6 @@ control cannot run, and no route currently asks it to.
 from __future__ import annotations
 
 import asyncio
-
 import inspect
 
 import pytest

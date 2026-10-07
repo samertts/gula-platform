@@ -100,8 +100,9 @@ def test_group_b_route_outcome_with_its_table_present(client, admin, package, me
 
 def test_sessionlocal_is_sync_so_group_b_cannot_reach_sql():
     """The static half of the Group B claim, asserted rather than described."""
-    from app.database import SessionLocal
     import inspect
+
+    from app.database import SessionLocal
 
     session = SessionLocal()
     try:
@@ -172,9 +173,9 @@ def test_the_platform_workflow_capability_refuses_with_a_reason():
 
 def test_the_capability_no_longer_advertises_itself_as_working():
     """It stays registered -- but the listing says it cannot be invoked."""
+    import app.platform.workflow
     from app.platform import PlatformRegistry
     from app.platform.workflow import WorkflowService
-    import app.platform.workflow  # noqa: F401
 
     assert isinstance(PlatformRegistry.get("workflow"), WorkflowService)
 

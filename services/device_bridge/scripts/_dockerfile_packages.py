@@ -22,4 +22,6 @@ def packages(dockerfile_text: str) -> list[str]:
 
 if __name__ == "__main__":
     with open(sys.argv[1]) as handle:
-        print(" ".join(shlex.quote(p) for p in packages(handle.read())))
+        # Printing the package list to stdout IS this script's interface —
+        # the Dockerfile consumes it — so T201 is suppressed deliberately.
+        print(" ".join(shlex.quote(p) for p in packages(handle.read())))  # noqa: T201

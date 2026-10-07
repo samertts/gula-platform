@@ -73,8 +73,8 @@ def test_get_status_does_not_answer_none_and_get_tasks_does_not_answer_empty():
 
 
 def test_the_capability_listing_says_the_workflow_capability_is_unavailable():
+    import app.platform.workflow
     from app.platform import PlatformRegistry
-    import app.platform.workflow  # noqa: F401  -- registration happens at import
 
     workflow_caps = [c for c in PlatformRegistry.get_capabilities() if c["module"] == "workflow"]
 
@@ -86,9 +86,13 @@ def test_the_capability_listing_says_the_workflow_capability_is_unavailable():
 
 def test_the_listed_reason_is_the_same_string_the_error_carries():
     """One source of truth, so the listing and the failure cannot diverge."""
+    import app.platform.workflow
     from app.platform import PlatformRegistry
-    from app.platform.workflow import UNAVAILABLE_REASON, WorkflowRuntimeUnavailable, WorkflowService
-    import app.platform.workflow  # noqa: F401
+    from app.platform.workflow import (
+        UNAVAILABLE_REASON,
+        WorkflowRuntimeUnavailable,
+        WorkflowService,
+    )
 
     listed = {
         c["unavailable_reason"]
@@ -111,8 +115,8 @@ def test_an_unavailable_module_cannot_be_registered_without_a_reason():
 
 
 def test_health_distinguishes_unavailable_from_registered():
+    import app.platform.workflow
     from app.platform import PlatformRegistry
-    import app.platform.workflow  # noqa: F401
 
     # The ratchet: assert both states appear, or the test would also pass if
     # health() simply returned "unavailable" for everything. A probe supplies
