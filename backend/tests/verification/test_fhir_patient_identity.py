@@ -302,8 +302,24 @@ def test_ia064_the_synthetic_tag_is_on_the_bundle_only(client, actor):
     assert source.count("_synthetic_meta()") >= 5
 
 
-def test_ia064_two_messages_with_no_patient_identifier_collapse_into_one_patient(client, actor):
-    refs = []
+def test_ia064_a_message_with_no_patient_identifier_is_now_refused(client, actor):
+    """This test used to assert the defect; it now asserts the repair.
+
+    As originally written it recorded what the converter did:
+
+        assert refs[0] == refs[1] == "Patient/synthetic-patient"
+
+    — two distinct ORU^R01 messages, each with an empty PID-3, both produced
+    `Patient/synthetic-patient`, so in any FHIR store that upserts by id the
+    second overwrote or merged with the first. That is a result attributed to
+    the wrong patient.
+
+    IA-064 is FIXED: PID-3 is Required in an ORU^R01 under HL7 v2.5, and
+    `parse_oru_r01` now refuses the message rather than guessing an identity,
+    which the route maps to 422. The shape ratchets live in
+    tests/verification/test_hl7_patient_identity.py.
+    """
+    statuses = []
     for n in (1, 2):
         response = client.post(
             "/fhir-interoperability/hl7/convert",
@@ -312,16 +328,16 @@ def test_ia064_two_messages_with_no_patient_identifier_collapse_into_one_patient
         )
         if response.status_code in (401, 403):
             pytest.skip("converter requires an institutional permission this actor lacks")
-        bundle = response.json()["bundle"]
-        refs.append(
-            next(
-                (e["resource"].get("subject") or {}).get("reference")
-                for e in bundle["entry"]
-                if e["resource"]["resourceType"] == "Observation"
-            ),
+        statuses.append(response.status_code)
+        body = response.json()
+        assert "bundle" not in body, (
+            "a bundle was produced for an identifier-less message; before the "
+            "fix this one carried Patient/synthetic-patient"
         )
-    print(f"\n[IA-064] two distinct messages, no PID-3 -> {refs}")
-    assert refs[0] == refs[1] == "Patient/synthetic-patient", refs
+        assert "PID-3" in str(body.get("detail", "")), body
+
+    print(f"\n[IA-064 fixed] two distinct messages, no PID-3 -> {statuses}")
+    assert statuses == [422, 422], statuses
 
 
 def test_ia064_module_with_zero_importers_is_not_reachable():

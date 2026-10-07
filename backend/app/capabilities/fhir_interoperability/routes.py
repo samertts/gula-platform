@@ -72,11 +72,14 @@ def convert_hl7_to_fhir(
     payload: HL7ConversionRequest,
     _actor: LabUser = _write_actor(),
 ) -> dict:
+    # IA-064. to_fhir_bundle was called outside this block, so its own identity
+    # guards would have surfaced as a 500. A message that cannot be converted
+    # is the client's malformed input, not a server fault.
     try:
         message = parse_oru_r01(payload.message)
+        bundle = to_fhir_bundle(message)
     except HL7ConversionError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    bundle = to_fhir_bundle(message)
     return {
         "messageType": message.message_type,
         "resourceCount": len(bundle["entry"]),
