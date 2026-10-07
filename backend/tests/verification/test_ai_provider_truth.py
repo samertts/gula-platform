@@ -104,24 +104,123 @@ def test_embedding_raises_instead_of_inventing_a_vector():
         provider.embed_many(["a", "b"])
 
 
-def test_ollama_is_supported_and_preferred():
-    """The Constitution's Local-AI-First choice must be reachable.
+@pytest.fixture()
+def ollama_stub():
+    """A minimal HTTP server speaking Ollama's three endpoints.
 
-    Asserted on the source rather than by standing up Ollama, which cannot be
-    installed in this container: the egress proxy denies ollama.com and
-    registry.ollama.ai by organization policy.
+    The real Ollama cannot be installed in this container -- the egress proxy
+    denies ollama.com and registry.ollama.ai by organization policy -- so the
+    protocol is exercised against a stub. This verifies that the provider
+    SELECTS Ollama, calls the right paths and returns what the daemon says. It
+    does NOT verify model quality or the real daemon's behaviour.
     """
+    import json as _json
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    calls: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):  # silence the default stderr spam
+            pass
+
+        def _send(self, payload: dict):
+            body = _json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            calls.append(f"GET {self.path}")
+            if self.path == "/api/tags":
+                self._send({"models": [{"name": "llama3.2:1b"}]})
+            else:
+                self.send_error(404)
+
+        def do_POST(self):
+            calls.append(f"POST {self.path}")
+            length = int(self.headers.get("Content-Length", 0))
+            self.rfile.read(length)
+            if self.path == "/api/generate":
+                self._send({"response": "stub-generated-text"})
+            elif self.path == "/api/embeddings":
+                # a non-constant vector, as a real model would give
+                self._send({"embedding": [0.11, -0.42, 0.73, 0.05]})
+            else:
+                self.send_error(404)
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}", calls
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_a_reachable_ollama_is_actually_selected(ollama_stub):
+    """Behavioural, not positional.
+
+    An earlier version of this test compared string offsets in the source to
+    check Ollama came before Gemini. That ratchet was INERT: a negative proof
+    that disabled the Ollama branch entirely (`if False and ...`) left all
+    tests green, because the string positions were unchanged. This drives the
+    selection instead.
+    """
+    from shared.ai.provider import AIProvider
+
+    base_url, calls = ollama_stub
+    # a Gemini key is ALSO set, so this proves precedence, not mere fallback
+    provider = AIProvider(api_key="a-gemini-key-that-must-be-ignored", ollama_base_url=base_url)
+
+    assert provider.available is True
+    assert provider.backend == "ollama", (
+        "Ollama was reachable and a Gemini key was present; Local AI First "
+        "requires Ollama to win"
+    )
+    assert "GET /api/tags" in calls
+
+
+def test_the_ollama_generation_path_returns_what_the_daemon_said(ollama_stub):
+    from shared.ai.provider import AIProvider
+
+    base_url, calls = ollama_stub
+    provider = AIProvider(ollama_base_url=base_url)
+
+    assert provider.generate("hello") == "stub-generated-text"
+    assert "POST /api/generate" in calls
+
+
+def test_the_ollama_embedding_path_uses_the_embedding_endpoint(ollama_stub):
+    """And returns a real, non-constant vector."""
+    from shared.ai.provider import AIProvider
+
+    base_url, calls = ollama_stub
+    vector = AIProvider(ollama_base_url=base_url).embed("clinical text")
+
+    assert "POST /api/embeddings" in calls, "embeddings must not come from /api/generate"
+    assert vector == [0.11, -0.42, 0.73, 0.05]
+    # the defect's signature: every dimension identical
+    assert len(set(vector)) > 1, "a constant vector is not an embedding"
+
+
+def test_embed_many_returns_one_vector_per_text(ollama_stub):
+    from shared.ai.provider import AIProvider
+
+    base_url, _ = ollama_stub
+    vectors = AIProvider(ollama_base_url=base_url).embed_many(["a", "b", "c"])
+    assert len(vectors) == 3
+    assert all(len(v) == 4 for v in vectors)
+
+
+def test_ollama_uses_the_documented_endpoints_and_variable():
     source = PROVIDER_FILE.read_text()
-
     assert "OLLAMA_BASE_URL" in source
-    assert "/api/embeddings" in source, "no real embedding endpoint is used"
-    assert "/api/generate" in source, "no Ollama generation endpoint is used"
-
-    # Ollama is tried before the hosted vendor, not after.
-    select = source.index("_select_backend")
-    ollama_at = source.index("_ollama_reachable()", select)
-    gemini_at = source.index("google.generativeai", select)
-    assert ollama_at < gemini_at, "Gemini is selected before Ollama"
+    assert "/api/embeddings" in source
+    assert "/api/generate" in source
 
 
 def test_a_gemini_backend_refuses_to_guess_an_embedding():
