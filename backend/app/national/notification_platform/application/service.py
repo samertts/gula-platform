@@ -44,6 +44,8 @@ from app.national.notification_platform.domain.repository import (
     NotificationTemplateRepository,
 )
 from app.national.notification_platform.exceptions import (
+    SCHEDULING_UNAVAILABLE_REASON,
+    NotificationSchedulingUnavailable,
     ChannelNotAvailableError,
     NotificationNotFoundError,
     QuietHoursBlockedError,
@@ -324,16 +326,44 @@ class NotificationPlatformService:
             recurring_end_at=recurring_end_at,
         )
 
+        # IA-080. ``delay_s`` was computed here and then used only as the
+        # task's ``timeout_s``, which is a timeout, not a delay. TaskPayload
+        # carries no delay, run_at or eta field and TaskQueue.enqueue accepts
+        # none, so the delivery task ran immediately with an inflated timeout
+        # while the persisted NotificationSchedule row said otherwise, and the
+        # route answered 201 echoing the future date back to the caller.
+        #
+        # Nothing reads these rows either: the only reader of
+        # NotificationSchedule is the GET /schedules listing.
+        # ``find_due_schedules`` belongs to background_platform and a different
+        # repository, so no poller would pick a future schedule up even if the
+        # task were withheld.
+        #
+        # A future schedule is therefore refused and named rather than
+        # delivered now under a schedule the platform cannot honour. Building
+        # the missing primitive would mean choosing retry, visibility and
+        # recurrence semantics for a clinical notification path, which is not a
+        # decision to make while passing through.
+        if scheduled_at > _now():
+            raise NotificationSchedulingUnavailable(
+                f"cannot schedule notification {notification_id} for "
+                f"{scheduled_at.isoformat()}: {SCHEDULING_UNAVAILABLE_REASON}",
+            )
+        if recurring or cron_expression:
+            raise NotificationSchedulingUnavailable(
+                f"cannot schedule a recurring notification "
+                f"(recurring={recurring}, cron={cron_expression!r}): "
+                f"{SCHEDULING_UNAVAILABLE_REASON}",
+            )
+
         notification.status = NotificationStatus.QUEUED
         notification.scheduled_at = scheduled_at
         await self._notification_repo.save(notification)
 
-        delay_s = max(0, (scheduled_at - _now()).total_seconds())
         await task_queue.enqueue(
             TaskPayload(
                 type="national_notification_deliver",
                 payload={"notification_id": notification_id, "scheduled": True},
-                timeout_s=int(delay_s) + 60,
             ),
         )
 

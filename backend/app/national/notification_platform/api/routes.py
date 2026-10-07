@@ -20,6 +20,7 @@ from app.national.notification_platform.domain.enums import (
     TemplateEngine,
 )
 from app.national.notification_platform.exceptions import (
+    NotificationSchedulingUnavailable,
     ChannelNotAvailableError,
     NotificationNotFoundError,
     QuietHoursBlockedError,
@@ -528,6 +529,13 @@ async def schedule_notification(
         }
     except NotificationNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+    except NotificationSchedulingUnavailable as e:
+        # IA-080. 501 rather than 201: the request is well-formed and the
+        # caller is entitled to know the capability is absent, not to be told
+        # the notification was scheduled when it was about to be sent at once.
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(e),
+        ) from e
 
 
 @router.get("/schedules")

@@ -78,9 +78,27 @@ class PlatformRegistry:
             for cap in caps:
                 entry = dict(cap)
                 entry["module"] = name
-                entry["available"] = available
-                if not available:
-                    entry["unavailable_reason"] = reason
+
+                # IA-079, correcting IA-058. This was
+                # ``entry["available"] = available``, which overwrote a
+                # capability's own declaration with the module-level default —
+                # so a module that works overall silently republished one of
+                # its broken capabilities as available. The more specific
+                # statement wins, and never the other way round: a module
+                # marked unavailable makes every capability unavailable, and a
+                # capability may declare itself unavailable inside a working
+                # module.
+                cap_available = bool(cap.get("available", True))
+                entry["available"] = available and cap_available
+                if not entry["available"]:
+                    entry["unavailable_reason"] = (
+                        cap.get("unavailable_reason")
+                        if not cap_available
+                        else reason
+                    ) or reason or (
+                        f"capability {cap.get('name', '?')!r} is marked "
+                        f"unavailable but gave no reason"
+                    )
                 result.append(entry)
         return result
 
