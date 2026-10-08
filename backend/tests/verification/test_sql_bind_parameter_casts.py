@@ -46,20 +46,72 @@ _ROOTS = (
 )
 
 
-def test_sqlalchemy_really_does_mangle_the_inline_form():
-    """The positive control.
+def _installed_sqlalchemy() -> tuple[int, int]:
+    import sqlalchemy
 
-    Without this, the sweep below could pass because the pattern never occurs
-    OR because the premise is wrong. This asserts the premise directly, so a
-    future SQLAlchemy that fixes the parse makes THIS test fail rather than
-    leaving a now-pointless ban in place.
+    major, minor = sqlalchemy.__version__.split(".")[:2]
+    return int(major), int(minor)
+
+
+def _declared_floor() -> tuple[int, int]:
+    """The oldest SQLAlchemy a deployment may legitimately install.
+
+    Read from requirements.txt rather than assumed, because that is the file
+    the production Dockerfile installs.
     """
+    requirements = (
+        pathlib.Path(__file__).resolve().parents[2] / "requirements.txt"
+    ).read_text()
+    match = re.search(r"^sqlalchemy(?:\[[^\]]*\])?\s*>=\s*(\d+)\.(\d+)", requirements, re.MULTILINE | re.IGNORECASE)
+    assert match, "positive control: requirements.txt declares a sqlalchemy floor"
+    return int(match.group(1)), int(match.group(2))
+
+
+def test_the_premise_behind_the_ban_is_still_measured():
+    """The positive control, and it had to be re-measured rather than asserted.
+
+    As originally written this asserted unconditionally that
+    ``text("SELECT :payload::jsonb")`` binds ``["payloa"]`` — SQLAlchemy
+    consuming the first ``:`` of ``::`` and truncating the name. That was true
+    and is the whole reason for the ban below.
+
+    **SQLAlchemy 2.1 changed it.** Under 2.1.4 the same expression binds
+    nothing at all, so the original assertion fails — correctly, which is what
+    a premise check is for: it caught an upstream change instead of leaving a
+    ban standing on a reason that had evaporated.
+
+    The ban nevertheless stays, and unconditionally, because
+    ``requirements.txt`` declares a *floor* (``sqlalchemy[asyncio]>=2.0.51``)
+    and not a ceiling. A deployment is free to install 2.0.x, where the form
+    silently loses its value. The same source must be correct on every version
+    the project admits, so this test asserts the premise on versions where it
+    holds and, on newer ones, asserts that the floor still admits a version
+    where it does — which is what keeps the ban load-bearing.
+    """
+    installed = _installed_sqlalchemy()
     mangled = sorted(text("SELECT :payload::jsonb")._bindparams)
-    assert mangled == ["payloa"], (
-        "SQLAlchemy no longer truncates an inline-cast parameter name "
-        f"(got {mangled}); re-evaluate whether this ban is still needed"
-    )
-    # And the replacement form is correct.
+
+    if installed < (2, 1):
+        assert mangled == ["payloa"], (
+            f"SQLAlchemy {installed} no longer truncates an inline-cast "
+            f"parameter name (got {mangled}) even below 2.1; re-read IA-084 "
+            f"before relaxing anything."
+        )
+    else:
+        assert mangled != ["payload"], (
+            f"SQLAlchemy {installed} now binds the inline-cast form correctly "
+            f"(got {mangled}). If that holds at the declared floor too, the "
+            f"ban below is obsolete and should be retired deliberately."
+        )
+        floor = _declared_floor()
+        assert floor < (2, 1), (
+            f"the declared floor is now {floor}, at or above the version that "
+            f"stopped mangling, so the ban's premise no longer applies to any "
+            f"admitted version. Retire the ban deliberately, or keep it with a "
+            f"new reason — do not leave this test asserting a dead premise."
+        )
+
+    # The replacement form is correct on every version. Unconditional.
     assert sorted(text("SELECT CAST(:payload AS jsonb)")._bindparams) == ["payload"]
 
 
