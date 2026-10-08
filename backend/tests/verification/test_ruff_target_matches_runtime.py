@@ -146,9 +146,6 @@ def test_the_formatter_under_this_repo_config_keeps_the_parentheses():
     nothing about the target value, only that formatting a file with the
     repository's own configuration does not change what Python can parse it.
     """
-    if sys.version_info < (3, 9):  # pragma: no cover
-        pytest.skip("needs a modern interpreter to run ruff")
-
     probe = "def f(v):\n    try:\n        return float(v)\n    except (TypeError, ValueError):\n        return None\n"
 
     # Written inside the repository so ruff picks up pyproject.toml, which is
