@@ -228,6 +228,7 @@ const en = {
     quickNavigation: "Quick navigation",
     mainNavigation: "Main navigation",
     openAllSections: "Open all sections",
+    moreSections: "More sections",
     more: "More",
     current: "Current page",
     skipToContent: "Skip to main content",

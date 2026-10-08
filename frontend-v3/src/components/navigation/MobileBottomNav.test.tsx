@@ -24,6 +24,7 @@ vi.mock("react-i18next", () => ({
         "nav.alerts": "Alerts",
         "mobileNav.quickNavigation": "Quick navigation",
         "mobileNav.openAllSections": "Open all sections",
+        "mobileNav.moreSections": "More sections",
         "mobileNav.more": "More",
         "mobileNav.current": "Current page",
       })[key] ?? key,
@@ -51,7 +52,7 @@ describe("MobileBottomNav", () => {
     ).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Patients" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Open all sections" }),
+      screen.getByRole("button", { name: "More sections" }),
     ).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -84,7 +85,7 @@ describe("MobileBottomNav", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Open all sections" }),
+      screen.getByRole("button", { name: "More sections" }),
     ).toHaveAttribute("aria-expanded", "true");
   });
 });

@@ -127,6 +127,7 @@ const ku = {
     quickNavigation: "ڕێڕەوی خێرا",
     mainNavigation: "ڕێڕەوی سەرەکی",
     openAllSections: "کردنەوەی هەموو بەشەکان",
+    moreSections: "بەشەکانی زیاتر",
     more: "زیاتر",
     current: "لاپەڕەی ئێستا",
     skipToContent: "بازدان بۆ ناوەڕۆکی سەرەکی",

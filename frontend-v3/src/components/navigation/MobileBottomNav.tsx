@@ -145,8 +145,27 @@ export function MobileBottomNav({
           // accessible name — so a screen reader announced "More, button"
           // with no indication of its purpose, and on a touch device the
           // title never renders at all. 8946d21 had set it deliberately.
-          aria-label={t("mobileNav.openAllSections")}
-          title={t("mobileNav.openAllSections")}
+          //
+          // IA-087, and the reason this is `moreSections` and not
+          // `openAllSections`. Restoring 8946d21's exact string was wrong:
+          // DashboardLayout's header hamburger already carries
+          // `mobileNav.openAllSections`, and below 768px BOTH are on screen
+          // (that button is `lg:hidden`, this nav is `md:hidden`). Two
+          // visible controls then answered to one accessible name, which
+          // broke two things at once:
+          //   * a screen-reader user reading the button list heard the same
+          //     name twice with nothing to tell the two apart, and
+          //   * `e2e/mobile-layout.spec.ts` failed strict mode at 320px and
+          //     390px — `getByRole('button', { name: 'فتح جميع الأقسام' })`
+          //     resolved to 2 elements. Measured: 2 failed / 1 passed with
+          //     that string here, 3 passed without it.
+          // The name also has to contain this button's visible text
+          // ("more") or it violates WCAG 2.5.3 Label in Name, so it is not
+          // simply a third unrelated phrase. `moreSections` satisfies all
+          // three: it names the action, it contains the visible label, and
+          // it is not a substring of the header button's name.
+          aria-label={t("mobileNav.moreSections")}
+          title={t("mobileNav.moreSections")}
           className="flex h-auto min-h-12 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold text-muted-foreground motion-safe:active:scale-[0.98] motion-reduce:transition-none hover:bg-slate-100 hover:text-[#0F172A] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:hover:bg-white/10 dark:hover:text-white"
         >
           <Menu className="h-5 w-5" aria-hidden="true" />
