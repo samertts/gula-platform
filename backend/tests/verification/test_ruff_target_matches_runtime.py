@@ -44,6 +44,17 @@ versions this project publishes support for.
 
 The target now matches `requires-python`. These tests pin the two together so
 they cannot drift apart again — raising one without the other fails here.
+
+IA-088, recorded here because it was a defect in this file rather than in the
+tree it guards. The first version probed `python3.11` / `python3.12` /
+`python3.13` by name and tried to skip a missing one by reading
+`probe.returncode` and `probe.stderr`. `subprocess.run` raises
+`FileNotFoundError` instead of returning, so that skip was unreachable: every
+interpreter existed on the machine the file was written on, and on the CI
+runner — which carries only the single Python `setup-python` installed — the
+raise failed `Backend Tests` outright at 3663 passed / 1 failed. The absence is
+now caught, and `test_the_interpreter_running_this_suite_rejects_the_syntax`
+holds the floor so the parametrised evidence cannot all skip at once.
 """
 from __future__ import annotations
 
@@ -113,30 +124,85 @@ def test_setup_py_agrees_with_pyproject():
     )
 
 
+#: The source PEP 758 made legal and 3.13 and below do not.
+UNPARENTHESISED_EXCEPT = "try:\n pass\nexcept A, B:\n pass\n"
+
+
+def _rejects_unparenthesised_except(executable: str):
+    """Ask one interpreter whether it can parse the 3.14-only form.
+
+    Returns ``(rejected, stderr)``, or ``None`` when that interpreter is not
+    installed. ``subprocess.run`` RAISES ``FileNotFoundError`` for a missing
+    executable — it does not return a non-zero status with a message — so the
+    absence has to be caught, not inspected. The first version of this helper
+    tested ``probe.returncode != 0 and "No such file" in probe.stderr``, which
+    is unreachable code: locally every interpreter in the matrix existed, and
+    on a CI runner holding only the one Python that `setup-python` installed,
+    the raise propagated and failed the whole backend suite (IA-088).
+    """
+    try:
+        probe = subprocess.run(
+            [executable, "-c", f"import ast; ast.parse({UNPARENTHESISED_EXCEPT!r})"],
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, NotADirectoryError, PermissionError):
+        return None
+    return probe.returncode != 0, probe.stderr
+
+
+def test_the_interpreter_running_this_suite_rejects_the_syntax():
+    """The one measurement that can never skip.
+
+    `sys.executable` always exists, so this is the entry in the evidence that
+    keeps the parametrised test below from going vacuous on a runner that
+    happens to carry none of the named interpreters. It is also the only one
+    that is certainly on-contract: whatever Python is running the suite is a
+    Python this project is being tested on.
+    """
+    result = _rejects_unparenthesised_except(sys.executable)
+    assert result is not None, "sys.executable must be runnable"
+    rejected, stderr = result
+
+    if not rejected:
+        # 3.14 and later accept PEP 758. That is not a failure — it is the
+        # condition under which the ruff target may be raised — but it is only
+        # acceptable while no older interpreter is still supported.
+        floor = _minor(_toml_value("requires-python", PYPROJECT.read_text()))
+        assert floor >= 14, (
+            f"this interpreter ({sys.version_info.major}.{sys.version_info.minor}) "
+            f"parses `except A, B:`, but requires-python still declares a 3.{floor} "
+            f"floor, which does not. Lower the ruff target or raise the floor "
+            f"(IA-082)."
+        )
+        return
+
+    assert "parenthesized" in stderr, stderr
+    assert sys.version_info[:2] >= (3, 12), (
+        "this suite is running on an interpreter below the declared floor"
+    )
+
+
 @pytest.mark.parametrize("version", SYNTAX_REJECTED_BY)
 def test_the_syntax_the_old_target_would_emit_is_rejected(version):
     """The evidence, re-measured rather than asserted.
 
     Skips where an interpreter is absent instead of passing vacuously — a
-    missing interpreter is no evidence either way.
+    missing interpreter is no evidence either way. The non-skippable half of
+    this evidence is the test above.
     """
     executable = f"python{version}"
-    probe = subprocess.run(
-        [executable, "-c", "import ast; ast.parse('try:\\n pass\\nexcept A, B:\\n pass\\n')"],
-        capture_output=True,
-        text=True,
-    )
-    if probe.returncode != 0 and "No such file" in (probe.stderr or ""):
+    result = _rejects_unparenthesised_except(executable)
+    if result is None:
         pytest.skip(f"{executable} is not installed here")
-    if "not found" in (probe.stderr or "").lower():
-        pytest.skip(f"{executable} is not installed here")
+    rejected, stderr = result
 
-    assert probe.returncode != 0, (
+    assert rejected, (
         f"{executable} accepted `except A, B:` — if the floor has moved to an "
         f"interpreter that accepts PEP 758, re-read IA-082: the ruff target "
         f"may then be raised to match."
     )
-    assert "parenthesized" in probe.stderr, probe.stderr
+    assert "parenthesized" in stderr, stderr
 
 
 def test_the_formatter_under_this_repo_config_keeps_the_parentheses():
