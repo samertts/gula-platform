@@ -48,11 +48,24 @@ VERSIONS = pathlib.Path(__file__).resolve().parents[2] / "migrations" / "version
 # it leaves exactly one genuine case.
 KNOWN_INDIRECTLY_CREATED = {"niam_admin_units", "national_facilities"}
 
-# NR-028. Absent from every migration-built database checked: a 20260908_0002
-# build (391 tables), a 20260819_0003 build (410 tables) and a failed
-# ``upgrade head`` (32 tables). Created by no migration; declared by
-# ``app.hospital.models.OperationTheater`` in the ORM.
-KNOWN_UNCREATED_FK_TARGETS = {"hospital_operation_theaters"}
+# NR-028 / IA-054, now CLOSED, and emptied deliberately as this test's own
+# docstring requires. ``hospital_operation_theaters`` was absent from every
+# migration-built database checked — a 20260908_0002 build (391 tables), a
+# 20260819_0003 build (410 tables) and a failed ``upgrade head`` (32 tables) —
+# because no migration created it while ``20260820_0004`` declared a foreign
+# key to it. That revision was therefore the point at which every fresh
+# ``alembic upgrade head`` died, which is what the PostgreSQL migration gate
+# was reporting.
+#
+# ``20260820_0003`` now creates it, with ``hospitals`` and
+# ``hospital_departments``, and ``20260820_0004`` is relinked behind it.
+# Re-measured from an empty PostgreSQL database before emptying this set:
+# upgrade head reaches 20260909_0001 with 423 tables, all seven CI-required
+# tables present, and ``downgrade -1 && upgrade head`` returns to 423.
+#
+# The set stays empty: a new uncreated foreign-key target must fail here, not
+# be absorbed into a baseline.
+KNOWN_UNCREATED_FK_TARGETS: set[str] = set()
 
 
 def _string(node: ast.AST) -> str | None:
