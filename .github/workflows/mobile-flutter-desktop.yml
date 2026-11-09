@@ -136,7 +136,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: flutter-test-results-${{ matrix.os }}
           path: mobile/desktop/test-results.json
@@ -145,7 +145,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: flutter-coverage-${{ matrix.os }}
           path: mobile/desktop/coverage/
@@ -195,7 +195,7 @@ jobs:
           dart run msix:create --store
 
       - name: Upload Windows MSIX
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: gula-desktop-windows-msix
           path: mobile/desktop/build/windows/x64/runner/Release/*.msix
@@ -203,7 +203,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Windows executable
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: gula-desktop-windows-exe
           path: mobile/desktop/build/windows/runner/Release/
@@ -304,7 +304,7 @@ jobs:
           cp ~/rpmbuild/RPMS/x86_64/*.rpm .
 
       - name: Upload Linux AppImage
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: gula-desktop-linux-appimage
           path: mobile/desktop/build/appimage/*.AppImage
@@ -312,7 +312,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Linux deb
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: gula-desktop-linux-deb
           path: mobile/desktop/*.deb
@@ -320,7 +320,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Linux rpm
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: gula-desktop-linux-rpm
           path: mobile/desktop/*.rpm
@@ -419,7 +419,7 @@ jobs:
           xcrun stapler staple "GULA_Platform-${SAFE_REF}.dmg"
 
       - name: Upload macOS DMG
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: gula-desktop-macos-dmg
           path: mobile/desktop/GULA_Platform-*.dmg
