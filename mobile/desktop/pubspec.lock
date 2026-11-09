@@ -404,10 +404,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_oss_licenses
-      sha256: "44d359662281a4e8c2ee110ab8d9274782e368323fe6fbb389a79adbf81c5899"
+      sha256: "80f5d879f1760f90020692db0d4b58b5a475df23573df567e12757a71ce59628"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.3"
+    version: "3.2.0"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
