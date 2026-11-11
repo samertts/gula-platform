@@ -6,7 +6,7 @@ Executive Order 5: Audit on PatientCreated
 import json
 import logging
 import os
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import asyncpg
 from fastapi import FastAPI, HTTPException
@@ -47,7 +47,7 @@ def publish_event(event_type: str, payload: dict):
         message = {
             "event_type": event_type,
             "payload": payload,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         channel.basic_publish(
             exchange="gula.events",

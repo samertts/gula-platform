@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -305,7 +305,7 @@ def create_transaction(
         currency="IQD",
         status="pending",
         description=description,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
     db.add(txn)
     db.commit()
@@ -388,7 +388,7 @@ def get_financial_summary(
     db: Session = Depends(get_db),
 ):
     _check_enabled()
-    from datetime import timedelta
+    from datetime import UTC, timedelta
     date_to = date_to or date.today()
     date_from = date_from or (date_to - timedelta(days=30))
     return FinancialReportService.generate_report(

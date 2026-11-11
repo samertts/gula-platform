@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
@@ -32,8 +32,8 @@ class FinProvider(FinBase):
     phone = Column(String(50), nullable=True)
     quality_score = Column(Float, nullable=True, default=0.0)
     accredited = Column(Boolean, nullable=True, default=False)
-    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=True, onupdate=lambda: datetime.now(UTC))
 
 
 class FinSubscription(FinBase):
@@ -48,7 +48,7 @@ class FinSubscription(FinBase):
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)
     auto_renew = Column(Boolean, nullable=True, default=True)
-    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))
 
 
 class FinTransaction(FinBase):
@@ -63,7 +63,7 @@ class FinTransaction(FinBase):
     description = Column(Text, nullable=True)
     reference_id = Column(String(255), nullable=True)
     reference_type = Column(String(50), nullable=True)
-    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))
     settled_at = Column(DateTime, nullable=True)
 
 
@@ -78,7 +78,7 @@ class FinInvoice(FinBase):
     paid_amount = Column(Numeric(12, 2), nullable=True, default=0)
     currency = Column(String(3), nullable=True, default="IQD")
     due_date = Column(Date, nullable=True)
-    issued_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    issued_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))
     paid_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
 
@@ -104,7 +104,7 @@ class FinPayment(FinBase):
     method = Column(String(50), nullable=True, default="bank_transfer")
     status = Column(String(20), nullable=True, default="completed")
     reference = Column(String(255), nullable=True)
-    processed_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    processed_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))
     notes = Column(Text, nullable=True)
 
 
@@ -117,7 +117,7 @@ class FinReceivable(FinBase):
     currency = Column(String(3), nullable=True, default="IQD")
     status = Column(String(20), nullable=True, default="pending")
     due_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))
 
 
 class FinPayable(FinBase):
@@ -128,7 +128,7 @@ class FinPayable(FinBase):
     currency = Column(String(3), nullable=True, default="IQD")
     status = Column(String(20), nullable=True, default="pending")
     due_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))
 
 
 class FinPricingRule(FinBase):
@@ -141,4 +141,4 @@ class FinPricingRule(FinBase):
     quality_discount_pct = Column(Float, nullable=True, default=0.0)
     volume_discount_pct = Column(Float, nullable=True, default=0.0)
     active = Column(Boolean, nullable=True, default=True)
-    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=True, default=lambda: datetime.now(UTC))

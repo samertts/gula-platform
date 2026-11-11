@@ -18,7 +18,7 @@ class FactoriesGenerator(BaseGenerator):
 from __future__ import annotations
 
 import factory
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 {chr(10).join(factory_classes)}
@@ -36,6 +36,6 @@ class {entity}Factory(factory.Factory):
 
     id = factory.Sequence(lambda n: n + 1)
     name = factory.Faker("name")
-    created_at = factory.LazyFunction(datetime.utcnow)
-    updated_at = factory.LazyFunction(datetime.utcnow)
+    created_at = factory.LazyFunction(lambda: datetime.now(UTC))
+    updated_at = factory.LazyFunction(lambda: datetime.now(UTC))
 """
