@@ -10,7 +10,12 @@ import sqlalchemy as sa
 
 
 revision = "20260820_0004"
-down_revision = "20260819_0003"
+# IA-054: relinked so 20260820_0003 creates hospital_operation_theaters
+# first. This revision has never succeeded anywhere — it is the point at which
+# every fresh `alembic upgrade head` dies on an UndefinedTable — so no existing
+# database has run it and the usual "never modify an existing migration" rule
+# cannot be violated by changing this one line. Its schema is untouched.
+down_revision = "20260820_0003"
 branch_labels = None
 depends_on = None
 

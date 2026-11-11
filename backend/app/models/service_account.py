@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 
 from app._compat import UTC
 
@@ -20,7 +20,12 @@ class ServiceAccount(Base):
     api_key_hash = Column(String(255), nullable=False)
     roles = Column(Text, nullable=True)
     scopes = Column(Text, nullable=True)
-    is_active = Column(Integer, default=1, index=True)
+    # Boolean, not Integer: migration 20260716_0015 created this column as
+    # ``sa.Boolean()``. The callers in app/security/service_accounts.py already
+    # use boolean semantics (``.is_(True)``, ``= False``), so this declaration
+    # was a latent trap rather than a live failure -- one ``== 1`` away from the
+    # ``operator does not exist: boolean = integer`` that took OAuth2 down.
+    is_active = Column(Boolean, default=True, index=True)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     created_by = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

@@ -8,9 +8,18 @@ from sqlalchemy import JSON, Column, String
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
-from shared.models import AuditMixin, OptimisticLockMixin, SoftDeleteMixin, TenantMixin
+from app.orm_topology import SHARED_METADATA
+from shared.models import (
+    AuditMixin,
+    OptimisticLockMixin,
+    SoftDeleteMixin,
+    TenantMixin,
+    serialize_columns,
+)
 
-NursingBase = declarative_base()
+#: NR-086 -- constructed against the one shared namespace so this base's
+#: cross-base foreign keys resolve. See app/orm_topology.py.
+NursingBase = declarative_base(metadata=SHARED_METADATA)
 
 
 def _ulid() -> str:
@@ -24,13 +33,7 @@ class NursingBaseEntity(TenantMixin, AuditMixin, SoftDeleteMixin, OptimisticLock
     fhir_extension = Column("fhir_extension", JSON, nullable=True)
 
     def to_dict(self) -> dict[str, Any]:
-        result = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+        return serialize_columns(self)
 
     def soft_delete(self) -> None:
         self.is_deleted = True

@@ -1,4 +1,22 @@
-"""Institution-scoped drug substitution rules and approval requests."""
+"""Institution-scoped drug substitution rules and approval requests.
+
+CORRECTED IN PLACE (NR-003, ADR-006).  The two foreign keys to
+``pharmacy_drug_catalog.id`` were declared ``String(26)`` while that primary key
+is ``Integer`` (created by ``20260716_0003``).  PostgreSQL rejects the
+constraint with ``DatatypeMismatch``, so this migration aborted *inside itself*
+on every clean database, and no migration ordered after it could ever run.
+
+Correcting it in place is the only available repair.  Because the abort happens
+here, a later corrective migration is unreachable, and an earlier one would have
+to rewire this revision's ``down_revision`` — also a modification of published
+history.  The repository rule "never modify an existing migration" exists
+because deployed databases have already applied it; that rationale does not hold
+for this revision, since no migration-built database can have applied it.
+Reproduced and then verified fixed on a disposable PostgreSQL 16 database.
+
+Only the two catalog foreign keys change type.  ``id`` and ``rule_id`` stay
+``String(26)``: they are these tables' own identities, not catalog references.
+"""
 
 from __future__ import annotations
 
@@ -24,8 +42,8 @@ def upgrade() -> None:
             "pharmacy_drug_substitution_rules",
             sa.Column("id", sa.String(26), nullable=False),
             sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("original_drug_catalog_id", sa.String(26), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("alternative_drug_catalog_id", sa.String(26), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("original_drug_catalog_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("alternative_drug_catalog_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
             sa.Column("equivalence_type", sa.String(32), nullable=False, server_default="generic"),
             sa.Column("approval_level", sa.String(32), nullable=False, server_default="pharmacist"),
             sa.Column("requires_patient_consent", sa.Boolean(), nullable=False, server_default=sa.true()),

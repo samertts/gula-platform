@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from backend.app._compat import UTC
+from app._compat import UTC
 
 
 class AlertManager:

@@ -75,8 +75,12 @@ def client(app) -> TestClient:
 
 @pytest.fixture()
 def auth_token() -> str:
+    # create_token takes a single claims dict (JWTClaims = dict[str, Any]); the
+    # keyword form this fixture used has never existed in app.security.auth, so
+    # every test depending on it errored at setup. Part of IA-069. The claim
+    # names match app.security.auth.build_token_payload.
     from app.security.auth import create_token
-    return create_token(user_id=1, lab_id=1, role="lab_admin")
+    return create_token({"user_id": 1, "lab_id": 1, "role": "lab_admin", "perm_ver": 1})
 
 
 @pytest.fixture()
@@ -123,8 +127,24 @@ def sample_result_data() -> dict:
 
 
 @pytest.fixture()
-def report_path() -> Path:
-    return Path(os.path.dirname(__file__)) / "report.json"
+def report_path(tmp_path: Path) -> Path:
+    """Where the compatibility report is written.
+
+    IA-069. This returned the tracked ``report.json`` next to this conftest, so
+    merely *running* the suite overwrote it -- dirtying the working tree, and
+    destroying the one piece of evidence that dates the last real run of this
+    suite: a 7/7 100%-PASS report generated 2026-07-14 at platform_version
+    2.1.0, by ``runner.py`` rather than by pytest. The platform has been at
+    2.5.0 since, so that artifact is the record of when the contract last held.
+
+    The default is now a temp path. Set ``CONTRACT_REPORT_PATH`` to write the
+    report somewhere real on purpose, which is what a CI job collecting it
+    should do -- never back over the committed artifact.
+    """
+    override = os.environ.get("CONTRACT_REPORT_PATH")
+    if override:
+        return Path(override)
+    return tmp_path / "report.json"
 
 
 def load_json(path: Path) -> dict | list:

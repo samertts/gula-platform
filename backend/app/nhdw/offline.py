@@ -8,6 +8,7 @@ from sqlalchemy import JSON, Column, DateTime, Integer, String
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from shared.models import serialize_columns
 
 from ..database import Base
 from ..services.audit_service import log_action
@@ -261,12 +262,11 @@ class OfflineService:
                 model.updated_at >= sync_from,
             ).all()
             for rec in records:
-                data = {}
-                for col in rec.__table__.columns:
-                    val = getattr(rec, col.name)
-                    if isinstance(val, datetime):
-                        val = val.isoformat()
-                    data[col.name] = val
+                # Resolved through the mapper, not through `col.name`: a column named
+                # `metadata` is mapped as `metadata_`, and reading it by its physical
+                # name yields the declarative MetaData registry instead of the value.
+                # All 13 tables synced here carry that column. See IA-005.
+                data = serialize_columns(rec)
                 change = OfflineChange(
                     entity_type=table_name,
                     entity_id=rec.id,

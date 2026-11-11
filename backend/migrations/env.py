@@ -85,6 +85,12 @@ import app.care_continuum.models  # noqa: E402
 
 # IdentityBase models (NIAM — National Identity & Access Management)
 from app.identity.base import IdentityBase  # noqa: E402
+from app.orm_topology import (  # noqa: E402
+    authorized_table_names,
+    autogenerate_target_metadata,
+    make_include_name,
+    refuse_unreconciled_destructive_autogenerate,
+)
 import app.identity.models  # noqa: E402
 
 # ── Alembic Config object ─────────────────────────────────────────────────────
@@ -111,20 +117,28 @@ config.set_main_option("sqlalchemy.url", database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Collect all declarative base metadata for autogenerate detection
-# (EHR, Clinical, Citizen, and National models use separate declarative bases)
-target_metadata = [
-    Base.metadata,
-    NationalBase.metadata,
-    EHRBase.metadata,
-    CitizenPlatformBase.metadata,
-    ClinicalBase.metadata,
-    HealthDataBase.metadata,
-    TrustBase.metadata,
-    GovernanceBase.metadata,
-    CareContinuumBase.metadata,
-    IdentityBase.metadata,
-]
+# ── Autogenerate scope (NR-018) and the shared namespace (NR-086) ────────────
+#
+# These are two different questions and this file must not conflate them.
+#
+# NR-086 constructs eleven declarative bases against one shared ``MetaData`` so
+# that 374 cross-base foreign keys resolve and the ORM can write at all. A
+# consequence is that ``Base.metadata``, ``NationalBase.metadata`` and nine
+# others are now *the same object*, holding every one of those bases' tables.
+#
+# NR-018 recorded a decision about a different thing: which bases autogenerate
+# is allowed to compare. Five of the eleven -- HospitalBase, InsBase,
+# DataPlatformBase, NursingBase, PharmacyBase -- are deliberately outside it.
+# Passing the shared namespace whole would sweep them in silently, crossing a
+# recorded decision as a side effect of an unrelated repair.
+#
+# Both the scope and the filter live in ``app/orm_topology.py``, beside the
+# closure they must be distinguished from, so that a test can assert them --
+# this module is not importable outside an Alembic run, since it reads
+# ``context.config`` at module level.
+target_metadata = autogenerate_target_metadata()
+AUTHORIZED_TABLE_NAMES = authorized_table_names()
+include_name = make_include_name(AUTHORIZED_TABLE_NAMES)
 
 
 # ── Offline mode (generates a .sql script) ───────────────────────────────────
@@ -135,6 +149,8 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_name=include_name,
+        process_revision_directives=refuse_unreconciled_destructive_autogenerate,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -152,6 +168,8 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            include_name=include_name,
+            process_revision_directives=refuse_unreconciled_destructive_autogenerate,
         )
         with context.begin_transaction():
             context.run_migrations()

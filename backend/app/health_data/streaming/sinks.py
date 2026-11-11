@@ -34,14 +34,49 @@ class SinkRegistry:
         return list(self._sinks.keys())
 
 
+#: IA-072. Three of the four sinks below reported a write they never performed.
+#: ``PostgresSink``, ``ClickHouseSink`` and ``ObjectStoreSink`` each logged
+#: "writing N records to <destination>" and then ``return len(records)``. The
+#: record count IS this interface's success value -- ``Sink.write`` is annotated
+#: ``-> int`` and ``WebSocketSink`` returns the number actually delivered -- so
+#: returning ``len(records)`` claimed full delivery of a batch that went
+#: nowhere. None of the three ever used the connection string, host or bucket
+#: it was constructed with.
+#:
+#: ``ObjectStoreSink`` was the most deceptive: it built a real filename,
+#: serialised the batch with ``json.dumps`` and logged the exact byte count, so
+#: its log line read as evidence of a completed upload.
+#:
+#: ``WebSocketSink`` is left exactly as it was. It genuinely iterates its
+#: registered connections, awaits ``conn.send``, drops the ones that fail and
+#: returns the number actually delivered. It is the one real sink here.
+#:
+#: Reachability: latent. Nothing outside ``app/health_data/streaming``
+#: constructs any of these -- the package ``__init__`` re-exports them and no
+#: other module in backend/ or services/ imports them. So this is an exported
+#: surface that would have lost its first consumer's data silently, repaired
+#: now rather than after someone wires a health-data stream to it.
+
+STREAM_SINK_UNAVAILABLE = (
+    "this sink is declared but not implemented: it never connected to its "
+    "destination and reported the record count as if it had. See IA-072."
+)
+
+
+class StreamSinkUnavailable(RuntimeError):
+    """Raised instead of returning a delivery count for records never delivered."""
+
+
 class PostgresSink(Sink):
     def __init__(self, connection_string: str = "", table_name: str = "stream_events"):
         self._connection_string = connection_string
         self._table_name = table_name
 
     async def write(self, records: list[dict[str, Any]]) -> int:
-        logger.info("PostgresSink: writing %d records to %s", len(records), self._table_name)
-        return len(records)
+        raise StreamSinkUnavailable(
+            f"PostgresSink.write cannot deliver {len(records)} record(s) to "
+            f"{self._table_name!r}: {STREAM_SINK_UNAVAILABLE}",
+        )
 
     async def close(self) -> None:
         pass
@@ -54,8 +89,10 @@ class ClickHouseSink(Sink):
         self._table = table
 
     async def write(self, records: list[dict[str, Any]]) -> int:
-        logger.info("ClickHouseSink: writing %d records to %s@%s:%d", len(records), self._table, self._host, self._port)
-        return len(records)
+        raise StreamSinkUnavailable(
+            f"ClickHouseSink.write cannot deliver {len(records)} record(s) to "
+            f"{self._table!r} on {self._host}:{self._port}: {STREAM_SINK_UNAVAILABLE}",
+        )
 
     async def close(self) -> None:
         pass
@@ -67,12 +104,13 @@ class ObjectStoreSink(Sink):
         self._prefix = prefix
 
     async def write(self, records: list[dict[str, Any]]) -> int:
-        import time
-
-        filename = f"{self._prefix}/batch_{int(time.time())}_{len(records)}.json"
-        payload = json.dumps(records, default=str, ensure_ascii=False)
-        logger.info("ObjectStoreSink: writing %d records to %s/%s (%d bytes)", len(records), self._bucket, filename, len(payload))
-        return len(records)
+        # The previous body serialised the batch and logged its byte count
+        # before returning the count, which made the log read like proof of a
+        # write. Nothing was ever uploaded.
+        raise StreamSinkUnavailable(
+            f"ObjectStoreSink.write cannot deliver {len(records)} record(s) to "
+            f"{self._bucket}/{self._prefix}: {STREAM_SINK_UNAVAILABLE}",
+        )
 
     async def close(self) -> None:
         pass

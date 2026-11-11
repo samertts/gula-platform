@@ -8,8 +8,12 @@ from sqlalchemy import Column, DateTime, String
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
+from app.orm_topology import SHARED_METADATA
+from shared.models import serialize_columns
 
-IdentityBase = declarative_base()
+#: NR-086 -- constructed against the one shared namespace so this base's
+#: cross-base foreign keys resolve. See app/orm_topology.py.
+IdentityBase = declarative_base(metadata=SHARED_METADATA)
 
 
 def _ulid() -> str:
@@ -48,16 +52,7 @@ class IdentityBaseEntity(IdentityBase):
     )
 
     def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if _is_sensitive_column(col.name):
-                result[col.name] = "[REDACTED]"
-                continue
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+        return serialize_columns(self, redact=_is_sensitive_column)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}>"

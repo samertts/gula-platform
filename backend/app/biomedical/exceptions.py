@@ -13,6 +13,10 @@ class WorkOrderNotFoundError(BiomedicalException):
     pass
 
 
+class WorkOrderAlreadyClosedError(BiomedicalException):
+    """A terminal work-order transition was attempted twice."""
+
+
 class TechnicianNotFoundError(BiomedicalException):
     pass
 

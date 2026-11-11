@@ -875,14 +875,17 @@ class DrugSubstitutionRule(TenantAuditEntity):  # type: ignore[misc]
 
     __tablename__ = "pharmacy_drug_substitution_rules"
 
+    # Foreign keys to the catalog's internal Integer primary key (NR-003 / ADR-006).
+    # These are relational references, not the public drug identity: the public
+    # identity is DrugCatalog.drug_id (UUID4) and is never used as a foreign key.
     original_drug_catalog_id = Column(
-        String(26),
+        Integer,
         ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     alternative_drug_catalog_id = Column(
-        String(26),
+        Integer,
         ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

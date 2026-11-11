@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from app._compat import UTC
 from app.pipeline.parser_engine import ParsedResult
-
-from backend.app._compat import UTC
 
 TEST_NAME_MAP = {
     "HEMOGLOBIN": "Hemoglobin",
@@ -25,6 +24,15 @@ class NormalizedResult:
     reference_range: str
     timestamp: datetime
     status: str
+    # IA-050. What the instrument itself reported, carried verbatim and
+    # uninterpreted. Nothing here decides what an abnormal flag means, parses a
+    # reference range into bounds, maps an ASTM status code, or reads a vendor
+    # date format -- those are clinical and terminology decisions. This only
+    # stops the bridge discarding them.
+    device_abnormal_flags: str = ""
+    device_nature_of_abnormality: str = ""
+    device_result_status: str = ""
+    device_completed_at: str = ""
 
 
 class Normalizer:
@@ -35,6 +43,7 @@ class Normalizer:
         patient_id: str,
         device_id: str,
         reference_range: str = "",
+        nature_of_abnormality: str = "",
     ) -> NormalizedResult:
         return NormalizedResult(
             patient_id=patient_id,
@@ -43,7 +52,24 @@ class Normalizer:
             test_name=TEST_NAME_MAP.get(data.test_code.upper(), data.test_code),
             value=data.value,
             unit=data.unit,
-            reference_range=reference_range,
+            # The instrument's own reference range when it sent one; the caller's
+            # argument only as a fallback. It used to be the argument alone, so
+            # the analyzer's range was discarded and this was always "".
+            reference_range=data.reference_range or reference_range,
+            # Still the ingestion time, deliberately: changing what `timestamp`
+            # means would silently reinterpret an existing field. The
+            # instrument's own completion time is carried separately, unparsed,
+            # because its format is vendor-specific and guessing one would be an
+            # invention.
             timestamp=datetime.now(UTC),
-            status="final",
+            # IA-050: this was the literal "final" for every result. The bridge
+            # performs no validation of any kind, so it cannot know a result is
+            # final -- and "final" is the one direction in which being wrong is
+            # unsafe. The instrument's own status is carried verbatim below; this
+            # field now states what the bridge can actually attest.
+            status="preliminary",
+            device_abnormal_flags=data.abnormal_flags,
+            device_nature_of_abnormality=nature_of_abnormality,
+            device_result_status=data.result_status,
+            device_completed_at=data.completed_at,
         )

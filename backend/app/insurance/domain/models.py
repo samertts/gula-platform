@@ -45,8 +45,11 @@ from app.insurance.domain.enums import (
     ServiceCategory,
     SettlementStatus,
 )
+from app.orm_topology import SHARED_METADATA
 
-InsBase = declarative_base()
+#: NR-086 -- constructed against the one shared namespace so this base's
+#: cross-base foreign keys resolve. See app/orm_topology.py.
+InsBase = declarative_base(metadata=SHARED_METADATA)
 
 
 def _utcnow() -> datetime:

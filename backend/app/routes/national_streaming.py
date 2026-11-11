@@ -205,7 +205,7 @@ def get_cdc_feed(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(StoredEvent).filter(~~StoredEvent.is_deleted)
+    query = db.query(StoredEvent).filter(~StoredEvent.is_deleted)
 
     if table_name:
         query = query.filter(StoredEvent.aggregate_type == table_name)

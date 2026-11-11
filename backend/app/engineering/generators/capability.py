@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
+from app.engineering.generators.base import BaseGenerator, GenerateResult
 
 
 @dataclass
@@ -188,51 +188,51 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(prefix="/{prefix}", tags=["{tag}"])
 
 
 @router.get("/")
-async def list_{prefix}(
+async def list_{cap}(
     skip: int = 0,
     limit: int = 100,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
-    return {{"items": [], "total": 0, "skip": skip, "limit": limit}}
+    raise NotImplementedError("generated scaffolding: {cap} list is not implemented")
 
 
 @router.get("/{{id}}")
-async def get_{prefix}(
+async def get_{cap}(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
-    return {{"id": id}}
+    raise NotImplementedError("generated scaffolding: {cap} read is not implemented")
 
 
 @router.post("/")
-async def create_{prefix}(
+async def create_{cap}(
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
-    return {{"success": True, "id": ""}}
+    raise NotImplementedError("generated scaffolding: {cap} create is not implemented")
 
 
 @router.put("/{{id}}")
-async def update_{prefix}(
+async def update_{cap}(
     id: str,
     data: dict,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
-    return {{"success": True}}
+    raise NotImplementedError("generated scaffolding: {cap} write is not implemented")
 
 
 @router.delete("/{{id}}")
-async def delete_{prefix}(
+async def delete_{cap}(
     id: str,
     current_user: Any = Depends(get_current_user),
 ) -> dict:
-    return {{"success": True}}
+    raise NotImplementedError("generated scaffolding: {cap} write is not implemented")
 """
 
 _HEALTH_TPL = """from __future__ import annotations
@@ -244,12 +244,14 @@ router = APIRouter(prefix="/{prefix}/health", tags=["health"])
 
 @router.get("/")
 async def health_check() -> dict:
-    return {{"status": "ok", "capability": "{cap_name}", "version": "{version}"}}
+    # Scaffolding must not answer "ok": a health probe that always passes is
+    # not a probe. NR-089.
+    return {{"status": "not_implemented", "capability": "{cap_name}", "version": "{version}"}}
 
 
 @router.get("/ready")
 async def readiness() -> dict:
-    return {{"ready": True, "capability": "{cap_name}"}}
+    return {{"ready": False, "capability": "{cap_name}", "reason": "generated scaffolding"}}
 """
 
 _POLICIES_TPL = """from __future__ import annotations
@@ -295,14 +297,21 @@ class Test{cap}Capability:
         return {cap}Capability()
 
     @pytest.mark.asyncio
-    async def test_execute(self, capability):
-        result = await capability.execute({{}})
-        assert result["success"] is True
+    async def test_execute_is_not_implemented(self, capability):
+        # Pins the honest state. Asserting success here certified a stub.
+        with pytest.raises(NotImplementedError, match="must not report success"):
+            await capability.execute({{}})
 
     @pytest.mark.asyncio
-    async def test_validate(self, capability):
-        result = await capability.validate({{}})
-        assert result is True
+    async def test_validate_is_not_implemented(self, capability):
+        with pytest.raises(NotImplementedError, match="no validation rules"):
+            await capability.validate({{}})
+
+    @pytest.mark.asyncio
+    async def test_health_reports_scaffolding_not_ok(self, capability):
+        # A health probe answers, but it must not answer ok for a stub.
+        report = await capability.health()
+        assert report["status"] == "not_implemented"
 """
 
 _INTEGRATION_TEST_TPL = """from __future__ import annotations
@@ -424,7 +433,7 @@ class CapabilityGenerator(BaseGenerator):
 
         cap = spec.name.lower().replace(" ", "_")
         cap_cap = spec.name[0].upper() + spec.name[1:]
-        module_path = f"backend.app.capabilities.{cap}"
+        module_path = f"app.capabilities.{cap}"
         prefix = cap.replace("_", "-")
 
         self.target_dir.mkdir(parents=True, exist_ok=True)
@@ -482,7 +491,7 @@ Layer: {spec.layer}
 Version: {spec.version}
 """
 
-from {cap}.capability import {cap_cap}Capability
+from .capability import {cap_cap}Capability
 
 __all__ = ["{cap_cap}Capability"]
 ''',
@@ -511,7 +520,7 @@ __all__ = ["{cap_cap}Capability"]
 import logging
 from typing import Any
 
-from backend.app.kernel.integration import get_kernel
+from app.kernel.integration import get_kernel
 
 logger = logging.getLogger("gula.capability.{cap}")
 
@@ -536,12 +545,23 @@ class {cap_cap}Capability:
         logger.info("{cap_cap} capability initialized")
 
     async def execute(self, input_data: Any) -> dict:
-        if not self._initialized:
-            await self.initialize()
-        return {{"success": True, "capability": "{cap}"}}
+        """Not implemented. A generated capability must not report success.
+
+        The generated body used to return ``{{"success": True}}`` without doing
+        anything, and the generated unit test asserted exactly that, so the stub
+        certified itself. Raising is the honest state until a real body exists.
+        """
+        raise NotImplementedError(
+            "capability '{cap}' is generated scaffolding with no implementation; "
+            "it must not report success",
+        )
 
     async def validate(self, input_data: Any) -> bool:
-        return True
+        """Not implemented. A gate that always passes is not a gate."""
+        raise NotImplementedError(
+            "capability '{cap}' has no validation rules; "
+            "returning True would assert an unchecked input is valid",
+        )
 
     async def on_activate(self) -> None:
         logger.info("{cap_cap} capability activated")
@@ -550,8 +570,10 @@ class {cap_cap}Capability:
         logger.info("{cap_cap} capability deactivated")
 
     async def health(self) -> dict:
+        # Answers rather than raises -- a health probe should report -- but it
+        # reports what is true: scaffolding, not a working capability.
         return {{
-            "status": "ok",
+            "status": "not_implemented",
             "capability": "{cap}",
             "version": "{spec.version}",
             "initialized": self._initialized,
@@ -595,7 +617,7 @@ class {cap_cap}Capability:
         self._write(
             f"{cap}/infrastructure/repository.py",
             _REPOSITORY_IMPL_TPL.format(
-                module_path=f"backend.app.capabilities.{cap}",
+                module_path=f"app.capabilities.{cap}",
                 entity_name=entity_name,
                 repo=cap_cap,
             ),
@@ -775,7 +797,7 @@ class {qry_cap}Query:
     def _generate_routes(self, cap: str, cap_cap: str, spec: CapabilitySpec, prefix: str) -> None:
         self._write(
             f"{cap}/routes.py",
-            _ROUTES_TPL.format(prefix=prefix, tag=spec.name.replace("_", " ").title()),
+            _ROUTES_TPL.format(cap=cap, prefix=prefix, tag=spec.name.replace("_", " ").title()),
         )
 
     def _generate_health(self, cap: str, cap_cap: str, prefix: str, spec: CapabilitySpec) -> None:

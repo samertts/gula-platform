@@ -1,6 +1,20 @@
+"""NIAM person records.
+
+A Person carries national identity PII — national_id_hash, health_id, birth date,
+email and phone. Both routes are guarded by ``get_current_niam_actor`` applied at the mount in
+``app/identity/api/router.py``, which is where NIAM guards its routers — see the
+note there, ported from Mustafa's NR-108. They previously had no authentication at
+all, so any caller who could reach the service could create a national identity
+record or read one by UUID.
+
+The 404 below is this file's own repair: the read returned ``{"error": "not_found"}``
+with HTTP 200, which reads as success to every client and to any monitoring that
+only checks status codes.
+"""
+
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -49,5 +63,7 @@ async def get_person(
     service = PersonService(db)
     person = await service.get_person_by_uuid(person_uuid)
     if not person:
-        return {"error": "not_found"}
+        # Was returned as a 200 with an error body, which reads as success to every
+        # client and to any monitoring that only checks status codes.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
     return {"uuid": person.uuid, "given_name": person.given_name, "family_name": person.family_name}

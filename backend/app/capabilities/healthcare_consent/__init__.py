@@ -7,6 +7,6 @@ Layer: application
 Version: 1.0.0
 """
 
-from healthcare_consent.capability import Healthcare_consentCapability
+from .capability import Healthcare_consentCapability
 
 __all__ = ["Healthcare_consentCapability"]

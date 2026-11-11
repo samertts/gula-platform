@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import Column, DateTime, String
 
 from app._compat import UTC
+from shared.models import serialize_columns
 
 from .enums import ComponentStatus, PlatformComponent
 
@@ -26,13 +27,7 @@ class ControlPlaneBaseMixin:
     )
 
     def to_dict(self) -> dict[str, Any]:
-        result = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+        return serialize_columns(self)
 
     def __repr__(self) -> str:
         pk = getattr(self, "id", "no-id")

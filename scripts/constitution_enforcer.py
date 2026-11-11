@@ -875,8 +875,22 @@ def rule17_privacy_by_design(changed_py_files: list[str]) -> RuleResult:
         has_sensitive = False
         has_encryption = False
         for node in ast.walk(tree):
-            if isinstance(node, ast.Str) or isinstance(node, ast.Constant):
-                val = node.s if isinstance(node, ast.Str) else node.value
+            # IA-089. This was
+            #     isinstance(node, ast.Str) or isinstance(node, ast.Constant)
+            #     val = node.s if isinstance(node, ast.Str) else node.value
+            # `ast.Str` was deprecated in 3.8 and REMOVED in 3.14, and the
+            # Constitution Compliance workflow runs on 3.14 — so this line
+            # raised `AttributeError: module 'ast' has no attribute 'Str'` and
+            # the enforcer died at rule 17 of 25. Its 25 rules have never run
+            # to completion on that runner.
+            # The clause was redundant on every version where it did work:
+            # `ast.Str` was an alias that only ever matched an `ast.Constant`,
+            # and `node.s` an alias for `node.value`. Measured on python3.11,
+            # where `ast.Str` still exists: every walked node reports
+            # `Constant`, and `node.s == node.value` for str, int and bytes
+            # constants alike. Dropping it changes nothing but the crash.
+            if isinstance(node, ast.Constant):
+                val = node.value
                 if isinstance(val, str):
                     for pat in sensitive_patterns:
                         if pat in val.lower():

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from backend.app.national.task_engine.domain.entities import (
+from app.national.task_engine.domain.entities import (
     NationalTask,
     TaskAssignment,
     TaskAuditLog,

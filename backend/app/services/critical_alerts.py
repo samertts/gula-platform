@@ -63,10 +63,45 @@ CRITICAL_THRESHOLDS = {
 }
 
 
-def check_critical(test_name: str, value: float) -> dict | None:
-    """Check if a result is critically abnormal. Returns alert details or None."""
-    test_key = test_name.lower().replace(" ", "_").replace("-", "_")
-    thresholds: dict = CRITICAL_THRESHOLDS.get(test_key) or {}  # type: ignore[arg-type]
+def _threshold_key(text: str | None) -> str:
+    """The key convention the table above is written in."""
+    return (text or "").lower().replace(" ", "_").replace("-", "_")
+
+
+def check_critical(
+    test_name: str,
+    value: float,
+    test_code: str | None = None,
+) -> dict | None:
+    """Check if a result is critically abnormal. Returns alert details or None.
+
+    The table above is keyed by analyte — "glucose", "urea", "alt". The catalog
+    a client actually reads from ``GET /test-types`` publishes clinically
+    qualified names — "Glucose (Fasting)", "Urea (BUN)", "ALT (SGPT)" — which
+    normalise to "glucose_(fasting)", "urea_(bun)", "alt_(sgpt)" and match
+    nothing here. So a catalogue-faithful client lost the documented threshold:
+    a glucose of 37.5 mg/dL was stored "L" rather than "critical" — below the
+    documented critical_low of 40 but above the generic normal_low * 0.5 of 35
+    that ``get_flag`` falls back to — and was therefore invisible to the
+    critical-alert feed, the citizen portal's critical_flags and the statistics
+    critical_count.
+
+    ``test_code`` closes that without inventing a naming rule. ``test_types``
+    already carries the analyte key for every row it has: the startup catalog
+    writes ``test_code="glucose"`` beside ``test_name="Glucose (Fasting)"``, so
+    the identity the catalog itself assigns to the row is what this table is
+    consulted with when the name does not resolve. Of the 20 seeded rows, 13
+    reach a threshold row by code against 8 by name, and every one of those 13
+    names the same analyte as its code — no result is mapped to a different
+    clinical concept.
+
+    It is a fallback, never an override: the name is tried first, so every
+    caller that resolved before resolves identically, and a code with no row
+    here changes nothing. The thresholds themselves are untouched.
+    """
+    thresholds: dict = CRITICAL_THRESHOLDS.get(_threshold_key(test_name)) or {}  # type: ignore[arg-type]
+    if not thresholds and test_code:
+        thresholds = CRITICAL_THRESHOLDS.get(_threshold_key(test_code)) or {}  # type: ignore[arg-type]
     if not thresholds:
         return None
 
@@ -102,7 +137,10 @@ def get_critical_alerts(
     results = (
         db.query(LabResult)
         .join(LabOrder)
-        .options(joinedload(LabResult.order).joinedload(LabOrder.patient))
+        .options(
+            joinedload(LabResult.order).joinedload(LabOrder.patient),
+            joinedload(LabResult.test_type),
+        )
         .filter(
             LabOrder.lab_id == lab_id,
             LabResult.flag == "critical",
@@ -115,7 +153,15 @@ def get_critical_alerts(
     alerts = []
     for r in results:
         patient = r.order.patient if r.order else None
-        alert_detail = check_critical(r.test_name, r.value) if r.value else None
+        alert_detail = (
+            check_critical(
+                r.test_name,
+                r.value,
+                r.test_type.test_code if r.test_type else None,
+            )
+            if r.value
+            else None
+        )
 
         alerts.append(
             {

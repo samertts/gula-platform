@@ -5,16 +5,16 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.national.workflow_runtime.application.service import (
+from app.national.workflow_runtime.application.service import (
     WorkflowRuntimeService,
 )
-from backend.app.national.workflow_runtime.domain.entities import (
+from app.national.workflow_runtime.domain.entities import (
     WorkflowDefinition,
     WorkflowStepDefinition,
     WorkflowTemplate,
 )
-from backend.app.national.workflow_runtime.domain.enums import WorkflowTrigger
-from backend.app.national.workflow_runtime.infrastructure.repository import (
+from app.national.workflow_runtime.domain.enums import WorkflowTrigger
+from app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowApprovalRepository,
     SQLAlchemyWorkflowCompensationRepository,
     SQLAlchemyWorkflowDefinitionRepository,

@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from backend.app._compat import UTC
-from backend.app.national.task_engine.domain.enums import (
+from app._compat import UTC
+from app.national.task_engine.domain.enums import (
     AssignmentStrategy,
     EscalationLevel,
     TaskCategory,

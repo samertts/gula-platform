@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
+from app.engineering.generators.base import BaseGenerator, GenerateResult
 
 
 class UnitTestGenerator(BaseGenerator):
@@ -57,7 +57,7 @@ from repositories.{module_path}_repository import {entity}Repository
 @pytest.fixture()
 def db_session():
     engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine, tables=own_tables(Base))
     session = sessionmaker(bind=engine)()
     yield session
     session.close()

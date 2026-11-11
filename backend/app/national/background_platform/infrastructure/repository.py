@@ -84,7 +84,7 @@ class SQLAlchemyJobRepository(JobRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[JobDefinition]:
-        query = self.db.query(NationalJob).filter(~~NationalJob.is_deleted)
+        query = self.db.query(NationalJob).filter(~NationalJob.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalJob, key) and value is not None:
                 query = query.filter(getattr(NationalJob, key) == value)
@@ -212,7 +212,7 @@ class SQLAlchemyJobScheduleRepository(JobScheduleRepository):
         limit: int = 100,
         **filters: Any,
     ) -> list[JobSchedule]:
-        query = self.db.query(NationalJobSchedule).filter(~~NationalJobSchedule.is_deleted)
+        query = self.db.query(NationalJobSchedule).filter(~NationalJobSchedule.is_deleted)
         for key, value in filters.items():
             if hasattr(NationalJobSchedule, key) and value is not None:
                 query = query.filter(getattr(NationalJobSchedule, key) == value)

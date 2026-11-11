@@ -67,9 +67,21 @@ def parse_oru_r01(raw_message: str) -> HL7Message:
     for segment in segments:
         if segment[0] != "OBX":
             continue
+        # IA-064, fifth site. to_fhir_bundle published
+        # `item.get("code") or "unknown"` as the FHIR Observation.code, so an
+        # OBX with no identifier became a numeric result with no idea what was
+        # measured. OBX-3 is required by HL7 v2.5; inventing it would be
+        # inventing clinical semantics.
+        observation_code = _component(_field(segment, 3))
+        if not observation_code:
+            raise HL7ConversionError(
+                "every OBX segment must carry an observation identifier in "
+                "OBX-3. A result with no analyte cannot be interpreted, and "
+                "the code must not be guessed."
+            )
         observations.append(
             {
-                "code": _component(_field(segment, 3)),
+                "code": observation_code,
                 "display": _component(_field(segment, 3), 1),
                 "value": _field(segment, 5),
                 "unit": _component(_field(segment, 6)),
@@ -80,14 +92,45 @@ def parse_oru_r01(raw_message: str) -> HL7Message:
         )
     if not observations:
         raise HL7ConversionError("ORU^R01 message must contain at least one OBX segment")
+
+    # IA-064. PID-3 and MSH-10 used to be optional here, and to_fhir_bundle
+    # substituted the literals "synthetic-patient" and "synthetic" for them.
+    # Two ORU^R01 messages for two different patients then produced identical
+    # Patient, Observation and DiagnosticReport ids, so in any FHIR store that
+    # upserts by id the second silently overwrote or merged with the first.
+    # Both fields are required by HL7 v2.5 in ORU^R01, so refusing the message
+    # is both correct and the only option that does not guess an identity.
+    patient_identifier = _component(_field(pid, 3))
+    if not patient_identifier:
+        raise HL7ConversionError(
+            "ORU^R01 message must carry a patient identifier in PID-3. The "
+            "patient identity must not be guessed: a substituted placeholder "
+            "would attach this result to every other identifier-less message."
+        )
+    service_code = _component(_field(obr, 4))
+    if not service_code:
+        raise HL7ConversionError(
+            "ORU^R01 message must carry a universal service identifier in "
+            "OBR-4. It names the panel that was ordered, and the previous "
+            "'laboratory-panel' substitution asserted an order that the "
+            "sender never stated."
+        )
+    control_id = _field(msh, 9)
+    if not control_id:
+        raise HL7ConversionError(
+            "ORU^R01 message must carry a message control ID in MSH-10. It is "
+            "the only thing distinguishing this report and its observations "
+            "from another message's."
+        )
+
     return HL7Message(
         message_type="ORU^R01",
-        control_id=_field(msh, 9),
+        control_id=control_id,
         sender=_field(msh, 2),
         receiver=_field(msh, 4),
-        patient_identifier=_component(_field(pid, 3)),
+        patient_identifier=patient_identifier,
         patient_name=" ".join(filter(None, (_component(_field(pid, 5), 1), _component(_field(pid, 5), 0)))) or None,
-        service_code=_component(_field(obr, 4)),
+        service_code=service_code,
         observed_at=_field(obr, 7),
         observations=observations,
     )
@@ -108,8 +151,33 @@ def _observation_value(observation: dict[str, str | None]) -> dict:
 
 
 def to_fhir_bundle(message: HL7Message) -> dict:
-    patient_id = message.patient_identifier or "synthetic-patient"
-    report_id = f"report-{message.control_id or 'synthetic'}"
+    # IA-064, second guard. parse_oru_r01 refuses these at the boundary, but
+    # HL7Message is a public frozen dataclass that callers construct directly,
+    # so the substitution must be impossible here too. This was
+    # `message.patient_identifier or "synthetic-patient"` and
+    # `message.control_id or 'synthetic'`.
+    if not message.patient_identifier:
+        raise HL7ConversionError(
+            "cannot build a FHIR bundle without a patient identifier: every "
+            "Patient, Observation and DiagnosticReport id in the bundle is "
+            "derived from it, and a placeholder would collide with every "
+            "other identifier-less message."
+        )
+    if not message.control_id:
+        raise HL7ConversionError(
+            "cannot build a FHIR bundle without a message control ID: the "
+            "report and observation ids are derived from it, and a "
+            "placeholder would collide across messages."
+        )
+    if not message.service_code:
+        raise HL7ConversionError(
+            "cannot build a FHIR bundle without a service identifier: the "
+            "DiagnosticReport.code would otherwise assert a panel the sender "
+            "never named."
+        )
+
+    patient_id = message.patient_identifier
+    report_id = f"report-{message.control_id}"
     entries: list[dict] = [
         {
             "resourceType": "Patient",
@@ -120,9 +188,17 @@ def to_fhir_bundle(message: HL7Message) -> dict:
     ]
     observation_ids: list[str] = []
     for index, item in enumerate(message.observations, start=1):
-        observation_id = f"obs-{message.control_id or 'synthetic'}-{index}"
+        observation_id = f"obs-{message.control_id}-{index}"
         observation_ids.append(observation_id)
-        code = item.get("code") or "unknown"
+        # IA-064. parse_oru_r01 refuses an OBX with no OBX-3, so there is no
+        # missing-code case left to default. A direct HL7Message caller that
+        # supplies one is refused here rather than given "unknown".
+        code = item.get("code")
+        if not code:
+            raise HL7ConversionError(
+                "an observation has no code: a FHIR Observation without one "
+                "states a value for an unknown analyte."
+            )
         resource = {
             "resourceType": "Observation",
             "id": observation_id,
@@ -141,7 +217,7 @@ def to_fhir_bundle(message: HL7Message) -> dict:
             "resourceType": "DiagnosticReport",
             "id": report_id,
             "status": "final",
-            "code": {"coding": [{"code": message.service_code or "laboratory-panel"}]},
+            "code": {"coding": [{"code": message.service_code}]},
             "subject": {"reference": f"Patient/{patient_id}"},
             "result": [{"reference": f"Observation/{item_id}"} for item_id in observation_ids],
         },

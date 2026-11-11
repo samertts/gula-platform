@@ -1,7 +1,15 @@
 fastapi>=0.139.2
 uvicorn[standard]>=0.51.0
 gunicorn>=26.0.0
-sqlalchemy>=2.0.51
+# IA-083: the [asyncio] extra, not a bare install. 23 modules under
+# app/identity/ import sqlalchemy.ext.asyncio, and from SQLAlchemy 2.1 that
+# import requires greenlet at import time rather than lazily. This line said
+# `sqlalchemy>=2.0.51`, so a fresh resolve takes 2.1.x and every CI job that
+# installs requirements.txt without requirements-lock.txt could not even
+# COLLECT backend/tests/identity. greenlet is pinned in requirements-lock.txt
+# but was never declared here, which is the file the production Dockerfile and
+# five workflows install.
+sqlalchemy[asyncio]>=2.0.51
 alembic>=1.18.5
 psycopg2-binary>=2.9.12
 psycopg[binary]>=3.3.4,<4.0.0

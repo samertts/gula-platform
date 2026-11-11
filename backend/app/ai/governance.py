@@ -58,6 +58,13 @@ class ModelRegistry:
         self._sync_to_db(defaults)
 
     def _sync_to_db(self, entries: list[ModelRegistryEntry]) -> None:
+        """Persist the default model registry.
+
+        ``ai_model_registry.is_active`` really is an ``integer`` column, so the
+        ``1 if ... else 0`` below is correct and must NOT be changed to a boolean
+        the way NR-053 changed the OAuth2 columns -- those were declared
+        ``sa.Boolean()`` by their migration and this one is not.
+        """
         try:
             db = next(get_db())
         except Exception:
@@ -68,10 +75,10 @@ class ModelRegistry:
                 config_json = json.dumps(m.config, ensure_ascii=False)
                 caps_json = json.dumps(m.capabilities, ensure_ascii=False)
                 if existing:
-                    db.execute(text("UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=:caps::jsonb, config=:cfg::jsonb, is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name"),
+                    db.execute(text("UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=CAST(:caps AS jsonb), config=CAST(:cfg AS jsonb), is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name"),
                                {"name": m.name, "p": m.provider, "mt": m.model_type, "v": m.version, "caps": caps_json, "cfg": config_json, "active": 1 if m.is_active else 0, "mtok": m.max_tokens, "cpi": m.cost_per_1k_input, "cpo": m.cost_per_1k_output})
                 else:
-                    db.execute(text("INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, :caps::jsonb, :cfg::jsonb, :active, :mtok, :cpi, :cpo)"),
+                    db.execute(text("INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, CAST(:caps AS jsonb), CAST(:cfg AS jsonb), :active, :mtok, :cpi, :cpo)"),
                                {"name": m.name, "p": m.provider, "mt": m.model_type, "v": m.version, "caps": caps_json, "cfg": config_json, "active": 1 if m.is_active else 0, "mtok": m.max_tokens, "cpi": m.cost_per_1k_input, "cpo": m.cost_per_1k_output})
             db.commit()
         except Exception as exc:
@@ -221,7 +228,7 @@ class Evaluator:
         try:
             metrics_json = json.dumps(result.metrics, ensure_ascii=False)
             db.execute(
-                text("INSERT INTO ai_evaluations (eval_type, prompt, response, score, metrics, model, duration_ms) VALUES (:et, :prompt, :resp, :score, :metrics::jsonb, :model, :dur)"),
+                text("INSERT INTO ai_evaluations (eval_type, prompt, response, score, metrics, model, duration_ms) VALUES (:et, :prompt, :resp, :score, CAST(:metrics AS jsonb), :model, :dur)"),
                 {"et": "governance", "prompt": result.prompt, "resp": result.response, "score": result.score, "metrics": metrics_json, "model": result.model, "dur": result.duration_ms},
             )
             db.commit()

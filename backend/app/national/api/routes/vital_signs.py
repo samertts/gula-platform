@@ -115,7 +115,7 @@ async def list_vital_signs_reference(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    query = db.query(VitalSignsReference).filter(~~VitalSignsReference.is_deleted)
+    query = db.query(VitalSignsReference).filter(~VitalSignsReference.is_deleted)
     if category:
         query = query.filter(VitalSignsReference.category == category)
     refs = query.order_by(VitalSignsReference.display_order).all()
@@ -171,7 +171,7 @@ async def get_latest_vital_signs(
     user=Depends(get_current_user),
 ):
     vital_sign_codes = db.query(VitalSignsReference).filter(
-        ~~VitalSignsReference.is_deleted,
+        ~VitalSignsReference.is_deleted,
     ).all()
     vital_sign_map: dict[str, LatestVitalSign] = {}
     latest_datetime: datetime | None = None

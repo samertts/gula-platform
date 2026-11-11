@@ -23,8 +23,9 @@ from ..security.redis_client import cache as _cache
 from ..services.audit_service import log_action
 from ..services.clinical_legacy_read_scope import ClinicalLegacyReadScope
 from ..services.critical_alerts import check_critical
-from ..services.interpretation import get_flag, interpret_result
+from ..services.interpretation import apply_critical_override, get_flag, interpret_result
 from ..services.pdf_report import generate_result_pdf
+from ..services.test_catalog import resolve_test_type
 
 logger = logging.getLogger("gula.orders")
 
@@ -402,29 +403,53 @@ def create_order(
     # Create results
     result_links = []
     for item in results_data:
+        # Resolve the catalog first. It supplies the TestType link and any
+        # reference range the caller omitted, and the clinical flag depends on
+        # both: get_flag returns "unknown" before its critical check when either
+        # bound is missing, so an unresolved range hides a critical value from
+        # every consumer of LabResult.flag. See IA-019 / IA-020.
+        normal_low, normal_high, unit, tt = resolve_test_type(
+            db,
+            item["test_name"],
+            item.get("test_code"),
+            item.get("normal_range_low"),
+            item.get("normal_range_high"),
+            item.get("unit"),
+        )
+
         flag = "unknown"
         if (
             item.get("value") is not None
-            and item.get("normal_range_low") is not None
-            and item.get("normal_range_high") is not None
+            and normal_low is not None
+            and normal_high is not None
         ):
             flag = get_flag(
                 item["value"],
-                item["normal_range_low"],
-                item["normal_range_high"],
+                normal_low,
+                normal_high,
                 test_name=item["test_name"],
+                test_code=tt.test_code if tt else None,
             )
+        # Criticality does not depend on a range existing: 24 of the 37 tests
+        # with documented thresholds have no catalog entry to supply one.
+        flag = apply_critical_override(
+            flag,
+            item["test_name"],
+            item.get("value"),
+            tt.test_code if tt else None,
+        )
 
         token, token_h = _generate_unique_token(db)
 
         result = LabResult(
             order_id=order.id,
+            test_type_id=tt.id if tt else None,
             test_name=item["test_name"],
             value=item.get("value"),
             value_text=item.get("value_text"),
-            unit=item.get("unit"),
-            normal_range_low=item.get("normal_range_low"),
-            normal_range_high=item.get("normal_range_high"),
+            unit=unit,
+            normal_range_low=normal_low,
+            normal_range_high=normal_high,
             flag=flag,
             token=token,
             token_hash=token_h,
@@ -564,13 +589,41 @@ def update_result(
     proposed_low = normal_range_low if normal_range_low is not None else result.normal_range_low
     proposed_high = normal_range_high if normal_range_high is not None else result.normal_range_high
     proposed_flag = result.flag
+    # The stored link carries the catalog's analyte key, which is how a result
+    # reported under a qualified catalog name reaches its documented threshold.
+    stored_code = result.test_type.test_code if result.test_type else None
     if proposed_value is not None and proposed_low is not None and proposed_high is not None:
         proposed_flag = get_flag(
             proposed_value,
             proposed_low,
             proposed_high,
             test_name=result.test_name,
+            test_code=stored_code,
         )
+    # An update must not drop a criticality the reference range cannot express.
+    proposed_flag = apply_critical_override(
+        proposed_flag, result.test_name, proposed_value, stored_code,
+    )
+
+    # PATCH semantics: a field the caller did not send is left untouched.
+    # Writing NULL over stored clinical data because a key was absent is data
+    # loss, not an update, and the PERMANENT DATA RULE forbids it. There is no
+    # way to distinguish "omitted" from "explicitly null" on this contract —
+    # both arrive as None — so absent is treated as unchanged. See IA-026.
+    updates = {
+        "flag": proposed_flag,
+        "version": LabResult.version + 1,
+    }
+    if value is not None:
+        updates["value"] = value
+    if value_text is not None:
+        updates["value_text"] = value_text
+    if unit is not None:
+        updates["unit"] = unit
+    if normal_range_low is not None:
+        updates["normal_range_low"] = normal_range_low
+    if normal_range_high is not None:
+        updates["normal_range_high"] = normal_range_high
 
     from sqlalchemy import select
 
@@ -587,15 +640,7 @@ def update_result(
             LabResult.order_id.in_(open_order_ids),
         )
         .update(
-            {
-                "value": value,
-                "value_text": value_text,
-                "unit": unit,
-                "normal_range_low": normal_range_low,
-                "normal_range_high": normal_range_high,
-                "flag": proposed_flag,
-                "version": LabResult.version + 1,
-            },
+            updates,
             synchronize_session="fetch",
         )
     )

@@ -22,6 +22,18 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      # IA-090. gitleaks-action calls GET /repos/{o}/{r}/pulls/{n}/commits to
+      # scope a pull_request scan to that PR's commits. Without this the call
+      # returns 403 "Resource not accessible by integration" and the action
+      # exits non-zero before scanning anything, so the gate has been reporting
+      # a failure that is a permission error rather than a secret. GitHub names
+      # the exact grant in the response it rejects us with:
+      #   x-accepted-github-permissions: pull_requests=read
+      # Read-only, and the narrowest scope that makes the scan run at all. The
+      # repository's own `check_public_secrets.py` step was already passing
+      # ("OK: no likely public secrets found in tracked source files"); it is
+      # the history scan that never started.
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
