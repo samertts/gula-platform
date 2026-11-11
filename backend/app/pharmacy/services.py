@@ -54,6 +54,15 @@ _DISPENSE_TRANSITIONS: dict[DispenseStatus, set[DispenseStatus]] = {
 }
 
 
+# Canonical Drug Contract, §10: a drug's identity is server-assigned and
+# immutable. The internal key is the database's; the public drug_id (UUID4) is
+# generated server-side. Neither may be supplied at creation or changed by an
+# update. drug_code is deliberately absent: it is a mutable business code
+# (contract §4) and changing it must not detach anything, because clinical rules
+# key on the internal foreign key, never on the code.
+IMMUTABLE_CATALOG_IDENTITY_FIELDS = frozenset({"id", "drug_id", "uuid"})
+
+
 class PharmacyService:
     def __init__(self, db: Session, user_id: int | None = None, lab_id: int | None = None):
         self.db = db
@@ -73,7 +82,16 @@ class PharmacyService:
     # ── Catalog Management ─────────────────────────────────────────────────────
 
     def create_drug(self, data: dict[str, Any]) -> DrugCatalog:
-        drug = DrugCatalog(**{k: v for k, v in data.items() if hasattr(DrugCatalog, k)})
+        # A client may never choose a drug's identity: the internal key is assigned
+        # by the database and the public drug_id is server-generated. Silently
+        # dropping these is deliberate — a caller supplying them is not an error
+        # worth failing a creation over, but the values must never be honoured.
+        payload = {
+            k: v
+            for k, v in data.items()
+            if hasattr(DrugCatalog, k) and k not in IMMUTABLE_CATALOG_IDENTITY_FIELDS
+        }
+        drug = DrugCatalog(**payload)
         if self.lab_id:
             drug.lab_id = self.lab_id
         self.db.add(drug)
@@ -91,6 +109,14 @@ class PharmacyService:
         drug = self.get_drug(drug_id)
         if not drug:
             return None
+        # An attempt to change a drug's identity is a caller error, not something
+        # to drop quietly: a client that believes it re-pointed an identity must
+        # not be told the update succeeded.
+        attempted = IMMUTABLE_CATALOG_IDENTITY_FIELDS.intersection(data)
+        if attempted:
+            raise ValueError(
+                "Drug identity is immutable; cannot update: " + ", ".join(sorted(attempted))
+            )
         for key, value in data.items():
             if hasattr(drug, key) and value is not None:
                 setattr(drug, key, value)
