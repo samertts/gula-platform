@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.lifecycle.services import (
     CitizenService,
     EnterpriseRegistrationService,
@@ -14,21 +15,75 @@ from app.identity.lifecycle.services import (
     GuardianService,
     WorkforceService,
 )
+from app.identity.models.identity import IdentityRecord
+from app.identity.niam_async_db import get_niam_db
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 router = APIRouter(prefix="/lifecycle", tags=["NIAM Lifecycle"])
+
+
+_NO_ADMIN_AUTHORITY_AVAILABLE = (
+    "This operation requires an administrative authority that does not "
+    "yet exist in NIAM's Platform Authority model (federation_manage/"
+    "trust_manage/certificates_manage/governance_manage are all "
+    "platform-administrative concepts unrelated to this operation's "
+    "actual semantics). Rather than invent a new permission unilaterally, "
+    "this fails closed until a real authority is designed and reviewed."
+)
+
+
+def _require_admin_authority_unavailable() -> None:
+    """Fails closed for lifecycle mutations that are genuinely
+    administrative (require a real-world authority -- a court order, an
+    HR department, a licensing body -- the platform doesn't yet model)
+    and for which none of the 4 existing PlatformCapability values
+    semantically fit. Matches the established
+    _POLICY_AUTHORITY_UNAVAILABLE precedent in
+    app.identity.adaptive_auth.routes."""
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_NO_ADMIN_AUTHORITY_AVAILABLE)
+
+
+async def _resolve_actor_person_id(db: AsyncSession, actor: NiamActor) -> str | None:
+    """Resolves the Person this NIAM actor's account represents, via
+    Account.identity_id -> IdentityRecord.person_id. Used for
+    self-ownership checks on lifecycle resources keyed by person_id
+    rather than account_id directly (unlike adaptive_auth, where
+    account_id IS actor.account.id)."""
+    return await db.scalar(
+        select(IdentityRecord.person_id).where(IdentityRecord.id == actor.account.identity_id),
+    )
+
+
+def _require_self_person(actor_person_id: str | None, target_person_id: str) -> None:
+    if actor_person_id is None or actor_person_id != target_person_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot act on another person's lifecycle record.",
+        )
 
 # ──────────────────────────────────────────────
 #  Enterprise Registration
 # ──────────────────────────────────────────────
 
+# start_enterprise_registration is the one representative Category-F
+# repair (docs/security/NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md): the
+# service is converted to the async session-stored convention and this
+# route now uses get_niam_db + a platform-capability check, matching
+# every other NIAM route already fixed. The rest of this file's routes
+# are NOT yet converted -- deliberately left as-is pending a decision to
+# propagate this pattern to the remaining 41 lifecycle occurrences.
 @router.post("/enterprise/register")
 async def start_enterprise_registration(
     organization_id: str,
     submitted_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.start_registration(organization_id, submitted_by)
+    reg = await svc.start_registration(organization_id, submitted_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "uuid": reg.uuid}
 
 
@@ -37,10 +92,16 @@ async def validate_enterprise_license(
     reg_id: str,
     license_document: str,
     validated_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C (administrative): identical workflow to start_registration
+    # (same file, same class) -- governance_manage is direct reuse of an
+    # already-established, semantically-fitting capability, not a new one.
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.validate_license(reg_id, license_document, validated_by)
+    reg = await svc.validate_license(reg_id, license_document, validated_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
@@ -49,10 +110,13 @@ async def submit_enterprise_inspection(
     reg_id: str,
     inspection_report: dict[str, Any],
     inspected_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.submit_inspection(reg_id, inspection_report, inspected_by)
+    reg = await svc.submit_inspection(reg_id, inspection_report, inspected_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
@@ -61,10 +125,13 @@ async def assess_enterprise_risk(
     reg_id: str,
     risk_assessment: dict[str, Any],
     risk_score: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.assess_risk(reg_id, risk_assessment, risk_score)
+    reg = await svc.assess_risk(reg_id, risk_assessment, risk_score, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "risk_score": reg.risk_score}
 
 
@@ -72,10 +139,13 @@ async def assess_enterprise_risk(
 async def approve_enterprise_registration(
     reg_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.approve_registration(reg_id, approved_by)
+    reg = await svc.approve_registration(reg_id, approved_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
@@ -83,17 +153,21 @@ async def approve_enterprise_registration(
 async def reject_enterprise_registration(
     reg_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     svc = EnterpriseRegistrationService(db)
-    reg = await svc.reject_registration(reg_id, reason)
+    reg = await svc.reject_registration(reg_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"reg_id": reg.reg_id, "status": reg.status}
 
 
 @router.get("/enterprise/{org_id}")
 async def get_enterprise_status(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = EnterpriseRegistrationService(db)
     status = await svc.get_registration_status(org_id)
@@ -103,6 +177,14 @@ async def get_enterprise_status(
 #  Workforce
 # ──────────────────────────────────────────────
 
+# Category C (administrative) throughout: every mutation here is an
+# organization/HR-side workforce-onboarding action performed *on* a
+# person by requesting-org staff, never *by* the person themselves --
+# there is no `person_id`-vs-actor self-service angle anywhere in this
+# class (unlike CitizenService). None of the 4 existing PlatformCapability
+# values model "workforce onboarding authority", so every mutation fails
+# closed rather than reusing a capability whose semantics don't fit.
+
 @router.post("/workforce/request")
 async def request_employee(
     request_id: str,
@@ -110,8 +192,10 @@ async def request_employee(
     requesting_org_id: str,
     requested_by: str,
     person_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
     req = await svc.request_employee(
         request_id=request_id,
@@ -119,7 +203,9 @@ async def request_employee(
         requesting_org_id=requesting_org_id,
         requested_by=requested_by,
         person_id=person_id,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"request_id": req.request_id}
 
 
@@ -127,10 +213,13 @@ async def request_employee(
 async def validate_workforce_national_id(
     request_id: str,
     national_id_hash: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.validate_national_id(request_id, national_id_hash)
+    req = await svc.validate_national_id(request_id, national_id_hash, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
@@ -138,10 +227,13 @@ async def validate_workforce_national_id(
 async def validate_workforce_license(
     request_id: str,
     license_number: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.validate_license(request_id, license_number)
+    req = await svc.validate_license(request_id, license_number, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
@@ -149,10 +241,13 @@ async def validate_workforce_license(
 async def check_workforce_conflicts(
     request_id: str,
     conflict_report: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.check_conflicts(request_id, conflict_report)
+    req = await svc.check_conflicts(request_id, conflict_report, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "conflicts": req.conflict_report}
 
 
@@ -160,20 +255,26 @@ async def check_workforce_conflicts(
 async def approve_workforce_request(
     request_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.approve_request(request_id, approved_by)
+    req = await svc.approve_request(request_id, approved_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
 @router.post("/workforce/{request_id}/activate")
 async def activate_workforce_account(
     request_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.activate_account(request_id)
+    req = await svc.activate_account(request_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
@@ -181,17 +282,21 @@ async def activate_workforce_account(
 async def terminate_workforce_employment(
     request_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    req = await svc.terminate_employment(request_id, reason)
+    req = await svc.terminate_employment(request_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"request_id": req.request_id, "status": req.status}
 
 
 @router.get("/workforce/{request_id}")
 async def get_workforce_request_status(
     request_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = WorkforceService(db)
     req = await svc.get_request_status(request_id)
@@ -201,15 +306,24 @@ async def get_workforce_request_status(
 @router.post("/workforce/preserve-history/{person_id}")
 async def preserve_workforce_history(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = WorkforceService(db)
-    requests = await svc.preserve_history(person_id)
+    requests = await svc.preserve_history(person_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"preserved": len(requests)}
 
 # ──────────────────────────────────────────────
 #  Government HR
 # ──────────────────────────────────────────────
+
+# Category C (administrative) throughout, same reasoning as WorkforceService:
+# every route here is an HR/appointing-authority action performed on a
+# government employee's appointment record, with no self-service angle
+# and no existing PlatformCapability that fits -- and unlike WorkforceService,
+# this class has no read route at all. All 9 fail closed.
 
 @router.post("/government/appointments")
 async def create_government_appointment(
@@ -223,8 +337,10 @@ async def create_government_appointment(
     salary_scale: str | None = None,
     department: str | None = None,
     start_date: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
     appt = await svc.create_appointment(
         appointment_id=appointment_id,
@@ -237,7 +353,9 @@ async def create_government_appointment(
         salary_scale=salary_scale,
         department=department,
         start_date=start_date,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"appointment_id": appt.appointment_id}
 
 
@@ -245,40 +363,52 @@ async def create_government_appointment(
 async def approve_government_appointment(
     appointment_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.approve_appointment(appointment_id, approved_by)
+    appt = await svc.approve_appointment(appointment_id, approved_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
 @router.post("/government/appointments/{appointment_id}/create-identity")
 async def create_government_identity(
     appointment_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.create_identity(appointment_id)
+    appt = await svc.create_identity(appointment_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
 @router.post("/government/appointments/{appointment_id}/issue-credential")
 async def issue_government_credential(
     appointment_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.issue_credential(appointment_id)
+    appt = await svc.issue_credential(appointment_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
 @router.post("/government/appointments/{appointment_id}/activate")
 async def activate_government_account(
     appointment_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.activate_account(appointment_id)
+    appt = await svc.activate_account(appointment_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -286,10 +416,13 @@ async def activate_government_account(
 async def assign_government_permissions(
     appointment_id: str,
     permissions: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.assign_permissions(appointment_id, permissions)
+    appt = await svc.assign_permissions(appointment_id, permissions, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -299,15 +432,19 @@ async def promote_government_employee(
     new_position: str,
     new_grade: str,
     promoted_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
     appt = await svc.promote(
         appointment_id=appointment_id,
         new_position=new_position,
         new_grade=new_grade,
         promoted_by=promoted_by,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -317,15 +454,19 @@ async def transfer_government_employee(
     new_org_id: str | None = None,
     new_dept: str | None = None,
     transferred_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
     appt = await svc.transfer(
         appointment_id=appointment_id,
         new_org_id=new_org_id,
         new_dept=new_dept,
         transferred_by=transferred_by,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 
@@ -333,44 +474,72 @@ async def transfer_government_employee(
 async def retire_government_employee(
     appointment_id: str,
     retirement_date: datetime,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    _require_admin_authority_unavailable()
     svc = GovernmentHRService(db)
-    appt = await svc.retire(appointment_id, retirement_date)
+    appt = await svc.retire(appointment_id, retirement_date, actor_account_id=actor.account.id)
+    await db.commit()
     return {"appointment_id": appt.appointment_id, "status": appt.status}
 
 # ──────────────────────────────────────────────
 #  Citizen Lifecycle
 # ──────────────────────────────────────────────
 
+# Mixed model, unlike Workforce/GovernmentHR: citizens act on their own
+# lifecycle records (Category A, self-owned), while identity verification,
+# health-id issuance, and death recording are inherently administrative
+# (Category C, fail closed -- record_death in particular can never be
+# self-service, since a deceased person cannot call an API).
+
 @router.post("/citizen/register")
 async def register_citizen(
     person_id: str,
     citizen_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a person may only register *themselves* as a citizen.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, person_id)
     svc = CitizenService(db)
-    citizen = await svc.register_citizen(person_id, citizen_id=citizen_id)
+    citizen = await svc.register_citizen(person_id, citizen_id=citizen_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id}
 
 
 @router.post("/citizen/{citizen_id}/send-otp")
 async def send_citizen_otp(
     citizen_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: pre-fetch to check ownership before mutating (mirrors
+    # GuardianService's terminate/delegate pattern).
     svc = CitizenService(db)
-    citizen = await svc.send_otp(citizen_id)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
+    citizen = await svc.send_otp(citizen_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
 @router.post("/citizen/{citizen_id}/verify-otp")
 async def verify_citizen_otp(
     citizen_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = CitizenService(db)
-    citizen = await svc.verify_otp(citizen_id)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
+    citizen = await svc.verify_otp(citizen_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
@@ -378,10 +547,16 @@ async def verify_citizen_otp(
 async def verify_citizen_identity(
     citizen_id: str,
     verified_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C: confirming a citizen's identity documents is an
+    # administrative verification act, not a self-service one -- no
+    # existing PlatformCapability models this. Fails closed.
+    _require_admin_authority_unavailable()
     svc = CitizenService(db)
-    citizen = await svc.verify_identity(citizen_id, verified_by)
+    citizen = await svc.verify_identity(citizen_id, verified_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
@@ -389,10 +564,15 @@ async def verify_citizen_identity(
 async def issue_health_id(
     citizen_id: str,
     health_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C: issuing a national health id is an administrative /
+    # national-registry act, not a self-service one. Fails closed.
+    _require_admin_authority_unavailable()
     svc = CitizenService(db)
-    citizen = await svc.issue_health_id(citizen_id, health_id)
+    citizen = await svc.issue_health_id(citizen_id, health_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "health_id": citizen.health_id}
 
 
@@ -401,14 +581,25 @@ async def link_citizen_guardian(
     citizen_id: str,
     guardian_person_id: str,
     relationship: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A, but self-checked on the GUARDIAN side, not the citizen
+    # side: this creates the same kind of GuardianAccount record as
+    # GuardianService.create_guardianship, and that route's established
+    # rule (a person may only register *themselves* as a guardian, never
+    # claim guardianship on someone else's behalf) is applied identically
+    # here for consistency -- the actor must be the prospective guardian.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, guardian_person_id)
     svc = CitizenService(db)
     guardian = await svc.link_guardian(
         citizen_id=citizen_id,
         guardian_person_id=guardian_person_id,
         relationship=relationship,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"guardian_id": guardian.guardian_id}
 
 
@@ -417,14 +608,24 @@ async def link_citizen_family(
     citizen_id: str,
     relative_id: str,
     relationship: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: unlike link-guardian, this confers no authority over the
+    # citizen -- it is the citizen declaring their own family/emergency
+    # contacts, so the actor must own the citizen record itself.
     svc = CitizenService(db)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
     link = await svc.link_family_member(
         citizen_id=citizen_id,
         relative_id=relative_id,
         relationship=relationship,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"link_id": link.link_id}
 
 
@@ -434,15 +635,22 @@ async def record_citizen_consent(
     consent_type: str,
     granted_to: str | None = None,
     scope: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = CitizenService(db)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
     consent = await svc.record_consent(
         citizen_id=citizen_id,
         consent_type=consent_type,
         granted_to=granted_to,
         scope=scope,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"consent_id": consent.consent_id}
 
 
@@ -450,10 +658,16 @@ async def record_citizen_consent(
 async def deactivate_citizen(
     citizen_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
     svc = CitizenService(db)
-    citizen = await svc.deactivate(citizen_id, reason)
+    existing = await svc.get_citizen(citizen_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.person_id)
+    citizen = await svc.deactivate(citizen_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
@@ -462,18 +676,29 @@ async def record_citizen_death(
     citizen_id: str,
     death_date: datetime,
     death_certificate_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C, and inherently so: a deceased person cannot call this
+    # API themselves, so there is no self-service angle to even consider.
+    # No existing PlatformCapability models a civil-registry death-recording
+    # authority. Fails closed.
+    _require_admin_authority_unavailable()
     svc = CitizenService(db)
-    citizen = await svc.record_death(citizen_id, death_date, death_certificate_id)
+    citizen = await svc.record_death(citizen_id, death_date, death_certificate_id, actor_account_id=actor.account.id)
+    await db.commit()
     return {"citizen_id": citizen.citizen_id, "status": citizen.status}
 
 
 @router.get("/citizen/{person_id}")
 async def get_citizen_status(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a person may only read their own citizen status.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, person_id)
     svc = CitizenService(db)
     status = await svc.get_citizen_status(person_id)
     return {"status": status}
@@ -489,8 +714,17 @@ async def create_guardianship(
     dependent_person_id: str,
     relationship: str,
     guardian_type: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A (self-owned): the caller asserts *themselves* as the
+    # guardian of another person (e.g. a parent registering a claim over
+    # their child) -- guardian_person_id must be the caller's own person.
+    # This is a claim, not yet an authority-confirmed fact: see
+    # verify_guardianship below, which is the administrative step and
+    # fails closed until a real verifying authority exists.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, guardian_person_id)
     svc = GuardianService(db)
     guardian = await svc.create_guardianship(
         guardian_id=guardian_id,
@@ -498,15 +732,21 @@ async def create_guardianship(
         dependent_person_id=dependent_person_id,
         relationship=relationship,
         guardian_type=guardian_type,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"guardian_id": guardian.guardian_id}
 
 
 @router.get("/guardians/dependents/{guardian_person_id}")
 async def get_dependents(
     guardian_person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a guardian may only list their own dependents.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, guardian_person_id)
     svc = GuardianService(db)
     dependents = await svc.get_dependents(guardian_person_id)
     return {"dependents": [d.to_dict() for d in dependents]}
@@ -515,8 +755,13 @@ async def get_dependents(
 @router.get("/guardians/guardians/{dependent_person_id}")
 async def get_guardians(
     dependent_person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: a dependent (or their own record) may only list their
+    # own guardians.
+    actor_person_id = await _resolve_actor_person_id(db, actor)
+    _require_self_person(actor_person_id, dependent_person_id)
     svc = GuardianService(db)
     guardians = await svc.get_guardians(dependent_person_id)
     return {"guardians": [g.to_dict() for g in guardians]}
@@ -526,10 +771,18 @@ async def get_guardians(
 async def terminate_guardianship(
     guardian_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: only the guardian of record may renounce their own
+    # guardianship. Pre-fetch to check ownership before mutating.
     svc = GuardianService(db)
-    guardian = await svc.terminate_guardianship(guardian_id, reason)
+    existing = await svc.get_guardian(guardian_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.guardian_person_id)
+    guardian = await svc.terminate_guardianship(guardian_id, reason, actor_account_id=actor.account.id)
+    await db.commit()
     return {"guardian_id": guardian.guardian_id, "status": guardian.status}
 
 
@@ -537,10 +790,18 @@ async def terminate_guardianship(
 async def delegate_guardian_access(
     guardian_id: str,
     access_permissions: dict[str, Any],
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category A: only the guardian of record may delegate their own
+    # access. Pre-fetch to check ownership before mutating.
     svc = GuardianService(db)
-    guardian = await svc.delegate_access(guardian_id, access_permissions)
+    existing = await svc.get_guardian(guardian_id)
+    if existing is not None:
+        actor_person_id = await _resolve_actor_person_id(db, actor)
+        _require_self_person(actor_person_id, existing.guardian_person_id)
+    guardian = await svc.delegate_access(guardian_id, access_permissions, actor_account_id=actor.account.id)
+    await db.commit()
     return {"guardian_id": guardian.guardian_id, "status": guardian.status}
 
 
@@ -548,8 +809,16 @@ async def delegate_guardian_access(
 async def verify_guardianship(
     guardian_id: str,
     verified_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Category C (platform/admin): confirming a guardianship claim is
+    # legitimate (e.g. against a court order or civil registry) requires
+    # a real-world verifying authority NIAM does not yet model. No
+    # existing PlatformCapability fits -- fails closed rather than
+    # inventing one. See _NO_ADMIN_AUTHORITY_AVAILABLE.
+    _require_admin_authority_unavailable()
     svc = GuardianService(db)
-    guardian = await svc.verify_guardianship(guardian_id, verified_by)
+    guardian = await svc.verify_guardianship(guardian_id, verified_by, actor_account_id=actor.account.id)
+    await db.commit()
     return {"guardian_id": guardian.guardian_id, "status": guardian.status}

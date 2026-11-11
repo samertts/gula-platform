@@ -701,16 +701,32 @@ def cancel_order(
     user_id: int,
     ip_address: str | None = None,
 ) -> dict:
-    """Cancel an order."""
+    """Cancel an order using the same atomic compare-and-swap already used by
+    validate_order, so a concurrent validation cannot race a stale cancel
+    request into overwriting a validated (locked, terminal) order's status.
+    """
     order = (
         _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
     )
     if not order:
         return {"error": "Order not found", "status_code": 404}
 
+    # Sequential guard: precise error message for the common (non-racing) case.
     enforce_transition(order.status, "cancelled")
 
-    order.status = "cancelled"
+    # Atomic backstop: re-check locked_at at write time. Without this, an
+    # order validated by a concurrent request between the check above and
+    # this commit would have its status silently overwritten back to
+    # "cancelled" here, even though validated orders are documented
+    # (domain/order_state.py) as a terminal, immutable state.
+    rows_updated = (
+        db.query(LabOrder)
+        .filter(LabOrder.id == order_id, LabOrder.locked_at.is_(None))
+        .update({"status": "cancelled"}, synchronize_session="fetch")
+    )
+    if rows_updated == 0:
+        return {"error": "Order was validated and locked by another request", "status_code": 409}
+
     log_action(
         db,
         action="cancel",

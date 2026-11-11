@@ -6,7 +6,6 @@ All middleware class definitions live here; they are registered by the factory.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
@@ -24,7 +23,6 @@ from .config import (
     RATE_LIMIT_GLOBAL_WINDOW_SECONDS,
 )
 from .core.logging_config import bind_log_context
-from .core.privacy import PIIMasker
 from .security.policy import sanitize_request_id
 from .security.rate_limit import _check, _rl_headers, get_client_ip
 

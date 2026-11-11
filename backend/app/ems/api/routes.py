@@ -284,14 +284,41 @@ async def update_ambulance_location(
 async def update_ambulance_status(
     ambulance_id: str,
     body: dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
     service: EMSService = Depends(_get_service),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    try:
-        return _ambulance_to_dict(service.update_ambulance_status(
-            ambulance_id, body.get("status", ""), body.get("reason", ""),
-        ))
-    except AmbulanceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+    ambulance = db.query(AmbulanceModel).filter(
+        AmbulanceModel.id == ambulance_id,
+        AmbulanceModel.is_deleted.isnot(True),
+    ).first()
+    if ambulance is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    requested_status = str(body.get("status") or "")
+    updated = _run_ems_command(
+        operation="ems.ambulance.status_change",
+        resource_type="ems_ambulance",
+        resource_id=ambulance_id,
+        state_before=ambulance.status,
+        version_before=ambulance.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            service.update_ambulance_status(
+                ambulance_id,
+                requested_status,
+                body.get("reason", ""),
+                expected_version=ambulance.version,
+            ),
+            requested_status,
+            ambulance.version,
+        ),
+    )
+    return _ambulance_to_dict(updated)
 
 
 # ---- Crew ----

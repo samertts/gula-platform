@@ -127,7 +127,7 @@ def api_get_primary_care_encounter(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = get_primary_care_encounter(db, encounter_id)
+    result = get_primary_care_encounter(db, encounter_id, _lab_id(current_user))
     if not result:
         raise HTTPException(status_code=404, detail="Encounter not found")
     return result
@@ -160,14 +160,29 @@ def api_update_primary_care_encounter(
 ):
     from ..care_continuum.models.primary_care import PrimaryCareEncounter
 
-    enc = db.query(PrimaryCareEncounter).filter(
+    # This is the one handler in this module that queries a model directly
+    # instead of going through the service layer, and it lost the tenant
+    # twice over: the lookup had no lab_id constraint, so any authenticated
+    # user could reach any laboratory's encounter by id, and the exclusion
+    # tuple below guarded id/created_at/updated_at/is_deleted while leaving
+    # lab_id assignable — so the request body could also MOVE an encounter
+    # into another laboratory.
+    lab_id = _lab_id(current_user)
+    query = db.query(PrimaryCareEncounter)
+    if lab_id is not None:
+        query = query.filter(PrimaryCareEncounter.lab_id == lab_id)
+    enc = query.filter(
         PrimaryCareEncounter.id == encounter_id,
         PrimaryCareEncounter.is_deleted.is_(False),
     ).first()
     if not enc:
+        # Another lab's encounter reads as absent, so this does not become
+        # an existence oracle over the clinical record.
         raise HTTPException(status_code=404, detail="Encounter not found")
     for k, v in data.items():
-        if hasattr(enc, k) and k not in ("id", "created_at", "updated_at", "is_deleted"):
+        if hasattr(enc, k) and k not in (
+            "id", "lab_id", "created_at", "updated_at", "is_deleted",
+        ):
             setattr(enc, k, v)
     db.commit()
     db.refresh(enc)
@@ -293,7 +308,7 @@ def api_reject_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = reject_referral(db, referral_id, reason)
+    result = reject_referral(db, referral_id, reason, _lab_id(current_user))
     if not result:
         raise HTTPException(status_code=404, detail="Referral not found")
     return result
@@ -307,7 +322,7 @@ def api_complete_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = complete_referral(db, referral_id)
+    result = complete_referral(db, referral_id, _lab_id(current_user))
     if not result:
         raise HTTPException(status_code=404, detail="Referral not found")
     return result
@@ -340,7 +355,7 @@ def api_get_referral_timeline(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return get_referral_timeline(db, referral_id)
+    return get_referral_timeline(db, referral_id, _lab_id(current_user))
 
 
 @router.post(
@@ -376,7 +391,10 @@ def api_get_referral_analytics(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return get_referral_analytics(db, facility_id, organization_id, start_date, end_date)
+    return get_referral_analytics(
+        db, facility_id, organization_id, start_date, end_date,
+        _lab_id(current_user),
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -399,7 +417,7 @@ def api_get_care_journey(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = get_care_journey(db, journey_id)
+    result = get_care_journey(db, journey_id, _lab_id(current_user))
     if not result:
         raise HTTPException(status_code=404, detail="Care journey not found")
     return result
@@ -646,7 +664,7 @@ def api_get_pregnancy_record(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = get_pregnancy_record(db, pregnancy_id)
+    result = get_pregnancy_record(db, pregnancy_id, _lab_id(current_user))
     if not result:
         raise HTTPException(status_code=404, detail="Pregnancy record not found")
     return result

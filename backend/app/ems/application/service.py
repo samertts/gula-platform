@@ -261,14 +261,46 @@ class EMSService:
         self.db.refresh(model)
         return self._ambulance_from_model(model)
 
-    def update_ambulance_status(self, ambulance_id: str, status: str, reason: str = "") -> Ambulance:
-        model = self.db.query(AmbulanceModel).filter_by(id=ambulance_id).first()
+    def update_ambulance_status(
+        self,
+        ambulance_id: str,
+        status: str,
+        reason: str = "",
+        *,
+        expected_version: int,
+    ) -> Ambulance:
+        """Change an ambulance's operational status under the same CAS
+        dispatch_incident already uses on this row. Before this fix, this
+        endpoint wrote `model.status = status` for any client-supplied
+        string with no version check at all — a race against a concurrent
+        dispatch_incident call (which locks and version-checks this same
+        row) could silently flip a just-dispatched ambulance back to
+        "available", making it eligible for a second, simultaneous
+        dispatch while it was still committed to the first.
+        """
+        try:
+            AmbulanceStatus(status)
+        except ValueError:
+            raise EMSWorkflowError(f"'{status}' is not a valid ambulance status") from None
+        model = self.db.query(AmbulanceModel).filter(
+            AmbulanceModel.id == ambulance_id,
+            AmbulanceModel.is_deleted.isnot(True),
+        ).with_for_update().first()
         if not model:
             raise AmbulanceNotFoundError()
+        if model.version != expected_version:
+            raise EMSWorkflowError("ambulance version conflict")
+        state_before = model.status
         model.status = status
         model.status_reason = reason
-        self.db.commit()
-        self.db.refresh(model)
+        model.version += 1
+        self.db.flush()
+        self._audit(
+            "ems.ambulance.status_changed",
+            "ems_ambulance",
+            model.id,
+            {"state_before": state_before, "state_after": status, "version": model.version},
+        )
         return self._ambulance_from_model(model)
 
     # ---- Crew Management ----

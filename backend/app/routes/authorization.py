@@ -10,9 +10,10 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.database import get_db
-from app.models.authorization import BreakGlassSession
+from app.models.authorization import BreakGlassSession, Delegation
 from app.models.user import User
 from app.security.dependencies import get_current_user
+from app.security.rbac import can_manage_role, get_permissions_for_role
 from app.services.authorization_service import (
     AuthorizationAuditService,
     AuthorizationCheckService,
@@ -30,6 +31,38 @@ from app.services.authorization_service import (
 logger = logging.getLogger("gula.routes.authorization")
 
 router = APIRouter(prefix="/authz", tags=["authorization"])
+
+
+def _is_platform_manager(current_user: User) -> bool:
+    return "platform:manage_users" in get_permissions_for_role(current_user.role)
+
+
+#: Granting a role is a privilege-granting operation, so only platform-scoped
+#: roles may perform it — a lab-scoped admin/lab_admin holds
+#: "platform:manage_users" too (it gates admin.py's own lab-scoped staff
+#: management), but that permission was never meant to authorize assigning
+#: arbitrary system-wide roles through this surface.
+_ROLE_GRANTING_ROLES = ("master_admin", "ministry_admin", "province_admin")
+
+
+def _require_role_granting_authority(actor: User, target_role_id: str) -> None:
+    """Who may grant/revoke a role assignment, and which roles they may touch.
+
+    Two conditions, both required. The actor must be platform-scoped at all
+    (_is_platform_manager alone is not enough — admin/lab_admin have
+    platform:manage_users for lab-staff management, not for granting
+    system-wide roles), and the specific role being granted/revoked must be
+    one the actor can manage per the existing role hierarchy
+    (can_manage_role) — without this a province_admin could grant/revoke
+    master_admin.
+    """
+    if getattr(actor, "role", None) not in _ROLE_GRANTING_ROLES:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not can_manage_role(actor.role, target_role_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You may not grant or revoke a role at or above your own level",
+        )
 
 
 class PermissionCheckRequest(BaseModel):
@@ -364,11 +397,20 @@ def revoke_delegation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    delegation = db.query(Delegation).filter(Delegation.id == delegation_id).first()
+    if delegation is None:
+        raise HTTPException(status_code=404, detail="Delegation not found or already revoked")
+    is_party = current_user.id in (delegation.delegator_id, delegation.delegate_id)
+    if not is_party and not _is_platform_manager(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the delegator, the delegate, or a platform manager may revoke this delegation",
+        )
     svc = DelegationService(db)
     success = svc.revoke_delegation(delegation_id, revoked_by=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Delegation not found or already revoked")
-    return Response(status_code=204, response_model=None)
+    return Response(status_code=204)
 
 
 @router.get("/delegations")
@@ -435,6 +477,14 @@ def deactivate_break_glass(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    bg_session = db.query(BreakGlassSession).filter(BreakGlassSession.id == session_id).first()
+    if bg_session is None:
+        raise HTTPException(status_code=404, detail="Break-glass session not found")
+    if bg_session.user_id != current_user.id and not _is_platform_manager(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the session's own holder or a platform manager may deactivate it",
+        )
     svc = BreakGlassService(db)
     success = svc.deactivate(session_id)
     if not success:
@@ -565,6 +615,7 @@ def assign_role(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _require_role_granting_authority(current_user, req.role_id)
     expires_at = None
     if req.expires_at:
         try:
@@ -590,11 +641,12 @@ def revoke_role_assignment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _require_role_granting_authority(current_user, role_id)
     svc = RoleAssignmentService(db)
     success = svc.revoke_role(user_id, role_id)
     if not success:
         raise HTTPException(status_code=404, detail="Role assignment not found")
-    return Response(status_code=204, response_model=None)
+    return Response(status_code=204)
 
 
 # ── Routes Endpoint ────────────────────────────────────────────────────────────

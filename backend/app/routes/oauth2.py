@@ -38,6 +38,16 @@ logger = logging.getLogger("gula.routes.oauth2")
 
 router = APIRouter(prefix="/oauth2", tags=["oauth2"])
 
+# OAuth2Client is a platform-global registry (no lab_id/tenant column exists
+# on the model at all -- this is by design, not an omission to fix here).
+# register_client had only get_current_user: any authenticated LabUser of
+# any role could register a client with attacker-chosen redirect_uris,
+# which later receives real users' access/refresh/id tokens the moment any
+# user completes /authorize against it. Matches this session's established
+# "security configuration" role-gate convention (service_accounts.py,
+# hospital.py's _HOSPITAL_ADMIN_ROLES) rather than a new vocabulary.
+_OAUTH2_CLIENT_ADMIN_ROLES = {"admin", "master_admin"}
+
 
 class ClientRegisterRequest(BaseModel):
     client_name: str
@@ -55,6 +65,8 @@ def register_client(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _OAUTH2_CLIENT_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to register an OAuth2 client")
     client_id = generate_client_id()
     client_secret = generate_client_secret()
     client = OAuth2Client(

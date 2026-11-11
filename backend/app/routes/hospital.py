@@ -23,6 +23,38 @@ from ..services.hospital_service import HospitalService
 
 router = APIRouter(prefix="/hospital", tags=["hospital"])
 
+# create/update/deactivate hospital and create_campus had zero role check
+# at all -- any authenticated LabUser of any role could create, edit, or
+# deactivate a facility. This is facility/administrative master data
+# (distinct from the clinical write roles used for NHDW/Nursing), so it
+# is gated to admin/master_admin, matching this platform's canonical
+# extended-role catalog.
+_HOSPITAL_ADMIN_ROLES = {"admin", "master_admin"}
+
+# The rest of this file's mutating routes (buildings/floors/departments/
+# clinics/rooms/beds/units/operation-theaters/equipment/cost-centers as
+# facility structure, plus bed assign/discharge/transfer, surgical safety
+# checklist completion, and OT status changes as clinical operations) had
+# the identical gap: only get_current_user, no role check at all -- any
+# authenticated LabUser of any role, including non-clinical staff, could
+# create hospital facility structure, or assign/discharge/transfer a real
+# patient to a bed and attest a surgical safety checklist. Facility
+# structure reuses _HOSPITAL_ADMIN_ROLES above; clinical bed/OT/appointment
+# operations use the same clinical-write role set already established for
+# this exact shape of operation in NHDW (_NHDW_ADMISSION_WRITE_ROLES) and
+# Nursing (_NURSING_WRITE_ROLES) -- not a new role vocabulary.
+_HOSPITAL_CLINICAL_WRITE_ROLES = {"admin", "master_admin", "doctor", "nurse"}
+
+
+def _require_hospital_admin(current_user: LabUser) -> None:
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this hospital operation")
+
+
+def _require_hospital_clinical_write(current_user: LabUser) -> None:
+    if current_user.role not in _HOSPITAL_CLINICAL_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this clinical operation")
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 
@@ -370,9 +402,12 @@ def create_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create a hospital")
     hospital = HospitalService.create_hospital(
         db, current_user.lab_id, current_user.id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(hospital)
 
 
@@ -383,12 +418,15 @@ def update_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to update a hospital")
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
     hospital = HospitalService.update_hospital(
         db, hospital_id, current_user.lab_id, current_user.id, data,
     )
+    db.commit()
     return _model_to_dict(hospital)
 
 
@@ -398,7 +436,10 @@ def deactivate_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to deactivate a hospital")
     HospitalService.deactivate_hospital(db, hospital_id, current_user.lab_id, current_user.id)
+    db.commit()
     return {"detail": "Hospital deactivated", "detail_ar": "تم إلغاء تنشيط المستشفى"}
 
 
@@ -422,9 +463,12 @@ def create_campus(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    if current_user.role not in _HOSPITAL_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create a campus")
     campus = HospitalService.create_campus(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(campus)
 
 
@@ -435,11 +479,12 @@ def update_campus(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     campus = HospitalService._get_entity(db, Campus, campus_id, current_user.lab_id)
     data = body.model_dump()
     for k, v in data.items():
         setattr(campus, k, v)
-    db.flush()
+    db.commit()
     return _model_to_dict(campus)
 
 
@@ -463,9 +508,11 @@ def create_building(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     building = HospitalService.create_building(
         db, current_user.lab_id, current_user.id, campus_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(building)
 
 
@@ -489,9 +536,11 @@ def create_floor(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     floor = HospitalService.create_floor(
         db, current_user.lab_id, current_user.id, building_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(floor)
 
 
@@ -518,9 +567,11 @@ def create_department(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     dept = HospitalService.create_department(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(dept)
 
 
@@ -531,11 +582,12 @@ def update_department(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     dept = HospitalService._get_entity(db, HospitalDepartment, dept_id, current_user.lab_id)
     data = body.model_dump()
     for k, v in data.items():
         setattr(dept, k, v)
-    db.flush()
+    db.commit()
     return _model_to_dict(dept)
 
 
@@ -559,9 +611,11 @@ def create_clinic(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     clinic = HospitalService.create_clinic(
         db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(clinic)
 
 
@@ -586,9 +640,11 @@ def create_room(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     room = HospitalService.create_room(
         db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(room)
 
 
@@ -614,9 +670,11 @@ def create_bed(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     bed = HospitalService.create_bed(
         db, current_user.lab_id, current_user.id, room_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(bed)
 
 
@@ -632,6 +690,7 @@ def assign_bed(
     if_match: str | None = Header(None, alias="If-Match"),
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    _require_hospital_clinical_write(current_user)
     bed = HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
     assigned = _run_hospital_command(
         operation="hospital.bed.assign",
@@ -648,6 +707,7 @@ def assign_bed(
                 db,
                 current_user.lab_id,
                 current_user.id,
+                current_user.role,
                 bed_id,
                 body.patient_id,
                 expected_version=bed.version,
@@ -670,6 +730,7 @@ def discharge_bed(
     if_match: str | None = Header(None, alias="If-Match"),
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    _require_hospital_clinical_write(current_user)
     bed = HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
     discharged = _run_hospital_command(
         operation="hospital.bed.discharge",
@@ -686,6 +747,7 @@ def discharge_bed(
                 db,
                 current_user.lab_id,
                 current_user.id,
+                current_user.role,
                 bed_id,
                 expected_version=bed.version,
                 discharge_reason=body.discharge_reason,
@@ -707,6 +769,7 @@ def transfer_bed(
     target_if_match: str | None = Header(None, alias="X-Target-Bed-If-Match"),
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    _require_hospital_clinical_write(current_user)
     source = HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
     target = HospitalService._get_entity(db, Bed, body.to_bed_id, current_user.lab_id)
     ClinicalCommandGuard.require_expected_version(
@@ -729,6 +792,7 @@ def transfer_bed(
                 db,
                 current_user.lab_id,
                 current_user.id,
+                current_user.role,
                 bed_id,
                 body.to_bed_id,
                 from_expected_version=source.version,
@@ -773,9 +837,11 @@ def create_unit(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     unit = HospitalService.create_unit(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(unit)
 
 
@@ -799,9 +865,11 @@ def create_operation_theater(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     ot = HospitalService.create_ot(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(ot)
 
 
@@ -818,6 +886,7 @@ def complete_surgical_safety_checklist(
     if_match: str | None = Header(None, alias="If-Match"),
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    _require_hospital_clinical_write(current_user)
     theater = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
     checklist = _run_hospital_command(
         operation="hospital.surgical_safety_checklist.complete",
@@ -834,6 +903,7 @@ def complete_surgical_safety_checklist(
                 db,
                 current_user.lab_id,
                 current_user.id,
+                current_user.role,
                 {"operation_theater_id": ot_id, **body.model_dump()},
             ),
             theater.status,
@@ -852,6 +922,7 @@ def update_ot_status(
     if_match: str | None = Header(None, alias="If-Match"),
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    _require_hospital_clinical_write(current_user)
     theater = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
     if body.status not in {"available", "in_use", "cleaning", "maintenance"}:
         raise HTTPException(status_code=400, detail="Unsupported operation theater status")
@@ -870,6 +941,7 @@ def update_ot_status(
                 db,
                 current_user.lab_id,
                 current_user.id,
+                current_user.role,
                 ot_id,
                 expected_version=theater.version,
                 next_status=body.status,
@@ -906,9 +978,11 @@ def create_equipment(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     equip = HospitalService.create_equipment(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(equip)
 
 
@@ -919,11 +993,12 @@ def update_equipment(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     equip = HospitalService._get_entity(db, MedicalEquipment, equip_id, current_user.lab_id)
     for k, v in body.model_dump().items():
         if v is not None:
             setattr(equip, k, v)
-    db.flush()
+    db.commit()
     return _model_to_dict(equip)
 
 
@@ -947,9 +1022,11 @@ def create_cost_center(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_admin(current_user)
     cc = HospitalService.create_cost_center(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(cc)
 
 
@@ -980,9 +1057,11 @@ def create_appointment(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _require_hospital_clinical_write(current_user)
     apt = HospitalService.create_appointment(
         db, current_user.lab_id, current_user.id, body.model_dump(),
     )
+    db.commit()
     return _model_to_dict(apt)
 
 

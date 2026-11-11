@@ -1,7 +1,6 @@
 import app.main as main
 from app.core.connection_pool import ConnectionPool
 from app.core.device_manager import DeviceManager
-from app.security.auth import DEFAULT_API_KEY
 from fastapi.testclient import TestClient
 
 
@@ -25,9 +24,9 @@ class DummyDeviceManager(DeviceManager):
         return FakeConnector(config["device_id"])
 
 
-def test_scan_endpoint_returns_plan() -> None:
+def test_scan_endpoint_returns_plan(api_key_headers) -> None:
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = api_key_headers
 
     response = client.post(
         "/devices/onboarding/scan",
@@ -52,11 +51,11 @@ def test_scan_endpoint_returns_plan() -> None:
     assert len(body["install_plan"]) >= 4
 
 
-def test_execute_endpoint_registers_device(monkeypatch) -> None:
+def test_execute_endpoint_registers_device(monkeypatch, api_key_headers) -> None:
     monkeypatch.setattr(main, "device_manager", DummyDeviceManager(pool=ConnectionPool()))
 
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = api_key_headers
     response = client.post(
         "/devices/onboarding/execute",
         json={
@@ -81,11 +80,11 @@ def test_execute_endpoint_registers_device(monkeypatch) -> None:
     assert payload["device_id"] == "DEV-EXEC-1"
 
 
-def test_execute_endpoint_validates_tcp_requirements(monkeypatch) -> None:
+def test_execute_endpoint_validates_tcp_requirements(monkeypatch, api_key_headers) -> None:
     monkeypatch.setattr(main, "device_manager", DummyDeviceManager(pool=ConnectionPool()))
 
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = api_key_headers
 
     response = client.post(
         "/devices/onboarding/execute",
@@ -108,11 +107,11 @@ def test_execute_endpoint_validates_tcp_requirements(monkeypatch) -> None:
     assert "host and port" in response.json()["detail"]
 
 
-def test_execute_endpoint_supports_dry_run_mode(monkeypatch) -> None:
+def test_execute_endpoint_supports_dry_run_mode(monkeypatch, api_key_headers) -> None:
     monkeypatch.setattr(main, "device_manager", DummyDeviceManager(pool=ConnectionPool()))
 
     client = TestClient(main.app)
-    headers = {"x-api-key": DEFAULT_API_KEY}
+    headers = api_key_headers
     response = client.post(
         "/devices/onboarding/execute",
         json={

@@ -23,6 +23,32 @@ These tests use the existing single-process, single-engine SQLite fixture.
 True multi-thread races against PG locks require integration tests; the
 SQLite path is sufficient to catch logic regressions in the CAS pattern
 (``UPDATE ... WHERE`` returning rows_updated).
+
+Laboratory vertical-slice hardening (Mustafa, this pass) adds:
+
+  6. cancel_order previously had NO compare-and-swap at all — only the
+     sequential `enforce_transition` check, which reads the order's
+     in-memory `status` captured before any concurrent request runs. A
+     order validated by a concurrent request between that check and
+     cancel_order's commit had its status silently overwritten back to
+     "cancelled", defeating the documented "validated is terminal /
+     immutable" invariant. Fixed by adding the same
+     ``UPDATE ... WHERE locked_at IS NULL`` backstop validate_order already
+     uses. TestOrderCancelRace proves the race with a real interleaving
+     (not a mock of the DB layer) and proves the fix closes it.
+  7. samples.py::update_sample had no role gate at all (any authenticated
+     account of any role could reject/finalize a sample) and no status
+     state machine (arbitrary transitions, including resurrecting a
+     rejected/analyzed sample). Fixed via domain/sample_state.py (mirrors
+     order_state.py) plus the same class of atomic backstop as #6, using
+     the sample's own `status` as a compare-and-swap token in place of a
+     dedicated version column (which does not exist on Sample — see
+     MUSTAFA_ACTIVE_REPAIR_QUEUE.md for why that is a separate,
+     migration-requiring follow-up, not silently left ambiguous).
+  8. device_results.py's auto-ingestion previously blocked re-processing
+     only a "rejected" sample, not an already-"analyzed" one — a replayed
+     device submission could silently create duplicate LabResult rows.
+     Fixed by routing through the same domain/sample_state.py guard.
 """
 from __future__ import annotations
 
@@ -348,4 +374,426 @@ class TestAuditHistoryConcurrency:
         assert after == before, (
             "A rejected validation attempt produced an audit row — "
             "audit log should record successful actions only."
+        )
+
+
+# ─── Phase 3.F — cancel_order compare-and-swap (Laboratory vertical slice) ───
+
+
+class TestOrderCancelRace:
+    """cancel_order (services/order_service.py) must refuse a stale cancel
+    the same way validate_order already refuses a stale validate: via an
+    atomic ``UPDATE ... WHERE locked_at IS NULL``, not just the sequential
+    enforce_transition check.
+
+    The race is reproduced deterministically (single process, real DB
+    commits, no mocking of SQLAlchemy) by monkeypatching
+    order_service.enforce_transition — the one call cancel_order makes
+    between its initial read and its write — so that on its first
+    invocation it drives a *real* concurrent validate_order through the
+    actual HTTP route before returning. This is the same technique this
+    module's own docstring endorses: a single-engine SQLite session cannot
+    run two real OS threads against independent connections, so the
+    interleaving is forced at the one point where cancel_order yields
+    control, while every read and write still goes through real sessions
+    and real commits.
+    """
+
+    def test_cancel_loses_race_to_concurrent_validate(
+        self, client, db, lab_with_completed_order, monkeypatch,
+    ):
+        import app.services.order_service as order_service_module
+        from app.domain.order_state import enforce_transition as real_enforce_transition
+
+        admin1 = lab_with_completed_order["admin1"]
+        admin2 = lab_with_completed_order["admin2"]
+        order = lab_with_completed_order["order"]
+        lab_id = lab_with_completed_order["lab"].id
+
+        triggered = {"done": False}
+
+        def racing_enforce_transition(current, target):
+            if target == "cancelled" and not triggered["done"]:
+                triggered["done"] = True
+                # A concurrent request validates (and locks) the order
+                # in the gap between cancel_order's read and its write.
+                won = client.post(
+                    f"/orders/{order.id}/validate",
+                    headers=_hdr(admin2.id, lab_id),
+                )
+                assert won.status_code == 200, "setup: concurrent validate must win the race"
+            return real_enforce_transition(current, target)
+
+        monkeypatch.setattr(order_service_module, "enforce_transition", racing_enforce_transition)
+
+        cancel_res = client.post(
+            f"/orders/{order.id}/cancel",
+            headers=_hdr(admin1.id, lab_id),
+        )
+        assert cancel_res.status_code == 409, (
+            f"cancel_order must lose the race to the concurrent validate, got "
+            f"{cancel_res.status_code}: {cancel_res.text}"
+        )
+
+        db.expire_all()
+        order_db = db.query(LabOrder).filter(LabOrder.id == order.id).first()
+        assert order_db.status == "validated", (
+            "The validated order's status must not be overwritten by the "
+            "losing cancel request — validated is documented as terminal."
+        )
+        assert order_db.locked_at is not None
+        assert order_db.validated_by == admin2.id
+
+    def test_uncontended_cancel_still_succeeds(self, client, db, lab_with_completed_order):
+        """Non-regression: the CAS backstop must not block the ordinary,
+        non-racing cancel path."""
+        admin = lab_with_completed_order["admin1"]
+        order = lab_with_completed_order["order"]
+        lab_id = lab_with_completed_order["lab"].id
+
+        res = client.post(f"/orders/{order.id}/cancel", headers=_hdr(admin.id, lab_id))
+        assert res.status_code == 200
+
+        db.expire_all()
+        order_db = db.query(LabOrder).filter(LabOrder.id == order.id).first()
+        assert order_db.status == "cancelled"
+
+
+# ─── Phase 3.G — Sample authorization, state machine, and CAS ────────────────
+
+
+class TestSampleAuthorizationAndStateMachine:
+    """samples.py::update_sample previously had no role gate and no status
+    state machine at all. Verify both are now enforced, and that the fix
+    does not regress the ordinary authorized path."""
+
+    def test_update_sample_requires_clinical_write_role(
+        self, client, db, lab_with_completed_order,
+    ):
+        lab = lab_with_completed_order["lab"]
+        order = lab_with_completed_order["order"]
+        sample = Sample(order_id=order.id, sample_type="blood",
+                        barcode="BC-ROLE-001", status="collected")
+        db.add(sample)
+        db.commit()
+
+        staff_user = LabUser(
+            lab_id=lab.id, name="Staff", email="staff@con.com",
+            password_hash=hash_password("Pa55word"), role="staff", is_active=True,
+        )
+        db.add(staff_user)
+        db.commit()
+
+        res = client.put(
+            "/samples/BC-ROLE-001",
+            headers=_hdr(staff_user.id, lab.id, role="staff"),
+            json={"status": "rejected", "rejection_reason": "x"},
+        )
+        assert res.status_code == 403
+
+        db.expire_all()
+        sample_db = db.query(Sample).filter(Sample.barcode == "BC-ROLE-001").first()
+        assert sample_db.status == "collected", "denied update must not mutate the sample"
+
+    def test_update_sample_allowed_for_technician(self, client, db, lab_with_completed_order):
+        lab = lab_with_completed_order["lab"]
+        order = lab_with_completed_order["order"]
+        sample = Sample(order_id=order.id, sample_type="blood",
+                        barcode="BC-ROLE-002", status="collected")
+        db.add(sample)
+        db.commit()
+
+        tech = LabUser(
+            lab_id=lab.id, name="Tech", email="tech@con.com",
+            password_hash=hash_password("Pa55word"), role="technician", is_active=True,
+        )
+        db.add(tech)
+        db.commit()
+
+        res = client.put(
+            "/samples/BC-ROLE-002",
+            headers=_hdr(tech.id, lab.id, role="technician"),
+            json={"status": "received"},
+        )
+        assert res.status_code == 200
+        assert res.json()["sample"]["status"] == "received"
+
+    def test_rejected_sample_cannot_be_resurrected(self, client, db, lab_with_completed_order):
+        lab = lab_with_completed_order["lab"]
+        order = lab_with_completed_order["order"]
+        sample = Sample(order_id=order.id, sample_type="blood",
+                        barcode="BC-STATE-001", status="rejected",
+                        rejection_reason="hemolyzed")
+        db.add(sample)
+        db.commit()
+
+        admin = lab_with_completed_order["admin1"]
+        res = client.put(
+            "/samples/BC-STATE-001",
+            headers=_hdr(admin.id, lab.id),
+            json={"status": "processing"},
+        )
+        assert res.status_code == 409
+
+        db.expire_all()
+        sample_db = db.query(Sample).filter(Sample.barcode == "BC-STATE-001").first()
+        assert sample_db.status == "rejected", "a terminal sample must not be resurrected"
+
+    def test_analyzed_sample_cannot_be_resurrected(self, client, db, lab_with_completed_order):
+        lab = lab_with_completed_order["lab"]
+        order = lab_with_completed_order["order"]
+        sample = Sample(order_id=order.id, sample_type="blood",
+                        barcode="BC-STATE-002", status="analyzed")
+        db.add(sample)
+        db.commit()
+
+        admin = lab_with_completed_order["admin1"]
+        res = client.put(
+            "/samples/BC-STATE-002",
+            headers=_hdr(admin.id, lab.id),
+            json={"status": "collected"},
+        )
+        assert res.status_code == 409
+
+        db.expire_all()
+        sample_db = db.query(Sample).filter(Sample.barcode == "BC-STATE-002").first()
+        assert sample_db.status == "analyzed"
+
+    def test_sample_update_loses_race_to_concurrent_validate(
+        self, client, db, lab_with_completed_order, monkeypatch,
+    ):
+        """Same CAS-backstop proof as TestOrderCancelRace, for the sibling
+        gap in samples.py::update_sample.
+
+        The injection point matters: assert_not_locked(order) takes the ORM
+        object itself, and this test harness shares one SQLAlchemy session
+        across "concurrent" requests, so a bulk update's
+        synchronize_session="fetch" transparently refreshes that object —
+        patching assert_not_locked would look like it reproduces the race
+        but actually self-heals and proves nothing (verified: it passes
+        unchanged against the pre-fix code too). enforce_sample_transition
+        is called with sample.status already captured as a plain string
+        argument, evaluated *before* this patched function's body runs, so
+        it stays genuinely stale across the nested concurrent call — the
+        same technique TestOrderCancelRace uses via enforce_transition.
+        This isolates the one thing actually being proved: the atomic
+        ``UPDATE ... WHERE locked_at IS NULL`` backstop, independent of
+        whatever the sequential assert_not_locked check did or didn't
+        catch.
+        """
+        import app.routes.samples as samples_module
+
+        lab = lab_with_completed_order["lab"]
+        order = lab_with_completed_order["order"]
+        admin1 = lab_with_completed_order["admin1"]
+        admin2 = lab_with_completed_order["admin2"]
+
+        sample = Sample(order_id=order.id, sample_type="blood",
+                        barcode="BC-RACE-001", status="collected")
+        db.add(sample)
+        db.commit()
+
+        real_enforce_sample_transition = samples_module.enforce_sample_transition
+        triggered = {"done": False}
+
+        def racing_enforce_sample_transition(current, target):
+            if not triggered["done"]:
+                triggered["done"] = True
+                # Concurrent validate wins the race in the gap between
+                # update_sample's sequential assert_not_locked check (already
+                # passed by this point) and its atomic write below.
+                won = client.post(
+                    f"/orders/{order.id}/validate",
+                    headers=_hdr(admin2.id, lab.id),
+                )
+                assert won.status_code == 200, "setup: concurrent validate must win the race"
+            return real_enforce_sample_transition(current, target)
+
+        monkeypatch.setattr(
+            samples_module, "enforce_sample_transition", racing_enforce_sample_transition,
+        )
+
+        res = client.put(
+            "/samples/BC-RACE-001",
+            headers=_hdr(admin1.id, lab.id),
+            json={"status": "received"},
+        )
+        assert res.status_code == 423, (
+            f"a sample update racing a concurrent order validation must be "
+            f"refused, got {res.status_code}: {res.text}"
+        )
+
+        db.expire_all()
+        sample_db = db.query(Sample).filter(Sample.barcode == "BC-RACE-001").first()
+        assert sample_db.status == "collected", (
+            "the losing sample update must not have been applied"
+        )
+
+
+# ─── Phase 3.H — Device result ingestion cannot silently duplicate ──────────
+
+
+class TestDeviceIngestionIdempotence:
+    """device_results.py::receive_device_results directly set
+    `sample.status = "analyzed"`, bypassing domain/sample_state.py
+    entirely — the one remaining site that mutated a sample's status
+    without going through the same guard samples.py::update_sample now
+    uses.
+
+    Investigating this as a candidate duplicate-ingestion vulnerability,
+    the negative-proof cycle below showed it was NOT independently
+    exploitable: replaying a device submission against an order that
+    already moved 'pending' -> 'completed' is already refused by the
+    *order*-level domain/order_state.py guard (enforce_transition raises
+    on 'completed' -> 'completed', since that is not a legal transition),
+    regardless of the sample's own status. Both the pre-fix and post-fix
+    code return 409 on the second call in test_second_ingestion_is_refused
+    below — this test does not discriminate the two and is not a
+    vulnerability proof.
+
+    The change was kept anyway, recharacterized as consistency hardening
+    rather than a vulnerability fix: routing this call site through
+    enforce_sample_transition means the sample's own state machine is
+    authoritative everywhere a sample's status is mutated, not just in
+    the manual-update path — closing an inconsistent-enforcement pattern
+    (one of the reusable classes this pass's Engineering Intelligence
+    section calls out) rather than a live exploit.
+    test_wiring_pin_enforce_sample_transition_is_called is the actual
+    fix-discriminating test: source-inspection, matching the precedent
+    already established for adaptive_auth's routing guards.
+    """
+
+    def test_second_ingestion_is_refused(self, client, db, lab_with_completed_order):
+        """Non-regression: the endpoint still correctly refuses a replay,
+        whichever guard is doing the refusing."""
+        lab = lab_with_completed_order["lab"]
+        admin = lab_with_completed_order["admin1"]
+        patient = lab_with_completed_order["patient"]
+
+        pending_order = LabOrder(lab_id=lab.id, patient_id=patient.id, status="pending")
+        db.add(pending_order)
+        db.flush()
+        sample = Sample(order_id=pending_order.id, sample_type="blood",
+                        barcode="BC-DEVICE-001", status="collected")
+        db.add(sample)
+        db.commit()
+        order = pending_order
+
+        payload = {
+            "barcode": "BC-DEVICE-001",
+            "device_id": "ANALYZER-1",
+            "results": [{"test_name": "Sodium", "value": 140.0, "unit": "mmol/L"}],
+        }
+
+        from app.models.lab_result import LabResult
+
+        first = client.post("/device/results", headers=_hdr(admin.id, lab.id), json=payload)
+        assert first.status_code == 200
+
+        count_after_first = db.query(LabResult).filter(LabResult.order_id == order.id).count()
+
+        second = client.post("/device/results", headers=_hdr(admin.id, lab.id), json=payload)
+        assert second.status_code == 409, (
+            f"a replayed device submission must be refused, got "
+            f"{second.status_code}: {second.text}"
+        )
+
+        count_after_second = db.query(LabResult).filter(LabResult.order_id == order.id).count()
+        assert count_after_second == count_after_first, (
+            "the refused replay must not create duplicate LabResult rows"
+        )
+
+    def test_wiring_pin_enforce_sample_transition_is_called(self):
+        """Pins the actual fix: removing enforce_sample_transition from
+        receive_device_results fails here by name, rather than silently
+        reopening the inconsistent-enforcement gap. This is the test that
+        actually discriminates pre-fix from post-fix code (the end-to-end
+        test above does not — see class docstring)."""
+        import inspect
+
+        from app.routes import device_results
+
+        source = inspect.getsource(device_results.receive_device_results)
+        assert "enforce_sample_transition" in source, (
+            "receive_device_results no longer routes its sample.status "
+            "mutation through the canonical domain/sample_state.py guard"
+        )
+
+
+# ─── Phase 3.I — Device ingestion CAS (Imaging-slice prep: Sample.version) ──
+
+
+class TestDeviceIngestionRace:
+    """receive_device_results used to write `sample.status = "analyzed"`
+    and `order.status = "completed"` as plain ORM attribute assignments —
+    no CAS at all, unlike every other order/sample mutation in this
+    codebase. A concurrent cancel of the same (still-pending, not yet
+    locked) order racing between receive_device_results's sequential
+    enforce_transition check and its commit would have been silently
+    overwritten back to "completed" by the device submission. Fixed by
+    making both writes atomic, reusing LabOrder's existing locked_at/
+    version columns and Sample.status as its own CAS token — the same
+    investigation that resolved lab-slice-sample-version-column (see
+    MUSTAFA_ACTIVE_REPAIR_QUEUE.md): no new column was needed here either.
+    """
+
+    def test_device_submission_loses_race_to_concurrent_cancel(
+        self, client, db, lab_with_completed_order, monkeypatch,
+    ):
+        import app.domain.order_state as order_state_module
+
+        lab = lab_with_completed_order["lab"]
+        admin1 = lab_with_completed_order["admin1"]
+        admin2 = lab_with_completed_order["admin2"]
+        patient = lab_with_completed_order["patient"]
+
+        pending_order = LabOrder(lab_id=lab.id, patient_id=patient.id, status="pending")
+        db.add(pending_order)
+        db.flush()
+        sample = Sample(order_id=pending_order.id, sample_type="blood",
+                        barcode="BC-DEVICE-RACE-001", status="collected")
+        db.add(sample)
+        db.commit()
+
+        real_enforce_transition = order_state_module.enforce_transition
+        triggered = {"done": False}
+
+        def racing_enforce_transition(current, target):
+            if current == "pending" and target == "completed" and not triggered["done"]:
+                triggered["done"] = True
+                # A concurrent cancel wins the race in the gap between
+                # receive_device_results' sequential check and its commit.
+                won = client.post(
+                    f"/orders/{pending_order.id}/cancel",
+                    headers=_hdr(admin2.id, lab.id),
+                )
+                assert won.status_code == 200, "setup: concurrent cancel must win the race"
+            return real_enforce_transition(current, target)
+
+        monkeypatch.setattr(order_state_module, "enforce_transition", racing_enforce_transition)
+
+        from app.models.lab_result import LabResult
+
+        payload = {
+            "barcode": "BC-DEVICE-RACE-001",
+            "device_id": "ANALYZER-1",
+            "results": [{"test_name": "Sodium", "value": 140.0, "unit": "mmol/L"}],
+        }
+        res = client.post("/device/results", headers=_hdr(admin1.id, lab.id), json=payload)
+        assert res.status_code == 409, (
+            f"a device submission racing a concurrent cancel must be refused, "
+            f"got {res.status_code}: {res.text}"
+        )
+
+        db.expire_all()
+        order_db = db.query(LabOrder).filter(LabOrder.id == pending_order.id).first()
+        assert order_db.status == "cancelled", (
+            "the winning cancel must not be overwritten by the losing device submission"
+        )
+        sample_db = db.query(Sample).filter(Sample.barcode == "BC-DEVICE-RACE-001").first()
+        assert sample_db.status == "collected", (
+            "the losing device submission must not have applied its sample update"
+        )
+        assert db.query(LabResult).filter(LabResult.order_id == pending_order.id).count() == 0, (
+            "the losing device submission must not have created LabResult rows"
         )

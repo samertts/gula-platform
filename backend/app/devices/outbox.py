@@ -211,6 +211,7 @@ def process_batch(
         )
         .order_by(DeviceOutboxMessage.created_at.asc())
         .limit(limit)
+        .with_for_update(skip_locked=True)
         .all()
     )
     processed = delivered = retried = dead_letter = 0

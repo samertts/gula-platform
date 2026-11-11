@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.niam_async_db import get_niam_db
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 from .services import (
     AssuranceService,
@@ -14,6 +17,7 @@ from .services import (
     IdentityProofingService,
     TrustAnchorService,
     TrustEvaluationService,
+    TrustFrameworkInvalidTransition,
     TrustFrameworkService,
 )
 
@@ -34,8 +38,10 @@ async def create_framework(
     authority_id: str | None = None,
     scope: dict | None = None,
     assurance_policies: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustFrameworkService(db)
     entity = await service.create_framework(
         framework_id=framework_id,
@@ -47,7 +53,9 @@ async def create_framework(
         authority_id=authority_id,
         scope=scope,
         assurance_policies=assurance_policies,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"uuid": entity.uuid, "id": entity.id, "framework_id": entity.framework_id}
 
 
@@ -55,7 +63,7 @@ async def create_framework(
 async def list_frameworks(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustFrameworkService(db)
     frameworks = await service.list_frameworks(skip=skip, limit=limit)
@@ -75,7 +83,7 @@ async def list_frameworks(
 @router.get("/frameworks/{framework_id}")
 async def get_framework(
     framework_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustFrameworkService(db)
     entity = await service.get_framework(framework_id)
@@ -88,24 +96,42 @@ async def get_framework(
 async def update_framework(
     framework_id: str,
     body: dict[str, Any],
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustFrameworkService(db)
-    entity = await service.update_framework(framework_id, **body)
+    entity = await service.update_framework(
+        framework_id, body, actor_account_id=actor.account.id,
+    )
     if not entity:
         return {"error": "not_found"}
+    # Route owns the transaction boundary here, matching the existing
+    # canonical GULA pattern (e.g. app/routes/admin.py): the service
+    # stages the mutation and its audit entry via flush(); the route
+    # commits once, atomically, only after both succeeded.
+    await db.commit()
     return entity.to_dict()
 
 
 @router.post("/frameworks/{framework_id}/activate")
 async def activate_framework(
     framework_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustFrameworkService(db)
-    entity = await service.activate_framework(framework_id)
+    try:
+        entity = await service.activate_framework(framework_id, actor_account_id=actor.account.id)
+    except TrustFrameworkInvalidTransition as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"invalid_transition: cannot activate a framework in status {exc.current_status!r}",
+        ) from exc
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 
@@ -121,8 +147,10 @@ async def create_assurance_profile(
     fal: str = "FAL1",
     assessed_by: str | None = None,
     evidence: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = AssuranceService(db)
     entity = await service.assign_profile(
         person_id=person_id,
@@ -132,7 +160,9 @@ async def create_assurance_profile(
         fal=fal,
         assessed_by=assessed_by,
         evidence=evidence,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "id": entity.id,
@@ -145,7 +175,7 @@ async def create_assurance_profile(
 async def list_assurance_profiles(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = AssuranceService(db)
     profiles = await service.list_profiles(skip=skip, limit=limit)
@@ -167,7 +197,7 @@ async def list_assurance_profiles(
 @router.get("/assurance-profiles/{profile_uuid}")
 async def get_assurance_profile(
     profile_uuid: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = AssuranceService(db)
     entity = await service.get_profile(profile_uuid)
@@ -179,7 +209,7 @@ async def get_assurance_profile(
 @router.get("/assurance-profiles/identity/{identity_id}")
 async def get_profiles_for_identity(
     identity_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = AssuranceService(db)
     profiles = await service.get_profiles_for_identity(identity_id)
@@ -199,12 +229,15 @@ async def get_profiles_for_identity(
 @router.post("/assurance-profiles/{profile_uuid}/revoke")
 async def revoke_assurance_profile(
     profile_uuid: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = AssuranceService(db)
-    entity = await service.revoke_profile(profile_uuid)
+    entity = await service.revoke_profile(profile_uuid, actor_account_id=actor.account.id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 
@@ -223,8 +256,10 @@ async def create_anchor(
     valid_from: datetime | None = None,
     valid_to: datetime | None = None,
     signed_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustAnchorService(db)
     entity = await service.create_anchor(
         anchor_id=anchor_id,
@@ -237,7 +272,9 @@ async def create_anchor(
         valid_from=valid_from,
         valid_to=valid_to,
         signed_by=signed_by,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"uuid": entity.uuid, "id": entity.id, "anchor_id": entity.anchor_id}
 
 
@@ -245,7 +282,7 @@ async def create_anchor(
 async def list_anchors(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustAnchorService(db)
     anchors = await service.list_anchors(skip=skip, limit=limit)
@@ -264,7 +301,7 @@ async def list_anchors(
 @router.get("/anchors/{anchor_id}")
 async def get_anchor(
     anchor_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustAnchorService(db)
     entity = await service.get_anchor(anchor_id)
@@ -276,7 +313,7 @@ async def get_anchor(
 @router.get("/anchors/{anchor_id}/validate")
 async def validate_anchor_chain(
     anchor_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustAnchorService(db)
     return await service.validate_chain(anchor_id)
@@ -286,12 +323,15 @@ async def validate_anchor_chain(
 async def revoke_anchor(
     anchor_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustAnchorService(db)
-    entity = await service.revoke_anchor(anchor_id, reason)
+    entity = await service.revoke_anchor(anchor_id, reason, actor_account_id=actor.account.id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 
@@ -309,8 +349,10 @@ async def create_federation_trust(
     agreement_id: str | None = None,
     expires_at: datetime | None = None,
     terms: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = FederationTrustService(db)
     entity = await service.create_trust(
         trust_id=trust_id,
@@ -322,7 +364,9 @@ async def create_federation_trust(
         agreement_id=agreement_id,
         expires_at=expires_at,
         terms=terms,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"uuid": entity.uuid, "id": entity.id, "trust_id": entity.trust_id}
 
 
@@ -330,7 +374,7 @@ async def create_federation_trust(
 async def list_federation_trusts(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = FederationTrustService(db)
     trusts = await service.list_all(skip=skip, limit=limit)
@@ -351,7 +395,7 @@ async def list_federation_trusts(
 @router.get("/federation/{trust_id}")
 async def get_federation_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = FederationTrustService(db)
     entity = await service.get_trust(trust_id)
@@ -363,7 +407,7 @@ async def get_federation_trust(
 @router.get("/federation/org/{org_id}")
 async def list_federation_for_org(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = FederationTrustService(db)
     trusts = await service.list_for_org(org_id)
@@ -383,24 +427,30 @@ async def list_federation_for_org(
 @router.post("/federation/{trust_id}/suspend")
 async def suspend_federation_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = FederationTrustService(db)
-    entity = await service.suspend_trust(trust_id)
+    entity = await service.suspend_trust(trust_id, actor_account_id=actor.account.id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 
 @router.post("/federation/{trust_id}/terminate")
 async def terminate_federation_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = FederationTrustService(db)
-    entity = await service.terminate_trust(trust_id)
+    entity = await service.terminate_trust(trust_id, actor_account_id=actor.account.id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 
@@ -417,8 +467,10 @@ async def create_proofing(
     evidence_type: dict | None = None,
     evidence_documents: dict | None = None,
     authority_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = IdentityProofingService(db)
     entity = await service.create_proofing(
         proofing_id=proofing_id,
@@ -429,7 +481,9 @@ async def create_proofing(
         evidence_type=evidence_type,
         evidence_documents=evidence_documents,
         authority_id=authority_id,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"uuid": entity.uuid, "id": entity.id, "proofing_id": entity.proofing_id, "status": entity.status}
 
 
@@ -437,7 +491,7 @@ async def create_proofing(
 async def list_proofing(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = IdentityProofingService(db)
     records = await service.list_all(skip=skip, limit=limit)
@@ -457,7 +511,7 @@ async def list_proofing(
 @router.get("/proofing/{proofing_id}")
 async def get_proofing(
     proofing_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = IdentityProofingService(db)
     entity = await service.get_proofing(proofing_id)
@@ -469,7 +523,7 @@ async def get_proofing(
 @router.get("/proofing/person/{person_id}")
 async def list_proofing_for_person(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = IdentityProofingService(db)
     records = await service.list_for_person(person_id)
@@ -489,12 +543,15 @@ async def list_proofing_for_person(
 async def verify_proofing(
     proofing_id: str,
     verified_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = IdentityProofingService(db)
-    entity = await service.verify_proofing(proofing_id, verified_by)
+    entity = await service.verify_proofing(proofing_id, verified_by, actor_account_id=actor.account.id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 
@@ -502,12 +559,15 @@ async def verify_proofing(
 async def reject_proofing(
     proofing_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = IdentityProofingService(db)
-    entity = await service.reject_proofing(proofing_id, reason)
+    entity = await service.reject_proofing(proofing_id, reason, actor_account_id=actor.account.id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "status": entity.status}
 
 
@@ -526,8 +586,10 @@ async def create_evaluation(
     evaluation_method: str | None = None,
     findings: dict | None = None,
     recommendations: dict | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.trust_manage.value)
     service = TrustEvaluationService(db)
     entity = await service.create_evaluation(
         evaluation_id=evaluation_id,
@@ -540,7 +602,9 @@ async def create_evaluation(
         evaluation_method=evaluation_method,
         findings=findings,
         recommendations=recommendations,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {"uuid": entity.uuid, "id": entity.id, "evaluation_id": entity.evaluation_id}
 
 
@@ -548,7 +612,7 @@ async def create_evaluation(
 async def list_evaluations(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustEvaluationService(db)
     evaluations = await service.list_all(skip=skip, limit=limit)
@@ -570,7 +634,7 @@ async def list_evaluations(
 @router.get("/evaluations/{evaluation_id}")
 async def get_evaluation(
     evaluation_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustEvaluationService(db)
     entity = await service.get_evaluation(evaluation_id)
@@ -583,7 +647,7 @@ async def get_evaluation(
 async def get_evaluations_for_target(
     target_type: str,
     target_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = TrustEvaluationService(db)
     evaluations = await service.list_for_target(target_type, target_id)

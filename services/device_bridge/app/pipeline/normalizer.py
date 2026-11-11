@@ -25,6 +25,7 @@ class NormalizedResult:
     reference_range: str
     timestamp: datetime
     status: str
+    barcode: str | None = None
 
 
 class Normalizer:
@@ -35,6 +36,7 @@ class Normalizer:
         patient_id: str,
         device_id: str,
         reference_range: str = "",
+        barcode: str | None = None,
     ) -> NormalizedResult:
         return NormalizedResult(
             patient_id=patient_id,
@@ -46,4 +48,5 @@ class Normalizer:
             reference_range=reference_range,
             timestamp=datetime.now(UTC),
             status="final",
+            barcode=barcode,
         )

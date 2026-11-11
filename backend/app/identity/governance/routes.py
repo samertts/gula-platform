@@ -6,7 +6,10 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.niam_async_db import get_niam_db
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 from .services import (
     AppealService,
@@ -34,8 +37,10 @@ async def create_authority(
     established_date: datetime | None = None,
     accredited_by: str | None = None,
     accreditation_expires: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.create_authority(
         authority_id=authority_id,
@@ -48,7 +53,9 @@ async def create_authority(
         established_date=established_date,
         accredited_by=accredited_by,
         accreditation_expires=accreditation_expires,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "id": entity.id,
@@ -60,7 +67,7 @@ async def create_authority(
 @router.get("/authorities")
 async def list_authorities(
     authority_type: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     authorities = await service.list_authorities(authority_type=authority_type)
@@ -81,7 +88,7 @@ async def list_authorities(
 @router.get("/authorities/{authority_id}")
 async def get_authority(
     authority_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     entity = await service.get_authority(authority_id)
@@ -93,24 +100,30 @@ async def get_authority(
 @router.post("/authorities/{authority_id}/suspend")
 async def suspend_authority(
     authority_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.suspend_authority(authority_id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "authority_id": entity.authority_id, "status": entity.status}
 
 
 @router.post("/authorities/{authority_id}/activate")
 async def activate_authority(
     authority_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.activate_authority(authority_id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"uuid": entity.uuid, "authority_id": entity.authority_id, "status": entity.status}
 
 
@@ -129,8 +142,10 @@ async def create_council(
     meeting_frequency: str | None = None,
     last_meeting: datetime | None = None,
     next_meeting: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.create_council(
         council_id=council_id,
@@ -144,6 +159,7 @@ async def create_council(
         last_meeting=last_meeting,
         next_meeting=next_meeting,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "id": entity.id,
@@ -155,7 +171,7 @@ async def create_council(
 @router.get("/councils")
 async def list_councils(
     authority_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     councils = await service.list_councils(authority_id=authority_id)
@@ -175,7 +191,7 @@ async def list_councils(
 @router.get("/councils/{council_id}")
 async def get_council(
     council_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = GovernanceService(db)
     entity = await service.get_council(council_id)
@@ -198,8 +214,10 @@ async def create_review_board(
     members: list[Any] | None = None,
     quorum_size: int = 3,
     meeting_schedule: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = GovernanceService(db)
     entity = await service.create_review_board(
         board_id=board_id,
@@ -212,6 +230,7 @@ async def create_review_board(
         quorum_size=quorum_size,
         meeting_schedule=meeting_schedule,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "id": entity.id,
@@ -227,13 +246,16 @@ async def create_review_board(
 async def submit_policy_approval(
     policy_id: str,
     submitted_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = PolicyApprovalService(db)
     entity = await service.submit_policy(
         policy_id=policy_id,
         submitted_by=submitted_by,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "workflow_id": entity.workflow_id,
@@ -245,7 +267,7 @@ async def submit_policy_approval(
 @router.get("/policy-approvals/pending/{reviewer_id}")
 async def get_pending_policy_approvals(
     reviewer_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = PolicyApprovalService(db)
     pending = await service.get_pending_approvals(reviewer_id)
@@ -267,12 +289,15 @@ async def get_pending_policy_approvals(
 async def approve_policy(
     workflow_id: str,
     approved_by: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = PolicyApprovalService(db)
     entity = await service.approve_policy(workflow_id, approved_by)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"workflow_id": entity.workflow_id, "status": entity.status, "approved_by": entity.approved_by}
 
 
@@ -281,12 +306,15 @@ async def reject_policy(
     workflow_id: str,
     rejected_by: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = PolicyApprovalService(db)
     entity = await service.reject_policy(workflow_id, rejected_by, reason)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"workflow_id": entity.workflow_id, "status": entity.status, "rejected_by": entity.rejected_by}
 
 
@@ -301,8 +329,20 @@ async def submit_appeal(
     appeal_type: str = "suspension",
     reason: str | None = None,
     supporting_documents: list[Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Conservative choice, documented rather than guessed: appellant_person_id
+    # has no established self-service mapping to actor.account (unlike
+    # adaptive_auth's account_id, which IS actor.account.id) -- this module
+    # has no citizen-self-service concept wired up anywhere else, so this is
+    # gated the same as every other mutation here (matching federation's
+    # identical treatment of link_identity, which also operates on a
+    # specific person_id with no self-service check). If citizen
+    # self-submission of one's own appeal is the intended product behavior,
+    # that requires a real self-service authorization design, not a
+    # sync/async batch's guess.
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = AppealService(db)
     entity = await service.submit_appeal(
         appeal_id=appeal_id,
@@ -312,6 +352,7 @@ async def submit_appeal(
         reason=reason,
         supporting_documents=supporting_documents,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "appeal_id": entity.appeal_id,
@@ -323,7 +364,7 @@ async def submit_appeal(
 async def list_appeals(
     status: str | None = None,
     person_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = AppealService(db)
     appeals = await service.get_appeals(status=status, person_id=person_id)
@@ -344,12 +385,15 @@ async def list_appeals(
 async def assign_appeal_to_council(
     appeal_id: str,
     council_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = AppealService(db)
     entity = await service.assign_to_council(appeal_id, council_id)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"appeal_id": entity.appeal_id, "council_id": entity.council_id, "status": entity.status}
 
 
@@ -359,12 +403,15 @@ async def decide_appeal(
     decision: str,
     decided_by: str,
     notes: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = AppealService(db)
     entity = await service.make_decision(appeal_id, decision, decided_by, notes)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"appeal_id": entity.appeal_id, "decision": entity.decision, "status": entity.status}
 
 
@@ -379,8 +426,10 @@ async def suspend_identity(
     severity: str = "medium",
     suspended_by: str | None = None,
     duration_hours: int | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = SuspensionService(db)
     entity = await service.suspend_identity(
         person_id=person_id,
@@ -390,6 +439,7 @@ async def suspend_identity(
         suspended_by=suspended_by,
         duration_hours=duration_hours,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "suspension_id": entity.suspension_id,
@@ -403,18 +453,21 @@ async def lift_suspension(
     suspension_id: str,
     lifted_by: str,
     reason: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = SuspensionService(db)
     entity = await service.lift_suspension(suspension_id, lifted_by, reason)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"suspension_id": entity.suspension_id, "status": entity.status, "lifted_by": entity.lifted_by}
 
 
 @router.get("/suspensions/active")
 async def list_active_suspensions(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = SuspensionService(db)
     suspensions = await service.get_active_suspensions()
@@ -435,7 +488,7 @@ async def list_active_suspensions(
 @router.get("/suspensions/history/{person_id}")
 async def get_suspension_history(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = SuspensionService(db)
     history = await service.get_suspension_history(person_id)
@@ -462,8 +515,10 @@ async def register_identity(
     identity_id: str,
     registry_type: str = "citizen",
     registered_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = RegistryService(db)
     entity = await service.register_identity(
         person_id=person_id,
@@ -471,6 +526,7 @@ async def register_identity(
         registry_type=registry_type,
         registered_by=registered_by,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "registry_id": entity.registry_id,
@@ -482,7 +538,7 @@ async def register_identity(
 @router.get("/registry/{person_id}")
 async def get_registration(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = RegistryService(db)
     entity = await service.get_registration(person_id)
@@ -504,8 +560,10 @@ async def certify_identity(
     verified_by: str | None = None,
     verification_method: str | None = None,
     digital_signature: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = RegistryService(db)
     entity = await service.certify_identity(
         certification_id=certification_id,
@@ -520,6 +578,7 @@ async def certify_identity(
         verification_method=verification_method,
         digital_signature=digital_signature,
     )
+    await db.commit()
     return {
         "uuid": entity.uuid,
         "certification_id": entity.certification_id,
@@ -532,10 +591,13 @@ async def certify_identity(
 async def revoke_certification(
     certification_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.governance_manage.value)
     service = RegistryService(db)
     entity = await service.revoke_certification(certification_id, reason)
     if not entity:
         return {"error": "not_found"}
+    await db.commit()
     return {"certification_id": entity.certification_id, "status": entity.status}

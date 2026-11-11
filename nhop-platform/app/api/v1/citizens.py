@@ -12,6 +12,21 @@ Every endpoint writes to the audit log via services.audit.log_action.
 Route order matters: the static ``/search`` path is declared before the
 ``/{health_id}`` dynamic path so FastAPI does not treat "search" as a
 health_id.
+
+Authorization: writes (register/update) require LAB, DOCTOR, or ADMIN;
+reads add MINISTRY, matching outbreak.py's precedent. The role and actor
+identity both come from core.trusted_context, which fails closed (503)
+until a real GULA-federated identity provider exists — see that module's
+docstring. Previously core.rbac.require_roles read the caller-supplied
+X-Role header verbatim with no verification (see
+nhop-platform/tests/test_rbac_is_not_a_trust_boundary.py, which now
+documents that as historical, not current, behavior); that gap is closed
+by routing through the trusted context instead of the wire.
+
+A citizen reading only their own record (self-service) is also not
+modeled: nhop has no session/identity binding yet that could prove "this
+caller IS this health_id", so CITIZEN is left out of every role set below
+rather than guessed at.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -19,6 +34,8 @@ from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
+from ...core.rbac import Role, require_roles
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab_test import LabTest
 from ...schemas.citizen import (
@@ -36,15 +53,17 @@ from ...services.health_id import generate_health_id
 
 router = APIRouter(prefix="/citizens", tags=["citizens"])
 
+_clinical_staff = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN)
+_clinical_staff_and_ministry = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN, Role.MINISTRY)
+
 
 def _actor_id(request: Request) -> str | None:
-    """Best-effort actor identifier for audit log entries.
+    """Server-established actor identifier for audit log entries.
 
-    In the full integration this will read the authenticated user from the
-    request; for now we pass through an optional ``X-Actor-Id`` header so the
-    endpoints are testable standalone.
+    Read from the trusted context (never from a client-supplied header) —
+    see core/trusted_context.py.
     """
-    return request.headers.get("X-Actor-Id")
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:
@@ -64,6 +83,7 @@ def register_citizen(
     payload: CitizenCreate,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff),
 ) -> CitizenRead:
     if payload.national_id:
         clash = (db.query(Citizen)
@@ -130,7 +150,7 @@ def register_citizen(
         target_id=citizen.health_id,
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"candidates_considered": len(hits)},
+        metadata={"candidates_considered": len(hits), "role": role},
     )
     db.commit()
     db.refresh(citizen)
@@ -147,6 +167,7 @@ def search_citizens(
     skip:     int = Query(0, ge=0),
     limit:    int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> CitizenSearchResult:
     query = db.query(Citizen)
     if q:
@@ -170,7 +191,10 @@ def search_citizens(
         target_id="-",
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"q": q, "province": province, "skip": skip, "limit": limit, "total": total},
+        metadata={
+            "q": q, "province": province, "skip": skip, "limit": limit,
+            "total": total, "role": role,
+        },
     )
     db.commit()
 
@@ -189,6 +213,7 @@ def citizen_summary(
     health_id: str,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> CitizenSummary:
     citizen = db.query(Citizen).filter(Citizen.health_id == health_id).first()
     if citizen is None:
@@ -207,7 +232,7 @@ def citizen_summary(
         target_id=citizen.health_id,
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"tests_returned": len(recent)},
+        metadata={"tests_returned": len(recent), "role": role},
     )
     db.commit()
 
@@ -226,6 +251,7 @@ def get_citizen(
     health_id: str,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> CitizenRead:
     citizen = db.query(Citizen).filter(Citizen.health_id == health_id).first()
     if citizen is None:
@@ -238,6 +264,7 @@ def get_citizen(
         target_id=citizen.health_id,
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
+        metadata={"role": role},
     )
     db.commit()
     return CitizenRead.model_validate(citizen)
@@ -251,6 +278,7 @@ def update_citizen(
     payload: CitizenUpdate,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff),
 ) -> CitizenRead:
     citizen = db.query(Citizen).filter(Citizen.health_id == health_id).first()
     if citizen is None:
@@ -270,7 +298,7 @@ def update_citizen(
         target_id=citizen.health_id,
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"fields": sorted(changes.keys())},
+        metadata={"fields": sorted(changes.keys()), "role": role},
     )
     db.commit()
     db.refresh(citizen)

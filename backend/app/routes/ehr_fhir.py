@@ -32,7 +32,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..national.domain.encounter import Encounter
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..services import ehr_service
 
 class FHIRJSONResponse(JSONResponse):
@@ -357,7 +357,7 @@ def fhir_search_condition(
 @router.get("/Observation/{observation_id}", summary="FHIR Observation for a lab result")
 def fhir_read_observation(
     observation_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     result = (
@@ -422,7 +422,7 @@ def fhir_search_observation(
     code: str | None = Query(None, alias="code"),
     category: str | None = Query(None, alias="category"),
     date: str | None = Query(None, alias="date"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     bundle: dict[str, Any] = {
@@ -502,7 +502,7 @@ def _audit_log_to_provenance(entry: AuditLog, target: str) -> dict[str, Any]:
 @router.get("/Provenance", summary="FHIR Provenance search from tenant-scoped audit records")
 def fhir_search_provenance(
     target: str = Query(..., description="FHIR target reference, for example Observation/123"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("audit:read")),
     db: Session = Depends(get_db),
 ):
     """Return audit lineage for one target without exposing another tenant's events."""

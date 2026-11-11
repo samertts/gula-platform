@@ -40,6 +40,35 @@ def token(client):
 _AUTH_HEADER_TEMPLATE = "Bearer {}"
 
 
+@pytest.fixture
+def national_token(db):
+    """A caller with national scope in the patient index (NR-148).
+
+    The `token` fixture above is role="admin" — lab-scoped, holding no
+    platform:view_stats — so the MPI's national operations are not open to
+    it.
+
+    Minted directly rather than through /login, because ministry_admin is a
+    privileged account and login refuses it until MFA is enrolled. That
+    policy is real and correct; coupling this fixture to it would make an
+    MPI authorization test fail for an unrelated reason.
+    """
+    from app.models.lab_user import LabUser
+    from app.security.auth import create_token
+
+    email = "ministry@mfa.gula"
+    user = db.query(LabUser).filter(LabUser.email == email).first()
+    if user is None:
+        user = LabUser(lab_id=1, email=email, name="Ministry User",
+                       password_hash=hash_password("password123"),
+                       role="ministry_admin", is_active=True)
+        db.add(user)
+        db.commit()
+    return create_token(
+        {"user_id": user.id, "lab_id": user.lab_id, "role": "ministry_admin"},
+    )
+
+
 # ── MFA: TOTP ──
 
 
@@ -316,15 +345,29 @@ def test_get_canonical_patient(client, token):
     assert resp.json()["id"] == pid
 
 
-def test_search_canonical_patients(client, token):
+def test_search_canonical_patients(client, token, national_token):
+    """NR-148: searching the national index needs national scope.
+
+    This used to assert only that search returns rows, using a lab-scoped
+    admin token — which is the defect, not the contract. The plumbing
+    assertion is kept and moved to a caller entitled to make it; the
+    lab-scoped denial is now asserted too, so the control cannot regress
+    silently.
+    """
     client.post(
         "/api/v1/canonical-patients",
         json={"full_name": "Searchable Person", "date_of_birth": "1985-05-05", "gender": "M"},
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
     )
-    resp = client.get(
+    denied = client.get(
         "/api/v1/canonical-patients?q=Searchable",
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert denied.status_code == 403, denied.text
+
+    resp = client.get(
+        "/api/v1/canonical-patients?q=Searchable",
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(national_token)},
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -333,7 +376,8 @@ def test_search_canonical_patients(client, token):
     assert any("Searchable" in i.get("full_name", "") for i in body["items"])
 
 
-def test_merge_canonical_patients(client, token):
+def test_merge_canonical_patients(client, token, national_token):
+    """NR-148: merging two identities is a national judgement, not a lab's."""
     a = client.post(
         "/api/v1/canonical-patients",
         json={"full_name": "Merge A", "date_of_birth": "1980-01-01", "gender": "M"},
@@ -348,10 +392,17 @@ def test_merge_canonical_patients(client, token):
     )
     assert b.status_code == 201, b.text
     b_data = b.json()
-    resp = client.post(
+    denied = client.post(
         "/api/v1/canonical-patients/merge",
         json={"target_id": a_data["id"], "source_id": b_data["id"]},
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert denied.status_code == 403, denied.text
+
+    resp = client.post(
+        "/api/v1/canonical-patients/merge",
+        json={"target_id": a_data["id"], "source_id": b_data["id"]},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(national_token)},
     )
     assert resp.status_code == 200, resp.text
 

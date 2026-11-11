@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
 from app.identity.lifecycle.models import (
@@ -16,11 +18,34 @@ from app.identity.lifecycle.models import (
     GuardianAccount,
     WorkforceRequest,
 )
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 
 class EnterpriseRegistrationService:
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`, `await self.session.execute(...)`),
+    matching every other NIAM service in this codebase. `start_registration`
+    was the one representative Category-F repair
+    (docs/security/NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md); the remaining 6
+    methods (validate_license, submit_inspection, assess_risk,
+    approve_registration, reject_registration, get_registration_status,
+    plus the private _get_registration/_complete_step helpers) previously
+    still took an explicit `db: Session` and used the legacy sync
+    `db.query()` API while routes.py called them via
+    `EnterpriseRegistrationService(db)` (a class already converted to a
+    single-arg async constructor) and `await`ed their return values --
+    a real arity mismatch (`db` bound into the first positional business
+    parameter) plus a missed-`await` on the now-async `_add_step`/
+    `_complete_step`, not just the usual dependency-typing mismatch. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F2_ENTERPRISE_STATUS.md."""
 
-    def start_registration(self, db: Session, org_id: str, submitted_by: str) -> EnterpriseRegistration:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def start_registration(
+        self, org_id: str, submitted_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
         reg = EnterpriseRegistration(
             uuid=org_id,
             reg_id=org_id,
@@ -31,92 +56,36 @@ class EnterpriseRegistrationService:
             current_step="license_validation",
             is_active=True,
         )
-        db.add(reg)
-        self._add_step(db, reg.id, "license_validation", performed_by=submitted_by)
-        db.flush()
+        self.session.add(reg)
+        await self.session.flush()
+        await self._add_step(reg.id, "license_validation", performed_by=submitted_by)
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="ENTERPRISE_REGISTRATION_STARTED",
+                category="LIFECYCLE",
+                action="lifecycle.enterprise_registration.start",
+                actor_id=actor_account_id,
+                target_type="enterprise_registration",
+                target_id=reg.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return reg
 
-    def validate_license(self, db: Session, reg_id: str, license_document: str, validated_by: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
-        reg.license_document = license_document
-        reg.license_validated_at = datetime.now(UTC)
-        reg.license_validated_by = validated_by
-        reg.status = "license_validated"
-        reg.current_step = "inspection"
-        reg.is_active = True
-        self._complete_step(db, reg.id, "license_validation", performed_by=validated_by)
-        self._add_step(db, reg.id, "inspection", performed_by=validated_by)
-        db.flush()
-        return reg
-
-    def submit_inspection(self, db: Session, reg_id: str, inspection_report: dict[str, Any], inspected_by: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
-        reg.inspection_report = inspection_report
-        reg.inspected_at = datetime.now(UTC)
-        reg.inspected_by = inspected_by
-        reg.status = "inspected"
-        reg.current_step = "risk_assessment"
-        reg.is_active = True
-        self._complete_step(db, reg.id, "inspection", performed_by=inspected_by)
-        self._add_step(db, reg.id, "risk_assessment", performed_by=inspected_by)
-        db.flush()
-        return reg
-
-    def assess_risk(self, db: Session, reg_id: str, risk_assessment: dict[str, Any], risk_score: int) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
-        reg.risk_assessment = risk_assessment
-        reg.risk_score = risk_score
-        reg.risk_assessed_at = datetime.now(UTC)
-        reg.status = "risk_assessed"
-        reg.current_step = "approval"
-        reg.is_active = True
-        self._complete_step(db, reg.id, "risk_assessment", performed_by=risk_assessment.get("assessed_by"))
-        self._add_step(db, reg.id, "approval")
-        db.flush()
-        return reg
-
-    def approve_registration(self, db: Session, reg_id: str, approved_by: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
-        reg.approved_by = approved_by
-        reg.approved_at = datetime.now(UTC)
-        reg.certificate_id = f"CERT-{reg.reg_id}-{int(datetime.now(UTC).timestamp())}"
-        reg.status = "approved"
-        reg.current_step = "certificate_issued"
-        reg.is_active = True
-        self._complete_step(db, reg.id, "approval", performed_by=approved_by)
-        self._add_step(db, reg.id, "certificate_issued", performed_by=approved_by, output={"certificate_id": reg.certificate_id})
-        db.flush()
-        return reg
-
-    def reject_registration(self, db: Session, reg_id: str, reason: str) -> EnterpriseRegistration:
-        reg = self._get_registration(db, reg_id)
-        reg.rejection_reason = reason
-        reg.status = "rejected"
-        reg.is_active = False
-        self._complete_step(db, reg.id, reg.current_step or "rejected", output={"reason": reason})
-        db.flush()
-        return reg
-
-    def get_registration_status(self, db: Session, org_id: str) -> EnterpriseRegistration | None:
-        return db.query(EnterpriseRegistration).filter(
-            EnterpriseRegistration.organization_id == org_id,
-            EnterpriseRegistration.is_active,
-        ).order_by(EnterpriseRegistration.created_at.desc()).first()
-
-    def _get_registration(self, db: Session, reg_id: str) -> EnterpriseRegistration:
-        reg = db.query(EnterpriseRegistration).filter(
-            EnterpriseRegistration.reg_id == reg_id,
-        ).first()
-        if not reg:
-            raise ValueError(f"EnterpriseRegistration not found: reg_id={reg_id}")
-        return reg
-
-    def _add_step(
-        self, db: Session, reg_pk: str, step_name: str,
+    async def _add_step(
+        self, reg_pk: str, step_name: str,
         performed_by: str | None = None, output: dict[str, Any] | None = None,
     ) -> EnterpriseRegistrationStep:
         step = EnterpriseRegistrationStep(
-            uuid=step_name,
+            # uuid must be globally unique (column constraint) and this
+            # step's own reg_id+step_name composite (already unique via
+            # step_id, the business key) can exceed the column's 36-char
+            # limit, so a real uuid4 is used here rather than a composite
+            # business string. See docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F2_ENTERPRISE_STATUS.md.
+            uuid=str(uuid4()),
             step_id=f"{reg_pk}-{step_name}",
             reg_id=reg_pk,
             step_name=step_name,
@@ -126,17 +95,137 @@ class EnterpriseRegistrationService:
             output=output,
             is_active=True,
         )
-        db.add(step)
+        self.session.add(step)
         return step
 
-    def _complete_step(
-        self, db: Session, reg_pk: str, step_name: str,
+    async def validate_license(
+        self, reg_id: str, license_document: str, validated_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
+        reg.license_document = license_document
+        reg.license_validated_at = datetime.now(UTC)
+        reg.license_validated_by = validated_by
+        reg.status = "license_validated"
+        reg.current_step = "inspection"
+        reg.is_active = True
+        await self._complete_step(reg.id, "license_validation", performed_by=validated_by)
+        await self._add_step(reg.id, "inspection", performed_by=validated_by)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_LICENSE_VALIDATED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.validate_license", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
+        return reg
+
+    async def submit_inspection(
+        self, reg_id: str, inspection_report: dict[str, Any], inspected_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
+        reg.inspection_report = inspection_report
+        reg.inspected_at = datetime.now(UTC)
+        reg.inspected_by = inspected_by
+        reg.status = "inspected"
+        reg.current_step = "risk_assessment"
+        reg.is_active = True
+        await self._complete_step(reg.id, "inspection", performed_by=inspected_by)
+        await self._add_step(reg.id, "risk_assessment", performed_by=inspected_by)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_INSPECTED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.inspect", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
+        return reg
+
+    async def assess_risk(
+        self, reg_id: str, risk_assessment: dict[str, Any], risk_score: int, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
+        reg.risk_assessment = risk_assessment
+        reg.risk_score = risk_score
+        reg.risk_assessed_at = datetime.now(UTC)
+        reg.status = "risk_assessed"
+        reg.current_step = "approval"
+        reg.is_active = True
+        await self._complete_step(reg.id, "risk_assessment", performed_by=risk_assessment.get("assessed_by"))
+        await self._add_step(reg.id, "approval")
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_RISK_ASSESSED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.assess_risk", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
+        return reg
+
+    async def approve_registration(
+        self, reg_id: str, approved_by: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
+        reg.approved_by = approved_by
+        reg.approved_at = datetime.now(UTC)
+        reg.certificate_id = f"CERT-{reg.reg_id}-{int(datetime.now(UTC).timestamp())}"
+        reg.status = "approved"
+        reg.current_step = "certificate_issued"
+        reg.is_active = True
+        await self._complete_step(reg.id, "approval", performed_by=approved_by)
+        await self._add_step(reg.id, "certificate_issued", performed_by=approved_by, output={"certificate_id": reg.certificate_id})
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_APPROVED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.approve", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+        ))
+        return reg
+
+    async def reject_registration(
+        self, reg_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> EnterpriseRegistration:
+        reg = await self._get_registration(reg_id)
+        reg.rejection_reason = reason
+        reg.status = "rejected"
+        reg.is_active = False
+        await self._complete_step(reg.id, reg.current_step or "rejected", output={"reason": reason})
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="ENTERPRISE_REGISTRATION_REJECTED", category="LIFECYCLE",
+            action="lifecycle.enterprise_registration.reject", actor_id=actor_account_id,
+            target_type="enterprise_registration", target_id=reg.id, decision="ALLOW",
+            reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE", data_classification="INTERNAL",
+            metadata={"reason": reason},
+        ))
+        return reg
+
+    async def get_registration_status(self, org_id: str) -> EnterpriseRegistration | None:
+        stmt = select(EnterpriseRegistration).where(
+            EnterpriseRegistration.organization_id == org_id,
+            EnterpriseRegistration.is_active.is_(True),
+        ).order_by(EnterpriseRegistration.created_at.desc())
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def _get_registration(self, reg_id: str) -> EnterpriseRegistration:
+        stmt = select(EnterpriseRegistration).where(EnterpriseRegistration.reg_id == reg_id)
+        result = await self.session.execute(stmt)
+        reg = result.scalar_one_or_none()
+        if not reg:
+            raise ValueError(f"EnterpriseRegistration not found: reg_id={reg_id}")
+        return reg
+
+    async def _complete_step(
+        self, reg_pk: str, step_name: str,
         performed_by: str | None = None, output: dict[str, Any] | None = None,
     ) -> None:
-        step = db.query(EnterpriseRegistrationStep).filter(
+        stmt = select(EnterpriseRegistrationStep).where(
             EnterpriseRegistrationStep.reg_id == reg_pk,
             EnterpriseRegistrationStep.step_name == step_name,
-        ).order_by(EnterpriseRegistrationStep.created_at.desc()).first()
+        ).order_by(EnterpriseRegistrationStep.created_at.desc())
+        result = await self.session.execute(stmt)
+        step = result.scalars().first()
         if step:
             step.status = "completed"
             step.completed_at = datetime.now(UTC)
@@ -146,10 +235,22 @@ class EnterpriseRegistrationService:
 
 
 class WorkforceService:
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`), matching every other NIAM service in this
+    codebase. Previously had no `__init__` at all and every method took an
+    explicit `db: Session`, while routes.py constructed it as
+    `WorkforceService(db)` against a class with no constructor -- a real
+    `TypeError` on every call. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F3_WORKFORCE_STATUS.md."""
 
-    def request_employee(
-        self, db: Session, request_id: str, request_type: str,
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def request_employee(
+        self, request_id: str, request_type: str,
         requesting_org_id: str, requested_by: str, person_id: str | None = None,
+        actor_account_id: str | None = None,
     ) -> WorkforceRequest:
         req = WorkforceRequest(
             uuid=request_id,
@@ -161,90 +262,158 @@ class WorkforceService:
             status="draft",
             is_active=True,
         )
-        db.add(req)
-        db.flush()
+        self.session.add(req)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_REQUEST_CREATED", category="LIFECYCLE",
+            action="lifecycle.workforce.request_employee", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def validate_national_id(self, db: Session, request_id: str, national_id_hash: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def validate_national_id(
+        self, request_id: str, national_id_hash: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.national_id_hash = national_id_hash
         req.status = "national_id_validated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_NATIONAL_ID_VALIDATED", category="LIFECYCLE",
+            action="lifecycle.workforce.validate_national_id", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def validate_license(self, db: Session, request_id: str, license_number: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def validate_license(
+        self, request_id: str, license_number: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.license_number = license_number
         req.status = "license_validated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_LICENSE_VALIDATED", category="LIFECYCLE",
+            action="lifecycle.workforce.validate_license", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def check_conflicts(self, db: Session, request_id: str, conflict_report: dict[str, Any] | None = None) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def check_conflicts(
+        self, request_id: str, conflict_report: dict[str, Any] | None = None, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.conflict_report = conflict_report or {}
         req.status = "conflict_checked"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_CONFLICTS_CHECKED", category="LIFECYCLE",
+            action="lifecycle.workforce.check_conflicts", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def approve_request(self, db: Session, request_id: str, approved_by: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def approve_request(
+        self, request_id: str, approved_by: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.approved_by = approved_by
         req.approved_at = datetime.now(UTC)
         req.status = "approved"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_REQUEST_APPROVED", category="LIFECYCLE",
+            action="lifecycle.workforce.approve_request", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def activate_account(self, db: Session, request_id: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def activate_account(self, request_id: str, actor_account_id: str | None = None) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.activated_at = datetime.now(UTC)
         req.status = "activated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_ACCOUNT_ACTIVATED", category="LIFECYCLE",
+            action="lifecycle.workforce.activate_account", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return req
 
-    def terminate_employment(self, db: Session, request_id: str, reason: str) -> WorkforceRequest:
-        req = self._get_request(db, request_id)
+    async def terminate_employment(
+        self, request_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> WorkforceRequest:
+        req = await self._get_request(request_id)
         req.termination_reason = reason
         req.status = "terminated"
         req.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_EMPLOYMENT_TERMINATED", category="LIFECYCLE",
+            action="lifecycle.workforce.terminate_employment", actor_id=actor_account_id,
+            target_type="workforce_request", target_id=req.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+            metadata={"reason": reason},
+        ))
         return req
 
-    def get_request_status(self, db: Session, request_id: str) -> WorkforceRequest | None:
-        return db.query(WorkforceRequest).filter(
-            WorkforceRequest.request_id == request_id,
-        ).first()
+    async def get_request_status(self, request_id: str) -> WorkforceRequest | None:
+        stmt = select(WorkforceRequest).where(WorkforceRequest.request_id == request_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def preserve_history(self, db: Session, person_id: str) -> list[WorkforceRequest]:
-        requests = db.query(WorkforceRequest).filter(
-            WorkforceRequest.person_id == person_id,
-        ).all()
+    async def preserve_history(self, person_id: str, actor_account_id: str | None = None) -> list[WorkforceRequest]:
+        stmt = select(WorkforceRequest).where(WorkforceRequest.person_id == person_id)
+        result = await self.session.execute(stmt)
+        requests = list(result.scalars().all())
         for req in requests:
             req.historical_preserved = True
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="WORKFORCE_HISTORY_PRESERVED", category="LIFECYCLE",
+            action="lifecycle.workforce.preserve_history", actor_id=actor_account_id,
+            target_type="person", target_id=person_id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+            metadata={"preserved_count": len(requests)},
+        ))
         return requests
 
-    def _get_request(self, db: Session, request_id: str) -> WorkforceRequest:
-        req = db.query(WorkforceRequest).filter(
-            WorkforceRequest.request_id == request_id,
-        ).first()
+    async def _get_request(self, request_id: str) -> WorkforceRequest:
+        stmt = select(WorkforceRequest).where(WorkforceRequest.request_id == request_id)
+        result = await self.session.execute(stmt)
+        req = result.scalar_one_or_none()
         if not req:
             raise ValueError(f"WorkforceRequest not found: request_id={request_id}")
         return req
 
 
 class GovernmentHRService:
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`), matching every other NIAM service in this
+    codebase. Previously had no `__init__` at all -- the same construction-
+    time `TypeError` as `WorkforceService`. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F4_GOVERNMENT_HR_STATUS.md."""
 
-    def create_appointment(
-        self, db: Session, appointment_id: str, person_id: str,
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def create_appointment(
+        self, appointment_id: str, person_id: str,
         organization_id: str, hr_reference: str, appointment_type: str,
         position: str | None = None, grade: str | None = None,
         salary_scale: str | None = None, department: str | None = None,
-        start_date: datetime | None = None,
+        start_date: datetime | None = None, actor_account_id: str | None = None,
     ) -> GovernmentAppointment:
-        existing = db.query(GovernmentAppointment).filter(
-            GovernmentAppointment.hr_reference == hr_reference,
-        ).first()
-        if existing:
+        stmt = select(GovernmentAppointment).where(GovernmentAppointment.hr_reference == hr_reference)
+        result = await self.session.execute(stmt)
+        if result.scalar_one_or_none():
             raise ValueError(f"GovernmentAppointment with hr_reference={hr_reference} already exists")
 
         appt = GovernmentAppointment(
@@ -262,59 +431,99 @@ class GovernmentHRService:
             status="draft",
             is_active=True,
         )
-        db.add(appt)
-        db.flush()
+        self.session.add(appt)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_APPOINTMENT_CREATED", category="LIFECYCLE",
+            action="lifecycle.government_hr.create_appointment", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def approve_appointment(self, db: Session, appointment_id: str, approved_by: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def approve_appointment(
+        self, appointment_id: str, approved_by: str, actor_account_id: str | None = None,
+    ) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         appt.hr_approved_by = approved_by
         appt.hr_approved_at = datetime.now(UTC)
         appt.status = "hr_approved"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_APPOINTMENT_APPROVED", category="LIFECYCLE",
+            action="lifecycle.government_hr.approve_appointment", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def create_identity(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def create_identity(self, appointment_id: str, actor_account_id: str | None = None) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if appt.status not in ("hr_approved", "identity_created"):
             raise ValueError(f"Cannot create identity: status is {appt.status}, expected hr_approved")
         appt.identity_created = True
         appt.status = "identity_created"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_IDENTITY_CREATED", category="LIFECYCLE",
+            action="lifecycle.government_hr.create_identity", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def issue_credential(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def issue_credential(self, appointment_id: str, actor_account_id: str | None = None) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if not appt.identity_created:
             raise ValueError("Cannot issue credential before identity is created")
         appt.credential_issued = True
         appt.status = "credential_issued"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_CREDENTIAL_ISSUED", category="LIFECYCLE",
+            action="lifecycle.government_hr.issue_credential", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def activate_account(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def activate_account(self, appointment_id: str, actor_account_id: str | None = None) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if not appt.credential_issued:
             raise ValueError("Cannot activate account before credential is issued")
         appt.account_activated = True
         appt.status = "activated"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_ACCOUNT_ACTIVATED", category="LIFECYCLE",
+            action="lifecycle.government_hr.activate_account", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def assign_permissions(self, db: Session, appointment_id: str, permissions: dict[str, Any] | None = None) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def assign_permissions(
+        self, appointment_id: str, permissions: dict[str, Any] | None = None, actor_account_id: str | None = None,
+    ) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         if not appt.account_activated:
             raise ValueError("Cannot assign permissions before account is activated")
         appt.permissions_assigned = True
         appt.status = "active"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_PERMISSIONS_ASSIGNED", category="LIFECYCLE",
+            action="lifecycle.government_hr.assign_permissions", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def promote(
-        self, db: Session, appointment_id: str,
-        new_position: str, new_grade: str, promoted_by: str | None = None,
+    async def promote(
+        self, appointment_id: str,
+        new_position: str, new_grade: str, promoted_by: str | None = None, actor_account_id: str | None = None,
     ) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+        appt = await self._get_appointment(appointment_id)
         history = appt.promotion_history or []
         history.append({
             "from_position": appt.position,
@@ -328,15 +537,21 @@ class GovernmentHRService:
         appt.position = new_position
         appt.grade = new_grade
         appt.status = "promoted"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_EMPLOYEE_PROMOTED", category="LIFECYCLE",
+            action="lifecycle.government_hr.promote", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def transfer(
-        self, db: Session, appointment_id: str,
+    async def transfer(
+        self, appointment_id: str,
         new_org_id: str | None = None, new_dept: str | None = None,
-        transferred_by: str | None = None,
+        transferred_by: str | None = None, actor_account_id: str | None = None,
     ) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+        appt = await self._get_appointment(appointment_id)
         history = appt.transfer_history or []
         history.append({
             "from_org": appt.organization_id,
@@ -352,29 +567,54 @@ class GovernmentHRService:
         if new_dept:
             appt.department = new_dept
         appt.status = "transferred"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_EMPLOYEE_TRANSFERRED", category="LIFECYCLE",
+            action="lifecycle.government_hr.transfer", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def retire(self, db: Session, appointment_id: str, retirement_date: datetime) -> GovernmentAppointment:
-        appt = self._get_appointment(db, appointment_id)
+    async def retire(
+        self, appointment_id: str, retirement_date: datetime, actor_account_id: str | None = None,
+    ) -> GovernmentAppointment:
+        appt = await self._get_appointment(appointment_id)
         appt.end_date = retirement_date
         appt.status = "retired"
         appt.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="GOVERNMENT_EMPLOYEE_RETIRED", category="LIFECYCLE",
+            action="lifecycle.government_hr.retire", actor_id=actor_account_id,
+            target_type="government_appointment", target_id=appt.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return appt
 
-    def _get_appointment(self, db: Session, appointment_id: str) -> GovernmentAppointment:
-        appt = db.query(GovernmentAppointment).filter(
-            GovernmentAppointment.appointment_id == appointment_id,
-        ).first()
+    async def _get_appointment(self, appointment_id: str) -> GovernmentAppointment:
+        stmt = select(GovernmentAppointment).where(GovernmentAppointment.appointment_id == appointment_id)
+        result = await self.session.execute(stmt)
+        appt = result.scalar_one_or_none()
         if not appt:
             raise ValueError(f"GovernmentAppointment not found: appointment_id={appointment_id}")
         return appt
 
 
 class CitizenService:
+    """Fully converted to the async session-stored convention
+    (`__init__(self, session)`), matching every other NIAM service in this
+    codebase. Previously had no `__init__` at all -- the same construction-
+    time `TypeError` as `WorkforceService`/`GovernmentHRService`. See
+    docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F5_CITIZEN_STATUS.md."""
 
-    def register_citizen(self, db: Session, person_id: str, citizen_id: str | None = None) -> CitizenLifecycle:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def register_citizen(
+        self, person_id: str, citizen_id: str | None = None, actor_account_id: str | None = None,
+    ) -> CitizenLifecycle:
         cid = citizen_id or person_id
         citizen = CitizenLifecycle(
             uuid=cid,
@@ -384,48 +624,87 @@ class CitizenService:
             registration_date=datetime.now(UTC),
             is_active=True,
         )
-        db.add(citizen)
-        db.flush()
+        self.session.add(citizen)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_REGISTERED", category="LIFECYCLE",
+            action="lifecycle.citizen.register", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def send_otp(self, db: Session, citizen_id: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def send_otp(self, citizen_id: str, actor_account_id: str | None = None) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.otp_sent_at = datetime.now(UTC)
         citizen.status = "otp_sent"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_OTP_SENT", category="LIFECYCLE",
+            action="lifecycle.citizen.send_otp", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def verify_otp(self, db: Session, citizen_id: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def verify_otp(self, citizen_id: str, actor_account_id: str | None = None) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.otp_verified_at = datetime.now(UTC)
         citizen.status = "otp_verified"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_OTP_VERIFIED", category="LIFECYCLE",
+            action="lifecycle.citizen.verify_otp", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def verify_identity(self, db: Session, citizen_id: str, verified_by: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def verify_identity(
+        self, citizen_id: str, verified_by: str, actor_account_id: str | None = None,
+    ) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.identity_verified_at = datetime.now(UTC)
         citizen.document_verification = citizen.document_verification or {}
         citizen.document_verification["verified_by"] = verified_by
         citizen.document_verification["verified_at"] = datetime.now(UTC).isoformat()
         citizen.status = "identity_verified"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_IDENTITY_VERIFIED", category="LIFECYCLE",
+            action="lifecycle.citizen.verify_identity", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def issue_health_id(self, db: Session, citizen_id: str, health_id: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def issue_health_id(
+        self, citizen_id: str, health_id: str, actor_account_id: str | None = None,
+    ) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.health_id = health_id
         citizen.status = "health_id_issued"
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_HEALTH_ID_ISSUED", category="LIFECYCLE",
+            action="lifecycle.citizen.issue_health_id", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def link_guardian(
-        self, db: Session, citizen_id: str,
-        guardian_person_id: str, relationship: str,
+    async def link_guardian(
+        self, citizen_id: str,
+        guardian_person_id: str, relationship: str, actor_account_id: str | None = None,
     ) -> GuardianAccount:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         guardian = GuardianAccount(
-            uuid=f"{citizen_id}-guardian-{guardian_person_id}",
+            # uuid is String(36) but this business-key composite (citizen_id
+            # + guardian_person_id, the latter a 26-char ULID) routinely
+            # exceeds that -- see docs/security/NIAM_SYNC_ASYNC_LIFECYCLE_F5_CITIZEN_STATUS.md.
+            # guardian_id (String(100), the FK'able identifier callers see)
+            # keeps the descriptive composite; only uuid uses a real uuid4.
+            uuid=str(uuid4()),
             guardian_id=f"{citizen_id}-guardian-{guardian_person_id}",
             guardian_person_id=guardian_person_id,
             dependent_person_id=citizen.person_id,
@@ -437,15 +716,21 @@ class CitizenService:
         )
         citizen.guardian_person_id = guardian_person_id
         citizen.status = "guardian_linked"
-        db.add(guardian)
-        db.flush()
+        self.session.add(guardian)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_GUARDIAN_LINKED", category="LIFECYCLE",
+            action="lifecycle.citizen.link_guardian", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return guardian
 
-    def link_family_member(
-        self, db: Session, citizen_id: str,
-        relative_id: str, relationship: str,
+    async def link_family_member(
+        self, citizen_id: str,
+        relative_id: str, relationship: str, actor_account_id: str | None = None,
     ) -> FamilyLink:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         link = FamilyLink(
             uuid=f"{citizen_id}-fam-{relative_id}",
             link_id=f"{citizen_id}-fam-{relative_id}",
@@ -457,16 +742,22 @@ class CitizenService:
             is_active=True,
         )
         citizen.status = "family_linked"
-        db.add(link)
-        db.flush()
+        self.session.add(link)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_FAMILY_LINKED", category="LIFECYCLE",
+            action="lifecycle.citizen.link_family_member", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return link
 
-    def record_consent(
-        self, db: Session, citizen_id: str,
+    async def record_consent(
+        self, citizen_id: str,
         consent_type: str, granted_to: str | None = None,
-        scope: dict[str, Any] | None = None,
+        scope: dict[str, Any] | None = None, actor_account_id: str | None = None,
     ) -> ConsentRecord:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         consent = ConsentRecord(
             uuid=f"{citizen_id}-consent-{consent_type}",
             consent_id=f"{citizen_id}-consent-{consent_type}",
@@ -478,51 +769,85 @@ class CitizenService:
             status="active",
             is_active=True,
         )
-        db.add(consent)
-        db.flush()
+        self.session.add(consent)
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_CONSENT_RECORDED", category="LIFECYCLE",
+            action="lifecycle.citizen.record_consent", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+        ))
         return consent
 
-    def deactivate(self, db: Session, citizen_id: str, reason: str) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+    async def deactivate(self, citizen_id: str, reason: str, actor_account_id: str | None = None) -> CitizenLifecycle:
+        citizen = await self._get_citizen(citizen_id)
         citizen.deactivated_at = datetime.now(UTC)
         citizen.deactivation_reason = reason
         citizen.status = "deactivated"
         citizen.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_DEACTIVATED", category="LIFECYCLE",
+            action="lifecycle.citizen.deactivate", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="SELF_SERVICE", data_classification="INTERNAL",
+            metadata={"reason": reason},
+        ))
         return citizen
 
-    def record_death(
-        self, db: Session, citizen_id: str,
-        death_date: datetime, death_certificate_id: str,
+    async def record_death(
+        self, citizen_id: str,
+        death_date: datetime, death_certificate_id: str, actor_account_id: str | None = None,
     ) -> CitizenLifecycle:
-        citizen = self._get_citizen(db, citizen_id)
+        citizen = await self._get_citizen(citizen_id)
         citizen.deceased_at = death_date
         citizen.death_certificate_id = death_certificate_id
         citizen.status = "deceased"
         citizen.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(AuditEventInput(
+            event_type="CITIZEN_DEATH_RECORDED", category="LIFECYCLE",
+            action="lifecycle.citizen.record_death", actor_id=actor_account_id,
+            target_type="citizen_lifecycle", target_id=citizen.id, decision="ALLOW",
+            reason_code="ADMIN_AUTHORITY_UNAVAILABLE", data_classification="INTERNAL",
+        ))
         return citizen
 
-    def get_citizen_status(self, db: Session, person_id: str) -> CitizenLifecycle | None:
-        return db.query(CitizenLifecycle).filter(
+    async def get_citizen_status(self, person_id: str) -> CitizenLifecycle | None:
+        stmt = select(CitizenLifecycle).where(
             CitizenLifecycle.person_id == person_id,
-        ).order_by(CitizenLifecycle.created_at.desc()).first()
+        ).order_by(CitizenLifecycle.created_at.desc())
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
-    def _get_citizen(self, db: Session, citizen_id: str) -> CitizenLifecycle:
-        citizen = db.query(CitizenLifecycle).filter(
-            CitizenLifecycle.citizen_id == citizen_id,
-        ).first()
+    async def get_citizen(self, citizen_id: str) -> CitizenLifecycle | None:
+        """Public lookup, used by routes for pre-mutation ownership checks
+        (mirrors GuardianService.get_guardian's precedent)."""
+        stmt = select(CitizenLifecycle).where(CitizenLifecycle.citizen_id == citizen_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _get_citizen(self, citizen_id: str) -> CitizenLifecycle:
+        citizen = await self.get_citizen(citizen_id)
         if not citizen:
             raise ValueError(f"CitizenLifecycle not found: citizen_id={citizen_id}")
         return citizen
 
 
 class GuardianService:
+    """Category-F conversion: matches EnterpriseRegistrationService's
+    proven representative repair (__init__(self, session), self.session,
+    self.audit -- see NIAM_SYNC_ASYNC_MISMATCH_INVENTORY.md)."""
 
-    def create_guardianship(
-        self, db: Session, guardian_id: str,
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def create_guardianship(
+        self, guardian_id: str,
         guardian_person_id: str, dependent_person_id: str,
         relationship: str, guardian_type: str,
+        actor_account_id: str | None = None,
     ) -> GuardianAccount:
         guardian = GuardianAccount(
             uuid=guardian_id,
@@ -535,50 +860,120 @@ class GuardianService:
             status="active",
             is_active=True,
         )
-        db.add(guardian)
-        db.flush()
+        self.session.add(guardian)
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_CREATED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.create",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_CREATED",
+                data_classification="INTERNAL",
+            ),
+        )
         return guardian
 
-    def terminate_guardianship(self, db: Session, guardian_id: str, reason: str) -> GuardianAccount:
-        guardian = self._get_guardian(db, guardian_id)
+    async def terminate_guardianship(
+        self, guardian_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> GuardianAccount:
+        guardian = await self._get_guardian(guardian_id)
         guardian.end_date = datetime.now(UTC)
         guardian.status = "terminated"
         guardian.is_active = False
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_TERMINATED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.terminate",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_TERMINATED",
+                data_classification="INTERNAL",
+                metadata={"reason": reason},
+            ),
+        )
         return guardian
 
-    def get_dependents(self, db: Session, guardian_person_id: str) -> list[GuardianAccount]:
-        return db.query(GuardianAccount).filter(
+    async def get_dependents(self, guardian_person_id: str) -> list[GuardianAccount]:
+        stmt = select(GuardianAccount).where(
             GuardianAccount.guardian_person_id == guardian_person_id,
-            GuardianAccount.is_active,
-        ).all()
+            GuardianAccount.is_active.is_(True),
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
-    def get_guardians(self, db: Session, dependent_person_id: str) -> list[GuardianAccount]:
-        return db.query(GuardianAccount).filter(
+    async def get_guardians(self, dependent_person_id: str) -> list[GuardianAccount]:
+        stmt = select(GuardianAccount).where(
             GuardianAccount.dependent_person_id == dependent_person_id,
-            GuardianAccount.is_active,
-        ).all()
+            GuardianAccount.is_active.is_(True),
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
-    def delegate_access(
-        self, db: Session, guardian_id: str,
+    async def delegate_access(
+        self, guardian_id: str,
         access_permissions: dict[str, Any],
+        actor_account_id: str | None = None,
     ) -> GuardianAccount:
-        guardian = self._get_guardian(db, guardian_id)
+        guardian = await self._get_guardian(guardian_id)
         guardian.delegated_access = access_permissions
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_ACCESS_DELEGATED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.delegate_access",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_ACCESS_DELEGATED",
+                data_classification="INTERNAL",
+            ),
+        )
         return guardian
 
-    def verify_guardianship(self, db: Session, guardian_id: str, verified_by: str) -> GuardianAccount:
-        guardian = self._get_guardian(db, guardian_id)
+    async def verify_guardianship(
+        self, guardian_id: str, verified_by: str, actor_account_id: str | None = None,
+    ) -> GuardianAccount:
+        guardian = await self._get_guardian(guardian_id)
         guardian.verified_by = verified_by
         guardian.verified_at = datetime.now(UTC)
-        db.flush()
+        await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="GUARDIANSHIP_VERIFIED",
+                category="LIFECYCLE",
+                action="lifecycle.guardianship.verify",
+                actor_id=actor_account_id,
+                target_type="guardian_account",
+                target_id=guardian.id,
+                decision="ALLOW",
+                reason_code="GUARDIANSHIP_VERIFIED",
+                data_classification="INTERNAL",
+            ),
+        )
         return guardian
 
-    def _get_guardian(self, db: Session, guardian_id: str) -> GuardianAccount:
-        guardian = db.query(GuardianAccount).filter(
+    async def get_guardian(self, guardian_id: str) -> GuardianAccount | None:
+        """Public lookup, used by routes for pre-mutation ownership
+        checks (e.g. confirming the caller is the guardian_person_id on
+        an existing record before allowing terminate/delegate)."""
+        stmt = select(GuardianAccount).where(
             GuardianAccount.guardian_id == guardian_id,
-        ).first()
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _get_guardian(self, guardian_id: str) -> GuardianAccount:
+        guardian = await self.get_guardian(guardian_id)
         if not guardian:
             raise ValueError(f"GuardianAccount not found: guardian_id={guardian_id}")
         return guardian

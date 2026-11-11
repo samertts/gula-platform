@@ -11,6 +11,7 @@ from app._compat import UTC
 from app.radiology.enums import (
     CriticalFindingStatus,
     ExamStatus,
+    ProtocolType,
     ReportStatus,
 )
 from app.radiology.models import (
@@ -45,6 +46,21 @@ _EXAM_TRANSITIONS: dict[ExamStatus, set[ExamStatus]] = {
     ExamStatus.REPORTED: {ExamStatus.APPROVED},
     ExamStatus.APPROVED: set(),
     ExamStatus.CANCELLED: set(),
+}
+
+# RadiologyOrder.status has no formal enum column (plain String) and no
+# canonical transition graph existed anywhere before this — update_order_status
+# accepted any client-supplied string with no guard at all. This mirrors the
+# same shape already proven for _EXAM_TRANSITIONS, restricted to the order
+# lifecycle stages that actually precede exam creation; it deliberately does
+# not extend into the exam-owned post-acquisition states (verified/reported/
+# approved), which are RadiologyExam's responsibility, not RadiologyOrder's.
+_ORDER_TRANSITIONS: dict[str, set[str]] = {
+    "pending": {"scheduled", "cancelled"},
+    "scheduled": {"in_progress", "cancelled"},
+    "in_progress": {"completed", "cancelled"},
+    "completed": set(),
+    "cancelled": set(),
 }
 
 
@@ -177,10 +193,33 @@ class RadiologyService:
         return q.offset(skip).limit(limit).all()
 
     def update_order_status(self, order_id: str, status: str) -> RadiologyOrder | None:
-        order = self.get_order(order_id)
+        """Transition an order's status under a real row lock.
+
+        RadiologyOrder already carries OptimisticLockMixin's `version`
+        column (app/radiology/base.py) — no schema change needed here.
+        `.with_for_update()` matches the pessimistic-lock pattern this same
+        module already uses for reports/exams (_locked_report,
+        update_exam_status), rather than introducing a different
+        concurrency mechanism for the one sibling entity that had none.
+        """
+        order = self.db.query(RadiologyOrder).filter(
+            RadiologyOrder.id == order_id,
+            ~RadiologyOrder.is_deleted,
+        ).with_for_update().first()
         if not order:
             return None
+        current = order.status
+        if status not in _ORDER_TRANSITIONS.get(current, set()):
+            raise RadiologyWorkflowError(f"illegal order transition: {current} -> {status}")
         order.status = status
+        order.version += 1
+        self.db.flush()
+        self._audit(
+            "radiology.order.status_changed",
+            "radiology_order",
+            order.id,
+            {"state_before": current, "state_after": status, "version": order.version},
+        )
         self.db.commit()
         self.db.refresh(order)
         return order
@@ -1025,7 +1064,15 @@ class RadiologyService:
             name_ar=name_ar,
             modality=modality.upper(),
             body_part=body_part,
-            protocol_type=protocol_type,
+            # Protocol.protocol_type is Enum(ProtocolType); SQLAlchemy's Enum
+            # column validates by member name, not by value, so the raw
+            # value string ("standard") must become the matching member
+            # (ProtocolType("standard") -> ProtocolType.STANDARD) — passing
+            # the bare string raised LookupError at commit time for every
+            # protocol ever created (found while verifying this endpoint's
+            # new authorization gate; same class of bug as
+            # pacs.py::create_share's share_type).
+            protocol_type=ProtocolType(protocol_type),
             contrast_protocol=contrast_protocol,
             typical_duration=typical_duration,
             typical_dose=typical_dose,

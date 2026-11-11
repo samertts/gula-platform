@@ -17,6 +17,8 @@ from app.public_health.domain.entities import (
 from app.public_health.domain.enums import AlertLevel, OutbreakStatus
 from app.public_health.exceptions import (
     DiseaseCaseNotFoundError,
+    InvalidOutbreakStatusError,
+    OutbreakAlreadyDeclaredOverError,
     OutbreakNotFoundError,
 )
 from app.public_health.infrastructure.models import (
@@ -115,15 +117,22 @@ class PublicHealthService:
         return [self._outbreak_from_model(m) for m in query.all()]
 
     def update_alert_status(self, alert_id: str, status: str, notes: str = "") -> OutbreakAlert:
-        model = self.db.query(OutbreakAlertModel).filter_by(id=alert_id).first()
+        try:
+            OutbreakStatus(status)
+        except ValueError as exc:
+            raise InvalidOutbreakStatusError() from exc
+        model = self.db.query(OutbreakAlertModel).filter_by(id=alert_id).with_for_update().first()
         if not model:
             raise OutbreakNotFoundError()
+        if model.status == OutbreakStatus.DECLARED_OVER.value:
+            raise OutbreakAlreadyDeclaredOverError()
         model.status = status
         model.last_updated = datetime.now(UTC)
         if notes:
             model.investigation_notes = (model.investigation_notes or "") + f"\n[{datetime.now(UTC).isoformat()}] {notes}"
         if status == OutbreakStatus.DECLARED_OVER.value:
             model.declared_over_at = datetime.now(UTC)
+        model.version = (model.version or 0) + 1
         self.db.commit()
         self.db.refresh(model)
         return self._outbreak_from_model(model)

@@ -48,6 +48,20 @@ _THEATER_TRANSITIONS: dict[str, set[str]] = {
 class HospitalService:
     """Encapsulates all hospital-domain business logic."""
 
+    # update_hospital previously did `for k, v in data.items(): setattr(hospital, k, v)`
+    # over the full request dict -- schema-bounded today (routes.HospitalUpdate
+    # declares a fixed field set), but with no independent server-side
+    # boundary: any field later added to that schema would become
+    # immediately ORM-writable with no additional review. Mirrors this
+    # exact field set (routes.py::HospitalUpdate) deliberately, not the
+    # ORM model's full column list, so this stays in sync with the one
+    # schema that actually reaches this method.
+    _HOSPITAL_UPDATABLE_FIELDS = frozenset({
+        "name", "name_ar", "hospital_type", "license_number", "phone",
+        "email", "website", "address", "city", "province", "country",
+        "is_active",
+    })
+
     # ── Hospital CRUD ──────────────────────────────────────────────────────────
 
     @staticmethod
@@ -67,7 +81,7 @@ class HospitalService:
         hospital = HospitalMaster(lab_id=lab_id, created_by=user_id, **data)
         db.add(hospital)
         db.flush()
-        log_action(db, "hospital.create", hospital.id, lab_id, user_id, data)
+        log_action(db, "hospital.create", "hospital", hospital.id, user_id=user_id, lab_id=lab_id, details=data)
         return hospital
 
     @staticmethod
@@ -82,14 +96,16 @@ class HospitalService:
             HospitalMaster.id == hospital_id,
             HospitalMaster.lab_id == lab_id,
             ~HospitalMaster.is_deleted,
-        ).first()
+        ).with_for_update().first()
         if not hospital:
             raise NotFoundError("Hospital not found")
         for k, v in data.items():
-            setattr(hospital, k, v)
+            if k in HospitalService._HOSPITAL_UPDATABLE_FIELDS:
+                setattr(hospital, k, v)
         hospital.updated_by = user_id
+        hospital.version += 1
         db.flush()
-        log_action(db, "hospital.update", hospital_id, lab_id, user_id, data)
+        log_action(db, "hospital.update", "hospital", hospital_id, user_id=user_id, lab_id=lab_id, details=data)
         return hospital
 
     @staticmethod
@@ -100,13 +116,14 @@ class HospitalService:
             HospitalMaster.id == hospital_id,
             HospitalMaster.lab_id == lab_id,
             ~HospitalMaster.is_deleted,
-        ).first()
+        ).with_for_update().first()
         if not hospital:
             raise NotFoundError("Hospital not found")
         hospital.is_active = False
         hospital.updated_by = user_id
+        hospital.version += 1
         db.flush()
-        log_action(db, "hospital.deactivate", hospital_id, lab_id, user_id)
+        log_action(db, "hospital.deactivate", "hospital", hospital_id, user_id=user_id, lab_id=lab_id)
 
     @staticmethod
     def get_hospital(db: Session, hospital_id: int, lab_id: int) -> HospitalMaster:
@@ -132,7 +149,13 @@ class HospitalService:
 
     @staticmethod
     def _get_entity(db: Session, model, entity_id: int, lab_id: int, parent_filter=None):
-        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, not model.is_deleted)
+        # `not model.is_deleted` (the prior form here) is a Python `not` applied to the
+        # InstrumentedAttribute itself, not a SQL NOT -- it evaluates to the literal
+        # `False` at query-build time (confirmed directly: `bool(Model.col)` is always
+        # truthy), so every call through this helper unconditionally filtered on a
+        # false literal and never matched any row. `~` is SQLAlchemy's boolean-NOT
+        # operator, matching every other is_deleted filter already in this file.
+        q = db.query(model).filter(model.id == entity_id, model.lab_id == lab_id, ~model.is_deleted)
         if parent_filter is not None:
             q = q.filter(parent_filter)
         entity = q.first()
@@ -148,7 +171,7 @@ class HospitalService:
         campus = Campus(lab_id=lab_id, created_by=user_id, hospital_id=hospital_id, **data)
         db.add(campus)
         db.flush()
-        log_action(db, "campus.create", campus.id, lab_id, user_id, data)
+        log_action(db, "campus.create", "campus", campus.id, user_id=user_id, lab_id=lab_id, details=data)
         return campus
 
     @staticmethod
@@ -279,6 +302,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         bed_id: int,
         patient_id: int,
         *,
@@ -320,7 +344,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "patient_id": patient_id,
@@ -337,6 +361,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         bed_id: int,
         *,
         expected_version: int,
@@ -372,7 +397,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "discharge_reason": discharge_reason,
@@ -388,6 +413,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         from_bed_id: int,
         to_bed_id: int,
         *,
@@ -444,7 +470,7 @@ class HospitalService:
             resource_type="hospital_bed",
             resource_id=str(from_bed_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "to_bed_id": to_bed_id,
@@ -469,6 +495,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         ot_id: int,
         *,
         expected_version: int,
@@ -512,7 +539,7 @@ class HospitalService:
             resource_type="hospital_operation_theater",
             resource_id=str(ot_id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "state_before": state_before,
@@ -528,6 +555,7 @@ class HospitalService:
         db: Session,
         lab_id: int,
         user_id: int,
+        user_role: str,
         data: dict[str, Any],
     ) -> SurgicalSafetyChecklist:
         theater_id = int(data["operation_theater_id"])
@@ -582,7 +610,7 @@ class HospitalService:
             resource_type="hospital_surgical_safety_checklist",
             resource_id=str(checklist.id),
             user_id=user_id,
-            user_role="hospital_staff",
+            user_role=user_role,
             lab_id=lab_id,
             details={
                 "operation_theater_id": theater_id,
@@ -777,5 +805,5 @@ class HospitalService:
         apt = Appointment(lab_id=lab_id, **data)
         db.add(apt)
         db.flush()
-        log_action(db, "appointment.create", apt.id, lab_id, user_id, data)
+        log_action(db, "appointment.create", "appointment", apt.id, user_id=user_id, lab_id=lab_id, details=data)
         return apt

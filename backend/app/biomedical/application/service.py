@@ -23,6 +23,7 @@ from app.biomedical.domain.enums import (
 )
 from app.biomedical.exceptions import (
     DeviceNotFoundError,
+    WorkOrderAlreadyCompletedError,
     WorkOrderNotFoundError,
 )
 from app.biomedical.infrastructure.models import (
@@ -94,11 +95,12 @@ class BiomedicalService:
         return [self._device_from_model(m) for m in query.all()]
 
     def update_device_status(self, device_id: str, status: str, reason: str = "") -> MedicalDevice:
-        model = self.db.query(MedicalDeviceModel).filter_by(id=device_id).first()
+        model = self.db.query(MedicalDeviceModel).filter_by(id=device_id).with_for_update().first()
         if not model:
             raise DeviceNotFoundError()
         model.status = status
         model.notes = (model.notes or "") + f"\n[{datetime.now(UTC).isoformat()}] Status: {status}. {reason}"
+        model.version = (model.version or 0) + 1
         self.db.commit()
         self.db.refresh(model)
         return self._device_from_model(model)
@@ -132,9 +134,10 @@ class BiomedicalService:
         model.work_order_number = _generate_wo_number(self.db)
         self.db.add(model)
         if model.device_id:
-            device = self.db.query(MedicalDeviceModel).filter_by(id=model.device_id).first()
+            device = self.db.query(MedicalDeviceModel).filter_by(id=model.device_id).with_for_update().first()
             if device:
                 device.status = DeviceStatus.UNDER_MAINTENANCE.value
+                device.version = (device.version or 0) + 1
         self.db.commit()
         self.db.refresh(model)
         return self._work_order_from_model(model)
@@ -158,9 +161,11 @@ class BiomedicalService:
         return [self._work_order_from_model(m) for m in query.all()]
 
     def complete_work_order(self, wo_id: str, data: dict[str, Any]) -> WorkOrder:
-        model = self.db.query(WorkOrderModel).filter_by(id=wo_id).first()
+        model = self.db.query(WorkOrderModel).filter_by(id=wo_id).with_for_update().first()
         if not model:
             raise WorkOrderNotFoundError()
+        if model.status == WorkOrderStatus.COMPLETED.value:
+            raise WorkOrderAlreadyCompletedError("Work order is already completed")
         model.status = WorkOrderStatus.COMPLETED.value
         model.completed_at = datetime.now(UTC)
         model.action_taken = data.get("action_taken", model.action_taken or "")
@@ -170,13 +175,15 @@ class BiomedicalService:
         model.cost_parts = data.get("cost_parts", model.cost_parts)
         model.cost_labor = data.get("cost_labor", model.cost_labor)
         model.cost_total = (model.cost_parts or 0) + (model.cost_labor or 0)
+        model.version = (model.version or 0) + 1
         if model.device_id:
-            device = self.db.query(MedicalDeviceModel).filter_by(id=model.device_id).first()
+            device = self.db.query(MedicalDeviceModel).filter_by(id=model.device_id).with_for_update().first()
             if device:
                 device.status = DeviceStatus.AVAILABLE.value
                 device.last_pm_date = datetime.now(UTC)
                 if device.pm_frequency_days:
                     device.next_pm_due = datetime.now(UTC) + timedelta(days=device.pm_frequency_days)
+                device.version = (device.version or 0) + 1
         self.db.commit()
         self.db.refresh(model)
         return self._work_order_from_model(model)

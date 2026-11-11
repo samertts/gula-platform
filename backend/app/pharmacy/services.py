@@ -195,7 +195,7 @@ class PharmacyService:
             DrugBatch.expiry_date <= expiry_cutoff,
             DrugBatch.expiry_date >= date.today(),
             ~DrugBatch.is_deleted,
-            not DrugBatch.is_quarantined,
+            ~DrugBatch.is_quarantined,
             DrugBatch.quantity_remaining > 0,
         )
         if self.lab_id:

@@ -1,0 +1,262 @@
+# Systemic Concurrency Pattern Register
+
+Per the cross-domain pattern-analysis requirement: once the same defect
+shape appears in 3+ domains, it stops being a series of individual
+findings and becomes a systemic pattern that should be named, tracked,
+and checked for on sight in every future domain audit.
+
+## Pattern: "unused OptimisticLockMixin, no terminal-state guard"
+
+**Shape**: a service method does `db.query(Model).filter_by(id=x).first()`
+(no `.with_for_update()`), mutates 3+ fields including a `status`
+transition, and commits — while `Model` already inherits
+`OptimisticLockMixin` (a `version` column exists and is never read or
+incremented anywhere in the file). The terminal state of the status
+field (a value after which no further transition should be legal) is
+never checked before overwriting it.
+
+**Confirmed in 3 domains this session**, each independently proven on
+real PostgreSQL 16, each fixed identically:
+
+| Domain | Method | Terminal state | Commit |
+|---|---|---|---|
+| `app/biomedical` | `complete_work_order` (+ `update_device_status`, `create_work_order`'s device-status flip) | `WorkOrderStatus.COMPLETED` | `40aee3b6` |
+| `app/command_center` | `resolve_emergency`, `fulfill_resource` | `"resolved"`, `"fulfilled"` | (this pass) |
+| `app/public_health` | `update_alert_status` | `OutbreakStatus.DECLARED_OVER` | (this pass) |
+
+**Also matches** (different domains, same root shape, found and fixed
+earlier this session before this register existed): `payments-capture-refund-cas`
+(`app/payments/service.py`, no version column existed there — pessimistic
+lock used directly), `device-outbox-claim-cas` (`app/devices/outbox.py`,
+`SKIP LOCKED` claim variant). Six total closures of the same underlying
+defect class this session.
+
+**Canonical safe pattern** (what every fix above converges on):
+
+```python
+model = self.db.query(Model).filter_by(id=x).with_for_update().first()
+if not model:
+    raise NotFoundError()
+if model.status == TERMINAL_VALUE:
+    raise AlreadyInTerminalStateError()   # a new, distinct exception —
+                                          # never reuse the 404 not-found
+                                          # error for this; map it to 409
+... mutate ...
+model.version = (model.version or 0) + 1
+self.db.commit()
+```
+
+**Unsafe variant already eliminated at the source in 2 domains**
+(`blood_bank`, `critical_care`) by a prior engineering pass, before this
+session started: a "legacy method + `_safely`-suffixed hardened method"
+convention, with routes exclusively calling the `_safely` variant and the
+legacy one left in place but confirmed DEAD_OR_UNREACHABLE. This session
+did not introduce that convention name in the 3 newly-fixed domains —
+fixed the existing method in place instead, since there was no
+already-published "unsafe legacy twin" contract to preserve for those 3.
+
+## Detector opportunity — evaluated, NOT built
+
+Per the same discipline already applied earlier this session
+(`imaging-slice-detector-decision`): a deterministic AST-based detector
+for "method reads a model with `OptimisticLockMixin`, mutates a `status`
+field, commits, and never calls `.with_for_update()`" is plausible in
+principle (unlike the report-audit-call-order detector that shipped
+earlier this session, this one doesn't need cross-procedural analysis —
+the read, mutate, and commit are usually in the same function). **Not
+built this pass** — three confirmed instances is enough to name the
+pattern and check for it manually in every future domain audit, but
+building and validating a repo-wide scanner is a separate, non-trivial
+piece of work (it would need to resolve which base class a model
+inherits transitively, distinguish INSERT-only from read-modify-write
+call shapes, and avoid false positives on the `_safely`-convention
+domains that intentionally keep an unlocked legacy twin around as dead
+code). Recorded as a candidate for a dedicated pass, not fabricated here.
+
+## Regression guard convention
+
+Every fix above added a test that does two things without needing a real
+Postgres connection (SQLite can't reproduce the race, but can pin the
+code-level contract):
+1. Spies on `sqlalchemy.orm.Query.with_for_update` to prove the actual
+   production code path calls it (not a separately-constructed lookalike
+   query).
+2. Directly asserts that a second call after the first success raises
+   the new terminal-state exception, with the second call's payload
+   never applied.
+
+## Domains not yet checked for this pattern
+
+`blood_bank`/`critical_care` — checked, already safe (pattern present in
+a different, already-hardened form). Every other LIVE + TABLE-BACKED
+domain in `docs/architecture/LIVE_RUNTIME_SURFACE_MAP.md` that has not
+yet had a vertical-slice audit (`insurance`'s live routes are
+schema-latent so excluded; `national`/`governance` likewise) should be
+checked for this exact shape as the first, cheapest concurrency check
+before any deeper audit.
+
+## Pattern 2 (new, this pass): "Python `not` applied to a SQLAlchemy column instead of `~`"
+
+**Not a concurrency defect** (recorded here per this batch's own
+documentation-update instructions, since this file is the established
+place this session registers "same shape found 3+ times" defects; a
+correctness-pattern register would be the more precise home if one
+existed).
+
+**Shape**: `.filter(Model.id == x, Model.lab_id == y, not Model.is_deleted)`
+(or `is_revoked`/`is_active`). Python evaluates `not <InstrumentedAttribute>`
+immediately at query-*construction* time, not at SQL-execution time — a
+bare column attribute has no special `__bool__` override, so `bool(Model.column)`
+is always `True` (default object truthiness) and `not Model.column` is
+always the literal Python `False`. Confirmed directly:
+```python
+>>> bool(Foo.is_deleted)
+True
+>>> not Foo.is_deleted
+False
+```
+and confirmed that `.filter(False)` compiles to `WHERE 0 = 1` — the
+query unconditionally matches **zero rows**, regardless of what data
+actually exists. The correct SQLAlchemy idiom is `~Model.is_deleted`
+(the library's boolean-NOT operator on a column expression), which
+already appears dozens of times correctly elsewhere in this same
+codebase — this is a same-file typo/inconsistency, not a
+misunderstanding of the ORM.
+
+**UPDATE (Batch 5 — CLOSED repo-wide, detector built).** The prior pass
+(Hospital) fixed only 1 of what turned out to be many sites and
+deferred the rest as "3 remaining known." Batch 5's own discovery
+instruction ("do not assume exact files or line numbers — discover
+from current source") produced a deterministic AST scan
+(`scripts/security/boolean_not_filter_guard.py`) rather than relying on
+grep, and it found **28 total repo-wide occurrences** — 23 more than
+the "5 known sites" Batch 5's own directive assumed going in. All 28
+have now been fixed. A fresh run of the detector against the current
+tree returns zero hits (exit code 0); this is not a claim that every
+possible variant of the bug is gone, only that this specific
+AST-detectable shape (`not <attribute>` as a direct argument to
+`.filter()`/`.filter_by()`) has zero remaining instances as of this
+scan.
+
+| Domain | File | Sites | Fixed | Reachability |
+|---|---|---|---|---|
+| Hospital | `app/services/hospital_service.py:152` (`_get_entity`, shared by 17 call sites) | 1 | Batch 4 | LIVE (17 call sites across ~10 routes) |
+| Radiology | `app/radiology/pacs.py` | 3 (`revoke_share`, `access_share`, `list_shares`) | Batch 5 | 1 LIVE (`revoke_share`, via `DELETE /radiology/sharing/{id}`), 2 DEAD (`access_share`/`list_shares` have zero callers anywhere) |
+| Pharmacy | `app/pharmacy/routes.py:504` (`_get_or_404`) | 1 | Batch 5 | DEAD — zero callers anywhere in the tree |
+| Pharmacy | `app/pharmacy/inventory.py` (`auto_quarantine_expired`, `get_cold_chain_drugs`) | 2 | Batch 5 | DEAD — zero callers anywhere in the tree |
+| Pharmacy | `app/pharmacy/services.py:198` (`get_expiring_batches`) | 1 | Batch 5 | LIVE — via `GET /pharmacy/dashboard/expiry-alerts`; also backs `GET /pharmacy/batches/expiring`, which is itself shadowed by an earlier-registered `/batches/{batch_id}` route (a separate, pre-existing route-ordering bug, NOT fixed here, out of bound) |
+| Admin | `app/routes/admin.py:257` (`list_pending_labs`) | 1 | Batch 5 | LIVE — `GET /admin/labs/pending`, gated by `require_permission("platform:manage_users")` |
+| **LIMS** | `app/lims/routes.py` (20 distinct list/get/dashboard-count routes: Instrument, InstrumentModel, Specimen, Order, Panel, Result, Reagent, Consumable, Lot, ReferenceRangeDef, AutoValidationRule, LabReport, QCProgram, Supplier, Storage, DeltaCheckRule, Department, Manufacturer, plus 2 repeat sites in the dashboard-stats function) | 20 | Batch 5 | **All 20 LIVE** — each is a real, mounted, tenant-scoped (`_lab_id(current_user)`) route; this is the single largest concentration found, in a router (`lims_routes.router`, mounted directly in `app/factory.py`) that had never been individually vertical-slice-audited under any name before this batch |
+
+**28 of 28 fixed.** Every fix follows the identical, mechanical,
+previously-proven-safe pattern (`not X.field` → `~X.field`); Phase 2's
+invariant (a fix must never turn a security boundary into a broader
+query) holds trivially for all of them since every fix narrows an
+always-empty query to its correct, already-authorized scope — never
+broadens one.
+
+**Impact class**: every affected query call always returns "not found" /
+empty / zero-count, regardless of real data — the opposite failure mode
+from most security bugs (fails closed, not open), so this reads as an
+availability/correctness bug rather than an authorization bypass, with
+one exception worth naming: LIMS's 20 sites meant the entire LIMS
+listing/lookup/dashboard-count surface was silently non-functional
+(instruments, specimens, orders, panels, results, reagents,
+consumables, lots, reference ranges, validation rules, lab reports, QC
+programs, suppliers, storage, delta-check rules, departments,
+manufacturers) — a severe, previously-undetected regression in a
+clinical LIMS domain.
+
+**Detector**: `scripts/security/boolean_not_filter_guard.py` (AST-based,
+deterministic, no network/AI/DB access, whole-repo scan in well under a
+second). Unlike `scripts/setattr_mass_assignment_guard.py`'s
+candidate-requiring-manual-classification model, every hit from this
+detector is a near-certain defect (there is no legitimate reason to
+apply Python's `not` to a bare SQLAlchemy column inside a filter call).
+6/6 self-test cases pass (3 vulnerable shapes incl. a multi-line
+`.filter()` call and a sole-argument call; 3 correct/false-positive
+shapes incl. `app/routes/demo.py`'s `elif not user.is_active or ...`,
+confirmed a genuinely different and correct usage — `not` on an
+already-fetched instance's real runtime boolean, inside a plain `if`,
+not inside a `.filter()` call at all).
+
+```bash
+python3 scripts/security/boolean_not_filter_guard.py            # scan
+python3 scripts/security/boolean_not_filter_guard.py --json      # machine-readable
+python3 scripts/security/boolean_not_filter_guard.py --self-test # 6/6 expected
+```
+
+Exit code 0 = clean; exit code 1 = at least one hit (CI-usable).
+
+## Pattern 3 (new, this pass, Hospital-specific so far — not yet confirmed systemic): "route/service never calls `db.commit()`"
+
+**Shape**: a route calls a service method that does
+`db.add(...)`/`db.flush()` (or a route does its own `setattr` loop +
+`db.flush()`) and returns a success response, but neither the route nor
+the service ever calls `db.commit()`. Since `get_db()`
+(`app/database.py`) uses `sessionmaker(autocommit=False, ...)` and only
+rolls back on exception, the transaction is implicitly discarded when
+the request-scoped session closes — the caller sees a 200/201 with
+what looks like a persisted record, but the very next request (a fresh
+session, matching real production behavior) cannot find it.
+
+**Confirmed in 1 domain so far this session** (Hospital, 18 routes —
+see GAP-7 in `docs/security/AUTHORIZATION_GAP_REGISTER.md` for full
+proof). Below this register's own normal 3-domain naming threshold, so
+this is recorded as a single-domain finding to watch for, not yet
+promoted to a named cross-domain pattern. **Worth checking manually**
+in any future domain audit: does every route that mutates state via a
+service method calling only `db.add()`/`db.flush()` have an explicit
+`db.commit()` somewhere in its call path? This repo's own shared-session
+test-client fixture (`tests/conftest.py`'s `client`) masks this defect
+shape completely (see GAP-7's "why this was invisible" note) — a
+domain's tests all passing is not evidence this pattern is absent
+there.
+
+## Pattern 4 (new, Batch 8 — Full Forensic Production Closure): "audit `log_action` call hard-codes a fixed `user_role` string instead of the real, server-derived actor role"
+
+**Shape**: a service method accepts a real `user_id: int` parameter
+(correctly threaded from `current_user.id` at the route layer) but its
+`log_action(...)` call passes a literal string constant for `user_role`
+instead of threading the caller's actual role through. The mutation
+itself is typically already correctly tenant/ownership-scoped — this is
+an audit-integrity defect (the hash-chained audit trail records the
+wrong actor role for every affected mutation, regardless of who really
+performed it), not an authorization bypass.
+
+**Confirmed in 2 domains this pass**, both closed identically (add a
+required `user_role: str` parameter, thread `current_user.role` through
+from every route call site):
+
+| Domain | Methods | Sites | Hardcoded value |
+|---|---|---|---|
+| `app/lims/services.py` | `SpecimenService.register`/`.transition` (+`.reject`), `OrderService.create_lims_order`, `ResultService.create_result` | 4 `log_action` calls, 5 route call sites | `"lab_tech"` |
+| `app/services/hospital_service.py` | `assign_bed`, `discharge_bed`, `transfer_bed`, `update_operation_theater_status`, `complete_surgical_safety_checklist` | 5 `log_action` calls, 5 route call sites | `"hospital_staff"` |
+
+Below this register's own normal 3-domain naming threshold (2 so far),
+recorded here per the same convention Pattern 3 used at 1 domain — named
+now because the shape is exact and mechanical, worth checking on sight
+in any future service-layer audit. See GAP-6 in
+`docs/security/AUTHORIZATION_GAP_REGISTER.md` for full proof (29 new
+tests, 2 negative-proof cycles, both md5-verified).
+
+**4 hardcoded-role sites checked and confirmed NOT this pattern**:
+`app/services/patient_service.py`'s `user_role="system"` (a genuine
+system-internal event, no human actor in that code path);
+`app/routes/register.py`'s and `app/routes/citizen_portal.py`'s
+`user_role="citizen"`/`"doctor"` (self-registration/self-login routes
+where the hardcoded role always equals the actor's own role by
+construction — there is no other possible caller). The distinguishing
+test: does the method receive a real `user_id` that could belong to
+*any* role, while hardcoding a role anyway? If yes, it's this pattern.
+If the route's only possible caller is definitionally that one role,
+it isn't.
+
+**Detector opportunity — not built.** A reliable AST detector for "a
+`log_action(...)` call's `user_role=` keyword argument is a string
+literal, in a function that also takes a `user_id` parameter sourced
+from outside the function" is plausible but was not built this pass —
+found instead via a direct `grep -rn 'user_role="[a-z_]*"'` sweep of
+`app/`, which was fast enough (12 hits total, 4 domains) that a
+dedicated detector wasn't justified for this pass. Worth building if a
+3rd+ domain instance turns up.

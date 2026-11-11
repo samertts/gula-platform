@@ -337,3 +337,131 @@ Merge workflow (in `app/national/workflows/merge_identity_workflow.py`):
 - **Negative:** Merged records require cascading updates across all domains
 - **Negative:** Rollback of false merges is complex and requires compensation
   workflows
+
+---
+
+## ADR-009: EHR/FHIR Route Authorization — Canonical Ownership & Taxonomy Decision Required
+
+**Status:** Proposed — **DECISION REQUIRED, not yet accepted**
+**Date:** 2026-09-23
+
+### Context
+
+Batch 7 of the GULA security-triage program (`docs/security/AUTHORIZATION_GAP_REGISTER.md`
+GAP-3) inventoried the full HTTP-reachable EHR/FHIR surface — `app/routes/ehr.py`
+(86 routes) and `app/routes/ehr_fhir.py` (29 routes), 115 total — to resolve a
+GAP left open by Batch 6 ("no existing RBAC permission string fits EHR data").
+
+Per ADR-001/ADR-002, `app/ehr/models/*` (ClinicalNote, AllergyIntolerance,
+MedicationStatement/Request/Dispense/Administration, CarePlan+Goal+Activity,
+ProblemListItem, ConditionRecord, DiagnosisRecord, FamilyHistoryRecord,
+SocialHistoryRecord, RiskFactorRecord, ImmunizationRecord, ClinicalAttachment)
+are genuinely canonical, EHR-owned resources — not a projection or facade over
+the legacy monolith's `Patient`/`LabResult` models. They are scoped to
+`app.national.domain.patient.Patient` (table `national_patients`), the
+National platform's own canonical patient identity, itself structurally
+distinct from the legacy tenant `patients` table (`app/models/patient.py`)
+that `app/routes/patients.py` and the RBAC permissions `patients:read`/
+`patients:write` govern. Both share the same `lab_id` tenant-scope value
+space (`TenantMixin.lab_id` in `shared/models/base.py` references `labs.id`
+either way), so tenant isolation across the boundary is sound — confirmed by
+direct code reading of `ehr_service.get_national_patient_or_404()` — but
+**role/permission authorization is a separate question from tenant scope**,
+and this is where the taxonomy gap lives.
+
+The National domain already has its own, considerably more sophisticated,
+purpose-built authorization layer:
+
+- `app/national/security/rbac.py` — `NationalRole` (16 values: system_admin,
+  national_admin, directorate_admin, facility_admin, doctor, nurse,
+  technician, receptionist, pharmacist, citizen, guardian, auditor,
+  emergency_officer, researcher, ministry_official, insurance_official) ×
+  `NationalPermission` (42 values, e.g. `patient:read`, `encounter:update`,
+  `consent:revoke`, `break_glass`, `sensitive:access`, `minor:access`)
+- `app/national/security/abac.py` — attribute-based access control
+  (subject/resource/action/environment attributes, sensitive/VIP/minor
+  resource flags)
+- `app/national/security/consent_enforcement.py` — patient-consent gating
+- `app/national/security/break_glass.py` — emergency-access override with
+  audit trail
+- Documented in `app/national/DOMAIN_AUDIT_REPORT.md`'s "Security Layer"
+  section as already-built: RBAC, ABAC, break-glass, purpose-of-use,
+  minimum-necessary, consent enforcement, hash-chained audit.
+
+**This layer is confirmed entirely dormant as far as any live HTTP route is
+concerned.** `app/national/api/routes/security.py` and
+`app/national/api/routes/consent.py` — the route files that would expose it
+directly — are not imported anywhere in `app/factory.py::_register_routes`
+(confirmed by grep across `app/factory.py`/`app/main.py`). Independently,
+`app/routes/ehr.py`, `app/routes/ehr_fhir.py`, and `app/services/ehr_service.py`
+contain zero imports from `app.national.security.*` (confirmed by grep). The
+only other repo-wide callers of the National security/policy layer
+(`app/national/policies/*`, referenced from `app/health_data/governance/`,
+`app/national/ecosystem/gateway/`) are unrelated to the EHR route call chain.
+
+Compounding this: `NationalRole`'s string values do not consistently match
+`LabUser.role` (the legacy 10-role space `app/security/rbac.py::VALID_ROLES`
+actually issued in JWTs and read by `Depends(get_current_user)`). Some overlap
+(`doctor`, `technician`, `citizen`); several do not exist on either side
+(`nurse`, `receptionist`, `pharmacist`, `guardian`, `auditor`,
+`emergency_officer`, `researcher`, `ministry_official`, `insurance_official`,
+`national_admin`, `directorate_admin`, `facility_admin`, `system_admin` vs.
+`admin`, `lab_admin`, `lab_staff`, `staff`, `master_admin`, `ministry_admin`,
+`province_admin`, `cashier`, `finance_auditor`, `finance_controller`,
+`finance_operator`, `reconciler`, `refund_reviewer`). No mapping function
+exists anywhere in the codebase to translate one role space into the other.
+
+### The decision this ADR requires (not yet made)
+
+**Option A — Reuse the legacy flat RBAC.** Gate `ehr.py`/`ehr_fhir.py`'s
+EHR-owned routes with `patients:read`/`patients:write` (or new
+`ehr:read`/`ehr:write` permissions added to `app/security/rbac.py`'s existing
+10-role matrix). Minimal, mechanical, consistent with every other fix this
+security-triage program has made — but semantically imprecise (these
+permissions were designed for the legacy `Patient`/`LabResult` models, not
+`NationalPatient`/EHR-native clinical resources), and does not activate the
+richer ABAC/consent/break-glass/minor-protection controls the National domain
+was actually built with.
+
+**Option B — Wire in the dormant National security layer.** Build the
+`LabUser.role → NationalRole` mapping, add a FastAPI dependency equivalent to
+`require_permission()` that calls `RBACEngine.has_permission()` against it,
+and decide per-route which `NationalPermission` applies, whether ABAC
+attributes (sensitive/VIP/minor) apply, and whether consent enforcement
+should gate clinical-note/allergy/medication access. This is architecturally
+correct — it activates already-designed, already-audited (per
+`DOMAIN_AUDIT_REPORT.md`) machinery instead of building a second one — but is
+a substantial integration project (115 routes × a real role-mapping decision
+× per-route ABAC/consent scoping), not a "add one `Depends()` call" fix, and
+touches a currently-dormant module (activating dormant code requires explicit
+authorization per this program's standing rules).
+
+**Option C — Hybrid.** Gate immediately with Option A's legacy permissions as
+an interim closure of the "any authenticated role, any data" P1 exposure,
+while tracking Option B as a separate, explicitly-scoped follow-on project.
+
+This program has deliberately **not chosen among these** — doing so without
+an explicit decision would be exactly the "convert architectural uncertainty
+into guessed code" outcome the triage program's own rules prohibit. Fixed
+instead, this batch, were 3 of the 115 routes that turned out NOT to be part
+of this ambiguity at all: `ehr_fhir.py`'s `Observation` read/search and
+`Provenance` search project the legacy `LabResult`/`LabOrder`/`AuditLog`
+canonical resources (not `NationalPatient`/EHR-native models), so the
+already-correct, already-established `results:read`/`audit:read` permissions
+applied with high confidence and no taxonomy ambiguity.
+
+### Consequences of leaving this undecided
+
+- **Positive:** No permission was guessed or invented; no dormant module was
+  silently activated; no second, conflicting authorization surface was built.
+- **Negative:** 109 of 115 EHR/FHIR routes (all EHR-native clinical
+  sub-resource CRUD, all National-model FHIR projections, the generic FHIR
+  create/update/delete/batch dispatcher) remain reachable by any
+  authenticated `LabUser` regardless of role, pending this decision. Tenant
+  isolation holds throughout (confirmed), so this is a same-tenant
+  authorization gap, not a cross-tenant one — but it is real and should be
+  the next bounded batch's primary target once a domain owner picks an
+  option above.
+
+See `docs/security/AUTHORIZATION_GAP_REGISTER.md` GAP-3 for the full
+route-family inventory and evidence.
