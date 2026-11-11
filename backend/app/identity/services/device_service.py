@@ -12,6 +12,10 @@ from app.identity.models.machine_identity import MachineIdentity
 from app.identity.repositories.device_repository import DeviceRepository
 
 
+class DeviceRegistrationConflict(ValueError):
+    """A device fingerprint is already bound to another identity."""
+
+
 class DeviceService:
 
     def __init__(self, session: AsyncSession) -> None:
@@ -36,6 +40,10 @@ class DeviceService:
     ) -> Device:
         existing = await self.repo.find_by_fingerprint(device_fingerprint)
         if existing:
+            if existing.person_id != person_id or (
+                existing.account_id is not None and existing.account_id != account_id
+            ):
+                raise DeviceRegistrationConflict("Device fingerprint is already registered")
             existing.last_seen_at = datetime.now(UTC)
             existing.last_ip = ip_address
             if account_id:

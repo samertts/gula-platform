@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import secrets
 import time
 from datetime import datetime, timedelta
 from typing import Any
@@ -47,7 +48,9 @@ class ConsentService:
         user_agent: str | None = None,
     ) -> ConsentRecord:
         purpose_str = purpose.value if isinstance(purpose, ConsentPurpose) else purpose
-        categories_str = ",".join(c.value if isinstance(c, DataCategory) else c for c in data_categories)
+        categories_str = ",".join(
+            c.value if isinstance(c, DataCategory) else c for c in data_categories
+        )
         consent_data = f"{patient_id}:{lab_id}:{purpose_str}:{categories_str}:{int(time.time())}"
         consent_hash = hashlib.sha256(consent_data.encode()).hexdigest()
 
@@ -100,10 +103,14 @@ class ConsentService:
         return True
 
     def withdraw_consent(self, consent_id: int, user_id: int) -> ConsentRecord | None:
-        record = self.db.query(ConsentRecord).filter(
-            ConsentRecord.id == consent_id,
-            ConsentRecord.is_deleted.is_(None),
-        ).first()
+        record = (
+            self.db.query(ConsentRecord)
+            .filter(
+                ConsentRecord.id == consent_id,
+                ConsentRecord.is_deleted.is_(None),
+            )
+            .first()
+        )
         if record:
             record.status = ConsentStatus.WITHDRAWN
             record.withdrawn_at = datetime.now(UTC)
@@ -111,16 +118,27 @@ class ConsentService:
         return record
 
     def get_patient_consents(self, patient_id: int) -> list[ConsentRecord]:
-        return self.db.query(ConsentRecord).filter(
-            ConsentRecord.patient_id == patient_id,
-            ConsentRecord.is_deleted.is_(None),
-        ).all()
+        return (
+            self.db.query(ConsentRecord)
+            .filter(
+                ConsentRecord.patient_id == patient_id,
+                ConsentRecord.is_deleted.is_(None),
+            )
+            .all()
+        )
 
     def get_access_history(self, patient_id: int, limit: int = 50) -> list[dict[str, Any]]:
         from app.models.audit_log import AuditLog
-        logs = self.db.query(AuditLog).filter(
-            AuditLog.patient_id == patient_id,
-        ).order_by(AuditLog.created_at.desc()).limit(limit).all()
+
+        logs = (
+            self.db.query(AuditLog)
+            .filter(
+                AuditLog.patient_id == patient_id,
+            )
+            .order_by(AuditLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
         return [log.to_dict() for log in logs]
 
 
@@ -131,10 +149,14 @@ class SovereigntyService:
         self.db = db
 
     def get_rule(self, data_category: DataCategory) -> SovereigntyRule | None:
-        return self.db.query(SovereigntyRule).filter(
-            SovereigntyRule.data_category == data_category,
-            SovereigntyRule.is_deleted.is_(None),
-        ).first()
+        return (
+            self.db.query(SovereigntyRule)
+            .filter(
+                SovereigntyRule.data_category == data_category,
+                SovereigntyRule.is_deleted.is_(None),
+            )
+            .first()
+        )
 
     def validate_cross_border(self, data_category: DataCategory, destination: str) -> bool:
         rule = self.get_rule(data_category)
@@ -153,9 +175,13 @@ class SovereigntyService:
         return True
 
     def get_all_rules(self) -> list[SovereigntyRule]:
-        return self.db.query(SovereigntyRule).filter(
-            SovereigntyRule.is_deleted.is_(None),
-        ).all()
+        return (
+            self.db.query(SovereigntyRule)
+            .filter(
+                SovereigntyRule.is_deleted.is_(None),
+            )
+            .all()
+        )
 
 
 class TrustService:
@@ -180,7 +206,7 @@ class TrustService:
 
         log = TrustServiceLog(
             service_type=TrustServiceType.DIGITAL_SIGNATURE,
-            request_id=hashlib.md5(f"{document_hash}:{time.time()}".encode(), usedforsecurity=False).hexdigest(),
+            request_id=secrets.token_hex(16),
             user_id=user_id,
             lab_id=lab_id,
             document_hash=document_hash,
@@ -205,7 +231,7 @@ class TrustService:
 
         log = TrustServiceLog(
             service_type=TrustServiceType.TIMESTAMPING,
-            request_id=hashlib.md5(f"ts:{document_hash}:{time.time()}".encode(), usedforsecurity=False).hexdigest(),
+            request_id=secrets.token_hex(16),
             user_id=user_id,
             lab_id=lab_id,
             document_hash=document_hash,
@@ -218,22 +244,31 @@ class TrustService:
         return log
 
     def verify_document_integrity(self, document_hash: str) -> dict[str, Any]:
-        logs = self.db.query(TrustServiceLog).filter(
-            TrustServiceLog.document_hash == document_hash,
-            TrustServiceLog.is_deleted.is_(None),
-        ).order_by(TrustServiceLog.created_at.desc()).all()
+        logs = (
+            self.db.query(TrustServiceLog)
+            .filter(
+                TrustServiceLog.document_hash == document_hash,
+                TrustServiceLog.is_deleted.is_(None),
+            )
+            .order_by(TrustServiceLog.created_at.desc())
+            .all()
+        )
 
         return {
             "document_hash": document_hash,
             "verified": len(logs) > 0,
             "signatures": [
                 {
-                    "id": l.id,
-                    "type": l.service_type.value,
-                    "timestamp": l.created_at.isoformat(),
-                    "signature": l.signature_value[:16] + "..." if l.signature_value else None,
+                    "id": log_entry.id,
+                    "type": log_entry.service_type.value,
+                    "timestamp": log_entry.created_at.isoformat(),
+                    "signature": (
+                        log_entry.signature_value[:16] + "..."
+                        if log_entry.signature_value
+                        else None
+                    ),
                 }
-                for l in logs
+                for log_entry in logs
             ],
             "total_records": len(logs),
         }
@@ -253,6 +288,7 @@ class ComplianceService:
         target_type: str | None = None,
     ) -> ComplianceCheck:
         from app.core.policy_engine import check_policy_compliance
+
         is_compliant = check_policy_compliance(check_type, target_id)
         score = 100 if is_compliant else 0
 

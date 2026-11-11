@@ -1,54 +1,28 @@
-# =============================================================================
-# Wazuh Agent Configuration — GULA Platform SIEM Integration
-# =============================================================================
-# Managed by: Security Operations
-# Last updated: 2026-07-15
-# Applied to: All gula-backend, gula-worker, and api-gateway containers
-# =============================================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Wazuh Agent Configuration — GULA Platform SIEM Integration
+  Managed by: Security Operations
+  Last updated: 2026-07-15
+  Data classification: PHI; compliance: HIPAA, Iraq-NHDSS
 
-<client>
-  server:
-    address: 10.0.0.10
-    port: 1514
-    protocol: tcp
-  server:
-    address: wazuh-master.gula.internal
-    port: 1514
-    protocol: tcp
-  config_profile: gula-platform
-  notify_time: 10
-  time-reconnect: 60
-  auto_negotiate: yes
-  registration:
-    enabled: yes
-    server: 10.0.0.10
-    port: 1515
-    password_file: /var/ossec/etc/authd.pass
-    ssl:
-      cipher: HIGH
-      cert: /var/ossec/etc/ssl/agent.cert
-      key: /var/ossec/etc/ssl/agent.key
-      verify_host: no
-    wait_for_complete: yes
-    manager_agent_name: auto
-  crypto_method: aes
-  server_queue_size: 131072
-</client>
-
-<agent>
-  agent_type: endpoint
-  labels:
-    - platform: gula
-    - environment: production
-    - region: iq-baghdad
-    - data_classification: phi
-    - compliance: hipaa
-    - compliance: iraq-nhdss
-    - criticality: high
-</agent>
-
+  This file is a configuration template. Inject credentials and environment
+  endpoints through the deployment secret manager; do not commit them here.
+-->
 <ossec_config>
-  <global>
+  <client>
+    <server>
+      <address>wazuh-master.gula.internal</address>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+    </server>
+    <notify_time>10</notify_time>
+    <time-reconnect>60</time-reconnect>
+    <auto_negotiate>yes</auto_negotiate>
+    <crypto_method>aes</crypto_method>
+    <server_queue_size>131072</server_queue_size>
+  </client>
+
+<global>
     <jsonout_output>yes</jsonout_output>
     <alerts_log>yes</alerts_log>
     <logall>no</logall>
@@ -247,6 +221,9 @@
   <!-- ================================================================== -->
   <!-- ACTIVE RESPONSE                                                      -->
   <!-- ================================================================== -->
+  <!-- Disabled by default: enable only after SOC review of commands, rules,
+       network topology, and rollback/exception handling. This is a template,
+       not a production-ready autonomous blocking policy. -->
   <command>
     <name>firewall-drop</name>
     <executable>firewall-drop</executable>
@@ -268,7 +245,7 @@
   </command>
 
   <active-response>
-    <disabled>no</disabled>
+    <disabled>yes</disabled>
     <command>firewall-drop</command>
     <location>local</location>
     <level>10</level>
@@ -277,7 +254,7 @@
   </active-response>
 
   <active-response>
-    <disabled>no</disabled>
+    <disabled>yes</disabled>
     <command>firewall-drop</command>
     <location>local</location>
     <level>12</level>
@@ -286,7 +263,7 @@
   </active-response>
 
   <active-response>
-    <disabled>no</disabled>
+    <disabled>yes</disabled>
     <command>firewall-drop</command>
     <location>local</location>
     <level>7</level>
@@ -295,7 +272,7 @@
   </active-response>
 
   <active-response>
-    <disabled>no</disabled>
+    <disabled>yes</disabled>
     <command>firewall-drop</command>
     <location>local</location>
     <level>8</level>
@@ -342,7 +319,7 @@
 
   <rule id="100001" level="0">
     <if_sid>5710</if_sid>
-    <description>MITRE ATT&CK: T1078 - Valid Accounts (Initial Access)</description>
+    <description>MITRE ATT&amp;CK: T1078 - Valid Accounts (Initial Access)</description>
     <mitre>
       <id>T1078</id>
       <tactic>Initial Access</tactic>
@@ -352,7 +329,7 @@
 
   <rule id="100002" level="0">
     <if_sid>5500</if_sid>
-    <description>MITRE ATT&CK: T1098 - Account Manipulation (Persistence)</description>
+    <description>MITRE ATT&amp;CK: T1098 - Account Manipulation (Persistence)</description>
     <mitre>
       <id>T1098</id>
       <tactic>Persistence</tactic>
@@ -362,7 +339,7 @@
 
   <rule id="100003" level="0">
     <if_sid>5900</if_sid>
-    <description>MITRE ATT&CK: T1068 - Exploitation for Privilege Escalation</description>
+    <description>MITRE ATT&amp;CK: T1068 - Exploitation for Privilege Escalation</description>
     <mitre>
       <id>T1068</id>
       <tactic>Privilege Escalation</tactic>
@@ -372,7 +349,7 @@
 
   <rule id="100004" level="0">
     <if_sid>597</if_sid>
-    <description>MITRE ATT&CK: T1562 - Impair Defenses (Defense Evasion)</description>
+    <description>MITRE ATT&amp;CK: T1562 - Impair Defenses (Defense Evasion)</description>
     <mitre>
       <id>T1562</id>
       <tactic>Defense Evasion</tactic>
@@ -382,7 +359,7 @@
 
   <rule id="100005" level="0">
     <if_sid>5750</if_sid>
-    <description>MITRE ATT&CK: T1555 - Credentials from Password Stores (Credential Access)</description>
+    <description>MITRE ATT&amp;CK: T1555 - Credentials from Password Stores (Credential Access)</description>
     <mitre>
       <id>T1555</id>
       <tactic>Credential Access</tactic>
@@ -392,7 +369,7 @@
 
   <rule id="100006" level="0">
     <if_sid>5310</if_sid>
-    <description>MITRE ATT&CK: T1082 - System Information Discovery (Discovery)</description>
+    <description>MITRE ATT&amp;CK: T1082 - System Information Discovery (Discovery)</description>
     <mitre>
       <id>T1082</id>
       <tactic>Discovery</tactic>
@@ -402,7 +379,7 @@
 
   <rule id="100007" level="0">
     <if_sid>5450</if_sid>
-    <description>MITRE ATT&CK: T1570 - Lateral Tool Transfer (Lateral Movement)</description>
+    <description>MITRE ATT&amp;CK: T1570 - Lateral Tool Transfer (Lateral Movement)</description>
     <mitre>
       <id>T1570</id>
       <tactic>Lateral Movement</tactic>
@@ -412,7 +389,7 @@
 
   <rule id="100008" level="0">
     <if_sid>5715</if_sid>
-    <description>MITRE ATT&CK: T1114 - Email Collection (Collection)</description>
+    <description>MITRE ATT&amp;CK: T1114 - Email Collection (Collection)</description>
     <mitre>
       <id>T1114</id>
       <tactic>Collection</tactic>
@@ -422,7 +399,7 @@
 
   <rule id="100009" level="0">
     <if_sid>5800</if_sid>
-    <description>MITRE ATT&CK: T1048 - Exfiltration Over Alternative Protocol (Exfiltration)</description>
+    <description>MITRE ATT&amp;CK: T1048 - Exfiltration Over Alternative Protocol (Exfiltration)</description>
     <mitre>
       <id>T1048</id>
       <tactic>Exfiltration</tactic>
@@ -432,7 +409,7 @@
 
   <rule id="100010" level="0">
     <if_sid>5850</if_sid>
-    <description>MITRE ATT&CK: T1485 - Data Destruction (Impact)</description>
+    <description>MITRE ATT&amp;CK: T1485 - Data Destruction (Impact)</description>
     <mitre>
       <id>T1485</id>
       <tactic>Impact</tactic>
@@ -444,7 +421,7 @@
   <rule id="100100" level="12">
     <decoded_as>json</decoded_as>
     <field name="audit_type">^unauthorized_patient_access$</field>
-    <description>MITRE ATT&CK: T1530 - Data from Information Repositories (Collection) - Unauthorized PHI Access</description>
+    <description>MITRE ATT&amp;CK: T1530 - Data from Information Repositories (Collection) - Unauthorized PHI Access</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1530</id>
@@ -457,7 +434,7 @@
   <rule id="100101" level="15">
     <decoded_as>json</decoded_as>
     <field name="audit_type">^bulk_patient_export$</field>
-    <description>MITRE ATT&CK: T1567 - Exfiltration Over Web Service (Exfiltration) - Bulk PHI Export</description>
+    <description>MITRE ATT&amp;CK: T1567 - Exfiltration Over Web Service (Exfiltration) - Bulk PHI Export</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1567</id>

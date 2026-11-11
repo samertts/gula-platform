@@ -237,18 +237,18 @@ class AuthManager {
   }
 
   Future<bool> _refreshAccessToken() async {
-    if (_refreshToken == null || _refreshToken!.isEmpty) return false;
+    final currentRefreshToken = _refreshToken;
+    if (currentRefreshToken == null || currentRefreshToken.isEmpty) return false;
     try {
       final response = await apiClient.post(
         ApiEndpoints.refreshToken,
-        data: {'refresh_token': _refreshToken},
+        data: {'refresh_token': currentRefreshToken},
       );
       final data = response.data as Map<String, dynamic>;
       _token = (data['access_token'] ?? data['token']) as String?;
-      _refreshToken = data['refresh_token'] as String?;
+      _refreshToken = data['refresh_token'] as String? ?? currentRefreshToken;
       if (_token != null) await _storage.saveToken(_token!);
-      if (_refreshToken != null)
-        await _storage.saveRefreshToken(_refreshToken!);
+      await _storage.saveRefreshToken(_refreshToken!);
       return true;
     } catch (e) {
       return false;

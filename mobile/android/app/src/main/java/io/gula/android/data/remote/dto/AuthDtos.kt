@@ -37,6 +37,7 @@ data class RefreshRequestDto(
 @JsonClass(generateAdapter = true)
 data class RefreshResponseDto(
     @Json(name = "access_token") val accessToken: String,
+    @Json(name = "refresh_token") val refreshToken: String? = null,
     @Json(name = "expires_in") val expiresIn: Long,
 )
 

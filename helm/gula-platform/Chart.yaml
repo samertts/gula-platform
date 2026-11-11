@@ -60,13 +60,13 @@ dependencies:
     tags:
       - monitoring
   - name: tempo
-    version: ~2.0
+    version: ~1.24.0
     repository: https://grafana.github.io/helm-charts
     condition: monitoring.tempo.enabled
     tags:
       - tracing
   - name: linkerd2
-    version: ~2.0
+    version: ~2.11.0
     repository: https://helm.linkerd.io/stable
     condition: serviceMesh.linkerd.enabled
     tags:

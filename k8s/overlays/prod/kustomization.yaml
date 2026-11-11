@@ -11,14 +11,16 @@ patchesStrategicMerge:
   - patch-replicas.yaml
   - patch-resources.yaml
 
-# Prod: use latest stable image
+# Prod image tag is injected by the fail-closed render/deploy target; do not commit a mutable tag.
 images:
   - name: ghcr.io/samertts/gula-platform/backend
-    newTag: latest
+    newTag: IMAGE_TAG_REQUIRED
+
 
 # Prod ConfigMap overrides
 configMapGenerator:
   - name: gula-config
+    namespace: gula
     behavior: merge
     literals:
       - ENV=production

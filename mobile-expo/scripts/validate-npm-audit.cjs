@@ -3,49 +3,22 @@ const fs = require('node:fs');
 const reportPath = process.env.NPM_AUDIT_REPORT || '/tmp/gula-mobile-expo-audit.json';
 const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
 const vulnerabilities = report.vulnerabilities ?? {};
-const knownExpoSdk54Chain = new Set([
-  '@expo/cli',
-  '@expo/config',
-  '@expo/config-plugins',
-  '@expo/metro',
-  '@expo/metro-config',
-  '@expo/prebuild-config',
-  '@react-native/community-cli-plugin',
-  'expo',
-  'expo-asset',
-  'expo-constants',
-  'image-size',
-  'metro',
-  'metro-config',
-  'metro-transform-worker',
-  'postcss',
-  'react-native',
-  'uuid',
-  'xcode',
-]);
+const metadata = report.metadata?.vulnerabilities ?? {};
+const total = metadata.total ?? Object.keys(vulnerabilities).length;
 
-const critical = Object.values(vulnerabilities)
-  .filter((entry) => entry.severity === 'critical')
-  .map((entry) => entry.name);
-const unknownHigh = Object.values(vulnerabilities)
-  .filter((entry) => entry.severity === 'high' && !knownExpoSdk54Chain.has(entry.name))
-  .map((entry) => entry.name);
-
-if (critical.length > 0 || unknownHigh.length > 0) {
-  const details = [
-    critical.length > 0 ? `critical: ${critical.join(', ')}` : null,
-    unknownHigh.length > 0 ? `unapproved high: ${unknownHigh.join(', ')}` : null,
-  ].filter(Boolean).join('; ');
+if (total > 0) {
+  const details = Object.values(vulnerabilities)
+    .map((entry) => `${entry.severity}: ${entry.name}`)
+    .join(', ');
   throw new Error(`Mobile dependency audit gate failed: ${details}`);
 }
 
-const metadata = report.metadata?.vulnerabilities ?? {};
 console.log(JSON.stringify({
-  status: 'passed-with-reviewed-sdk54-upstream-chain',
-  critical: metadata.critical ?? 0,
-  high: metadata.high ?? 0,
+  status: 'passed-zero-findings',
+  info: metadata.info ?? 0,
+  low: metadata.low ?? 0,
   moderate: metadata.moderate ?? 0,
-  reviewedHigh: Object.values(vulnerabilities)
-    .filter((entry) => entry.severity === 'high')
-    .map((entry) => entry.name),
+  high: metadata.high ?? 0,
+  critical: metadata.critical ?? 0,
+  total,
 }, null, 2));

@@ -122,6 +122,30 @@ scrape_configs:
       - targets: ['clickhouse:8123']
     metrics_path: /metrics
 
+  # ─── Federation (multi-region) ───────────────────────────────────────────────
+  - job_name: 'federate-baghdad'
+    scrape_interval: 60s
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]':
+        - '{__name__=~"gula_.*"}'
+        - '{__name__=~"slo_.*"}'
+        - '{__name__=~"otel_.*"}'
+    static_configs:
+      - targets: ['baghdad-prometheus:9090']
+
+  - job_name: 'federate-basra'
+    scrape_interval: 60s
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]':
+        - '{__name__=~"gula_.*"}'
+        - '{__name__=~"slo_.*"}'
+    static_configs:
+      - targets: ['basra-prometheus:9090']
+
 # ─── Remote Write (long-term storage) ──────────────────────────────────────────
 remote_write:
   - url: 'http://victoriametrics:8428/api/v1/write'
@@ -137,27 +161,3 @@ remote_write:
       - source_labels: [__name__]
         regex: 'gula_.*|otel_.*|slo_.*'
         action: keep
-
-# ─── Federation (multi-region) ─────────────────────────────────────────────────
-- job_name: 'federate-baghdad'
-  scrape_interval: 60s
-  honor_labels: true
-  metrics_path: '/federate'
-  params:
-    'match[]':
-      - '{__name__=~"gula_.*"}'
-      - '{__name__=~"slo_.*"}'
-      - '{__name__=~"otel_.*"}'
-  static_configs:
-    - targets: ['baghdad-prometheus:9090']
-
-- job_name: 'federate-basra'
-  scrape_interval: 60s
-  honor_labels: true
-  metrics_path: '/federate'
-  params:
-    'match[]':
-      - '{__name__=~"gula_.*"}'
-      - '{__name__=~"slo_.*"}'
-  static_configs:
-    - targets: ['basra-prometheus:9090']

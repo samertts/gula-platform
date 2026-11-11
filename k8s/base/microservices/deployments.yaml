@@ -40,8 +40,8 @@ spec:
           command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
       containers:
         - name: svc-lab
-          image: ghcr.io/samertts/gula-platform/svc-lab:latest
-          imagePullPolicy: Always
+          image: ghcr.io/samertts/gula-platform/svc-lab:IMAGE_TAG_REQUIRED
+          imagePullPolicy: IfNotPresent
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -74,7 +74,7 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 15
@@ -82,7 +82,7 @@ spec:
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -122,8 +122,8 @@ spec:
           command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
       containers:
         - name: svc-patient
-          image: ghcr.io/samertts/gula-platform/svc-patient:latest
-          imagePullPolicy: Always
+          image: ghcr.io/samertts/gula-platform/svc-patient:IMAGE_TAG_REQUIRED
+          imagePullPolicy: IfNotPresent
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -156,7 +156,7 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 15
@@ -164,7 +164,7 @@ spec:
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -204,8 +204,8 @@ spec:
           command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
       containers:
         - name: svc-order
-          image: ghcr.io/samertts/gula-platform/svc-order:latest
-          imagePullPolicy: Always
+          image: ghcr.io/samertts/gula-platform/svc-order:IMAGE_TAG_REQUIRED
+          imagePullPolicy: IfNotPresent
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -238,7 +238,7 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 15
@@ -246,7 +246,7 @@ spec:
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -286,8 +286,8 @@ spec:
           command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
       containers:
         - name: svc-result
-          image: ghcr.io/samertts/gula-platform/svc-result:latest
-          imagePullPolicy: Always
+          image: ghcr.io/samertts/gula-platform/svc-result:IMAGE_TAG_REQUIRED
+          imagePullPolicy: IfNotPresent
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -332,7 +332,7 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 15
@@ -340,7 +340,7 @@ spec:
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -380,8 +380,8 @@ spec:
           command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
       containers:
         - name: svc-sample
-          image: ghcr.io/samertts/gula-platform/svc-sample:latest
-          imagePullPolicy: Always
+          image: ghcr.io/samertts/gula-platform/svc-sample:IMAGE_TAG_REQUIRED
+          imagePullPolicy: IfNotPresent
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -414,7 +414,7 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 15
@@ -422,7 +422,7 @@ spec:
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -459,8 +459,8 @@ spec:
           command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
       containers:
         - name: svc-notification
-          image: ghcr.io/samertts/gula-platform/svc-notification:latest
-          imagePullPolicy: Always
+          image: ghcr.io/samertts/gula-platform/svc-notification:IMAGE_TAG_REQUIRED
+          imagePullPolicy: IfNotPresent
           env:
             - name: RABBITMQ_URL
               value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
@@ -492,7 +492,7 @@ spec:
               cpu: "250m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 15
@@ -500,7 +500,7 @@ spec:
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -533,8 +533,8 @@ spec:
         runAsUser: 1000
       containers:
         - name: svc-ai
-          image: ghcr.io/samertts/gula-platform/svc-ai:latest
-          imagePullPolicy: Always
+          image: ghcr.io/samertts/gula-platform/svc-ai:IMAGE_TAG_REQUIRED
+          imagePullPolicy: IfNotPresent
           env:
             - name: AI_PROVIDER
               value: ollama
@@ -554,7 +554,7 @@ spec:
               cpu: "2000m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 9000
             initialDelaySeconds: 60
             periodSeconds: 20
@@ -562,7 +562,7 @@ spec:
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 9000
             initialDelaySeconds: 30
             periodSeconds: 15

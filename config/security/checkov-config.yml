@@ -88,18 +88,11 @@ output:
   - "cli"             # Console output (human-readable)
   - "json"            # JSON output (machine-readable)
   - "sarif"           # SARIF output (GitHub Security)
-
-  cli:
-    compact: false
-    # Show only failed checks
-    show_passed: true
-
-  json:
-    path: "reports/checkov/checkov-report.json"
-
-  sarif:
-    path: "reports/checkov/checkov-report.sarif"
-    upload_to_github: true
+# Checkov accepts comma-separated destinations; console keeps human output while
+# the other destinations persist machine-readable reports.
+output-file-path: "console,reports/checkov/checkov-report.json,reports/checkov/checkov-report.sarif"
+compact: false
+show-passed: true
 
 # =============================================================================
 # PASS/FAIL CRITERIA

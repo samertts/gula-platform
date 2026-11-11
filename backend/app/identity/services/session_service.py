@@ -27,15 +27,31 @@ class SessionService:
             session.last_activity_at = datetime.now(UTC)
             await self.repo.session.flush()
 
-    async def terminate(self, session_id: str, reason: str = "manual") -> None:
+    async def terminate(
+        self,
+        session_id: str,
+        reason: str = "manual",
+        *,
+        terminated_by: str = "system",
+    ) -> None:
         await self.repo.terminate_session(
             session_id=session_id,
             reason=reason,
-            terminated_by="system",
+            terminated_by=terminated_by,
         )
 
-    async def terminate_all(self, account_id: str, reason: str = "manual") -> None:
-        await self.repo.terminate_all_for_account(account_id=account_id, reason=reason)
+    async def terminate_all(
+        self,
+        account_id: str,
+        reason: str = "manual",
+        *,
+        terminated_by: str = "system",
+    ) -> None:
+        await self.repo.terminate_all_for_account(
+            account_id=account_id,
+            reason=reason,
+            terminated_by=terminated_by,
+        )
 
     async def enforce_single_session(self, account_id: str, current_session_id: str) -> list[UserSession]:
         stmt = (

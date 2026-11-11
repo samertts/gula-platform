@@ -32,6 +32,7 @@ class PaddleOcrProvider(OcrProviderBase):
     def version(self) -> str:
         try:
             import paddleocr
+
             return paddleocr.__version__
         except Exception:
             return "unknown"
@@ -39,6 +40,7 @@ class PaddleOcrProvider(OcrProviderBase):
     async def initialize(self) -> None:
         try:
             from paddleocr import PaddleOCR
+
             self._ocr = PaddleOCR(
                 use_angle_cls=True,
                 lang="ar",
@@ -65,7 +67,9 @@ class PaddleOcrProvider(OcrProviderBase):
         ]
 
     async def ocr_image(
-        self, image_data: bytes, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_data: bytes,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         if not self._initialized:
             await self.initialize()
@@ -77,12 +81,10 @@ class PaddleOcrProvider(OcrProviderBase):
         try:
             import tempfile
 
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                tmp.write(image_data)
-                tmp_path = tmp.name
-
-            try:
-                result = self._ocr.ocr(tmp_path, cls=True)
+            with tempfile.TemporaryDirectory(prefix="gula-paddleocr-") as temp_dir:
+                tmp_path = Path(temp_dir) / "image.png"
+                tmp_path.write_bytes(image_data)
+                result = self._ocr.ocr(str(tmp_path), cls=True)
                 text_parts = []
                 confidences = []
                 for line_group in result or []:
@@ -93,12 +95,7 @@ class PaddleOcrProvider(OcrProviderBase):
                             confidences.append(float(confidence))
 
                 page.text = " ".join(text_parts)
-                page.confidence = (
-                    sum(confidences) / len(confidences) if confidences else 0.0
-                )
-            finally:
-                import os
-                os.unlink(tmp_path)
+                page.confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
         except Exception as exc:
             logger.error("PaddleOCR failed: %s", exc)
@@ -108,6 +105,8 @@ class PaddleOcrProvider(OcrProviderBase):
         return page
 
     async def ocr_image_path(
-        self, image_path: Path, language: OcrLanguage = OcrLanguage.arabic_english,
+        self,
+        image_path: Path,
+        language: OcrLanguage = OcrLanguage.arabic_english,
     ) -> DocumentPage:
         return await self.ocr_image(image_path.read_bytes(), language)
