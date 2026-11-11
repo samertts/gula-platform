@@ -85,6 +85,16 @@ _TRANSITIONS: dict[str, set[str]] = {
     "testing_crossmatch": {"compatible", "incompatible"},
     "compatible": {"validated", "incompatible"},
     "incompatible": set(),
+    # TransfusionStatus declares ordered -> dispensed -> verified -> in_progress
+    # -> completed, but only in_progress and completed had keys here, and
+    # transition() fails closed on an unknown current state. So
+    # start_transfusion_safely(), which requires status == VERIFIED and then
+    # attempts verified -> in_progress, could never succeed: a bedside-verified
+    # transfusion could not be started at all. Only the transition the service
+    # actually performs is added; the remaining declared states (ordered,
+    # dispensed, reacted, cancelled) still have no keys and are registered as
+    # NR-020 rather than filled in with invented clinical policy.
+    "verified": {"in_progress"},
     "ordered_transfusion": {"verification", "cancelled"},
     "verification": {"started", "returned", "reaction_suspected"},
     "started": {"in_progress", "reaction_suspected"},
