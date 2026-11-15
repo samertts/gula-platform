@@ -94,7 +94,7 @@ dev_dependencies:
     sdk: flutter
   build_runner: ^2.4.7
   drift_dev: ^2.26.0
-  json_serializable: ^6.9.4
+  json_serializable: ^6.15.2
   mockito: ^5.4.6
   mocktail: ^1.0.4
   msix: ^3.18.0
