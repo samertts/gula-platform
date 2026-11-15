@@ -82,7 +82,7 @@ dependencies:
   sentry_flutter: ^9.26.0
 
   # Localization
-  flutter_oss_licenses: ^2.0.2
+  flutter_oss_licenses: ^3.2.0
 
   # QR
   qr: ^3.0.1
