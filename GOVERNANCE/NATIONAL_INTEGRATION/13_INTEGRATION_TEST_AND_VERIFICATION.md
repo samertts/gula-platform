@@ -2,6 +2,7 @@
 
 **Document:** 13 · **Program:** National Integration · **Date:** 2026-11-18
 **Status:** `IMPLEMENTED` (strategy); evidence rows carry their own statuses.
+**Phase B addendum:** §6 below records the synthetic engineering tranche executed after the Phase A commit. Phase A rows are retained unchanged as historical evidence.
 
 ---
 
@@ -76,3 +77,63 @@ ENV=test RUNTIME_MODE=test PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:.. \
 | Phase A change set (as scoped in the review record) | `INDEPENDENTLY VERIFIED` — engineering-evidence verdict only; HOLD/REJECT unchanged, no release claim |
 
 **No production, clinical, security-certified or release verdict is implied by this document.**
+
+---
+
+## 6. Phase B addendum — synthetic engineering tranche
+
+All commands below were executed on branch `integration/gula-unification-v1` with the
+complete Python 3.12 toolchain from `gula-platform/backend/.venv`. Phase A HEAD
+`0cb067ae` is the recorded baseline; the program is authorized to advance the
+integration branch by local reviewed commits only.
+
+### 6.1 Deterministic gate (`scripts/phase_b_gate.py`)
+
+| Check | Command / criterion | Result |
+|---|---|---|
+| preservation | protected md5s; platform HEAD pinned to `f478676b`; integration branch `integration/gula-unification-v1`; 0 tracked deletions | **PASS** |
+| registry | `national_integration_verify.py` integrity gate | **PASS** — 0 errors / 0 warnings |
+| focused | six Phase B focused suites | **PASS — 235 tests** (registry 31, NR-011 14, T1 106, T3 19, T5 14, T6 51) |
+| static | Ruff on all Phase B targets | **PASS** — 0 findings |
+| types | MyPy on `app/health_core` | **PASS** — 0 new errors; 2 documented pre-existing `order_state.py:63,81` tolerated |
+| regression | `pytest tests/health_core` | **PASS — 773 passed, 1 warning**, 0 failed (baseline preserved) |
+
+Reproduce: `python scripts/phase_b_gate.py` (exit 0; `--json` for full command traces).
+
+### 6.2 Task evidence (Program Director task IDs — see registry disambiguation note)
+
+| Task | Artifact | Focused result | Status | Boundary |
+|---|---|---|---|---|
+| T1 | `app/health_core/terminology/checkdigit.py` | 106 + 103 contract/provenance | `TESTED` | Official Appendix C.1 Mod-10; C.2 letter-prefixed fail closed; licensed release dataset `BLOCKED` |
+| T3 | `app/health_core/reliability/durable_queue.py` | 19 | `TESTED` | Synthetic in-process queue; no runtime wiring |
+| T5 | `app/health_core/audit_anchor/` | 14 | `TESTED` | Local JSONL hash chain; durable external anchor `NOT IMPLEMENTED` |
+| T6 | `app/interoperability/fhir_http/` | 51 | `TESTED` | Non-activated; relocated out of Health Core to preserve the WS-E guard; external validation `BLOCKED` |
+| DB | `PHASEB_DB_ALEMBIC_DIFF_CLASSIFICATION.md` | live disposable PG: `upgrade head` 0, `check` 255, 284 add_table, 0 aborts | `BLOCKED` | Classification only; ADR-A owner-gated; 1364 destructive-looking ops never auto-applied |
+
+Evidence index: `GOVERNANCE/PHASE_B_EVIDENCE/` (five reports).
+
+### 6.3 Broader regression and disclosed pre-existing failure
+
+- Full-suite collection: **4865 tests collected, 0 errors** (Phase A 4675 + 190 new Phase B tests).
+- Broad deterministic selection (`unit contracts security identity kernel kernel_hardening health_core`):
+  **1654 passed, 4 skipped, 1 failed**.
+- The single failure is `test_nr011_metadata_discovery.py::TestMetadataDiscovery::test_cross_metadata_foreign_keys_resolve`
+  (`NoReferencedTableError: niam_adaptive_mfa_sessions.session_id -> niam_user_sessions.id`).
+  It is **pre-existing and out of Phase B scope**: it reproduces only when `tests/identity` is
+  co-collected (a global SQLAlchemy metadata interaction), passes in isolation and in the
+  focused gate, and involves no Phase B file. It is disclosed here rather than suppressed.
+- Database-backed integration execution is `BLOCKED` in this environment (no reachable
+  PostgreSQL); the disposable-DB evidence above is the authorized substitute.
+
+### 6.4 Independent review and status boundary
+
+Independent read-only review (session `ses_e0ff9c922fferm5xYuovZPWVX4`, no file
+ownership) returned **PASS with zero findings**: all six gates and the 235 focused
+tests re-run, source-level correctness/security review, documentation honesty
+cross-check, and reproduction of the disclosed pre-existing NR-011 broad-suite
+failure. Recorded in `ADVERSARIAL_REVIEW_RECORD.md`.
+
+The Phase B change set is therefore `INDEPENDENTLY VERIFIED` **within that review
+scope only** — an independent engineering-evidence verdict. It is **not**
+`PRODUCTION READY`. HOLD, MPI REJECT and all owner-gated decisions are unchanged;
+no route was activated; no production or external system was contacted.

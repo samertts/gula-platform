@@ -1,7 +1,8 @@
 # Final Acceptance Report — National Integration Program
 
-**Document:** 14 · **Date:** 2026-11-18 · **Version:** 1.0 (Phase A baseline state; living document)
+**Document:** 14 · **Date:** 2026-11-18 · **Version:** 1.1 (Phase A baseline + Phase B synthetic engineering addendum; living document)
 **Program verdict:** **NOT ACCEPTED FOR PRODUCTION — STOP before deployment.**
+**Phase B note:** §6 records the post-Phase-A engineering tranche. Phase A rows below are retained unchanged as historical evidence.
 
 ---
 
@@ -14,9 +15,9 @@
 | Protected governance records | `INDEPENDENTLY VERIFIED` | md5s independently re-checked; HOLD/REJECT verdicts unchanged |
 | WS-01 Identity & MPI | `TESTED` | 127 synthetic MPI tests; owner decisions `BLOCKED` (MP-001, ODR-002/003) |
 | WS-02 Security & audit | `TESTED` | S-01…S-13 remediated; D-020 sign-off `BLOCKED` |
-| WS-03 FHIR R4 | `TESTED` | local adapter only; HTTP endpoint `NOT IMPLEMENTED` |
-| WS-04 Terminology | `TESTED` | ICD/LOINC/UCUM offline; licensed datasets `BLOCKED` |
-| WS-05 Reliability & offline | `TESTED` | in-memory boundary; durable anchor `BLOCKED` |
+| WS-03 FHIR R4 | `TESTED` | Phase A: local adapter only, HTTP endpoint `NOT IMPLEMENTED`; Phase B: non-activated HTTP interface in `app/interoperability/fhir_http/` (`TESTED`, 51 tests), still no external validation or route activation |
+| WS-04 Terminology | `TESTED` | Phase A: ICD/LOINC/UCUM offline; Phase B: official LOINC Mod-10 check digit (`TESTED`, 106 tests); licensed datasets remain `BLOCKED` |
+| WS-05 Reliability & offline | `TESTED` | Phase A: in-memory boundary; Phase B: synthetic in-process durable queue (`TESTED`, 19 tests); external durable anchor remains `BLOCKED` |
 | WS-06 Client integration | `TESTED` | manifest guards; real platforms `NOT IMPLEMENTED` / `BLOCKED` |
 | WS-07 National domains | `INTEGRATED` | 11/11 domain certification; ADR-A/B/C/D and 426-table gap `BLOCKED` |
 | Governance decision packages | `IMPLEMENTED` | `04`, `05` written — decisions `BLOCKED`, no approval invented |
@@ -33,8 +34,9 @@
 - `TESTED`: baseline gate, static analysis, synthetic suites across WS-01…WS-06, registry validator, NR-011 prerequisite verification.
 - `IMPLEMENTED`: Phase A document set, decision packages, verified dependency graph, registry integrity tool.
 - `BLOCKED`: all owner decisions (HOLD, REJECT, D-020, D-021, ADR-A…J, MP-001, ODR-001…004), licensed data, real platforms, production deployment.
-- `NOT IMPLEMENTED`: FHIR HTTP endpoint, LOINC check-digit offline, iOS project, dormant router activation, production DB rehearsal.
+- `NOT IMPLEMENTED`: iOS project, dormant router activation (Phase B FHIR interface exists but is deliberately NON-activated), durable external audit anchor, production DB rehearsal.
 - `PRODUCTION READY`: **0 items**.
+- Phase B change set: `TESTED` only — not `INDEPENDENTLY VERIFIED`, not `PRODUCTION READY`.
 
 ## 3. Explicit non-claims
 
@@ -54,7 +56,46 @@
 6. **Frontend owner:** 101 classified contract drifts.
 7. **Engineering (authorized later tranches):** context-by-context migration package after ADR-A. NR-011 prerequisite engineering is `TESTED` and is not outstanding.
 
-## 5. Final instruction
+## 5. Phase B addendum — synthetic engineering tranche (post-Phase-A)
+
+### 6.1 What changed
+
+| Area | Delivered | Focused evidence | Status |
+|---|---|---|---|
+| T1 terminology | Official LOINC Appendix C.1 Mod-10 check digit in `health_core/terminology/checkdigit.py` | 106 + 103 tests | `TESTED` |
+| T3 reliability | Durable in-process retry/idempotency/quarantine queue | 19 tests | `TESTED` |
+| T5 security/audit | Append-only JSONL hash-chain audit anchor with synthetic key rotation | 14 tests | `TESTED` |
+| T6 FHIR R4 | Non-activated HTTP interface under `app/interoperability/fhir_http/` | 51 tests | `TESTED` |
+| DB | 284-table Alembic difference classification on a disposable PG clone | `upgrade head` 0 / `check` 255 / 284 add_table / 0 aborts | `BLOCKED` |
+
+Evidence: `GOVERNANCE/PHASE_B_EVIDENCE/` (five reports). The T6 package was relocated
+from `app/health_core/` to `app/interoperability/` so the WS-E structural guard —
+which requires Health Core to remain free of FastAPI/HTTP boundary code — was preserved,
+not weakened.
+
+### 6.2 Verification summary
+
+- `scripts/phase_b_gate.py`: **PASS** on all six checks (preservation, registry,
+  focused 6/6 = 235 tests, Ruff, MyPy with only 2 documented baseline errors,
+  773-test Health Core regression).
+- Full-suite collection: **4865 tests collected, 0 errors**.
+- Broad deterministic selection: **1654 passed / 4 skipped / 1 failed**; the one
+  failure is a disclosed pre-existing SQLAlchemy metadata interaction between
+  `tests/identity` and the NR-011 merge probe (passes in isolation; no Phase B file
+  involved). See report `13` §6.3.
+- Owner-gated items remain `BLOCKED`: HOLD, MPI REJECT, MP-001, ODR-001…004,
+  D-020/D-021, ADR-A…J, AUD-02/07/16, licensed terminology datasets, real client
+  platforms, external FHIR validation, production DB and deployment.
+- Phase B independent adversarial review: pending — see `ADVERSARIAL_REVIEW_RECORD.md`.
+  No `INDEPENDENTLY VERIFIED` or `PRODUCTION READY` status is self-awarded.
+
+### 6.3 Effect on acceptance
+
+Phase B adds synthetic engineering evidence only. It does **not** lift HOLD or the
+MPI REJECT, does not activate any route, does not touch an operational database,
+and does not change the program verdict: **NOT ACCEPTED FOR PRODUCTION**.
+
+## 6. Final instruction
 
 **STOP.** This program ends at Phase E with this report and a request for owner review. No deployment or publication step exists in this program. Any future status escalation must be a new, traceable decision record signed by the named authority.
 

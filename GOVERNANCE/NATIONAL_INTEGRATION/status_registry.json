@@ -35,10 +35,12 @@
     "integration": {
       "path": "/home/samertts/workspace/projects/gula-integration",
       "branch": "integration/gula-unification-v1",
-      "head": "2827c1ff1032918aa2541aa0b47bb7f2e5d6cac0",
+      "head": "0cb067aef8c4276f60e2ec0e53e2a78f335c269b",
+      "head_basis": "Phase A commit 0cb067ae; the registry is recorded at the Phase A post-commit state and is advanced by the Phase B commit, so a post-commit HEAD drift warning is expected (validator treats HEAD drift as advisory by design)",
       "status_entries_at_baseline": 262,
       "deletions": 0,
-      "head_unchanged_phase_a": true
+      "head_phase_a_commit": "0cb067aef8c4276f60e2ec0e53e2a78f335c269b",
+      "head_unchanged_during_phase_a_evidence": true
     },
     "platform": {
       "path": "/home/samertts/workspace/projects/gula-platform",
@@ -193,13 +195,13 @@
     "T5": ["WS-07 after ADR-A/C"]
   },
   "quality_gates": {
-    "focused_tests": "per change (Phase B)",
-    "full_regression": "773 baseline — PASS",
-    "contract_diff": "no route changes in Phase A",
-    "ruff_mypy": "PASS — restored complete toolchain; ruff clean, mypy 0 issues on health_core",
+    "focused_tests": "Phase B: 6/6 suites PASS = 235 tests (registry 31, NR-011 14, T1 106, T3 19, T5 14, T6 51)",
+    "full_regression": "773 health_core PASS (Phase A baseline preserved); broad deterministic suites 1654 passed / 4 skipped / 1 pre-existing cross-suite metadata failure (disclosed below)",
+    "contract_diff": "Phase A: no route changes; Phase B: T6 FHIR HTTP router is NON-activated (no factory/main import) — OpenAPI unchanged",
+    "ruff_mypy": "PASS — ruff clean on all Phase B targets; mypy 0 new errors (2 documented pre-existing order_state.py:63,81 tolerated)",
     "registry_integrity": "PASS — scripts/national_integration_verify.py (31 tests, 0 failures; 11 new negative-case tests added after adversarial review round 1)",
-    "preservation": "PASS (HEADs, md5s, 0 deletions)",
-    "adversarial_review": "round 1 FAIL (8 findings) -> round 2 independent PASS (all fixed, zero blocking new findings) — see ADVERSARIAL_REVIEW_RECORD.md"
+    "preservation": "PASS (protected md5s, platform HEAD pinned, authorized integration branch, 0 deletions)",
+    "adversarial_review": "Phase A: round 1 FAIL (8 findings) -> round 2 independent PASS (all fixed, zero blocking new findings); Phase B: independent PASS with zero findings (reviewer session ses_e0ff9c922fferm5xYuovZPWVX4) — see ADVERSARIAL_REVIEW_RECORD.md"
   },
   "review_record": "GOVERNANCE/NATIONAL_INTEGRATION/ADVERSARIAL_REVIEW_RECORD.md",
   "change_set_verdict": {
@@ -216,6 +218,70 @@
       "status": "TESTED"
     }
   ],
+  "phase_b": {
+    "summary": "Synthetic-only engineering tranche; evidence artifacts under GOVERNANCE/PHASE_B_EVIDENCE/. Owner verdicts (HOLD, MPI REJECT, ADR-A..J, D-020/D-021, MP-001, ODR-001..004) are unchanged.",
+    "task_id_disambiguation": "The PHASEB_T* evidence filenames use the Program Director task IDs (T1 terminology, T3 reliability, T5 security/audit, T6 FHIR HTTP). The 'parallel_executable_tranche' T1..T5 above are the earlier workstream tranche IDs from doc 02; the two numbering schemes are NOT interchangeable.",
+    "artifacts": [
+      {
+        "id": "PD-T1",
+        "name": "LOINC Mod-10 check digit (official Appendix C.1)",
+        "path": "backend/app/health_core/terminology/checkdigit.py",
+        "evidence": "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_T1_TERMINOLOGY_EVIDENCE.md",
+        "tests": "106 passed (test_terminology_checkdigit.py) + 103 terminology contract/provenance tests",
+        "status": "TESTED",
+        "boundary": "Numeric codes only; Appendix C.2 letter-prefixed codes fail closed as NOT IMPLEMENTED; full official release dataset remains BLOCKED."
+      },
+      {
+        "id": "PD-T3",
+        "name": "Durable retry/idempotency/quarantine queue",
+        "path": "backend/app/health_core/reliability/durable_queue.py",
+        "evidence": "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_T3_RELIABILITY_EVIDENCE.md",
+        "tests": "19 passed (test_reliability_durable_queue.py)",
+        "status": "TESTED",
+        "boundary": "In-process, synthetic; no runtime wiring, no external persistence."
+      },
+      {
+        "id": "PD-T5",
+        "name": "Append-only JSONL audit anchor with hash chain and key rotation",
+        "path": "backend/app/health_core/audit_anchor/",
+        "evidence": "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_T5_SECURITY_EVIDENCE.md",
+        "tests": "14 passed (test_audit_anchor.py)",
+        "status": "TESTED",
+        "boundary": "Local synthetic keys/storage; durable external notarization is NOT IMPLEMENTED."
+      },
+      {
+        "id": "PD-T6",
+        "name": "FHIR R4 HTTP interface (non-activated)",
+        "path": "backend/app/interoperability/fhir_http/",
+        "evidence": "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_T6_FHIR_EVIDENCE.md",
+        "tests": "51 passed (test_fhir_http_endpoints.py)",
+        "status": "TESTED",
+        "boundary": "Relocated from health_core to interoperability to preserve the WS-E dependency-purity guard; no factory/main activation; external interoperability validation BLOCKED; synthetic header principal only."
+      },
+      {
+        "id": "PD-DB",
+        "name": "Alembic 284-table difference classification",
+        "path": "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_DB_ALEMBIC_DIFF_CLASSIFICATION.md",
+        "tests": "Live disposable PG: upgrade head exit 0, alembic check exit 255, 284 add_table diffs, 0 metadata aborts (disposable DB dropped)",
+        "status": "BLOCKED",
+        "boundary": "Classification only; ADR-A and the 284-table gap are owner-gated; 1364 destructive-looking drift operations are never auto-applied; no migration generated."
+      }
+    ],
+    "gate": {
+      "script": "scripts/phase_b_gate.py",
+      "verdict": "PASS",
+      "checks": "preservation PASS; registry PASS; focused 6/6 PASS; static (Ruff) PASS; types (MyPy) PASS; regression 773 passed PASS",
+      "full_collection": "4865 tests collected in 25.10s, 0 collection errors (4675 Phase A baseline + 190 new Phase B tests)",
+      "broad_regression_disclosure": "1654 passed / 4 skipped / 1 failed across unit+contracts+security+identity+kernel+kernel_hardening+health_core; the single failure is test_nr011_metadata_discovery.py::test_cross_metadata_foreign_keys_resolve, triggered only when tests/identity is co-collected (pre-existing SQLAlchemy global-metadata interaction between identity models and the NR-011 merge probe). It passes in isolation and in the focused gate; no Phase B file is involved."
+    },
+    "change_set_verdict": {
+      "scope": "Phase B artifacts listed above plus status_registry.json, reports 13/14 and the adversarial review record",
+      "status": "INDEPENDENTLY VERIFIED",
+      "basis": "independent read-only review PASS with zero findings (session ses_e0ff9c922fferm5xYuovZPWVX4): all six gate checks and 235 focused tests re-run, source-level security/correctness review, documentation honesty cross-check, and reproduction of the disclosed pre-existing NR-011 broad-suite failure — recorded in ADVERSARIAL_REVIEW_RECORD.md",
+      "boundary": "Independent engineering-evidence verdict within the review scope only. NOT PRODUCTION READY. It does not lift HOLD/REJECT, grant owner sign-off, activate any route, or make any production/clinical/regulatory/release claim."
+    },
+    "production_ready_items": 0
+  },
   "production_ready_items": 0,
   "final_instruction": "STOP before deployment. No owner-gated status may be escalated without a signed superseding decision record."
 }

@@ -71,3 +71,41 @@ The single warning is the pre-existing third-party `StarletteDeprecationWarning`
 The shared pre-commit hook resolves its validator from `git rev-parse --show-toplevel`. In this **worktree** that path is `gula-integration`, which contains neither `scripts/validate_constitution.py` nor `AI_OPERATING_CONSTITUTION.md` (both confirmed absent from the branch tree by `git cat-file -e HEAD:<path>`). The hook therefore fails with "can't open file" for **any** commit in this worktree — a pre-existing tooling defect, not a finding against this change set (this program has 0 deletions and touched no AI configuration file).
 
 Substantive equivalent checks were executed manually and passed: the change set does not modify `AGENTS.md`, `CLAUDE.md`, `COPILOT.md`, `CODEX.md`, `GEMINI.md`, `AI_BOOTSTRAP.md` or `.github/copilot-instructions.md`, and declares no competing constitutional rule. The hook was consequently bypassed for this single local commit with documented justification; no warning or test failure was suppressed.
+
+---
+
+## Phase B — independent review — verdict **PASS**
+
+**Reviewer:** independent read-only subagent, session `ses_e0ff9c922fferm5xYuovZPWVX4`, **no file ownership in the Phase B change set**. **Method:** re-ran every deterministic gate, reviewed source (not only tests), cross-checked every numeric/status claim, and reproduced the disclosed pre-existing failure. No file, git state or database was mutated; no network access was used.
+
+**Scope:** the five `GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_*.md` reports; `backend/app/health_core/terminology/{__init__,checkdigit,models,releases,validators}.py`; the two updated terminology test files; `backend/app/health_core/reliability/durable_queue.py` + its test; `backend/app/health_core/audit_anchor/` + its test; `backend/app/interoperability/fhir_http/` + its test; `scripts/phase_b_gate.py`; `status_registry.json`; reports `13` and `14`. Pre-existing uncommitted work outside this list was explicitly out of scope.
+
+### Independently re-run gates (exact results)
+
+- `python scripts/phase_b_gate.py` → exit 0, **6/6 PASS** (preservation, registry, focused, static, types, regression).
+- Six focused suites → **31 + 14 + 106 + 19 + 14 + 51 = 235 passed**, 0 skipped/xfails (doc claim 235 ✓).
+- Terminology contract/provenance → **103 passed** (claim ✓).
+- `pytest tests --collect-only -q` → **4865 collected, 0 errors** (claim ✓; 4675 + 190 = 4865).
+- `pytest tests/health_core` → **773 passed, 1 warning**, 0 failed.
+
+### Source-level review conclusions
+
+- **T1:** faithful Appendix C.1 Mod-10 (right-to-left positions, odd×2 digit-sum, even direct, `(10-total%10)%10`); all five vectors independently recomputed; letter-prefixed codes fail closed as `NOT_IMPLEMENTED`; all reason strings are fixed constants (no caller-controlled echo).
+- **T3:** idempotency, bounded retry, deterministic quarantine, tenant/facility scope and verified-log replay intact. `_no_sleep` is a genuine injectable no-op — delay is logged before the sleeper runs, so no backoff information is lost. New `_replay_int` helper rejects bool, floats, `None`, containers and non-numeric strings while accepting `int`/digit-strings.
+- **T5:** HMAC-SHA256 chain, monotonic sequence, `compare_digest`, cross-tenant rejection, append-only store with no update/delete, synthetic rotation retains old keys for verification only. No forge/rewrite path within the declared boundary.
+- **T6:** `_guard(auth)` before any resource lookup; scope assertion before return/store; structured `OperationOutcome` errors; strong ETag + `If-Match` with 409 on mismatch; canonical re-serialization strips unknown fields; escaped allow-listed diagnostics. Router is **NON-activated** (no `fhir_http` reference in `factory.py`/`main.py`; the pre-existing `capabilities/fhir_interoperability` router is a different component). WS-E guard intact: **zero** FastAPI imports or router constructors under `backend/app/health_core/`.
+- **DB:** live-PG numbers could not be re-run (DB access prohibited by the review authority), but internally consistent (284 = 191+5+6+82; 9 layers sum 284; 1364 destructive ops sum correctly) and honestly `BLOCKED`.
+
+### Disclosure reproduced
+
+- NR-011 FK test in isolation → **1 passed**.
+- Co-collected with `tests/identity` → **1 failed, 1658 deselected** with the exact disclosed `NoReferencedTableError: niam_adaptive_mfa_sessions.session_id → niam_user_sessions.id`.
+- Full broad selection → **1654 passed / 4 skipped / 1 failed** (the same pre-existing test). No Phase B file involved; disclosure is accurate and must remain visible, not suppressed.
+
+### Preservation
+
+Protected md5s `effdfeaf…`, `1a02c015…`, `ea3969d0…` unchanged; platform HEAD pinned at `f478676b…`; integration HEAD `0cb067ae…` on `integration/gula-unification-v1`; 0 tracked deletions; `production_ready_items == 0` in both registry locations.
+
+**Findings:** none requiring remediation. **Commit safety:** the reviewer explicitly confirmed the Phase B change set is **safe to commit locally** — no push, PR, merge, publish, deployment or production DB access.
+
+**Consequence:** the Phase B change set is classified `INDEPENDENTLY VERIFIED` **within this review scope only** — an independent engineering-evidence verdict. It does not lift HOLD or the MPI REJECT, does not grant owner sign-off, activates no route, and makes no production, clinical, regulatory or release claim. All owner-gated items remain `BLOCKED`.
