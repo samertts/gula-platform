@@ -1,0 +1,221 @@
+{
+  "schema_version": "1.0",
+  "program": "GULA National Integration & Governance Remediation Program",
+  "document": "machine-readable status registry",
+  "date": "2026-11-18",
+  "data_class": "SYNTHETIC_ONLY",
+  "status_vocabulary": [
+    "IMPLEMENTED",
+    "TESTED",
+    "INTEGRATED",
+    "INDEPENDENTLY VERIFIED",
+    "PRODUCTION READY",
+    "BLOCKED",
+    "NOT IMPLEMENTED"
+  ],
+  "authority": {
+    "authorized": [
+      "local commits on dedicated working branch after validation",
+      "technical remediation within approved integration scope",
+      "disposable local DB migrations for rehearsal",
+      "superseding decision packages preserving original history"
+    ],
+    "not_authorized": [
+      "push",
+      "publish",
+      "public release",
+      "protected-branch merge",
+      "external deployment",
+      "invented legal/clinical/regulatory/government approval",
+      "operational or production DB access",
+      "deletion or weakening of tests"
+    ]
+  },
+  "repositories": {
+    "integration": {
+      "path": "/home/samertts/workspace/projects/gula-integration",
+      "branch": "integration/gula-unification-v1",
+      "head": "2827c1ff1032918aa2541aa0b47bb7f2e5d6cac0",
+      "status_entries_at_baseline": 262,
+      "deletions": 0,
+      "head_unchanged_phase_a": true
+    },
+    "platform": {
+      "path": "/home/samertts/workspace/projects/gula-platform",
+      "branch": "remediate-security-001",
+      "head": "f478676b6fc375338648dde46fbf076c015a3f91",
+      "status_entries": 0,
+      "untouched": true
+    }
+  },
+  "protected_evidence": [
+    {
+      "path": "GOVERNANCE/FINAL_DECISION.md",
+      "md5": "effdfeaf10234678d83b2668c4489552",
+      "verdict": "HOLD",
+      "status": "INDEPENDENTLY VERIFIED",
+      "basis": "md5 re-read this program and independently re-checked by the adversarial reviewer, 2026-11-18 (see ADVERSARIAL_REVIEW_RECORD.md); verdict itself remains HOLD"
+    },
+    {
+      "path": "GOVERNANCE/IDENTITY_REMEDIATION/MPI_FINAL_INDEPENDENT_AUDIT.md",
+      "md5": "1a02c01563c93b07a7cdb92c0462bf36",
+      "verdict": "REJECT",
+      "status": "INDEPENDENTLY VERIFIED",
+      "basis": "md5 re-read this program and independently re-checked by the adversarial reviewer, 2026-11-18 (see ADVERSARIAL_REVIEW_RECORD.md); verdict itself remains REJECT"
+    },
+    {
+      "path": "GOVERNANCE/IDENTITY_REMEDIATION/MPI_INDEPENDENT_AUDIT_FINDINGS.md",
+      "md5": "ea3969d09aaf7b0b28a065838b44a594",
+      "verdict": "REJECT source",
+      "status": "INDEPENDENTLY VERIFIED",
+      "basis": "md5 re-read this program and independently re-checked by the adversarial reviewer, 2026-11-18 (see ADVERSARIAL_REVIEW_RECORD.md); verdict itself remains REJECT"
+    }
+  ],
+  "baseline": {
+    "gate": "ENV=test RUNTIME_MODE=test PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:.. <venv>/python -m pytest tests/health_core -q --tb=short",
+    "toolchain": "gula-platform/backend/.venv (Python 3.12.13, pytest 9.1.1, ruff 0.16.0, mypy 2.3.0, alembic 1.18.5, signxml present)",
+    "result": "773 passed, 1 warning in 13.41s (re-run with complete toolchain)",
+    "exit_code": 0,
+    "failed": 0,
+    "skipped": 0,
+    "warnings": 1,
+    "warning_source": "third-party fastapi/testclient.py StarletteDeprecationWarning",
+    "status": "TESTED",
+    "basis": "self-executed by this program; the 773 count was independently re-run by the adversarial reviewer (see ADVERSARIAL_REVIEW_RECORD.md). Not self-awarded INDEPENDENTLY VERIFIED for the change set as a whole.",
+    "ruff_mypy": "PASS — ruff: All checks passed! on health_core source+tests; mypy: Success, no issues in 75 source files",
+    "full_suite_collection": "4675 tests collected in 22.55s, 0 errors (signxml dependency restored; +31 from the new registry-integrity test file — 20 at review round 1, +11 negative cases added afterwards)"
+  },
+  "phases": {
+    "A": {"name": "Baseline, survey and planning", "status": "IMPLEMENTED"},
+    "B": {"name": "Authorized engineering remediation", "status": "TESTED", "basis": "registry integrity gate + NR-011 prerequisite verification only; no workstream production claim"},
+    "C": {"name": "Integration and cross-workstream evidence", "status": "NOT IMPLEMENTED"},
+    "D": {"name": "Adversarial review and decision packages", "status": "INDEPENDENTLY VERIFIED", "basis": "round 1 FAIL (8 findings) -> all fixed -> round 2 independent PASS; see ADVERSARIAL_REVIEW_RECORD.md"},
+    "E": {"name": "Final acceptance", "status": "NOT IMPLEMENTED"}
+  },
+  "workstreams": {
+    "WS-01": {
+      "name": "Identity & MPI",
+      "owns": ["backend/app/identity/**", "backend/app/services/mpi/**", "backend/app/services/identity_matching.py", "backend/app/health_core/identity/**"],
+      "status": "TESTED",
+      "evidence": "127 synthetic MPI tests (prior cycle); final audit REJECT with 3 open",
+      "blockers": ["MP-001", "ODR-002", "ODR-003"],
+      "survey": "06_IDENTITY_MPI_SURVEY.md"
+    },
+    "WS-02": {
+      "name": "Security & audit",
+      "owns": ["backend/app/security/**", "backend/app/audit/**", "backend/app/health_core/authorization/**"],
+      "status": "TESTED",
+      "evidence": "S-01…S-13 remediated; 91→0 unguarded gaps; 68 authorization tests",
+      "blockers": ["D-020", "ADR-D", "R-01…R-11"],
+      "survey": "07_SECURITY_AUDIT_SURVEY.md"
+    },
+    "WS-03": {
+      "name": "FHIR R4 interoperability",
+      "owns": ["backend/app/health_core/fhir/**", "backend/app/capabilities/fhir_interoperability/**", "backend/app/national/fhir/**", "backend/app/fhir/**"],
+      "status": "TESTED",
+      "boundary": "local adapter only; HTTP endpoint NOT IMPLEMENTED",
+      "blockers": ["WS-04 official datasets"],
+      "survey": "08_FHIR_SURVEY.md"
+    },
+    "WS-04": {
+      "name": "Terminology",
+      "owns": ["backend/app/health_core/terminology/**", "backend/app/national/reference/**"],
+      "status": "TESTED",
+      "evidence": "38 offline validator/provenance tests",
+      "blockers": ["SNOMED CT license", "LOINC check-digit offline"],
+      "survey": "09_TERMINOLOGY_SURVEY.md"
+    },
+    "WS-05": {
+      "name": "Reliability & offline-first",
+      "owns": ["backend/app/health_core/reliability/**", "offline sync engine"],
+      "status": "TESTED",
+      "evidence": "26 reliability tests; 31 offline-conflict tests (E-055)",
+      "boundary": "in-memory only; no durable keyed anchor",
+      "blockers": ["durable anchor owner", "RPO/RTO unmeasured"],
+      "survey": "10_RELIABILITY_OFFLINE_SURVEY.md"
+    },
+    "WS-06": {
+      "name": "Client integration",
+      "owns": ["backend/app/health_core/client_integration/**"],
+      "status": "TESTED",
+      "evidence": "30 client tests; F-04 fail-closed observation resolution",
+      "boundary": "end_to_end_verified = False",
+      "blockers": ["iOS project absent", "Expo authorization", "101 contract drifts"],
+      "survey": "11_CLIENT_INTEGRATION_SURVEY.md"
+    },
+    "WS-07": {
+      "name": "National domains & journeys",
+      "owns": ["backend/app/domain_platform/**", "backend/app/national/**"],
+      "status": "INTEGRATED",
+      "evidence": "11/11 domain certification, isolation PASS",
+      "blockers": ["NR-011", "ADR-A", "ADR-B", "ADR-C", "ADR-D", "426-table gap"],
+      "survey": "12_NATIONAL_DOMAIN_SURVEY.md"
+    }
+  },
+  "governance_items": [
+    {"id": "HOLD", "status": "BLOCKED", "authority": "Program Director", "package": "05 §6"},
+    {"id": "MPI REJECT", "status": "BLOCKED", "authority": "Identity owner", "package": "05 §2-3"},
+    {"id": "MP-001", "status": "BLOCKED", "authority": "Identity + DB owner", "package": "05 §2"},
+    {"id": "ODR-001", "status": "BLOCKED", "authority": "Identity owner", "package": "05 §3"},
+    {"id": "ODR-002", "status": "BLOCKED", "authority": "Identity owner", "package": "05 §3"},
+    {"id": "ODR-003", "status": "BLOCKED", "authority": "Identity + Clinical owner", "package": "05 §3"},
+    {"id": "ODR-004", "status": "BLOCKED", "authority": "Identity owner", "package": "05 §3"},
+    {"id": "D-020", "status": "BLOCKED", "authority": "Security lead", "package": "05 §4"},
+    {"id": "D-021", "status": "BLOCKED", "authority": "Clinical lead + legal", "package": "05 §4"},
+    {"id": "ADR-A", "status": "BLOCKED", "authority": "Program Director / Architect", "package": "05 §5"},
+    {"id": "ADR-B", "status": "BLOCKED", "authority": "Database owner", "package": "05 §5"},
+    {"id": "ADR-C", "status": "BLOCKED", "authority": "Architect", "package": "05 §5"},
+    {"id": "ADR-D", "status": "BLOCKED", "authority": "Security lead + owner", "package": "05 §5"},
+    {"id": "ADR-E", "status": "BLOCKED", "authority": "Architect", "package": "05 §5"},
+    {"id": "ADR-F", "status": "BLOCKED", "authority": "Architect", "package": "05 §5"},
+    {"id": "ADR-G", "status": "BLOCKED", "authority": "Architect + owner", "package": "05 §5"},
+    {"id": "ADR-H", "status": "BLOCKED", "authority": "Architect", "package": "05 §5"},
+    {"id": "ADR-I", "status": "BLOCKED", "authority": "Architect + owner", "package": "05 §5"},
+    {"id": "ADR-J", "status": "BLOCKED", "authority": "Architect", "package": "05 §5"},
+    {"id": "NR-011", "status": "TESTED", "authority": "Backend engineering (authorized)", "package": "04 §2", "evidence": "14/14 metadata-discovery regressions pass; disposable PG DB gula_nr011_verify: alembic upgrade head exit 0 and alembic check runs with 0 NoReferencedTableError (exit 1 = 284 documented unmigrated-table diffs, ADR-A debt)"},
+    {"id": "AUD-02", "status": "BLOCKED", "authority": "DB owner (MP-001)", "package": "05 §2"},
+    {"id": "AUD-07", "status": "BLOCKED", "authority": "Identity owner (ODR-002)", "package": "05 §3"},
+    {"id": "AUD-16", "status": "BLOCKED", "authority": "Identity + Clinical (ODR-003)", "package": "05 §3"}
+  ],
+  "critical_path": [
+    "NR-011 (TESTED — prerequisite engineering complete)",
+    "ADR-A (BLOCKED)",
+    "context-by-context migrations (NOT IMPLEMENTED)",
+    "MIG-EXISTING closure (BLOCKED)",
+    "HOLD lifting (BLOCKED)",
+    "production readiness (BLOCKED)"
+  ],
+  "parallel_executable_tranche": {
+    "T1": ["WS-04", "WS-05"],
+    "T2": ["WS-02", "WS-03"],
+    "T3": ["WS-06"],
+    "T4": ["WS-01 synthetic-only"],
+    "T5": ["WS-07 after ADR-A/C"]
+  },
+  "quality_gates": {
+    "focused_tests": "per change (Phase B)",
+    "full_regression": "773 baseline — PASS",
+    "contract_diff": "no route changes in Phase A",
+    "ruff_mypy": "PASS — restored complete toolchain; ruff clean, mypy 0 issues on health_core",
+    "registry_integrity": "PASS — scripts/national_integration_verify.py (31 tests, 0 failures; 11 new negative-case tests added after adversarial review round 1)",
+    "preservation": "PASS (HEADs, md5s, 0 deletions)",
+    "adversarial_review": "round 1 FAIL (8 findings) -> round 2 independent PASS (all fixed, zero blocking new findings) — see ADVERSARIAL_REVIEW_RECORD.md"
+  },
+  "review_record": "GOVERNANCE/NATIONAL_INTEGRATION/ADVERSARIAL_REVIEW_RECORD.md",
+  "change_set_verdict": {
+    "scope": "Phase A change set only: documents 00-14, status_registry.json, scripts/national_integration_verify.py, backend/tests/unit/test_national_integration_registry.py",
+    "status": "INDEPENDENTLY VERIFIED",
+    "basis": "round-2 independent read-only review PASS; all 8 findings verified fixed, all gates independently re-run and passing, protected md5s and both HEADs unchanged",
+    "boundary": "engineering evidence only — does not lift HOLD/REJECT, grant owner sign-off, or make any production/clinical/regulatory/release claim; Phase B artifacts are out of scope and require their own review"
+  },
+  "engineering_artifacts": [
+    {
+      "path": "scripts/national_integration_verify.py",
+      "tests": "backend/tests/unit/test_national_integration_registry.py (31 passed)",
+      "purpose": "reproducible integrity gate for the machine-readable status registry",
+      "status": "TESTED"
+    }
+  ],
+  "production_ready_items": 0,
+  "final_instruction": "STOP before deployment. No owner-gated status may be escalated without a signed superseding decision record."
+}
