@@ -10,6 +10,20 @@ Routes:
 
 Route order matters: static segments (``/validate``) are declared before
 ``/{result_id}`` so FastAPI does not treat "validate" as an id.
+
+Authorization: mirrors citizens.py — LAB/ADMIN produce and verify results
+(DOCTOR added on verify, since sign-off is a clinical responsibility),
+reads add MINISTRY for oversight, matching outbreak.py's precedent. Role
+and actor identity come from core.trusted_context (fails closed until
+federation lands), not from client-supplied headers.
+
+Tenant scope (F2): POST / previously used the client-supplied
+``payload.lab_id`` as the sole authority for which lab a result gets
+attributed to — a caller authenticated as LAB could file a result against
+any lab's id, not just their own. ``create_test_result`` now cross-checks
+``payload.lab_id`` against the trusted context's ``lab_id`` for the LAB
+role (ADMIN keeps platform-wide scope, matching backend/app's own
+platform-roles pattern in security/rbac.py).
 """
 from __future__ import annotations
 
@@ -23,6 +37,8 @@ from sqlalchemy.orm import Session
 from backend.app._compat import UTC
 
 from ...core.database import get_db
+from ...core.rbac import Role, require_roles
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab import Lab
 from ...models.notification import NotificationPriority, NotificationType
@@ -39,7 +55,6 @@ from ...schemas.test_result import (
     TestResultRead,
     TestResultValidateRequest,
     TestResultValidateResponse,
-    TestResultVerifyRequest,
     TimelinePoint,
     TimelineSeries,
     ValidationWarning,
@@ -53,11 +68,15 @@ from ...services.smart_analysis import (
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])
 
+_lab_staff = require_roles(Role.LAB, Role.ADMIN)
+_clinical_staff = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN)
+_clinical_staff_and_ministry = require_roles(Role.LAB, Role.DOCTOR, Role.ADMIN, Role.MINISTRY)
+
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
 def _actor_id(request: Request) -> str | None:
-    return request.headers.get("X-Actor-Id")
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:
@@ -149,7 +168,10 @@ def _fire_critical_alert(
     response_model=TestResultValidateResponse,
     status_code=status.HTTP_200_OK,
 )
-def validate_payload(payload: TestResultValidateRequest) -> TestResultValidateResponse:
+def validate_payload(
+    payload: TestResultValidateRequest,
+    role: str = Depends(_clinical_staff),
+) -> TestResultValidateResponse:
     vr = validate_result(
         test_code=payload.test_code,
         value=payload.value_numeric,
@@ -178,6 +200,7 @@ def create_test_result(
     payload: TestResultCreate,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_lab_staff),
 ) -> TestResultRead:
     citizen = _require_citizen(db, payload.health_id)
 
@@ -186,6 +209,18 @@ def create_test_result(
         raise HTTPException(status_code=404, detail="lab not found")
     if not lab.is_active:
         raise HTTPException(status_code=400, detail="lab is not active")
+
+    # F2: payload.lab_id is client-supplied and must not be the sole
+    # authority for which lab this result is attributed to. A LAB-role
+    # caller may only file results for their own lab; ADMIN is a
+    # platform-wide role and is exempt, mirroring backend/app's
+    # platform_roles pattern (security/rbac.py::require_own_lab).
+    ctx = current_context(request)
+    if ctx.role == Role.LAB.value and ctx.lab_id != str(lab.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="cannot file a test result against another lab",
+        )
 
     vr = validate_result(
         test_code=payload.test_code,
@@ -260,6 +295,7 @@ def create_test_result(
             "is_abnormal": row.is_abnormal,
             "is_critical": row.is_critical,
             "sample_barcode": row.sample_barcode,
+            "role": role,
         },
     )
 
@@ -282,6 +318,7 @@ def citizen_timeline(
     request: Request,
     test_code: str | None = Query(default=None, max_length=60),
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> CitizenTimelineResponse:
     citizen = _require_citizen(db, health_id)
 
@@ -327,7 +364,7 @@ def citizen_timeline(
         target_id=citizen.health_id,
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"series": len(by_code), "test_code": test_code},
+        metadata={"series": len(by_code), "test_code": test_code, "role": role},
     )
     db.commit()
 
@@ -353,6 +390,7 @@ def list_citizen_results(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> TestResultListResponse:
     citizen = _require_citizen(db, health_id)
 
@@ -385,7 +423,7 @@ def list_citizen_results(
         metadata={
             "total": total, "skip": skip, "limit": limit,
             "category": category.value if category else None,
-            "is_abnormal": is_abnormal,
+            "is_abnormal": is_abnormal, "role": role,
         },
     )
     db.commit()
@@ -405,6 +443,7 @@ def get_test_result(
     result_id: UUID,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff_and_ministry),
 ) -> TestResultRead:
     row = _require_result(db, result_id)
 
@@ -415,6 +454,7 @@ def get_test_result(
         target_id=str(row.id),
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
+        metadata={"role": role},
     )
     db.commit()
     return TestResultRead.model_validate(row)
@@ -425,10 +465,19 @@ def get_test_result(
 @router.put("/{result_id}/verify", response_model=TestResultRead)
 def verify_test_result(
     result_id: UUID,
-    payload: TestResultVerifyRequest,
     request: Request,
     db: Session = Depends(get_db),
+    role: str = Depends(_clinical_staff),
 ) -> TestResultRead:
+    """Mark a result verified. The verifier is the caller, not a field.
+
+    The request body used to name the verifying clinician (verified_by), so
+    the attestation recorded against a clinical result was a client-supplied
+    string — anyone permitted to call this endpoint at all could attribute
+    the verification to any name they typed. It is now taken from the
+    trusted context, exactly as create_test_result's lab scope is above: a
+    body sent by an old client is ignored rather than trusted.
+    """
     row = _require_result(db, result_id)
 
     if row.status == ResultStatus.verified:
@@ -443,7 +492,7 @@ def verify_test_result(
         )
 
     row.status = ResultStatus.verified
-    row.verified_by = payload.verified_by
+    row.verified_by = current_context(request).actor_id
     row.verified_at = datetime.now(UTC)
 
     log_action(
@@ -453,7 +502,7 @@ def verify_test_result(
         target_id=str(row.id),
         actor_id=_actor_id(request),
         ip_address=_client_ip(request),
-        metadata={"verified_by": payload.verified_by},
+        metadata={"verified_by": row.verified_by, "role": role},
     )
     db.commit()
     db.refresh(row)

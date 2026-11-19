@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -8,11 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
 from app.identity.models.session import UserSession
 from app.identity.models.workspace import Workspace
+from app.identity.niam_async_db import get_niam_db
 from app.identity.services.audit_service import AuditService
 from app.identity.services.workspace_service import WorkspaceAccessDenied, WorkspaceService
 from app.security.auth import decode_token
@@ -54,6 +57,7 @@ def get_current_niam_actor_sync(
             Account.is_locked.is_(False),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
+            UserSession.expires_at > datetime.now(UTC),
         )
         .first()
     )
@@ -65,7 +69,7 @@ def get_current_niam_actor_sync(
 async def get_current_niam_actor(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ) -> NiamActor:
     raw_token = _raw_niam_token(request, credentials)
     payload = decode_token(raw_token)
@@ -81,6 +85,7 @@ async def get_current_niam_actor(
             Account.is_active.is_(True),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
+            UserSession.expires_at > datetime.now(UTC),
         ),
     )
     actor = result.first()

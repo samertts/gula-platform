@@ -32,7 +32,7 @@ class TrustFramework(IdentityBaseEntity):
         String(26), ForeignKey("niam_trust_frameworks.id", ondelete="SET NULL"), nullable=True, index=True,
     )
     authority_id = Column(
-        String(26), ForeignKey("niam_identity_authorities.id", ondelete="SET NULL"), nullable=True, index=True,
+        String(26), ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"), nullable=True, index=True,
     )
     scope = Column(JSON, nullable=True)
     assurance_policies = Column(JSON, nullable=True)
@@ -123,7 +123,7 @@ class IdentityProofing(IdentityBaseEntity):
     verified_by = Column(String(200), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
     authority_id = Column(
-        String(26), ForeignKey("niam_identity_authorities.id", ondelete="SET NULL"), nullable=True, index=True,
+        String(26), ForeignKey("niam_gov_authorities.id", ondelete="SET NULL"), nullable=True, index=True,
     )
     status = Column(String(20), nullable=False, default="pending", index=True)
     rejection_reason = Column(Text, nullable=True)

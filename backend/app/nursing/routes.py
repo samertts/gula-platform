@@ -30,6 +30,13 @@ router = APIRouter(prefix="/nursing", tags=["nursing"])
 
 _NURSING_NS = "nursing"
 
+# Clinical-write roles for nursing mutations -- mirrors the same tier
+# convention already used across Laboratory/Radiology (e.g.
+# _RADIOLOGY_WRITE_ROLES): the canonical "nurse" role (app/models/
+# authorization.py) plus doctor/admin/master_admin. Before this fix, none
+# of these routes checked current_user.role at all.
+_NURSING_WRITE_ROLES = {"admin", "master_admin", "doctor", "nurse"}
+
 
 def _model_to_dict(model_instance) -> dict[str, Any]:
     exclude = {"lab_id", "is_deleted", "deleted_at", "version"}
@@ -480,6 +487,8 @@ def assign_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _NURSING_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to assign a patient")
     assignment = NursingService.assign_patient(
         db, current_user.lab_id, current_user.id,
         body.nurse_id, body.patient_id, body.assignment_type,
@@ -494,6 +503,8 @@ def unassign_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _NURSING_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to unassign a patient")
     NursingService.unassign_patient(db, current_user.lab_id, current_user.id, body.nurse_id, body.patient_id)
     return {"detail": "Patient unassigned", "detail_ar": "تم إلغاء تعيين المريض"}
 
@@ -557,6 +568,8 @@ def create_task(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _NURSING_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create a nursing task")
     task = NursingService.create_task(db, current_user.lab_id, current_user.id, body.model_dump(exclude_none=True))
     return _model_to_dict(task)
 
@@ -568,6 +581,8 @@ def update_task(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _NURSING_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to update a nursing task")
     data = dict(body.model_dump(exclude_none=True).items())
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -582,6 +597,8 @@ def complete_task(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _NURSING_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to complete a nursing task")
     task = NursingService.complete_task(
         db, current_user.lab_id, current_user.id, task_id, body.patient_response, body.notes,
     )
@@ -595,6 +612,8 @@ def defer_task(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in _NURSING_WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to defer a nursing task")
     task = NursingService.defer_task(
         db, current_user.lab_id, current_user.id, task_id, body.new_due_time, body.reason,
     )

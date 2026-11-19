@@ -62,7 +62,15 @@ def can_manage_user(actor, target_user) -> bool:
         return False
     if actor.role == "province_admin":
         return actor.province_id == target_user.province_id
-    return True
+    if actor.role in {"master_admin", "ministry_admin"}:
+        return True
+    # Every other role that can reach this check (e.g. admin/lab_admin) is
+    # lab-scoped: it may only manage users within its own lab. Mirrors the
+    # platform_roles bypass + lab_id equality already enforced by
+    # require_own_lab() below, so tenant scoping stays defined in one place.
+    return getattr(actor, "lab_id", None) is not None and actor.lab_id == getattr(
+        target_user, "lab_id", None
+    )
 
 
 def require_role(*allowed_roles):

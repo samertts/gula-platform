@@ -390,6 +390,29 @@ async def seed_critical_data() -> None:
         except Exception as exc:
             logger.error("[STARTUP GUARD] Seeding %s FAILED (non-fatal): %s", name, exc)
 
+    # Genuinely async (needs a real AsyncSession -- app.identity.niam_async_db,
+    # not the sync SessionLocal every step above uses), so it runs directly
+    # rather than via run_in_executor. Same non-fatal contract: unset
+    # PLATFORM_AUTHORITY_BOOTSTRAP_ACCOUNT_EMAIL/_CAPABILITIES (the default,
+    # on every deployment today) makes this a complete no-op -- see
+    # app/identity/platform_authority/bootstrap.py.
+    try:
+        logger.info("[STARTUP GUARD] Seeding platform authority bootstrap...")
+        from ..identity.niam_async_db import open_niam_session
+        from ..identity.platform_authority.bootstrap import ensure_platform_authority_bootstrap
+
+        async with open_niam_session() as niam_session:
+            await ensure_platform_authority_bootstrap(niam_session)
+            # Commits even a no-net-new-grant run: bootstrap_started/
+            # bootstrap_completed are written whenever the account resolves
+            # at all (see bootstrap.py), and that audit trail must persist
+            # even when every requested capability was already handled --
+            # committing unconditionally is harmless when nothing was
+            # actually touched (unset config -> nothing pending, no-op).
+            await niam_session.commit()
+    except Exception as exc:
+        logger.error("[STARTUP GUARD] Seeding platform authority bootstrap FAILED (non-fatal): %s", exc)
+
     logger.info("[STARTUP GUARD] Critical data seeded OK")
 
 

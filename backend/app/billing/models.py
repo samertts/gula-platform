@@ -6,7 +6,6 @@ Every tenant-facing query must filter by ``lab_id``.
 """
 from __future__ import annotations
 
-from datetime import date
 from datetime import datetime
 from decimal import Decimal
 

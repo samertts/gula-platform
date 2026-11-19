@@ -19,7 +19,9 @@ def test_order_tests_requires_doctor_role(app_client, make_citizen):
             "clinical_indication": "routine",
         },
     )
-    assert resp.status_code == 403
+    # No identifying header at all -> 503 (no trusted caller identity can be
+    # established). See app/core/trusted_context.py: fail closed, not 403.
+    assert resp.status_code == 503
 
     resp = client.post(
         "/v1/doctor/order-tests",

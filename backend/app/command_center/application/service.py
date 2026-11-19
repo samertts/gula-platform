@@ -14,7 +14,9 @@ from app.command_center.domain.entities import (
     SituationReport,
 )
 from app.command_center.exceptions import (
+    EmergencyAlreadyResolvedError,
     EmergencyNotFoundError,
+    ResourceRequestAlreadyFulfilledError,
     ResourceRequestNotFoundError,
 )
 from app.command_center.infrastructure.models import (
@@ -67,14 +69,17 @@ class CommandCenterService:
 
     def resolve_emergency(self, emergency_id: str, resolved_by: str = "",
                           notes: str = "") -> EmergencyDeclaration:
-        model = self.db.query(EmergencyDeclarationModel).filter_by(id=emergency_id).first()
+        model = self.db.query(EmergencyDeclarationModel).filter_by(id=emergency_id).with_for_update().first()
         if not model:
             raise EmergencyNotFoundError()
+        if model.status == "resolved":
+            raise EmergencyAlreadyResolvedError()
         model.status = "resolved"
         model.resolved_at = datetime.now(UTC)
         model.resolved_by = resolved_by
         if notes:
             model.situation_summary = (model.situation_summary or "") + f"\n[RESOLVED] {notes}"
+        model.version = (model.version or 0) + 1
         self.db.commit()
         self.db.refresh(model)
         return self._emergency_from_model(model)
@@ -99,15 +104,18 @@ class CommandCenterService:
         return [self._resource_from_model(m) for m in query.all()]
 
     def fulfill_resource(self, request_id: str, data: dict[str, Any]) -> ResourceRequest:
-        model = self.db.query(ResourceRequestModel).filter_by(id=request_id).first()
+        model = self.db.query(ResourceRequestModel).filter_by(id=request_id).with_for_update().first()
         if not model:
             raise ResourceRequestNotFoundError()
+        if model.status == "fulfilled":
+            raise ResourceRequestAlreadyFulfilledError()
         model.status = "fulfilled"
         model.fulfilled_quantity = data.get("fulfilled_quantity", model.quantity)
         model.fulfilled_by = data.get("fulfilled_by", "")
         model.fulfilled_at = datetime.now(UTC)
         model.source = data.get("source", "")
         model.notes = data.get("notes", "")
+        model.version = (model.version or 0) + 1
         self.db.commit()
         self.db.refresh(model)
         return self._resource_from_model(model)

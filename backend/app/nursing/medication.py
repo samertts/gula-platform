@@ -91,7 +91,10 @@ class MedicationAdminService:
         admin.recorded_time = datetime.now(UTC)
         db.add(admin)
         db.flush()
-        log_action(db, "nursing.medication.administer", "medication_administration", admin.id, user_id, lab_id, admin_data)
+        log_action(
+            db, "nursing.medication.administer", "medication_administration", None,
+            user_id=user_id, lab_id=lab_id, details={"resource_id": admin.id, **admin_data},
+        )
         return admin
 
     @staticmethod
@@ -195,9 +198,9 @@ class MedicationAdminService:
             raise HTTPException(status_code=404, detail="Medication administration record not found")
         signed_at = datetime.now(UTC)
         log_action(
-            db, "nursing.medication.sign", "medication_administration",
-            medication_admin_id, nurse_id, lab_id,
-            {"signed_at": signed_at.isoformat()},
+            db, "nursing.medication.sign", "medication_administration", None,
+            user_id=nurse_id, lab_id=lab_id,
+            details={"resource_id": medication_admin_id, "signed_at": signed_at.isoformat()},
         )
         return {
             "medication_admin_id": medication_admin_id,

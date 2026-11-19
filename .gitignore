@@ -34,6 +34,10 @@ data/db/
 /backend.pid
 /backend/*.db
 /backend/*.db-*
+/nhop.db
+/nhop.db-*
+/nhop-platform/nhop.db
+/nhop-platform/nhop.db-*
 
 # Generated reports at repository root
 /reports/

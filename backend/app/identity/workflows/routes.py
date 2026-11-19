@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.identity.niam_async_db import get_niam_db
 
 from .engine import WorkflowEngine
 
@@ -24,7 +24,7 @@ async def create_definition(
     escalation_step: str | None = None,
     retry_policy: dict[str, Any] | None = None,
     notification_triggers: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     definition = await engine.create_definition(
@@ -39,6 +39,7 @@ async def create_definition(
         retry_policy=retry_policy,
         notification_triggers=notification_triggers,
     )
+    await db.commit()
     return definition.to_dict()
 
 
@@ -46,7 +47,7 @@ async def create_definition(
 async def list_definitions(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     definitions = await engine.list_definitions(skip=skip, limit=limit)
@@ -56,7 +57,7 @@ async def list_definitions(
 @router.get("/definitions/{def_id}")
 async def get_definition(
     def_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     definition = await engine.get_definition(def_id)
@@ -72,7 +73,7 @@ async def start_instance(
     trigger_id: str,
     initiator_id: str,
     context: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     instance = await engine.start_instance(
@@ -84,13 +85,14 @@ async def start_instance(
     )
     if not instance:
         return {"error": "definition_not_found_or_inactive"}
+    await db.commit()
     return instance.to_dict()
 
 
 @router.get("/instances/{instance_id}")
 async def get_instance(
     instance_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     instance = await engine.get_instance(instance_id)
@@ -105,7 +107,7 @@ async def submit_approval(
     approver_id: str,
     decision: str,
     comments: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     approval = await engine.submit_approval(
@@ -116,6 +118,7 @@ async def submit_approval(
     )
     if not approval:
         return {"error": "instance_not_found"}
+    await db.commit()
     return approval.to_dict()
 
 
@@ -123,7 +126,7 @@ async def submit_approval(
 async def cancel_instance(
     instance_id: str,
     reason: str = "manual_cancellation",
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     instance = await engine.cancel_instance(
@@ -132,13 +135,14 @@ async def cancel_instance(
     )
     if not instance:
         return {"error": "not_found"}
+    await db.commit()
     return {"instance_id": instance.instance_id, "status": instance.status}
 
 
 @router.get("/approvals/pending/{approver_id}")
 async def get_pending_approvals(
     approver_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     engine = WorkflowEngine(db)
     approvals = await engine.get_pending_approvals(approver_id)

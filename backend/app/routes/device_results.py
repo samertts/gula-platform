@@ -5,11 +5,12 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..domain.sample_state import enforce_transition as enforce_sample_transition
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.sample import Sample
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import rate_limit_public
 from ..services.audit_service import log_action
 from ..services.interpretation import get_flag
@@ -36,7 +37,7 @@ class DeviceSubmission(BaseModel):
 def receive_device_results(
     data: DeviceSubmission,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     """Receive results from a lab analyzer device.
@@ -64,8 +65,13 @@ def receive_device_results(
     if not sample:
         raise HTTPException(status_code=404, detail="Sample not found")
 
-    if sample.status == "rejected":
-        raise HTTPException(status_code=400, detail="Cannot add results to a rejected sample")
+    # Raises ConflictError (409) for any sample already in a terminal state
+    # (rejected, or already analyzed) — closes a duplicate-ingestion gap
+    # where a replayed/retried device submission could silently re-process
+    # an already-analyzed sample and create duplicate LabResult rows with
+    # no idempotency protection at all.
+    sample_status_at_read = sample.status
+    enforce_sample_transition(sample_status_at_read, "analyzed")
 
     order = db.query(LabOrder).filter(LabOrder.id == sample.order_id).first()
 
@@ -73,7 +79,42 @@ def receive_device_results(
 
     assert_not_locked(order)
     assert_not_cancelled(order)
-    enforce_transition(order.status, "completed")
+    order_status_at_read = order.status
+    enforce_transition(order_status_at_read, "completed")
+
+    # Atomic backstop for both mutations below, applied *before* any
+    # LabResult rows are created so a lost race leaves nothing to unwind.
+    # Reuses the same CAS pattern as services/order_service.py::cancel_order
+    # and routes/samples.py::update_sample: LabOrder's existing
+    # locked_at/version columns for the order, and Sample.status itself as
+    # the compare-and-swap token for the sample (Sample has no version
+    # column — see MUSTAFA_ACTIVE_REPAIR_QUEUE.md). Without this, a
+    # concurrent cancel/validate of the same order, or a second concurrent
+    # device submission for the same sample, raced between the sequential
+    # checks above and the plain attribute assignments this replaced would
+    # silently win.
+    order_rows = (
+        db.query(LabOrder)
+        .filter(
+            LabOrder.id == order.id,
+            LabOrder.locked_at.is_(None),
+            LabOrder.status == order_status_at_read,
+        )
+        .update(
+            {"status": "completed", "version": LabOrder.version + 1},
+            synchronize_session="fetch",
+        )
+    )
+    if order_rows == 0:
+        raise HTTPException(status_code=409, detail="Order changed concurrently; re-submit")
+
+    sample_rows = (
+        db.query(Sample)
+        .filter(Sample.id == sample.id, Sample.status == sample_status_at_read)
+        .update({"status": "analyzed"}, synchronize_session="fetch")
+    )
+    if sample_rows == 0:
+        raise HTTPException(status_code=409, detail="Sample changed concurrently; re-submit")
 
     created = []
     for item in data.results:
@@ -107,10 +148,6 @@ def receive_device_results(
         )
         db.add(result)
         created.append({"test": item.test_name, "token": token})
-
-    # Update sample status
-    sample.status = "analyzed"
-    order.status = "completed"
 
     log_action(
         db,

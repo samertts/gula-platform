@@ -501,7 +501,7 @@ def _get_pharmacy_service(db: Session, user) -> PharmacyService:
 
 
 def _get_or_404(db: Session, model, id: str, detail: str = "Not found"):
-    obj = db.query(model).filter(model.id == id, not model.is_deleted).first()
+    obj = db.query(model).filter(model.id == id, ~model.is_deleted).first()
     if not obj:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
     return obj

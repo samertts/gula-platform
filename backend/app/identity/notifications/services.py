@@ -33,7 +33,6 @@ class NotificationService:
         now = datetime.now(UTC)
 
         notification = NotificationQueue(
-            id=...,
             uuid=str(uuid.uuid4()),
             queue_id=queue_id,
             recipient_id=recipient_id,
@@ -90,7 +89,6 @@ class NotificationService:
         now = datetime.now(UTC)
 
         notification = NotificationQueue(
-            id=...,
             uuid=str(uuid.uuid4()),
             queue_id=queue_id,
             recipient_id=recipient_id,
@@ -207,7 +205,6 @@ class NotificationService:
         else:
             preference_id = str(uuid.uuid4()).replace("-", "").upper()[:26]
             preference = NotificationPreference(
-                id=...,
                 uuid=str(uuid.uuid4()),
                 preference_id=preference_id,
                 recipient_id=recipient_id,
@@ -236,7 +233,6 @@ class NotificationService:
         version: str = "1.0",
     ) -> NotificationTemplate:
         template = NotificationTemplate(
-            id=...,
             uuid=str(uuid.uuid4()),
             template_id=template_id,
             name=name,

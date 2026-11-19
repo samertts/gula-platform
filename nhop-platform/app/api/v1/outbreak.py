@@ -16,6 +16,7 @@ from backend.app._compat import UTC
 
 from ...core.database import get_db
 from ...core.rbac import Role, require_roles
+from ...core.trusted_context import current_context
 from ...schemas.outbreak import (
     AlertsResponse,
     HeatmapResponse,
@@ -37,7 +38,7 @@ _ministry_or_admin = require_roles(Role.MINISTRY, Role.ADMIN)
 
 
 def _actor_id(request: Request) -> str | None:
-    return request.headers.get("X-Actor-Id")
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:

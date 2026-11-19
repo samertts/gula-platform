@@ -17,6 +17,11 @@ from app.identity.certificates.models import (
     CertificateRevocationList,
     DigitalCertificate,
 )
+from app.identity.models.enterprise_account import EnterpriseAccount
+from app.identity.models.niam_organization import NIAMOrganization
+from app.identity.models.person import Person
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
+from app.security.encryption import encrypt
 
 
 def _generate_key_pair() -> tuple[str, str]:
@@ -59,6 +64,7 @@ class CertificateService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def issue_certificate(
         self,
@@ -73,6 +79,7 @@ class CertificateService:
         validity_days: int = 365,
         rotation_period_days: int | None = None,
         issuer_ca_id: str | None = None,
+        actor_account_id: str | None = None,
     ) -> DigitalCertificate:
         priv_pem, pub_pem = _generate_key_pair()
 
@@ -95,7 +102,7 @@ class CertificateService:
             person_id=person_id,
             machine_id=machine_id,
             public_key=pub_pem,
-            private_key_encrypted=priv_pem,
+            private_key_encrypted=encrypt(priv_pem),
             certificate_pem=cert_pem,
             signature_algorithm=signature_algorithm,
             key_size=key_size,
@@ -109,9 +116,24 @@ class CertificateService:
         )
         self.session.add(cert)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="CERTIFICATE_ISSUED",
+                category="CERTIFICATES",
+                action="certificates.certificate.issue",
+                actor_id=actor_account_id,
+                target_type="digital_certificate",
+                target_id=cert.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return cert
 
-    async def revoke_certificate(self, certificate_id: str, reason: str) -> DigitalCertificate | None:
+    async def revoke_certificate(
+        self, certificate_id: str, reason: str, actor_account_id: str | None = None,
+    ) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
             DigitalCertificate.is_active.is_(True),
@@ -127,9 +149,25 @@ class CertificateService:
         cert.revocation_date = now
         cert.is_active = False
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="CERTIFICATE_REVOKED",
+                category="CERTIFICATES",
+                action="certificates.certificate.revoke",
+                actor_id=actor_account_id,
+                target_type="digital_certificate",
+                target_id=cert.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+                changes={"reason": reason},
+            ),
+        )
         return cert
 
-    async def rotate_certificate(self, certificate_id: str) -> DigitalCertificate | None:
+    async def rotate_certificate(
+        self, certificate_id: str, actor_account_id: str | None = None,
+    ) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
         )
@@ -152,10 +190,25 @@ class CertificateService:
             key_size=old_cert.key_size or 2048,
             validity_days=old_cert.rotation_period_days or 365,
             issuer_ca_id=old_cert.issuer_ca_id,
+            actor_account_id=actor_account_id,
         )
         new_cert.last_rotated_at = _now()
         old_cert.last_rotated_at = _now()
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="CERTIFICATE_ROTATED",
+                category="CERTIFICATES",
+                action="certificates.certificate.rotate",
+                actor_id=actor_account_id,
+                target_type="digital_certificate",
+                target_id=new_cert.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+                changes={"old_certificate_id": old_cert.certificate_id, "new_certificate_id": new_cert.certificate_id},
+            ),
+        )
         return new_cert
 
     async def validate_certificate(self, thumbprint: str) -> dict[str, Any]:
@@ -177,6 +230,11 @@ class CertificateService:
 
     async def get_certificate(self, thumbprint: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(DigitalCertificate.thumbprint == thumbprint)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_internal_id(self, internal_id: str) -> DigitalCertificate | None:
+        stmt = select(DigitalCertificate).where(DigitalCertificate.id == internal_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -216,6 +274,7 @@ class CertificateAuthorityService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def register_ca(
         self,
@@ -227,6 +286,7 @@ class CertificateAuthorityService:
         validity_days: int = 3650,
         path_length_constraint: int | None = None,
         parent_ca_id: str | None = None,
+        actor_account_id: str | None = None,
     ) -> CertificateAuthority:
         priv_pem, pub_pem = _generate_key_pair()
         cert_pem = pub_pem
@@ -244,7 +304,7 @@ class CertificateAuthorityService:
             ca_type=ca_type,
             organization_id=organization_id,
             certificate=cert_pem,
-            private_key_encrypted=priv_pem,
+            private_key_encrypted=encrypt(priv_pem),
             public_key=pub_pem,
             serial_number=serial_number,
             thumbprint=thumbprint,
@@ -261,6 +321,19 @@ class CertificateAuthorityService:
         )
         self.session.add(ca)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="CERTIFICATE_AUTHORITY_REGISTERED",
+                category="CERTIFICATES",
+                action="certificates.authority.register",
+                actor_id=actor_account_id,
+                target_type="certificate_authority",
+                target_id=ca.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return ca
 
     async def get_ca(self, ca_id: str) -> CertificateAuthority | None:
@@ -280,7 +353,9 @@ class CertificateAuthorityService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def generate_crl(self, ca_id: str) -> CertificateRevocationList | None:
+    async def generate_crl(
+        self, ca_id: str, actor_account_id: str | None = None,
+    ) -> CertificateRevocationList | None:
         ca = await self.get_ca(ca_id)
         if not ca:
             return None
@@ -322,6 +397,20 @@ class CertificateAuthorityService:
         self.session.add(crl)
         ca.revoked_certificate_count = (ca.revoked_certificate_count or 0) + 1
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="CERTIFICATE_CRL_GENERATED",
+                category="CERTIFICATES",
+                action="certificates.crl.generate",
+                actor_id=actor_account_id,
+                target_type="certificate_authority",
+                target_id=ca.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+                changes={"crl_id": crl.crl_id, "revoked_count": len(revoked_list)},
+            ),
+        )
         return crl
 
     async def get_crl(self, ca_id: str) -> CertificateRevocationList | None:
@@ -349,6 +438,12 @@ class APIKeyService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def _require_existing_reference(self, model: Any, value: str, field_name: str) -> None:
+        result = await self.session.execute(select(model.id).where(model.id == value))
+        if result.scalar_one_or_none() is None:
+            raise ValueError(f"{field_name} does not reference an existing {model.__tablename__} row: {value!r}")
 
     async def generate_key(
         self,
@@ -363,7 +458,16 @@ class APIKeyService:
         rate_limit: int | None = None,
         created_by: str | None = None,
         expires_at: datetime | None = None,
+        actor_account_id: str | None = None,
     ) -> tuple[APIKey, str]:
+        await self._require_existing_reference(NIAMOrganization, organization_id, "organization_id")
+        if enterprise_account_id is not None:
+            await self._require_existing_reference(EnterpriseAccount, enterprise_account_id, "enterprise_account_id")
+        if person_id is not None:
+            await self._require_existing_reference(Person, person_id, "person_id")
+        if created_by is not None:
+            await self._require_existing_reference(Person, created_by, "created_by")
+
         raw_key, prefix, key_hash = _generate_api_key()
         api_key_id = f"ak-{uuid.uuid4().hex[:16]}"
 
@@ -389,6 +493,20 @@ class APIKeyService:
         )
         self.session.add(ak)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="API_KEY_GENERATED",
+                category="CERTIFICATES",
+                action="certificates.api_key.generate",
+                actor_id=actor_account_id,
+                target_type="api_key",
+                target_id=ak.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+                changes={"organization_id": organization_id, "key_prefix": prefix, "scopes": scopes or [], "permissions": permissions or []},
+            ),
+        )
         return ak, raw_key
 
     async def validate_key(self, key_prefix: str, key: str) -> APIKey | None:
@@ -410,7 +528,9 @@ class APIKeyService:
 
         return ak
 
-    async def revoke_key(self, api_key_id: str) -> APIKey | None:
+    async def revoke_key(
+        self, api_key_id: str, actor_account_id: str | None = None,
+    ) -> APIKey | None:
         stmt = select(APIKey).where(
             APIKey.api_key_id == api_key_id,
             APIKey.is_active.is_(True),
@@ -422,9 +542,24 @@ class APIKeyService:
         ak.status = "revoked"
         ak.is_active = False
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="API_KEY_REVOKED",
+                category="CERTIFICATES",
+                action="certificates.api_key.revoke",
+                actor_id=actor_account_id,
+                target_type="api_key",
+                target_id=ak.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return ak
 
-    async def rotate_key(self, api_key_id: str) -> tuple[APIKey, str] | None:
+    async def rotate_key(
+        self, api_key_id: str, actor_account_id: str | None = None,
+    ) -> tuple[APIKey, str] | None:
         stmt = select(APIKey).where(
             APIKey.api_key_id == api_key_id,
         )
@@ -449,8 +584,23 @@ class APIKeyService:
             rate_limit=old_ak.rate_limit,
             created_by=old_ak.created_by,
             expires_at=old_ak.expires_at,
+            actor_account_id=actor_account_id,
         )
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="API_KEY_ROTATED",
+                category="CERTIFICATES",
+                action="certificates.api_key.rotate",
+                actor_id=actor_account_id,
+                target_type="api_key",
+                target_id=new_ak.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_CERTIFICATES_MANAGE",
+                data_classification="INTERNAL",
+                changes={"old_api_key_id": old_ak.api_key_id, "new_api_key_id": new_ak.api_key_id},
+            ),
+        )
         return new_ak, raw_key
 
     async def list_for_organization(self, org_id: str) -> list[APIKey]:
@@ -467,6 +617,11 @@ class APIKeyService:
 
     async def get_by_id(self, api_key_id: str) -> APIKey | None:
         stmt = select(APIKey).where(APIKey.api_key_id == api_key_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_internal_id(self, internal_id: str) -> APIKey | None:
+        stmt = select(APIKey).where(APIKey.id == internal_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

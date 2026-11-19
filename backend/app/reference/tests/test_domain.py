@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
-from typing import Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,7 +16,6 @@ from app.reference.domain.exceptions import (
 from app.reference.domain.interfaces import (
     OrderRepository,
     PatientRepository,
-    ResultRepository,
 )
 from app.reference.domain.models import (
     Gender,

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.patient_service import (
     create_patient as _create_patient,
@@ -162,7 +162,7 @@ def list_patients_route(
     search: str | None = Query(None, max_length=100),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     rate_limit_user(request, current_user.id, max_per_minute=120)
@@ -179,7 +179,7 @@ def list_patients_route(
 def create_patient_route(
     data: PatientCreate,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     rate_limit_user(request, current_user.id, max_per_minute=30)
@@ -210,7 +210,7 @@ def create_patient_route(
 @router.get("/family/{family_id}")
 def get_family_members_route(
     family_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Return all patients sharing the same civil-registry family number.
@@ -229,7 +229,7 @@ def get_family_members_route(
 @router.get("/{patient_id}/children")
 def get_patient_children_route(
     patient_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Return all minor patients (children) whose guardian is this patient.
@@ -248,7 +248,7 @@ def get_patient_children_route(
 @router.get("/{patient_id}")
 def get_patient_route(
     patient_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     result = _get_patient_by_id(db=db, patient_id=patient_id, lab_id=current_user.lab_id)
@@ -262,7 +262,7 @@ def update_patient_route(
     patient_id: int,
     data: PatientUpdate,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     response = _update_patient(
