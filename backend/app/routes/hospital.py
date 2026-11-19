@@ -1,9 +1,11 @@
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
+
+from shared.models import serialize_columns
 
 from ..clinical.command_guard import ClinicalCommandGuard
 from ..database import get_db
@@ -256,16 +258,15 @@ class AppointmentCreate(BaseModel):
 # ── Helpers ─────────────────────────────────────────────────────────────────────
 
 def _model_to_dict(model_instance) -> dict[str, Any]:
-    exclude = {"lab_id", "is_deleted", "deleted_at", "version"}
-    result = {}
-    for c in model_instance.__table__.columns:
-        if c.key in exclude:
-            continue
-        val = getattr(model_instance, c.key)
-        if isinstance(val, datetime) or (isinstance(val, date) and not isinstance(val, datetime)):
-            val = val.isoformat()
-        result[c.key] = val
-    return result
+    # Resolved through the mapper, not through `c.key`: for
+    # `metadata_ = Column("metadata", ...)` both `c.name` and `c.key` are "metadata",
+    # so reading by either returns the declarative MetaData registry instead of the
+    # column value. Keys and excluded fields are unchanged. See IA-005.
+    return serialize_columns(
+        model_instance,
+        exclude={"lab_id", "is_deleted", "deleted_at", "version"},
+        isoformat_dates=True,
+    )
 
 
 def _paginated_response(items: list, total: int, skip: int, limit: int) -> dict:
@@ -372,6 +373,7 @@ def create_hospital(
 ):
     hospital = HospitalService.create_hospital(
         db, current_user.lab_id, current_user.id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(hospital)
 
@@ -388,6 +390,7 @@ def update_hospital(
         raise HTTPException(status_code=400, detail="No fields to update")
     hospital = HospitalService.update_hospital(
         db, hospital_id, current_user.lab_id, current_user.id, data,
+        actor_role=current_user.role,
     )
     return _model_to_dict(hospital)
 
@@ -398,7 +401,10 @@ def deactivate_hospital(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
-    HospitalService.deactivate_hospital(db, hospital_id, current_user.lab_id, current_user.id)
+    HospitalService.deactivate_hospital(
+        db, hospital_id, current_user.lab_id, current_user.id,
+        actor_role=current_user.role,
+    )
     return {"detail": "Hospital deactivated", "detail_ar": "تم إلغاء تنشيط المستشفى"}
 
 
@@ -424,6 +430,7 @@ def create_campus(
 ):
     campus = HospitalService.create_campus(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(campus)
 
@@ -465,6 +472,7 @@ def create_building(
 ):
     building = HospitalService.create_building(
         db, current_user.lab_id, current_user.id, campus_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(building)
 
@@ -491,6 +499,7 @@ def create_floor(
 ):
     floor = HospitalService.create_floor(
         db, current_user.lab_id, current_user.id, building_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(floor)
 
@@ -520,6 +529,7 @@ def create_department(
 ):
     dept = HospitalService.create_department(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(dept)
 
@@ -561,6 +571,7 @@ def create_clinic(
 ):
     clinic = HospitalService.create_clinic(
         db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(clinic)
 
@@ -588,6 +599,7 @@ def create_room(
 ):
     room = HospitalService.create_room(
         db, current_user.lab_id, current_user.id, dept_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(room)
 
@@ -616,6 +628,7 @@ def create_bed(
 ):
     bed = HospitalService.create_bed(
         db, current_user.lab_id, current_user.id, room_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(bed)
 
@@ -650,6 +663,7 @@ def assign_bed(
                 current_user.id,
                 bed_id,
                 body.patient_id,
+                actor_role=current_user.role,
                 expected_version=bed.version,
                 reason=body.reason,
                 diagnosis=body.diagnosis,
@@ -687,6 +701,7 @@ def discharge_bed(
                 current_user.lab_id,
                 current_user.id,
                 bed_id,
+                actor_role=current_user.role,
                 expected_version=bed.version,
                 discharge_reason=body.discharge_reason,
             ),
@@ -731,6 +746,7 @@ def transfer_bed(
                 current_user.id,
                 bed_id,
                 body.to_bed_id,
+                actor_role=current_user.role,
                 from_expected_version=source.version,
                 to_expected_version=target.version,
                 reason=body.reason,
@@ -775,6 +791,7 @@ def create_unit(
 ):
     unit = HospitalService.create_unit(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(unit)
 
@@ -801,6 +818,7 @@ def create_operation_theater(
 ):
     ot = HospitalService.create_ot(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(ot)
 
@@ -820,7 +838,10 @@ def complete_surgical_safety_checklist(
 ):
     theater = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
     checklist = _run_hospital_command(
-        operation="hospital.surgical_safety_checklist.complete",
+        # ``clinical.`` + this name is the audit action, and ``audit_logs.action`` is
+        # varchar(50); the longer ``hospital.surgical_safety_checklist.complete`` made
+        # that 52 characters, so the audit write — and the whole command — failed.
+        operation="hospital.safety_checklist.complete",
         resource_type="hospital_operation_theater",
         resource_id=ot_id,
         state_before=theater.status,
@@ -835,6 +856,7 @@ def complete_surgical_safety_checklist(
                 current_user.lab_id,
                 current_user.id,
                 {"operation_theater_id": ot_id, **body.model_dump()},
+                actor_role=current_user.role,
             ),
             theater.status,
             theater.version,
@@ -871,6 +893,7 @@ def update_ot_status(
                 current_user.lab_id,
                 current_user.id,
                 ot_id,
+                actor_role=current_user.role,
                 expected_version=theater.version,
                 next_status=body.status,
                 surgery_id=body.surgery_id,
@@ -908,6 +931,7 @@ def create_equipment(
 ):
     equip = HospitalService.create_equipment(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(equip)
 
@@ -949,6 +973,7 @@ def create_cost_center(
 ):
     cc = HospitalService.create_cost_center(
         db, current_user.lab_id, current_user.id, hospital_id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(cc)
 
@@ -982,6 +1007,7 @@ def create_appointment(
 ):
     apt = HospitalService.create_appointment(
         db, current_user.lab_id, current_user.id, body.model_dump(),
+        actor_role=current_user.role,
     )
     return _model_to_dict(apt)
 

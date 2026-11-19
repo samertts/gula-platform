@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from backend.app.national.workflow_runtime.domain.enums import WorkflowExecutionStatus
-from backend.app.national.workflow_runtime.exceptions import WorkflowInvalidTransitionError
+from app.national.workflow_runtime.domain.enums import WorkflowExecutionStatus
+from app.national.workflow_runtime.exceptions import WorkflowInvalidTransitionError
 
 
 class WorkflowStateMachine:

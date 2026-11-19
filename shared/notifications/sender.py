@@ -86,8 +86,20 @@ class NotificationSender:
 
     def send_email(self, to: str, subject: str, body: str) -> bool:
         if not self._smtp_host:
-            logger.info("[EMAIL] To=%s Subject=%s (SMTP not configured, logged only)", to, subject)
-            return True
+            # IA-076. This used to return True, so an unconfigured deployment
+            # reported every message as delivered. False is what send_push and
+            # send_ntfy already return here, and NotificationService turns it
+            # into NotificationResult(success=False) through its existing
+            # failure path. The body is deliberately not logged: on the SMS and
+            # WhatsApp channels it carries verification codes and clinical
+            # values (IA-077).
+            logger.error(
+                "[EMAIL] NOT DELIVERED to %s: SMTP_HOST is not configured. "
+                "Subject=%s. Nothing was sent.",
+                to,
+                subject,
+            )
+            return False
         try:
             msg = MIMEMultipart("alternative")
             msg["From"] = self._smtp_from
@@ -114,8 +126,17 @@ class NotificationSender:
 
     def send_sms(self, to: str, body: str) -> bool:
         if not self._sms_api_url:
-            logger.info("[SMS] To=%s Body=%s (API not configured, logged only)", to, body[:50])
-            return True
+            # IA-076 / IA-077. This returned True and logged body[:50]. The
+            # first fifty characters of the verification message are
+            # "Your GULA verification code is 847213. It expires", so the
+            # one-time code and the phone number both landed in the
+            # application log. The body is never logged here.
+            logger.error(
+                "[SMS] NOT DELIVERED to %s: SMS_API_URL is not configured. "
+                "Nothing was sent.",
+                to,
+            )
+            return False
         try:
             payload = {
                 "to": to,
@@ -174,8 +195,13 @@ class NotificationSender:
 
     def send_whatsapp(self, to: str, body: str) -> bool:
         if not self._whatsapp_api_url:
-            logger.info("[WHATSAPP] To=%s Body=%s (API not configured, logged only)", to, body[:50])
-            return True
+            # IA-076 / IA-077, as send_sms above.
+            logger.error(
+                "[WHATSAPP] NOT DELIVERED to %s: WHATSAPP_API_URL is not "
+                "configured. Nothing was sent.",
+                to,
+            )
+            return False
         try:
             payload = {
                 "messaging_product": "whatsapp",

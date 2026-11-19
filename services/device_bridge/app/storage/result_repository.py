@@ -5,10 +5,9 @@ from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
 
+from app._compat import UTC
 from app.pipeline.normalizer import NormalizedResult
 from app.storage.db import InMemoryDB
-
-from backend.app._compat import UTC
 
 
 class ResultRepository:

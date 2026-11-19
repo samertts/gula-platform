@@ -340,7 +340,13 @@ class TestFhirObservation:
         ).json()
         obs = body["entry"][0]["resource"]
         assert obs["resourceType"] == "Observation"
-        assert obs["status"] == "final"
+        # IA-047. The fixture order is status="completed" -- results entered,
+        # nobody has validated them. This route hardcoded "final" for every
+        # result, and the assertion encoded that, so the suite was protecting
+        # the defect: the one state in which "final" is correct is `validated`.
+        assert obs["status"] == "preliminary", (
+            "an unvalidated result must not be published as a final observation"
+        )
         assert obs["category"][0]["coding"][0]["code"] == "laboratory"
         # valueQuantity round-trip
         assert obs["valueQuantity"]["value"] == 120.0
@@ -364,7 +370,18 @@ class TestFhirDiagnosticReport:
         assert res.status_code == 200
         body = res.json()
         assert body["resourceType"] == "DiagnosticReport"
-        assert body["status"] in ("final", "registered", "cancelled", "partial")
+        # IA-047. The fixture order is status="completed" -- results entered,
+        # not yet validated by anyone. FHIR reserves DiagnosticReport "final"
+        # for a report "complete and verified by an authorized person", which in
+        # GULA is the *validated* state; `completed` is "preliminary".
+        #
+        # This assertion used to be `in ("final", "registered", "cancelled",
+        # "partial")`, and a membership test that wide is why the route could
+        # call an unverified report final for as long as it did. It now pins the
+        # exact value for the exact state.
+        assert body["status"] == "preliminary", (
+            "a completed-but-unvalidated report must not be published as final"
+        )
         assert body["category"][0]["coding"][0]["code"] == "LAB"
         # LOINC code for laboratory report
         assert body["code"]["coding"][0]["system"] == "http://loinc.org"

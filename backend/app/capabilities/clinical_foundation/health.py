@@ -7,9 +7,11 @@ router = APIRouter(prefix="/clinical-foundation/health", tags=["health"])
 
 @router.get("/")
 async def health_check() -> dict:
-    return {"status": "ok", "capability": "clinical_foundation", "version": "1.0.0"}
+    # Scaffolding must not answer "ok": a health probe that always passes
+    # is not a probe. This router is mounted nowhere (NR-089).
+    return {"status": "not_implemented", "capability": "clinical_foundation", "version": "1.0.0"}
 
 
 @router.get("/ready")
 async def readiness() -> dict:
-    return {"ready": True, "capability": "clinical_foundation"}
+    return {"ready": False, "capability": "clinical_foundation", "reason": "generated scaffolding"}

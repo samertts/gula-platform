@@ -551,7 +551,20 @@ def get_asyncapi_spec() -> dict:
         "info": {
             "title": "GULA Platform Events",
             "version": "2.1.0",
-            "description": "Event-driven message bus for the GULA healthcare platform",
+            "description": (
+                "Event-driven message bus for the GULA healthcare platform. "
+                "SPECIFICATION ONLY: as of app version 2.5.0 none of the channels "
+                "below is published by a running GULA deployment, and neither "
+                "broker named under `servers` is deployed anywhere in this "
+                "platform. Do not build a consumer against this document "
+                "expecting to receive messages: subscribing successfully and "
+                "receiving nothing would be indistinguishable from nothing having "
+                "happened. The events this platform does emit today are written "
+                "to the `outbox_events` table and dispatched in-process by "
+                "app/services/outbox_service.py; they do not appear here. See "
+                "IA-042."
+            ),
+            "x-implementation-status": "specification-only",
             "contact": {
                 "name": "GULA Platform Support",
                 "url": "https://gula-platform.org",
@@ -562,12 +575,22 @@ def get_asyncapi_spec() -> dict:
             "production": {
                 "url": "mqtts://events.gula-platform.org:8883",
                 "protocol": "mqtt",
-                "description": "Production MQTT broker",
+                "description": (
+                    "NOT DEPLOYED. This host appears nowhere in the platform's "
+                    "deployment configuration -- no compose service, no "
+                    "Kubernetes manifest -- and is a planned endpoint, not a "
+                    "reachable one."
+                ),
+                "x-implementation-status": "not-deployed",
             },
             "development": {
                 "url": "mqtt://localhost:1883",
                 "protocol": "mqtt",
-                "description": "Local development MQTT broker",
+                "description": (
+                    "NOT DEPLOYED. No MQTT broker is started by any compose file "
+                    "in this repository."
+                ),
+                "x-implementation-status": "not-deployed",
             },
         },
         "defaultContentType": "application/json",

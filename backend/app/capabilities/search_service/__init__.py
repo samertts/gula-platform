@@ -7,6 +7,6 @@ Layer: application
 Version: 1.0.0
 """
 
-from search_service.capability import Search_serviceCapability
+from .capability import Search_serviceCapability
 
 __all__ = ["Search_serviceCapability"]

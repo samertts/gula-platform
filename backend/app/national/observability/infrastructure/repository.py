@@ -269,7 +269,7 @@ class SQLAlchemyHealthCheckRepository(HealthCheckRepository):
 
     async def list(self) -> list[HealthCheck]:
         models = self.db.query(NationalHealthCheck).filter(
-            ~~NationalHealthCheck.is_deleted,
+            ~NationalHealthCheck.is_deleted,
         ).order_by(NationalHealthCheck.name.asc()).all()
         return [m.to_domain() for m in models]
 
@@ -346,7 +346,7 @@ class SQLAlchemyAlertRuleRepository(AlertRuleRepository):
         limit: int = 100,
     ) -> list[AlertRule]:
         models = self.db.query(NationalAlertRule).filter(
-            ~~NationalAlertRule.is_deleted,
+            ~NationalAlertRule.is_deleted,
         ).order_by(NationalAlertRule.created_at.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -483,7 +483,7 @@ class SQLAlchemyDashboardRepository(DashboardRepository):
         limit: int = 100,
     ) -> list[Dashboard]:
         models = self.db.query(NationalDashboard).filter(
-            ~~NationalDashboard.is_deleted,
+            ~NationalDashboard.is_deleted,
         ).order_by(NationalDashboard.created_at.desc()).offset(skip).limit(limit).all()
         return [m.to_domain() for m in models]
 
@@ -607,7 +607,7 @@ class SQLAlchemyServiceGraphRepository(ServiceGraphRepository):
 
     async def list(self) -> list[ServiceGraph]:
         models = self.db.query(NationalServiceGraph).filter(
-            ~~NationalServiceGraph.is_deleted,
+            ~NationalServiceGraph.is_deleted,
         ).all()
         return [m.to_domain() for m in models]
 

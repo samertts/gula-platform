@@ -12,6 +12,8 @@ Covers:
   - purge_old_events: deletes old done/failed events, keeps recent ones
   - EventBus: handler isolation (one failing handler does not block others)
   - EventBus: emit returns handler count
+  - OutboxWorker.run_once: an event dispatched to zero handlers is counted as
+    undelivered rather than reported as an unqualified success (IA-043)
 """
 from __future__ import annotations
 
@@ -34,6 +36,7 @@ from app.core.events import EventBus
 from app.database import Base
 from app.national.base import NationalBase
 from app.models.outbox import MAX_ATTEMPTS, OutboxEvent
+from app.orm_topology import own_tables
 from app.services.outbox_service import OutboxWorker, emit_to_outbox, purge_old_events
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -48,15 +51,15 @@ def db():
     from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     import app.national.domain  # noqa: F401
-    NationalBase.metadata.create_all(engine)
-    Base.metadata.create_all(engine)
+    NationalBase.metadata.create_all(engine, tables=own_tables(NationalBase))
+    Base.metadata.create_all(engine, tables=own_tables(Base))
     Session = sessionmaker(bind=engine)
     s = Session()
     try:
         yield s
     finally:
         s.close()
-        Base.metadata.drop_all(engine)
+        Base.metadata.drop_all(engine, tables=own_tables(Base))
 
 
 def _pending_count(db) -> int:
@@ -246,7 +249,10 @@ class TestOutboxWorkerRunOnce:
         bus = EventBus()
         with patch("app.services.outbox_service.events", bus):
             summary = OutboxWorker.run_once(db)
-        assert summary == {"processed": 0, "failed": 0, "skipped": 0}
+        # "undelivered" counts events dispatched to zero handlers, which is
+        # currently every event (IA-043). An empty queue dispatches nothing, so
+        # it stays at zero here.
+        assert summary == {"processed": 0, "failed": 0, "skipped": 0, "undelivered": 0}
 
 
 # ── purge_old_events ──────────────────────────────────────────────────────────

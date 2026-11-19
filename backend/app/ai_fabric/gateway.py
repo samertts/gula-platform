@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from app.ai_fabric.base import InferenceRequest, InferenceResponse
 from app.ai_fabric.enums import AIProviderType
 from shared.ai.client import AIClient
-from shared.ai.provider import AIProvider
+from shared.ai.provider import AIProvider, AIProviderUnavailable
 
 logger = logging.getLogger("gula.ai_fabric.gateway")
 
@@ -248,16 +248,25 @@ class AIGateway:
     def embed(self, texts: list[str], model: str = "text-embedding-3-small") -> list[list[float]]:
         provider = self._router.select_for_model(model)
         if not provider:
-            logger.warning("No provider for embedding model %s", model)
-            return [[] for _ in texts]
+            raise AIProviderUnavailable(
+                f"no provider is configured for embedding model {model!r}",
+            )
         ai_provider = self._providers.get(provider.name.value)
         if not ai_provider:
-            return [[] for _ in texts]
-        results: list[list[float]] = []
-        for text in texts:
-            raw = ai_provider.generate(f"embed: {text}", temperature=0.0)
-            results.append([0.0] * 384 if not raw else [hash(raw) % 1000 / 1000.0] * 384)
-        return results
+            raise AIProviderUnavailable(
+                f"provider {provider.name.value!r} is registered but has no client",
+            )
+        # IA-074: this used to prompt a CHAT model with "embed: {text}" and
+        # return [hash(raw) % 1000 / 1000.0] * 384, or [0.0] * 384 on failure.
+        # Both are constant vectors, so every text was maximally similar to
+        # every other and any similarity search over them was meaningless. The
+        # hash made it worse than local_ai.py's [0.5] * 384: Python salts str
+        # hashes per process, so the same text embedded to a different constant
+        # after every restart, and nothing persisted across a deploy.
+        #
+        # embed_many uses a real embedding endpoint and raises rather than
+        # inventing a vector.
+        return ai_provider.embed_many(list(texts))
 
     @property
     def router(self) -> ProviderRouter:

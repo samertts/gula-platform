@@ -77,7 +77,7 @@ def create_node(data: NodeCreate, db: Session = Depends(get_db)):
     return node
 
 
-@router.get("/nodes/{node_id}")
+@router.get("/nodes/{node_id}", dependencies=[admin_dep])
 def get_node(node_id: int, db: Session = Depends(get_db)):
     svc = GovernanceHierarchyService(db)
     node = svc.get_node(node_id)
@@ -86,25 +86,25 @@ def get_node(node_id: int, db: Session = Depends(get_db)):
     return node
 
 
-@router.get("/nodes/{node_id}/subtree")
+@router.get("/nodes/{node_id}/subtree", dependencies=[admin_dep])
 def get_subtree(node_id: int, db: Session = Depends(get_db)):
     svc = GovernanceHierarchyService(db)
     return svc.get_subtree(node_id)
 
 
-@router.get("/nodes/{node_id}/path")
+@router.get("/nodes/{node_id}/path", dependencies=[admin_dep])
 def get_path(node_id: int, db: Session = Depends(get_db)):
     svc = GovernanceHierarchyService(db)
     return svc.get_path(node_id)
 
 
-@router.get("/nodes/{node_id}/children")
+@router.get("/nodes/{node_id}/children", dependencies=[admin_dep])
 def get_children(node_id: int, db: Session = Depends(get_db)):
     svc = GovernanceHierarchyService(db)
     return svc.get_children(node_id)
 
 
-@router.get("/nodes/by-type/{node_type}")
+@router.get("/nodes/by-type/{node_type}", dependencies=[admin_dep])
 def get_nodes_by_type(node_type: GovernanceNodeType, db: Session = Depends(get_db)):
     GovernanceHierarchyService(db)
     from ..models.hierarchy import GovernanceNode
@@ -181,7 +181,7 @@ def issue_health_number(citizen_ulid: str, national_id_hash: str | None = None, 
     return {"health_number": hn}
 
 
-@router.get("/health-numbers/{health_number}")
+@router.get("/health-numbers/{health_number}", dependencies=[elevated_dep])
 def get_health_number(health_number: str, db: Session = Depends(get_db)):
     svc = HealthNumberGovernanceService(db)
     hn = svc.get_health_number(health_number)
@@ -228,7 +228,7 @@ def split_identity(primary_hn: str, new_hn: str, reason: str, decision_by: str, 
     return split
 
 
-@router.get("/health-numbers/{health_number}/history")
+@router.get("/health-numbers/{health_number}/history", dependencies=[elevated_dep])
 def get_health_number_history(health_number: str, db: Session = Depends(get_db)):
     svc = HealthNumberGovernanceService(db)
     return svc.get_history(health_number)
@@ -249,7 +249,7 @@ def connector_verify(connector_type: ConnectorType, db: Session = Depends(get_db
     return svc.verify(connector_type, {})
 
 
-@router.get("/connectors")
+@router.get("/connectors", dependencies=[elevated_dep])
 def list_connectors():
     return {"connectors": [c.value for c in ConnectorType]}
 
@@ -287,7 +287,7 @@ def register_worker(data: WorkerCreate, db: Session = Depends(get_db)):
     return worker
 
 
-@router.get("/workers/{worker_id}")
+@router.get("/workers/{worker_id}", dependencies=[elevated_dep])
 def get_worker(worker_id: int, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     worker = svc.get_worker(worker_id)
@@ -296,7 +296,7 @@ def get_worker(worker_id: int, db: Session = Depends(get_db)):
     return worker
 
 
-@router.get("/workers/by-node/{node_id}")
+@router.get("/workers/by-node/{node_id}", dependencies=[elevated_dep])
 def get_workers_by_node(node_id: int, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     return svc.get_workers_by_node(node_id)
@@ -318,7 +318,7 @@ def add_board_certification(worker_id: int, board_name: str, specialty: str, iss
     return board
 
 
-@router.post("/workers/{worker_id}/trainings")
+@router.post("/workers/{worker_id}/trainings", dependencies=[elevated_dep])
 def add_training(worker_id: int, training_name: str, training_type: str, completed: bool = False, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     training = svc.add_training(worker_id, training_name, training_type, completed=completed)
@@ -326,7 +326,7 @@ def add_training(worker_id: int, training_name: str, training_type: str, complet
     return training
 
 
-@router.post("/workers/{worker_id}/competencies")
+@router.post("/workers/{worker_id}/competencies", dependencies=[elevated_dep])
 def assess_competency(worker_id: int, competency_name: str, level: str, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     from ..enums import CompetencyLevel
@@ -335,7 +335,7 @@ def assess_competency(worker_id: int, competency_name: str, level: str, db: Sess
     return assessment
 
 
-@router.post("/workers/{worker_id}/productivity")
+@router.post("/workers/{worker_id}/productivity", dependencies=[elevated_dep])
 def record_productivity(
     worker_id: int,
     period: ProductivityPeriod,
@@ -351,19 +351,19 @@ def record_productivity(
     return rec
 
 
-@router.get("/workers/{worker_id}/productivity")
+@router.get("/workers/{worker_id}/productivity", dependencies=[elevated_dep])
 def get_productivity(worker_id: int, period: ProductivityPeriod | None = None, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     return svc.get_productivity(worker_id, period)
 
 
-@router.get("/workers/ranking")
+@router.get("/workers/ranking", dependencies=[elevated_dep])
 def get_national_ranking(period: ProductivityPeriod, period_start: date, period_end: date, limit: int = 100, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     return svc.get_national_ranking(period, period_start, period_end, limit)
 
 
-@router.get("/workers/{worker_id}/stats")
+@router.get("/workers/{worker_id}/stats", dependencies=[elevated_dep])
 def get_worker_stats(worker_id: int, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
     return svc.get_worker_stats(worker_id)
@@ -395,13 +395,13 @@ def register_lab(data: LabRegister, db: Session = Depends(get_db)):
     return lab
 
 
-@router.get("/laboratories")
+@router.get("/laboratories", dependencies=[elevated_dep])
 def list_labs(lab_type: LabType | None = None, governorate: str | None = None, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
     return svc.list_labs(lab_type, governorate)
 
 
-@router.get("/laboratories/{lab_id}")
+@router.get("/laboratories/{lab_id}", dependencies=[elevated_dep])
 def get_lab(lab_id: int, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
     lab = svc.get_lab(lab_id)
@@ -410,7 +410,7 @@ def get_lab(lab_id: int, db: Session = Depends(get_db)):
     return lab
 
 
-@router.get("/laboratories/{lab_id}/stats")
+@router.get("/laboratories/{lab_id}/stats", dependencies=[elevated_dep])
 def get_lab_stats(lab_id: int, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
     return svc.get_lab_stats(lab_id)
@@ -456,13 +456,13 @@ def add_reagent(lab_id: int, reagent_code: str, reagent_name_ar: str, quantity: 
     return reagent
 
 
-@router.get("/laboratories/{lab_id}/low-stock")
+@router.get("/laboratories/{lab_id}/low-stock", dependencies=[elevated_dep])
 def get_low_stock(lab_id: int, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
     return svc.get_low_stock_reagents(lab_id)
 
 
-@router.get("/national-tests")
+@router.get("/national-tests", dependencies=[admin_dep])
 def get_national_tests(db: Session = Depends(get_db)):
     from ..models.laboratory import NationalTestDefinition
     return db.query(NationalTestDefinition).filter(NationalTestDefinition.is_active.is_(True)).all()
@@ -496,7 +496,7 @@ def create_clinical_policy(policy_code: str, title_ar: str, policy_type: Clinica
     return policy
 
 
-@router.get("/clinical-policies")
+@router.get("/clinical-policies", dependencies=[admin_dep])
 def get_clinical_policies(policy_type: ClinicalPolicyType | None = None, db: Session = Depends(get_db)):
     svc = ClinicalGovernanceService(db)
     return svc.get_active_policies(policy_type)
@@ -561,7 +561,7 @@ def create_break_glass_policy(policy_code: str, title_ar: str, allowed_reasons: 
     return bg
 
 
-@router.post("/audit-events")
+@router.post("/audit-events", dependencies=[admin_dep])
 def log_audit_event(event_type: str, actor_id: str, action: str, severity: ThreatSeverity = ThreatSeverity.LOW, db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
     event = svc.log_audit_event(event_type, actor_id=actor_id, action=action, severity=severity)
@@ -569,7 +569,7 @@ def log_audit_event(event_type: str, actor_id: str, action: str, severity: Threa
     return event
 
 
-@router.get("/audit-events")
+@router.get("/audit-events", dependencies=[admin_dep])
 def get_audit_events(event_type: str | None = None, limit: int = 50, db: Session = Depends(get_db)):
     from ..models.security import NationalAuditEvent
     q = db.query(NationalAuditEvent)
@@ -623,7 +623,7 @@ def register_protocol(protocol_code: str, name_ar: str, protocol_type: InteropPr
     return proto
 
 
-@router.get("/interop-protocols")
+@router.get("/interop-protocols", dependencies=[admin_dep])
 def list_protocols(protocol_type: InteropProtocolType | None = None, db: Session = Depends(get_db)):
     svc = InteroperabilityGovernanceService(db)
     return svc.list_active_protocols(protocol_type)
@@ -637,7 +637,7 @@ def create_terminology_mapping(source_system: str, source_code: str, target_syst
     return mapping
 
 
-@router.get("/terminology-mappings")
+@router.get("/terminology-mappings", dependencies=[admin_dep])
 def lookup_terminology(source_system: str, source_code: str, db: Session = Depends(get_db)):
     svc = InteroperabilityGovernanceService(db)
     return svc.lookup_terminology(source_system, source_code)
@@ -678,7 +678,7 @@ def validate_ai_model(model_name: str, validation_type: str, passed: bool, accur
     return validation
 
 
-@router.get("/ai/risk/{model_name}")
+@router.get("/ai/risk/{model_name}", dependencies=[admin_dep])
 def get_model_risk(model_name: str, db: Session = Depends(get_db)):
     svc = AIGovernanceService(db)
     risk = svc.get_model_risk(model_name)
@@ -690,7 +690,7 @@ def get_model_risk(model_name: str, db: Session = Depends(get_db)):
 # ── Policy Engine ────────────────────────────────────────────────────────────
 
 
-@router.get("/policy/evaluate")
+@router.get("/policy/evaluate", dependencies=[admin_dep])
 def evaluate_governance_action(action: GovernanceAction, context: str | None = None):
     return governance_policy_engine.evaluate(action, {"context": context} if context else None)
 

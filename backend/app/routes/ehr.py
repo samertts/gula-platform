@@ -23,6 +23,7 @@ from app.ehr.enums import (
 )
 from app.ehr.clinical_read_gate import ClinicalEhrReadDenied, ClinicalEhrReadGate
 
+from ..audit import audit_log
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
@@ -89,6 +90,7 @@ class ClinicalNoteUpdate(BaseModel):
 
 
 @router.post("/clinical-notes", summary="Create a clinical note")
+@audit_log(action="ehr.clinical_note.create", resource_type="ClinicalNote")
 def create_clinical_note(
     body: ClinicalNoteCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -138,6 +140,7 @@ def get_clinical_note_for_verified_facility(
 
 
 @router.put("/clinical-notes/{note_id}", summary="Update a clinical note")
+@audit_log(action="ehr.clinical_note.update", resource_type="ClinicalNote")
 def update_clinical_note(
     note_id: str,
     body: ClinicalNoteUpdate,
@@ -156,6 +159,7 @@ def update_clinical_note(
 
 
 @router.delete("/clinical-notes/{note_id}", summary="Soft-delete a clinical note")
+@audit_log(action="ehr.clinical_note.soft_delete", resource_type="ClinicalNote")
 def delete_clinical_note(
     note_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -239,6 +243,7 @@ class AllergyUpdate(BaseModel):
 
 
 @router.post("/allergies", summary="Create an allergy record")
+@audit_log(action="ehr.allergy.create", resource_type="AllergyIntolerance")
 def create_allergy(
     body: AllergyCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -264,6 +269,7 @@ def get_allergy(
 
 
 @router.put("/allergies/{allergy_id}", summary="Update an allergy record")
+@audit_log(action="ehr.allergy.update", resource_type="AllergyIntolerance")
 def update_allergy(
     allergy_id: str,
     body: AllergyUpdate,
@@ -280,6 +286,7 @@ def update_allergy(
 
 
 @router.delete("/allergies/{allergy_id}", summary="Soft-delete an allergy record")
+@audit_log(action="ehr.allergy.soft_delete", resource_type="AllergyIntolerance")
 def delete_allergy(
     allergy_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -343,6 +350,7 @@ class MedStatementCreate(BaseModel):
 
 
 @router.post("/medication-statements", summary="Create a medication statement")
+@audit_log(action="ehr.medication_statement.create", resource_type="MedicationStatement")
 def create_medication_statement(
     body: MedStatementCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -374,6 +382,7 @@ def get_medication_statement(
     "/medication-statements/{statement_id}",
     summary="Update a medication statement",
 )
+@audit_log(action="ehr.medication_statement.update", resource_type="MedicationStatement")
 def update_medication_statement(
     statement_id: str,
     body: MedStatementCreate,
@@ -395,6 +404,7 @@ def update_medication_statement(
     "/medication-statements/{statement_id}",
     summary="Soft-delete a medication statement",
 )
+@audit_log(action="ehr.medication_statement.soft_delete", resource_type="MedicationStatement")
 def delete_medication_statement(
     statement_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -465,6 +475,7 @@ class MedRequestCreate(BaseModel):
 
 
 @router.post("/medication-requests", summary="Create a medication request")
+@audit_log(action="ehr.medication_request.create", resource_type="MedicationRequest")
 def create_medication_request(
     body: MedRequestCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -496,6 +507,7 @@ def get_medication_request(
     "/medication-requests/{request_id}",
     summary="Update a medication request",
 )
+@audit_log(action="ehr.medication_request.update", resource_type="MedicationRequest")
 def update_medication_request(
     request_id: str,
     body: MedRequestCreate,
@@ -517,6 +529,7 @@ def update_medication_request(
     "/medication-requests/{request_id}",
     summary="Soft-delete a medication request",
 )
+@audit_log(action="ehr.medication_request.soft_delete", resource_type="MedicationRequest")
 def delete_medication_request(
     request_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -580,6 +593,7 @@ class MedDispenseCreate(BaseModel):
 
 
 @router.post("/medication-dispenses", summary="Create a medication dispense")
+@audit_log(action="ehr.medication_dispense.create", resource_type="MedicationDispense")
 def create_medication_dispense(
     body: MedDispenseCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -611,6 +625,7 @@ def get_medication_dispense(
     "/medication-dispenses/{dispense_id}",
     summary="Update a medication dispense",
 )
+@audit_log(action="ehr.medication_dispense.update", resource_type="MedicationDispense")
 def update_medication_dispense(
     dispense_id: str,
     body: MedDispenseCreate,
@@ -632,6 +647,7 @@ def update_medication_dispense(
     "/medication-dispenses/{dispense_id}",
     summary="Soft-delete a medication dispense",
 )
+@audit_log(action="ehr.medication_dispense.soft_delete", resource_type="MedicationDispense")
 def delete_medication_dispense(
     dispense_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -694,6 +710,7 @@ class MedAdminCreate(BaseModel):
     "/medication-administrations",
     summary="Create a medication administration",
 )
+@audit_log(action="ehr.medication_administration.create", resource_type="MedicationAdministration")
 def create_medication_administration(
     body: MedAdminCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -727,6 +744,7 @@ def get_medication_administration(
     "/medication-administrations/{admin_id}",
     summary="Update a medication administration",
 )
+@audit_log(action="ehr.medication_administration.update", resource_type="MedicationAdministration")
 def update_medication_administration(
     admin_id: str,
     body: MedAdminCreate,
@@ -748,6 +766,7 @@ def update_medication_administration(
     "/medication-administrations/{admin_id}",
     summary="Soft-delete a medication administration",
 )
+@audit_log(action="ehr.medication_administration.soft_delete", resource_type="MedicationAdministration")
 def delete_medication_administration(
     admin_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -815,6 +834,7 @@ class CarePlanUpdate(BaseModel):
 
 
 @router.post("/care-plans", summary="Create a care plan")
+@audit_log(action="ehr.care_plan.create", resource_type="CarePlan")
 def create_care_plan(
     body: CarePlanCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -848,6 +868,7 @@ def get_care_plan(
 
 
 @router.put("/care-plans/{plan_id}", summary="Update a care plan")
+@audit_log(action="ehr.care_plan.update", resource_type="CarePlan")
 def update_care_plan(
     plan_id: str,
     body: CarePlanUpdate,
@@ -872,6 +893,7 @@ def update_care_plan(
 
 
 @router.delete("/care-plans/{plan_id}", summary="Soft-delete a care plan")
+@audit_log(action="ehr.care_plan.soft_delete", resource_type="CarePlan")
 def delete_care_plan(
     plan_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -929,6 +951,7 @@ class CarePlanGoalCreate(BaseModel):
 
 
 @router.post("/care-plans/{plan_id}/goals", summary="Add a goal to a care plan")
+@audit_log(action="ehr.care_plan_goal.create", resource_type="CarePlanGoal")
 def create_care_plan_goal(
     plan_id: str,
     body: CarePlanGoalCreate,
@@ -950,6 +973,7 @@ def create_care_plan_goal(
     "/care-plan-goals/{goal_id}",
     summary="Update a care plan goal",
 )
+@audit_log(action="ehr.care_plan_goal.update", resource_type="CarePlanGoal")
 def update_care_plan_goal(
     goal_id: str,
     body: CarePlanGoalCreate,
@@ -973,6 +997,7 @@ def update_care_plan_goal(
     "/care-plan-goals/{goal_id}",
     summary="Soft-delete a care plan goal",
 )
+@audit_log(action="ehr.care_plan_goal.soft_delete", resource_type="CarePlanGoal")
 def delete_care_plan_goal(
     goal_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1015,6 +1040,7 @@ class CarePlanActivityCreate(BaseModel):
     "/care-plans/{plan_id}/activities",
     summary="Add an activity to a care plan",
 )
+@audit_log(action="ehr.care_plan_activity.create", resource_type="CarePlanActivity")
 def create_care_plan_activity(
     plan_id: str,
     body: CarePlanActivityCreate,
@@ -1036,6 +1062,7 @@ def create_care_plan_activity(
     "/care-plan-activities/{activity_id}",
     summary="Update a care plan activity",
 )
+@audit_log(action="ehr.care_plan_activity.update", resource_type="CarePlanActivity")
 def update_care_plan_activity(
     activity_id: str,
     body: CarePlanActivityCreate,
@@ -1059,6 +1086,7 @@ def update_care_plan_activity(
     "/care-plan-activities/{activity_id}",
     summary="Soft-delete a care plan activity",
 )
+@audit_log(action="ehr.care_plan_activity.soft_delete", resource_type="CarePlanActivity")
 def delete_care_plan_activity(
     activity_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1111,6 +1139,7 @@ class ProblemListItemUpdate(BaseModel):
 
 
 @router.post("/problem-list", summary="Add a problem list item")
+@audit_log(action="ehr.problem_list_item.create", resource_type="ProblemListItem")
 def create_problem_list_item(
     body: ProblemListItemCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1142,6 +1171,7 @@ def get_problem_list_item(
     "/problem-list/{item_id}",
     summary="Update a problem list item",
 )
+@audit_log(action="ehr.problem_list_item.update", resource_type="ProblemListItem")
 def update_problem_list_item(
     item_id: str,
     body: ProblemListItemUpdate,
@@ -1163,6 +1193,7 @@ def update_problem_list_item(
     "/problem-list/{item_id}",
     summary="Soft-delete a problem list item",
 )
+@audit_log(action="ehr.problem_list_item.soft_delete", resource_type="ProblemListItem")
 def delete_problem_list_item(
     item_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1232,6 +1263,7 @@ class ConditionUpdate(BaseModel):
 
 
 @router.post("/conditions", summary="Create a condition record")
+@audit_log(action="ehr.condition.create", resource_type="ConditionRecord")
 def create_condition(
     body: ConditionCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1263,6 +1295,7 @@ def get_condition(
     "/conditions/{condition_id}",
     summary="Update a condition record",
 )
+@audit_log(action="ehr.condition.update", resource_type="ConditionRecord")
 def update_condition(
     condition_id: str,
     body: ConditionUpdate,
@@ -1282,6 +1315,7 @@ def update_condition(
     "/conditions/{condition_id}",
     summary="Soft-delete a condition record",
 )
+@audit_log(action="ehr.condition.soft_delete", resource_type="ConditionRecord")
 def delete_condition(
     condition_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1351,6 +1385,7 @@ class DiagnosisUpdate(BaseModel):
 
 
 @router.post("/diagnoses", summary="Create a diagnosis record")
+@audit_log(action="ehr.diagnosis.create", resource_type="DiagnosisRecord")
 def create_diagnosis(
     body: DiagnosisCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1382,6 +1417,7 @@ def get_diagnosis(
     "/diagnoses/{diagnosis_id}",
     summary="Update a diagnosis record",
 )
+@audit_log(action="ehr.diagnosis.update", resource_type="DiagnosisRecord")
 def update_diagnosis(
     diagnosis_id: str,
     body: DiagnosisUpdate,
@@ -1401,6 +1437,7 @@ def update_diagnosis(
     "/diagnoses/{diagnosis_id}",
     summary="Soft-delete a diagnosis record",
 )
+@audit_log(action="ehr.diagnosis.soft_delete", resource_type="DiagnosisRecord")
 def delete_diagnosis(
     diagnosis_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1465,6 +1502,7 @@ class FamilyHistoryUpdate(BaseModel):
 
 
 @router.post("/family-history", summary="Create a family history record")
+@audit_log(action="ehr.family_history.create", resource_type="FamilyHistoryRecord")
 def create_family_history(
     body: FamilyHistoryCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1496,6 +1534,7 @@ def get_family_history(
     "/family-history/{record_id}",
     summary="Update a family history record",
 )
+@audit_log(action="ehr.family_history.update", resource_type="FamilyHistoryRecord")
 def update_family_history(
     record_id: str,
     body: FamilyHistoryUpdate,
@@ -1517,6 +1556,7 @@ def update_family_history(
     "/family-history/{record_id}",
     summary="Soft-delete a family history record",
 )
+@audit_log(action="ehr.family_history.soft_delete", resource_type="FamilyHistoryRecord")
 def delete_family_history(
     record_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1591,6 +1631,7 @@ class SocialHistoryUpdate(BaseModel):
 
 
 @router.post("/social-history", summary="Create a social history record")
+@audit_log(action="ehr.social_history.create", resource_type="SocialHistoryRecord")
 def create_social_history(
     body: SocialHistoryCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1622,6 +1663,7 @@ def get_social_history(
     "/social-history/{record_id}",
     summary="Update a social history record",
 )
+@audit_log(action="ehr.social_history.update", resource_type="SocialHistoryRecord")
 def update_social_history(
     record_id: str,
     body: SocialHistoryUpdate,
@@ -1643,6 +1685,7 @@ def update_social_history(
     "/social-history/{record_id}",
     summary="Soft-delete a social history record",
 )
+@audit_log(action="ehr.social_history.soft_delete", resource_type="SocialHistoryRecord")
 def delete_social_history(
     record_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1710,6 +1753,7 @@ class RiskFactorUpdate(BaseModel):
 
 
 @router.post("/risk-factors", summary="Create a risk factor record")
+@audit_log(action="ehr.risk_factor.create", resource_type="RiskFactorRecord")
 def create_risk_factor(
     body: RiskFactorCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1741,6 +1785,7 @@ def get_risk_factor(
     "/risk-factors/{record_id}",
     summary="Update a risk factor record",
 )
+@audit_log(action="ehr.risk_factor.update", resource_type="RiskFactorRecord")
 def update_risk_factor(
     record_id: str,
     body: RiskFactorUpdate,
@@ -1762,6 +1807,7 @@ def update_risk_factor(
     "/risk-factors/{record_id}",
     summary="Soft-delete a risk factor record",
 )
+@audit_log(action="ehr.risk_factor.soft_delete", resource_type="RiskFactorRecord")
 def delete_risk_factor(
     record_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1839,6 +1885,7 @@ class ImmunizationUpdate(BaseModel):
 
 
 @router.post("/immunizations", summary="Create an immunization record")
+@audit_log(action="ehr.immunization.create", resource_type="ImmunizationRecord")
 def create_immunization(
     body: ImmunizationCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1870,6 +1917,7 @@ def get_immunization(
     "/immunizations/{record_id}",
     summary="Update an immunization record",
 )
+@audit_log(action="ehr.immunization.update", resource_type="ImmunizationRecord")
 def update_immunization(
     record_id: str,
     body: ImmunizationUpdate,
@@ -1891,6 +1939,7 @@ def update_immunization(
     "/immunizations/{record_id}",
     summary="Soft-delete an immunization record",
 )
+@audit_log(action="ehr.immunization.soft_delete", resource_type="ImmunizationRecord")
 def delete_immunization(
     record_id: str,
     current_user: LabUser = Depends(get_current_user),
@@ -1964,6 +2013,7 @@ class AttachmentUpdate(BaseModel):
 
 
 @router.post("/attachments", summary="Create a clinical attachment record")
+@audit_log(action="ehr.attachment.create", resource_type="ClinicalAttachment")
 def create_attachment(
     body: AttachmentCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -1995,6 +2045,7 @@ def get_attachment(
     "/attachments/{attachment_id}",
     summary="Update a clinical attachment record",
 )
+@audit_log(action="ehr.attachment.update", resource_type="ClinicalAttachment")
 def update_attachment(
     attachment_id: str,
     body: AttachmentUpdate,
@@ -2016,6 +2067,7 @@ def update_attachment(
     "/attachments/{attachment_id}",
     summary="Soft-delete a clinical attachment record",
 )
+@audit_log(action="ehr.attachment.soft_delete", resource_type="ClinicalAttachment")
 def delete_attachment(
     attachment_id: str,
     current_user: LabUser = Depends(get_current_user),

@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import desc, text
 
-from backend.app._compat import UTC
-from backend.app.database import SessionLocal
-from backend.app.national.task_engine.domain.entities import (
+from app._compat import UTC
+from app.database import SessionLocal
+from app.national.task_engine.domain.entities import (
     NationalTask,
 )
-from backend.app.national.task_engine.domain.repository import (
+from app.national.task_engine.domain.repository import (
     NationalTaskRepository,
     TaskAssignmentRepository,
     TaskAuditLogRepository,
@@ -19,9 +20,11 @@ from backend.app.national.task_engine.domain.repository import (
     TaskQueueRepository,
     TaskSLARepository,
 )
-from backend.app.national.task_engine.infrastructure.models import (
+from app.national.task_engine.infrastructure.models import (
     NationalTaskModel,
 )
+
+logger = logging.getLogger("gula.national.task_engine.repository")
 
 
 class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
@@ -158,7 +161,7 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
             return len(result.all())
 
     def _model_to_domain(self, model: Any) -> NationalTask:
-        from backend.app.national.task_engine.domain.enums import (
+        from app.national.task_engine.domain.enums import (
             TaskCategory,
             TaskPriority,
             TaskStatus,
@@ -190,62 +193,163 @@ class SQLAlchemyNationalTaskRepository(NationalTaskRepository):
         )
 
 
-class SQLAlchemyTaskQueueRepository(TaskQueueRepository):
+#: IA-070. Everything from here down persisted nothing. Six classes named
+#: ``SQLAlchemy*Repository`` contained no SQLAlchemy at all: ``save`` returned
+#: its argument without writing, ``get`` returned ``None``, and every finder
+#: returned ``[]``. An AST pass over this file measured it -- of 7 repository
+#: classes, only ``SQLAlchemyNationalTaskRepository`` touches the database; the
+#: other 6 had 24 methods between them and 0 that issue a query.
+#:
+#: ``save`` returning the entity is the dangerous shape: a caller gets its
+#: object back and has every reason to believe it was stored. One of these is
+#: ``SQLAlchemyTaskAuditLogRepository``, so the audit log discarded every write
+#: while reporting success -- against CLAUDE.md security invariant 2.
+#:
+#: WHY THIS WAS NOT REPAIRED BY IMPLEMENTING THE QUERIES. All 7 task_engine
+#: tables -- national_tasks, _task_queues, _task_assignments, _task_escalations,
+#: _task_sla_definitions, _task_comments, _task_audit_logs -- have zero
+#: creating migrations, checked individually against migrations/versions/. So
+#: writing real SQLAlchemy here would produce "no such table" rather than
+#: persistence.
+#:
+#: WHY IT MATTERED ANYWAY, despite nothing reaching these today. All 29 routes
+#: in api/routes.py call _get_service(), which constructs all seven and raises
+#:
+#:     TypeError: Can't instantiate abstract class
+#:     SQLAlchemyTaskAssignmentRepository without an implementation for
+#:     abstract method 'find_by_assignee'
+#:
+#: The two classes that left abstract methods unimplemented were acting as an
+#: accidental circuit breaker in front of the other 24 silent methods. The
+#: obvious repair for that TypeError -- implement the 3 missing methods so the
+#: classes instantiate -- would have unblocked construction and exposed every
+#: one of them, turning a loud failure into silent data loss across the whole
+#: task engine, audit log included.
+#:
+#: So the missing methods ARE implemented, as refusals, and so is every other
+#: method here. The classes are now constructible and honest: whichever path a
+#: caller takes it fails loudly, and no later change can expose a discard that
+#: no longer exists.
+
+TASK_ENGINE_UNAVAILABLE_REASON = (
+    "the national task engine has no persistence: none of its 7 tables has a "
+    "creating migration, and 6 of its 7 repositories were never implemented. "
+    "See IA-070."
+)
+
+
+class TaskEngineRepositoryUnavailable(RuntimeError):
+    """Raised instead of silently discarding a write or inventing a read."""
+
+
+class _UnavailableRepository:
+    """Every method refuses, naming itself.
+
+    Subclasses list their contract's methods explicitly rather than catching
+    them with ``__getattr__``, so a method added to an ABC later shows up as a
+    normal TypeError at instantiation instead of being silently absorbed into
+    a refusal. A refusal must never be the thing that hides a contract change.
+    """
+
+    def _refuse(self, operation: str):
+        name = f"{type(self).__name__}.{operation}"
+        logger.warning("[TASK-ENGINE] %s refused: %s", name, TASK_ENGINE_UNAVAILABLE_REASON)
+        return TaskEngineRepositoryUnavailable(f"{name} is unavailable: {TASK_ENGINE_UNAVAILABLE_REASON}")
+
+
+class SQLAlchemyTaskQueueRepository(_UnavailableRepository, TaskQueueRepository):
     async def save(self, queue: Any) -> Any:
-        return queue
+        raise self._refuse("save")
+
     async def get(self, queue_id: str) -> Any:
-        return None
-    async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
-        return []
+        raise self._refuse("get")
+
+    async def list(self) -> list:
+        raise self._refuse("list")
+
     async def delete(self, queue_id: str) -> bool:
-        return True
+        raise self._refuse("delete")
 
-class SQLAlchemyTaskAssignmentRepository(TaskAssignmentRepository):
+
+class SQLAlchemyTaskAssignmentRepository(_UnavailableRepository, TaskAssignmentRepository):
     async def save(self, assignment: Any) -> Any:
-        return assignment
+        raise self._refuse("save")
+
     async def get(self, assignment_id: str) -> Any:
-        return None
+        raise self._refuse("get")
+
     async def find_by_task(self, task_id: str) -> list:
-        return []
+        raise self._refuse("find_by_task")
+
+    async def find_by_assignee(self, assignee_id: str) -> list:
+        # The abstract method whose absence raised the TypeError above.
+        raise self._refuse("find_by_assignee")
+
     async def find_by_user(self, user_id: str) -> list:
-        return []
+        raise self._refuse("find_by_user")
+
     async def find_active(self, user_id: str) -> list:
-        return []
+        raise self._refuse("find_active")
 
-class SQLAlchemyTaskEscalationRepository(TaskEscalationRepository):
+
+class SQLAlchemyTaskEscalationRepository(_UnavailableRepository, TaskEscalationRepository):
     async def save(self, escalation: Any) -> Any:
-        return escalation
+        raise self._refuse("save")
+
     async def get(self, escalation_id: str) -> Any:
-        return None
+        raise self._refuse("get")
+
     async def find_by_task(self, task_id: str) -> list:
-        return []
+        raise self._refuse("find_by_task")
+
     async def find_active(self) -> list:
-        return []
+        raise self._refuse("find_active")
 
-class SQLAlchemyTaskSLARepository(TaskSLARepository):
+
+class SQLAlchemyTaskSLARepository(_UnavailableRepository, TaskSLARepository):
     async def save(self, sla: Any) -> Any:
-        return sla
+        raise self._refuse("save")
+
     async def get(self, sla_id: str) -> Any:
-        return None
+        raise self._refuse("get")
+
     async def find_by_task(self, task_id: str) -> Any:
-        return None
+        raise self._refuse("find_by_task")
+
+    async def find_by_category_and_priority(self, category: str, priority: str) -> Any:
+        # Abstract method that was missing.
+        raise self._refuse("find_by_category_and_priority")
+
+    async def list(self) -> list:
+        # Abstract method that was missing.
+        raise self._refuse("list")
+
     async def find_overdue(self) -> list:
-        return []
+        raise self._refuse("find_overdue")
 
-class SQLAlchemyTaskCommentRepository(TaskCommentRepository):
+
+class SQLAlchemyTaskCommentRepository(_UnavailableRepository, TaskCommentRepository):
     async def save(self, comment: Any) -> Any:
-        return comment
-    async def get(self, comment_id: str) -> Any:
-        return None
-    async def find_by_task(self, task_id: str) -> list:
-        return []
+        raise self._refuse("save")
 
-class SQLAlchemyTaskAuditLogRepository(TaskAuditLogRepository):
-    async def save(self, log: Any) -> Any:
-        return log
+    async def get(self, comment_id: str) -> Any:
+        raise self._refuse("get")
+
     async def find_by_task(self, task_id: str) -> list:
-        return []
+        raise self._refuse("find_by_task")
+
+
+class SQLAlchemyTaskAuditLogRepository(_UnavailableRepository, TaskAuditLogRepository):
+    """The audit log. This one discarded every write while reporting success."""
+
+    async def save(self, log: Any) -> Any:
+        raise self._refuse("save")
+
+    async def find_by_task(self, task_id: str) -> list:
+        raise self._refuse("find_by_task")
+
     async def find_by_user(self, user_id: str) -> list:
-        return []
+        raise self._refuse("find_by_user")
+
     async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
-        return []
+        raise self._refuse("list")

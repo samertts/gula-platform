@@ -64,7 +64,7 @@ class SQLAlchemyRuleRepository(RuleRepository):
         return model.to_domain()
 
     async def list(self, skip: int = 0, limit: int = 100, **filters: Any) -> list[RuleDefinition]:
-        query = self.db.query(RuleModel).filter(~~RuleModel.is_deleted)
+        query = self.db.query(RuleModel).filter(~RuleModel.is_deleted)
         for key, value in filters.items():
             if hasattr(RuleModel, key) and value is not None:
                 query = query.filter(getattr(RuleModel, key) == value)
@@ -100,7 +100,7 @@ class SQLAlchemyRuleRepository(RuleRepository):
 
     async def find_by_tags(self, tags: list[str], skip: int = 0, limit: int = 100) -> list[RuleDefinition]:
         models = self.db.query(RuleModel).filter(
-            ~~RuleModel.is_deleted,
+            ~RuleModel.is_deleted,
         ).order_by(RuleModel.priority.desc()).offset(skip).limit(limit).all()
         result: list[RuleDefinition] = []
         for m in models:
@@ -119,7 +119,7 @@ class SQLAlchemyRuleRepository(RuleRepository):
         return [m.to_domain() for m in models]
 
     async def count(self, **filters: Any) -> int:
-        query = self.db.query(RuleModel).filter(~~RuleModel.is_deleted)
+        query = self.db.query(RuleModel).filter(~RuleModel.is_deleted)
         for key, value in filters.items():
             if hasattr(RuleModel, key) and value is not None:
                 query = query.filter(getattr(RuleModel, key) == value)

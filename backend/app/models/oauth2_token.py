@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 
 from app._compat import UTC
 
@@ -19,5 +19,7 @@ class OAuth2Token(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     code_challenge = Column(String(255), nullable=True)
     code_challenge_method = Column(String(10), nullable=True)
-    is_revoked = Column(Integer, default=0, index=True)
+    # Boolean, not Integer -- see OAuth2Client.is_active. Migration
+    # 20260716_0015 created this column as ``sa.Boolean()``.
+    is_revoked = Column(Boolean, default=False, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

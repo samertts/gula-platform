@@ -7,6 +7,6 @@ Layer: infrastructure
 Version: 1.0.0
 """
 
-from storage_service.capability import Storage_serviceCapability
+from .capability import Storage_serviceCapability
 
 __all__ = ["Storage_serviceCapability"]

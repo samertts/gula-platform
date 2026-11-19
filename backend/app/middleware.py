@@ -289,7 +289,19 @@ class PrivacyMiddleware(BaseHTTPMiddleware):
 
 
 class DocsAuthMiddleware(BaseHTTPMiddleware):
-    """Guard /docs, /redoc, /openapi.json behind admin JWT in production."""
+    """Guard /docs, /redoc, /openapi.json behind admin JWT in production.
+
+    ``app/contracts/routes.py`` publishes the same specification — OpenAPI,
+    AsyncAPI, per-module JSON Schema and the FHIR R4 profiles — under its own
+    prefix, which this exact-match set does not cover. That is deliberate on the
+    contracts side: publishing those documents is what that router is for, and its
+    only mutating route carries its own admin guard.
+
+    Whether the API contract should be public at all is therefore inconsistent
+    between the two surfaces — protected here in production, published there. That
+    is a product decision about the contract, not a defect to settle in a
+    middleware, and it is recorded rather than resolved here.
+    """
 
     _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
 

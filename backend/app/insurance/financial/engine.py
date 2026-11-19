@@ -837,9 +837,14 @@ class InvoiceGenerator:
             "status": "generated",
         }
 
-        metadata = claim.metadata or {}
-        metadata["invoice_number"] = invoice_number
-        claim.metadata = metadata
+        # `extra_metadata`, not `metadata`: a declarative class already owns `.metadata`
+        # (SQLAlchemy keeps the MetaData registry there), so `ins_claims.metadata` is
+        # mapped under this name. Reading `.metadata` returned the registry and writing
+        # it never reached the column. See IA-007. No invoice figure depends on this —
+        # the returned dict is built above from claim fields only.
+        stamped = dict(claim.extra_metadata or {})
+        stamped["invoice_number"] = invoice_number
+        claim.extra_metadata = stamped
         self._db.commit()
 
         return invoice

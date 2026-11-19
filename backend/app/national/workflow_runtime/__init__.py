@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from backend.app.national.workflow_runtime.application.service import (
+from app.national.workflow_runtime.application.service import (
     WorkflowRuntimeService,
 )
-from backend.app.national.workflow_runtime.domain.entities import (
+from app.national.workflow_runtime.domain.entities import (
     RetryPolicyConfig,
     SagaLog,
     WorkflowApproval,
@@ -14,7 +14,7 @@ from backend.app.national.workflow_runtime.domain.entities import (
     WorkflowStepDefinition,
     WorkflowTimer,
 )
-from backend.app.national.workflow_runtime.domain.enums import (
+from app.national.workflow_runtime.domain.enums import (
     CompensationStrategy,
     WorkflowApprovalStrategy,
     WorkflowExecutionStatus,
@@ -23,8 +23,8 @@ from backend.app.national.workflow_runtime.domain.enums import (
     WorkflowTimeoutPolicy,
     WorkflowTrigger,
 )
-from backend.app.national.workflow_runtime.domain.saga_engine import SagaEngine
-from backend.app.national.workflow_runtime.domain.workflow_state_machine import (
+from app.national.workflow_runtime.domain.saga_engine import SagaEngine
+from app.national.workflow_runtime.domain.workflow_state_machine import (
     WorkflowStateMachine,
 )
 

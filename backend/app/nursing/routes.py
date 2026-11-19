@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
-from app.nursing.clinical_read_gate import ClinicalNursingTaskReadDenied, ClinicalNursingTaskReadGate
+from app.nursing.clinical_read_gate import (
+    ClinicalNursingTaskReadDenied,
+    ClinicalNursingTaskReadGate,
+)
 from app.nursing.coordination import CareCoordinatorService
 from app.nursing.medication import MedicationAdminService
 from app.nursing.models import (
@@ -23,6 +26,7 @@ from app.nursing.models import (
 )
 from app.nursing.services import NursingService
 from app.security.dependencies import get_current_user
+from shared.models import serialize_columns
 
 logger = logging.getLogger("gula.nursing.routes")
 
@@ -32,16 +36,15 @@ _NURSING_NS = "nursing"
 
 
 def _model_to_dict(model_instance) -> dict[str, Any]:
-    exclude = {"lab_id", "is_deleted", "deleted_at", "version"}
-    result = {}
-    for c in model_instance.__table__.columns:
-        if c.key in exclude:
-            continue
-        val = getattr(model_instance, c.key)
-        if isinstance(val, datetime) or (isinstance(val, date) and not isinstance(val, datetime)):
-            val = val.isoformat()
-        result[c.key] = val
-    return result
+    # Resolved through the mapper, not through `c.key`: for
+    # `metadata_ = Column("metadata", ...)` both `c.name` and `c.key` are "metadata",
+    # so reading by either returns the declarative MetaData registry instead of the
+    # column value. Keys and excluded fields are unchanged. See IA-005.
+    return serialize_columns(
+        model_instance,
+        exclude={"lab_id", "is_deleted", "deleted_at", "version"},
+        isoformat_dates=True,
+    )
 
 
 def _paginated_response(items: list, total: int, skip: int, limit: int) -> dict:

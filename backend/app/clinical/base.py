@@ -8,7 +8,7 @@ from sqlalchemy import Boolean, Column, DateTime, String
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
-from app.models.base import OptimisticLockMixin, SoftDeleteMixin, TimestampMixin
+from app.models.base import OptimisticLockMixin, SoftDeleteMixin, TimestampMixin, serialize_columns
 
 ClinicalBase = declarative_base()
 
@@ -27,13 +27,7 @@ class BaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, ClinicalB
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     def to_dict(self) -> dict[str, Any]:
-        result = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+        return serialize_columns(self)
 
     def soft_delete(self) -> None:
         self.is_deleted = True

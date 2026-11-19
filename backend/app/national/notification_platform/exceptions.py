@@ -71,3 +71,27 @@ class ScheduleNotFoundError(NotificationPlatformError):
     def __init__(self, schedule_id: str) -> None:
         self.schedule_id = schedule_id
         super().__init__(f"Notification schedule not found: {schedule_id}")
+
+
+#: IA-080. Named once, so the refusal message and any documentation of the gap
+#: cannot drift apart.
+SCHEDULING_UNAVAILABLE_REASON = (
+    "no deferred-execution primitive exists: TaskPayload carries no delay, "
+    "run_at or eta field and TaskQueue.enqueue accepts none, so a delivery "
+    "task cannot be held until a future time. Nothing polls NotificationSchedule "
+    "either — its only reader is the GET /schedules listing, and "
+    "find_due_schedules belongs to background_platform and a different "
+    "repository. Honouring a schedule requires a delay-capable queue or a "
+    "due-schedule poller; neither is present."
+)
+
+
+class NotificationSchedulingUnavailable(NotificationPlatformError):
+    """A future or recurring schedule cannot be honoured, so it is refused.
+
+    Raised instead of delivering immediately under a schedule the platform
+    records but never acts on.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

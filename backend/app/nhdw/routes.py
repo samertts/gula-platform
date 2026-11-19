@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from shared.models import serialize_columns
 
 from ..database import get_db
 from ..models.lab_user import LabUser
@@ -48,16 +49,15 @@ router = APIRouter(prefix="/nhdw", tags=["nhdw"])
 
 
 def _model_to_dict(model_instance) -> dict[str, Any]:
-    exclude = {"lab_id", "is_deleted", "deleted_at", "version"}
-    result = {}
-    for c in model_instance.__table__.columns:
-        if c.key in exclude:
-            continue
-        val = getattr(model_instance, c.key)
-        if isinstance(val, datetime) or (isinstance(val, date) and not isinstance(val, datetime)):
-            val = val.isoformat()
-        result[c.key] = val
-    return result
+    # Resolved through the mapper, not through `c.key`: for
+    # `metadata_ = Column("metadata", ...)` both `c.name` and `c.key` are "metadata",
+    # so reading by either returns the declarative MetaData registry instead of the
+    # column value. Keys and excluded fields are unchanged. See IA-005.
+    return serialize_columns(
+        model_instance,
+        exclude={"lab_id", "is_deleted", "deleted_at", "version"},
+        isoformat_dates=True,
+    )
 
 
 def _paginated_response(items: list, total: int, skip: int, limit: int) -> dict:

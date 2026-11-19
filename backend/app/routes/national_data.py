@@ -286,7 +286,7 @@ def list_golden_records(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(GoldenRecord).filter(~~GoldenRecord.is_deleted)
+    query = db.query(GoldenRecord).filter(~GoldenRecord.is_deleted)
     total = query.count()
     records = query.order_by(GoldenRecord.confidence_score.desc()).offset(skip).limit(limit).all()
     return {"total": total, "records": [_golden_to_dict(r) for r in records]}
@@ -447,7 +447,7 @@ def list_data_catalog(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(DataCatalogEntry).filter(~~DataCatalogEntry.is_deleted)
+    query = db.query(DataCatalogEntry).filter(~DataCatalogEntry.is_deleted)
     if entry_type:
         query = query.filter(DataCatalogEntry.entry_type == entry_type)
     total = query.count()
@@ -556,7 +556,7 @@ def list_retention_policies(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(RetentionPolicy).filter(~~RetentionPolicy.is_deleted)
+    query = db.query(RetentionPolicy).filter(~RetentionPolicy.is_deleted)
     if entity_type:
         query = query.filter(RetentionPolicy.entity_type == entity_type)
     policies = query.order_by(RetentionPolicy.policy_name).all()
@@ -594,7 +594,7 @@ def list_consent_directives(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(ConsentDirective).filter(~~ConsentDirective.is_deleted)
+    query = db.query(ConsentDirective).filter(~ConsentDirective.is_deleted)
     if patient_id:
         query = query.filter(ConsentDirective.patient_id == patient_id)
     if consent_type:
@@ -655,7 +655,7 @@ def list_deidentification_jobs(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(DeidentificationJob).filter(~~DeidentificationJob.is_deleted)
+    query = db.query(DeidentificationJob).filter(~DeidentificationJob.is_deleted)
     if status:
         query = query.filter(DeidentificationJob.status == status)
     jobs = query.order_by(DeidentificationJob.id.desc()).all()
@@ -681,7 +681,7 @@ def list_features(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(FeatureStore).filter(~~FeatureStore.is_deleted, FeatureStore.is_active)
+    query = db.query(FeatureStore).filter(~FeatureStore.is_deleted, FeatureStore.is_active)
     if entity_type:
         query = query.filter(FeatureStore.entity_type == entity_type)
     features = query.order_by(FeatureStore.feature_name).all()
@@ -782,7 +782,7 @@ def list_training_datasets(
     current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(TrainingDataset).filter(~~TrainingDataset.is_deleted)
+    query = db.query(TrainingDataset).filter(~TrainingDataset.is_deleted)
     if dataset_type:
         query = query.filter(TrainingDataset.dataset_type == dataset_type)
     datasets = query.order_by(TrainingDataset.id.desc()).all()

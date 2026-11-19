@@ -5,14 +5,14 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from backend.app._compat import UTC
-from backend.app.national.task_engine.application.interfaces import (
+from app._compat import UTC
+from app.national.task_engine.application.interfaces import (
     AssignmentEngine,
     KPIEngine,
     RoundRobinAssigner,
     SimpleKPIEngine,
 )
-from backend.app.national.task_engine.domain.entities import (
+from app.national.task_engine.domain.entities import (
     NationalTask,
     TaskAssignment,
     TaskAuditLog,
@@ -21,11 +21,11 @@ from backend.app.national.task_engine.domain.entities import (
     TaskQueue,
     TaskSLADefinition,
 )
-from backend.app.national.task_engine.domain.enums import (
+from app.national.task_engine.domain.enums import (
     AssignmentStrategy,
     TaskStatus,
 )
-from backend.app.national.task_engine.domain.repository import (
+from app.national.task_engine.domain.repository import (
     NationalTaskRepository,
     TaskAssignmentRepository,
     TaskAuditLogRepository,
@@ -34,7 +34,7 @@ from backend.app.national.task_engine.domain.repository import (
     TaskQueueRepository,
     TaskSLARepository,
 )
-from backend.app.national.task_engine.exceptions import (
+from app.national.task_engine.exceptions import (
     TaskNotFoundError,
     TaskQueueNotFoundError,
 )

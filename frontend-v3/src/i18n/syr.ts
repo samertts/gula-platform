@@ -119,6 +119,7 @@ const syr = {
     quickNavigation: "ܐܘܪܚܐ ܥܓܝܠܬܐ",
     mainNavigation: "ܐܘܪܚܐ ܪܝܫܝܬܐ",
     openAllSections: "ܦܬܚ ܟܠܗܘܢ ܦܠܓ̈ܐ",
+    moreSections: "ܝܬܝܪ ܦܠܓ̈ܐ",
     more: "ܝܬܝܪ",
     current: "ܦܬܐ ܕܟܕܘ",
     skipToContent: "ܦܪܘܩ ܠܚܒܪܐ ܪܝܫܝܐ",

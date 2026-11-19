@@ -116,6 +116,26 @@ def _sample_value(name: str, ftype: str, constraints: dict) -> Any:
     return "x" * max(min_l, 3)
 
 
+def _pattern_alternatives(pattern: str) -> set[str]:
+    """The values an anchored enum-ish pattern admits.
+
+    IA-069. This handles exactly the two shapes the DTO catalog uses and no
+    more -- it is a reader for those two shapes, not a regex engine:
+
+    * alternation, ``^(android|ios)$`` -> {"android", "ios"}
+    * a character class, ``^[MFmf]$`` -> {"M", "F", "m", "f"}
+
+    The original split on ``"|"`` after stripping only ``"^$"``, so
+    ``^(android|ios)$`` yielded {"(android", "ios)"} and ``^[MFmf]$`` yielded
+    {"[MFmf]"}. Both intersected the known enum as the empty set, and the
+    assertion then failed on patterns that were in fact correct.
+    """
+    body = pattern.strip("^$")
+    if body.startswith("[") and body.endswith("]"):
+        return set(body[1:-1])
+    return {alt.strip("()") for alt in body.strip("()").split("|")}
+
+
 # ── Tests ──────────────────────────────────────────────────────────────
 
 class TestDTOSerialization:
@@ -294,7 +314,7 @@ class TestDTOEnumValues:
                         continue
                     fname = field["name"]
                     if fname in known_enums:
-                        pattern_values = set(pattern.strip("^$").split("|"))
+                        pattern_values = _pattern_alternatives(pattern)
                         expected = known_enums[fname]
                         overlap = pattern_values & expected
                         assert overlap, (

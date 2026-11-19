@@ -1239,16 +1239,60 @@ def _interpret_generic(
     }
 
 
+def apply_critical_override(
+    flag: str | None,
+    test_name: str | None,
+    value: float | None,
+    test_code: str | None = None,
+) -> str | None:
+    """Escalate a flag to "critical" when the medical threshold table says so.
+
+    ``get_flag`` returns "unknown" on its first branch when either reference
+    bound is missing, so it never reaches its own critical check for a result
+    whose range is unknown. That is not a rare case: the startup TestType
+    catalog seeds 20 tests, ``CRITICAL_THRESHOLDS`` covers 37, and the 24 in the
+    second but not the first — troponin, INR, PT, aPTT, calcium, magnesium,
+    procalcitonin among them — have no catalog entry to supply a range.
+
+    ``check_critical`` needs only a test name and a value, and the platform
+    already consults it that way in ``order_service._check_critical_alerts``.
+    This applies the same established judgement to the *stored* flag, which is
+    what the critical-alert service, the statistics dashboards, the citizen
+    portal and the compliance export all select on.
+
+    It only ever escalates to "critical". It never produces "H", "L" or
+    "normal", never downgrades an existing "critical", and returns the flag
+    unchanged when there is no value or no documented threshold — so it cannot
+    invent a classification. See IA-020 / IA-024.
+
+    ``test_code`` is the resolved ``TestType.test_code``, passed through so a
+    result reported under the catalog's own published name still reaches its
+    documented threshold. See ``check_critical``.
+    """
+    if value is None or not test_name or flag == "critical":
+        return flag
+    from ..services.critical_alerts import check_critical
+
+    return "critical" if check_critical(test_name, value, test_code) else flag
+
+
 def get_flag(
     value: float,
     normal_low: float | None = None,
     normal_high: float | None = None,
     test_name: str | None = None,
+    test_code: str | None = None,
 ) -> str:
     """Return flag for result: H, L, normal, or critical.
 
     Uses medical critical thresholds from critical_alerts when available,
     falls back to 2x normal range for unknown tests.
+
+    ``test_code`` is the resolved ``TestType.test_code``. The documented
+    threshold must win over the generic fallback even when the result was
+    reported under the catalog's qualified name — otherwise a glucose between
+    the generic bound (normal_low * 0.5 = 35) and the documented one (40) is
+    graded "L". See ``check_critical``.
     """
     if normal_low is None or normal_high is None:
         return "unknown"
@@ -1257,7 +1301,7 @@ def get_flag(
     if test_name:
         from ..services.critical_alerts import check_critical
 
-        alert = check_critical(test_name, value)
+        alert = check_critical(test_name, value, test_code)
         if alert:
             return "critical"
 

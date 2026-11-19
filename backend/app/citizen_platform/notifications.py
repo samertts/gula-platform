@@ -46,7 +46,41 @@ class CitizenNotificationService:
         channel: str = "in_app",
         reference_type: str = "",
         reference_id: str = "",
+        recipient_address: str | None = None,
     ) -> NotificationResult:
+        """Record an alert for a citizen, and on an external channel send it.
+
+        IA-078. ``citizen_id`` used to be passed straight through as the SMS or
+        email recipient:
+
+            self._platform.send_notification(channel=channel, to=citizen_id, ...)
+
+        Proved against a working stub SMS gateway: ``send_critical_alert`` for
+        a potassium of 7.9 mmol/L returned ``success=True`` while the gateway
+        received ``{"to": "c7f3a1e2-9b44-4d10-8e55-0a1b2c3d4e5f"}`` — an
+        internal identifier where a phone number belongs. The gateway answered
+        200, so ``raise_for_status()`` passed, so the platform reported
+        delivery. **The alert reached nobody, on a fully configured
+        deployment.** No amount of honest transport reporting (IA-076) reaches
+        this: the transport succeeded and the address was wrong.
+
+        This class holds no citizen registry, no session and no contact
+        repository, so it cannot resolve an identifier to an address — and
+        deciding *which* address (verified only? consented? primary?) is a
+        policy this audit must not invent. So the address is the caller's to
+        supply, and a non-in_app channel without one is refused rather than
+        addressed to an identifier.
+        """
+        if channel != "in_app" and not recipient_address:
+            raise ValueError(
+                f"channel {channel!r} needs a real recipient_address: "
+                f"citizen_id {citizen_id!r} is an internal identifier, not a "
+                f"phone number or mailbox, and sending to it reports a "
+                f"delivery that reaches nobody. This service cannot resolve "
+                f"one — pass the address from whoever read the citizen's "
+                f"contact details and consent.",
+            )
+
         alert = CitizenAlert(
             id=str(uuid.uuid4()),
             citizen_id=citizen_id,
@@ -65,7 +99,9 @@ class CitizenNotificationService:
         self._notifications[citizen_id].append(alert)
 
         if channel != "in_app":
-            return self._platform.send_notification(channel=channel, to=citizen_id, subject=title, body=message)
+            return self._platform.send_notification(
+                channel=channel, to=recipient_address, subject=title, body=message,
+            )
 
         return NotificationResult(success=True, channel="in_app", recipient=citizen_id)
 
@@ -116,7 +152,14 @@ class CitizenNotificationService:
         message: str,
         message_ar: str,
         channel: str = "in_app",
+        recipient_addresses: dict[str, str] | None = None,
     ) -> list[NotificationResult]:
+        """IA-078. A broadcast on an external channel needs one address each.
+
+        Keyed by citizen id rather than positional, so a mismatched list
+        cannot silently shift every message to the wrong recipient.
+        """
+        addresses = recipient_addresses or {}
         results: list[NotificationResult] = []
         for cid in citizen_ids:
             result = self.send_notification(
@@ -127,6 +170,7 @@ class CitizenNotificationService:
                 message=message,
                 message_ar=message_ar,
                 channel=channel,
+                recipient_address=addresses.get(cid),
             )
             results.append(result)
         return results
@@ -145,7 +189,15 @@ class AlertService:
         message_ar: str,
         reference_type: str = "",
         reference_id: str = "",
+        recipient_phone: str | None = None,
     ) -> NotificationResult:
+        """IA-078. ``recipient_phone`` is required in practice, not optional.
+
+        It is keyword-with-default only so that no existing positional call is
+        silently re-bound to the wrong argument; omitting it raises in
+        ``send_notification`` rather than texting a UUID. This is the path that
+        carries a critical result, so a loud refusal is the safe failure.
+        """
         return self._notification_service.send_notification(
             citizen_id=citizen_id,
             notification_type=CitizenNotificationType.EMERGENCY_ALERT,
@@ -156,6 +208,7 @@ class AlertService:
             channel="sms",
             reference_type=reference_type,
             reference_id=reference_id,
+            recipient_address=recipient_phone,
         )
 
     def send_lab_result_alert(
@@ -204,7 +257,9 @@ class AlertService:
         appointment_id: str,
         appointment_type: str,
         appointment_time: str,
+        recipient_phone: str | None = None,
     ) -> NotificationResult:
+        """IA-078, as send_critical_alert."""
         return self._notification_service.send_notification(
             citizen_id=citizen_id,
             notification_type=CitizenNotificationType.APPOINTMENT_REMINDER,
@@ -213,6 +268,7 @@ class AlertService:
             message=f"You have a {appointment_type} appointment at {appointment_time}",
             message_ar=f"لديك موعد {appointment_type} في {appointment_time}",
             channel="sms",
+            recipient_address=recipient_phone,
             reference_type="appointment",
             reference_id=appointment_id,
         )

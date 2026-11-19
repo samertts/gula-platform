@@ -7,6 +7,6 @@ Layer: application
 Version: 1.0.0
 """
 
-from document_management.capability import Document_managementCapability
+from .capability import Document_managementCapability
 
 __all__ = ["Document_managementCapability"]

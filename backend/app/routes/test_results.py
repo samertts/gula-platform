@@ -33,11 +33,16 @@ from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..models.sample import Sample, generate_barcode
 from ..models.test_type import TestType
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
 from ..services.critical_alerts import check_critical
-from ..services.interpretation import get_flag, interpret_result
+from ..services.interpretation import (
+    apply_critical_override,
+    get_flag,
+    interpret_result,
+)
+from ..services.test_catalog import resolve_test_type
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])
 
@@ -211,7 +216,7 @@ def _validate_payload(
                 },
             )
         # Critical value hint (informational — the client may want to confirm)
-        crit = check_critical(test_name, value)
+        crit = check_critical(test_name, value, tt.test_code if tt else None)
         if crit:
             warnings.append(
                 {
@@ -247,28 +252,6 @@ def _get_patient_scoped(db: Session, current_user: LabUser, health_id: str) -> P
     return patient
 
 
-def _fill_ranges_from_catalog(
-    db: Session,
-    test_name: str,
-    test_code: str | None,
-    normal_low: float | None,
-    normal_high: float | None,
-    unit: str | None,
-) -> tuple[float | None, float | None, str | None, TestType | None]:
-    """Populate missing range/unit from the TestType catalog when available."""
-    tt: TestType | None = None
-    if test_code:
-        tt = db.query(TestType).filter(TestType.test_code == test_code).first()
-    if tt is None:
-        tt = db.query(TestType).filter(TestType.test_name.ilike(test_name)).first()
-    if tt is not None:
-        if normal_low is None:
-            normal_low = tt.normal_range_low
-        if normal_high is None:
-            normal_high = tt.normal_range_high
-        if not unit:
-            unit = tt.unit
-    return normal_low, normal_high, unit, tt
 
 
 # ───────────────────────── endpoints ─────────────────────────
@@ -278,7 +261,7 @@ def _fill_ranges_from_catalog(
 def create_test_result(
     data: TestResultCreate,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     """Create a single test result for a citizen (identified by health_id).
@@ -291,7 +274,7 @@ def create_test_result(
     patient = _get_patient_scoped(db, current_user, data.health_id)
 
     # Pull any missing reference data from the catalog.
-    normal_low, normal_high, unit, tt = _fill_ranges_from_catalog(
+    normal_low, normal_high, unit, tt = resolve_test_type(
         db,
         data.test_name,
         data.test_code,
@@ -350,7 +333,21 @@ def create_test_result(
     # Compute clinical flag (smart_analysis via get_flag + critical_alerts)
     flag = "unknown"
     if data.value is not None and normal_low is not None and normal_high is not None:
-        flag = get_flag(data.value, normal_low, normal_high, test_name=data.test_name)
+        flag = get_flag(
+            data.value,
+            normal_low,
+            normal_high,
+            test_name=data.test_name,
+            test_code=tt.test_code if tt else None,
+        )
+    # A catalogued test gets its flag above; one the catalog does not carry can
+    # still be critical, and check_critical needs only a name and a value.
+    flag = apply_critical_override(
+        flag,
+        data.test_name,
+        data.value,
+        tt.test_code if tt else None,
+    )
 
     # Unique result token
     token = secrets.token_urlsafe(32)
@@ -389,6 +386,11 @@ def create_test_result(
     db.refresh(order)
 
     # Fire critical-value event for downstream notifications.
+    # IA-043: this event currently has no subscriber, so no notification is sent
+    # from here. A critical value reaches a human only when someone reads the
+    # result or polls GET /critical-alerts. Implementing escalation (who is
+    # notified, by which channel, with what retry and what documented read-back)
+    # is clinical policy and is deliberately not invented here.
     if flag == "critical" and data.value is not None:
         events.emit(
             RESULT_CRITICAL,
@@ -588,7 +590,7 @@ def list_citizen_results(
     is_abnormal: bool | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """All results for a citizen, filterable by category / date / abnormal flag.
@@ -657,7 +659,7 @@ def list_citizen_results(
 def citizen_timeline(
     health_id: str,
     category: str | None = Query(None, max_length=50),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Group values by test_code over time — suitable for line charts.

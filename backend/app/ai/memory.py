@@ -59,7 +59,7 @@ class MemoryStore:
             try:
                 meta_json = json.dumps(metadata or {}, ensure_ascii=False)
                 db.execute(
-                    text("INSERT INTO ai_conversations (lab_id, user_id, session_id, title, metadata) VALUES (:lab, :uid, :sid, :title, :meta::jsonb) RETURNING id"),
+                    text("INSERT INTO ai_conversations (lab_id, user_id, session_id, title, metadata) VALUES (:lab, :uid, :sid, :title, CAST(:meta AS jsonb)) RETURNING id"),
                     {"lab": lab_id, "uid": user_id, "sid": session_id, "title": title, "meta": meta_json},
                 )
                 db.commit()
@@ -99,7 +99,7 @@ class MemoryStore:
             try:
                 meta_json = json.dumps(metadata or {}, ensure_ascii=False)
                 db.execute(
-                    text("INSERT INTO ai_conversation_messages (conversation_id, role, content, metadata, token_count) VALUES ((SELECT id FROM ai_conversations WHERE session_id = :sid), :role, :content, :meta::jsonb, :tokens)"),
+                    text("INSERT INTO ai_conversation_messages (conversation_id, role, content, metadata, token_count) VALUES ((SELECT id FROM ai_conversations WHERE session_id = :sid), :role, :content, CAST(:meta AS jsonb), :tokens)"),
                     {"sid": session_id, "role": role, "content": content, "meta": meta_json, "tokens": token_count},
                 )
                 db.commit()

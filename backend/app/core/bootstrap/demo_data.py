@@ -7,9 +7,9 @@ import uuid
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from app._compat import UTC
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import SessionLocal
 from app.models.lab import Lab
 from app.models.lab_order import LabOrder
@@ -18,6 +18,7 @@ from app.models.lab_user import LabUser
 from app.models.patient import Patient
 from app.models.sample import Sample
 from app.security.auth import hash_password
+from app.services.test_catalog import resolve_test_type
 
 logger = logging.getLogger("gula.bootstrap.demo_data")
 
@@ -182,8 +183,15 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
                 random.uniform(test["low"] * 0.8, test["high"] * 1.2), 1,
             )
             token = generate_token()
+            # Seeded demo rows go through the same catalog resolution as
+            # production writes, so demo data cannot look healthier than a real
+            # deployment would (IA-019).
+            _, _, _, tt = resolve_test_type(
+                db, test["name"], test.get("code"), test["low"], test["high"], test["unit"],
+            )
             result = LabResult(
                 order_id=order.id,
+                test_type_id=tt.id if tt else None,
                 test_name=test["name"],
                 value=result_value,
                 unit=test["unit"],

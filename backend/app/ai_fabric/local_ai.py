@@ -171,22 +171,35 @@ class EmbeddingService:
         self._dimension: int = 384
 
     def embed(self, texts: list[str], model: str = "default") -> list[list[float]]:
+        """Real embedding vectors from an embedding model.
+
+        IA-074. This used to prompt a CHAT model with "Generate embedding
+        for: {text}" and then discard the reply, returning
+        ``[0.5] * 384`` when the call produced anything and ``[0.0] * 384``
+        when it did not. Both are constant vectors: every text embedded
+        identically, so the cosine similarity of any two texts was 1.0 and
+        every similarity search, nearest-neighbour lookup and RAG retrieval
+        built on them was meaningless -- while reporting success.
+
+        Embeddings come from an embedding endpoint, not a chat completion.
+        AIProvider.embed_many talks to Ollama's /api/embeddings and raises
+        AIProviderUnavailable rather than inventing a vector.
+        """
         from shared.ai.provider import AIProvider
-        provider = AIProvider()
-        results: list[list[float]] = []
-        for text in texts:
-            raw = provider.generate(f"Generate embedding for: {text}", temperature=0.0)
-            if raw:
-                results.append([0.5] * self._dimension)
-            else:
-                results.append([0.0] * self._dimension)
-        return results
+
+        vectors = AIProvider().embed_many(texts)
+        # The dimension is whatever the model emits; the previous hardcoded 384
+        # was part of the fiction.
+        if vectors:
+            self._dimension = len(vectors[0])
+        return vectors
 
     def embed_single(self, text: str) -> list[float]:
         return self.embed([text])[0]
 
     @property
     def dimension(self) -> int:
+        """The embedding width, known only after a real embedding is returned."""
         return self._dimension
 
 
@@ -200,7 +213,7 @@ class RerankingService:
         query: str,
         documents: list[str],
         top_k: int = 10,
-    ) -> list[tuple[str, float]]:
+    ) -> list[tuple[str, float | None]]:
         scored: list[tuple[str, float]] = []
         for doc in documents:
             prompt = (
@@ -212,8 +225,25 @@ class RerankingService:
             try:
                 score = min(max(float(raw.strip()), 0.0), 1.0)
             except (ValueError, TypeError):
-                score = 0.5
+                # IA-074: this was `score = 0.5` with no record. When the
+                # provider was unconfigured, generate() returned "" for every
+                # document, so every document scored 0.5 and `scored.sort`
+                # produced input order -- an arbitrary ordering presented as a
+                # relevance ranking. An unavailable provider now raises out of
+                # generate() before reaching here, so this branch means only
+                # one thing: the model answered, but not with a number.
+                logger.warning(
+                    "reranker: %s did not return a parseable score (%r) — document "
+                    "left unscored", self._provider.backend, raw[:40],
+                )
+                score = None  # type: ignore[assignment]
             scored.append((doc, score))
 
-        scored.sort(key=lambda x: x[1], reverse=True)
-        return scored[:top_k]
+        # Documents the model would not score are not silently ranked. They are
+        # returned after the scored ones, so the caller sees them without a
+        # fabricated relevance value deciding their position.
+        ranked = sorted(
+            (d for d in scored if d[1] is not None), key=lambda x: x[1], reverse=True,
+        )
+        unscored = [d for d in scored if d[1] is None]
+        return (ranked + unscored)[:top_k]

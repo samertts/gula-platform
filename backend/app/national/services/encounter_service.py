@@ -117,7 +117,7 @@ def search_encounters(
     skip: int = 0,
     limit: int = 50,
 ) -> list[Encounter]:
-    query = db.query(Encounter).filter(~~Encounter.is_deleted)
+    query = db.query(Encounter).filter(~Encounter.is_deleted)
 
     filters = []
     if patient_id is not None:

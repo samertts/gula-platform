@@ -1,7 +1,15 @@
 """Transactional Outbox Service — GULA Platform
 ================================================
-Guarantees reliable event delivery even when the broker/notification service
-is temporarily unavailable.
+Guarantees that an event committed with a business operation is handed to the
+in-process EventBus at least once, even if the app crashes in between.
+
+SCOPE OF THAT GUARANTEE (measured, see IA-043): the in-process EventBus
+currently has **zero** subscribers — `@events.on` appears nowhere in this
+repository outside a docstring — so an event that this worker delivers
+successfully is still acted upon by nobody. `run_once` counts those in
+summary["undelivered"] and logs them at WARNING rather than reporting an
+unqualified success. There is no broker; "broker unavailable" is not a state
+this platform can currently be in.
 
 Pattern:
   1. Writer calls `emit_to_outbox()` INSIDE an existing DB transaction.
@@ -90,7 +98,7 @@ class OutboxWorker:
         Returns a summary: {"processed": N, "failed": N, "skipped": N}
         """
         now = datetime.now(UTC)
-        summary = {"processed": 0, "failed": 0, "skipped": 0}
+        summary = {"processed": 0, "failed": 0, "skipped": 0, "undelivered": 0}
 
         events_to_process = (
             db.query(OutboxEvent)
@@ -117,14 +125,30 @@ class OutboxWorker:
                 event.processed_at = now
                 event.last_error = None
 
-                logger.info(
-                    "[OUTBOX] event_type=%s id=%d aggregate=%s/%s dispatched_to=%d handlers",
-                    event.event_type,
-                    event.id,
-                    event.aggregate_type or "—",
-                    event.aggregate_id or "—",
-                    dispatched,
-                )
+                if dispatched == 0:
+                    # The row is still "done": the event *was* handed to the
+                    # dispatcher, and re-queueing it would retry forever against
+                    # a bus that has no subscribers. But an event delivered to
+                    # nobody must not be logged as an unqualified success — this
+                    # is currently every event, which is IA-043.
+                    logger.warning(
+                        "[OUTBOX] event_type=%s id=%d aggregate=%s/%s reached 0 "
+                        "handlers: it is recorded as done but nothing acted on it",
+                        event.event_type,
+                        event.id,
+                        event.aggregate_type or "—",
+                        event.aggregate_id or "—",
+                    )
+                    summary["undelivered"] += 1
+                else:
+                    logger.info(
+                        "[OUTBOX] event_type=%s id=%d aggregate=%s/%s dispatched_to=%d handlers",
+                        event.event_type,
+                        event.id,
+                        event.aggregate_type or "—",
+                        event.aggregate_id or "—",
+                        dispatched,
+                    )
                 summary["processed"] += 1
 
             except Exception as exc:

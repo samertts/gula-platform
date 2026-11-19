@@ -208,19 +208,84 @@ ISO_15189_INDICATORS = {
 }
 
 
+class IndicatorValueOutOfRange(Exception):
+    """The submitted value lies outside the range the indicator's measure allows.
+
+    Distinct from an unknown indicator so the API can answer 400 (the caller sent
+    a bad value) rather than 404 (the indicator does not exist).
+    """
+
+
+class IndicatorNotEvaluable(Exception):
+    """A known indicator whose target cannot be compared numerically.
+
+    Distinct from an unknown indicator id. Collapsing the two lets the API tell a
+    caller that an indicator does not exist when the sibling listing endpoint has
+    just published it, which is how the CAP indicators behaved.
+    """
+
+
+def _parse_target(target_str: str) -> tuple[str, float]:
+    """Return (operator, threshold) for a machine-comparable target.
+
+    Raises IndicatorNotEvaluable when the target is prose rather than a
+    comparison -- the CAP targets are written as "100% of required PT events" and
+    "> 99% required elements present", which no threshold can be read out of
+    reliably.
+
+    This replaces a silent ``else True``. Previously a target carrying no ASCII
+    ``<`` or ``>`` produced meets_target=True unconditionally, so such an
+    indicator could only ever report "passed". All ten ISO targets currently do
+    carry an operator, so that branch was not reachable today -- but an indicator
+    added with a Unicode "\u2264" or a bare "95%" would have silently become a
+    quality indicator that can never fail, which in an accreditation context is
+    the worst possible failure mode.
+    """
+    operator = "<" if "<" in target_str else (">" if ">" in target_str else "")
+    if not operator:
+        raise IndicatorNotEvaluable(
+            f"target {target_str!r} states no numeric comparison"
+        )
+
+    numeric = target_str.replace("%", "").replace("<", "").replace(">", "").replace("=", "").strip()
+    try:
+        threshold = float(numeric)
+    except ValueError as exc:
+        raise IndicatorNotEvaluable(
+            f"target {target_str!r} carries no single numeric threshold"
+        ) from exc
+
+    return operator, threshold
+
+
 def evaluate_iso_15189_indicator(indicator_id: str, value: float) -> dict:
-    """Evaluate a single ISO 15189 quality indicator against its target."""
-    spec = ISO_15189_INDICATORS.get(indicator_id)
+    """Evaluate one quality indicator against its published target.
+
+    Looks in both catalogues, because ``GET /lims/quality/indicators`` publishes
+    the ISO 15189 and the CAP ids together and a caller cannot be expected to
+    know that only one of them can be evaluated.
+
+    Raises ValueError for an unknown id, IndicatorNotEvaluable for a known id
+    whose target is not a numeric comparison, and IndicatorValueOutOfRange for a
+    value outside what the indicator's declared measure permits.
+    """
+    spec = ISO_15189_INDICATORS.get(indicator_id) or CAP_INDICATORS.get(indicator_id)
     if not spec:
         raise ValueError(f"Unknown indicator: {indicator_id}")
 
     target_str = spec["target"]
-    threshold = float(target_str.replace("%", "").replace("<", "").replace(">", "").strip())
-    meets_target = (
-        (value <= threshold if "<" in target_str else value >= threshold)
-        if any(c in target_str for c in "<>")
-        else True
-    )
+    operator, threshold = _parse_target(target_str)
+
+    # A percentage indicator is only meaningful in [0, 100]. Without this, -500
+    # against a "< 2%" target scored "passed" -- a nonsensical rejection rate
+    # reported as conformant. The bound is read from the spec's own ``measure``
+    # field rather than assumed for every indicator.
+    if spec.get("measure") == "percentage" and not (0.0 <= value <= 100.0):
+        raise IndicatorValueOutOfRange(
+            f"value {value} is outside 0-100 for percentage indicator {indicator_id!r}"
+        )
+
+    meets_target = value <= threshold if operator == "<" else value >= threshold
 
     return {
         "indicator_id": indicator_id,

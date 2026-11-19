@@ -28,13 +28,18 @@ from app._compat import UTC
 
 from ..config import APP_NAME, APP_VERSION, IS_PRODUCTION, NID_HMAC_KEY
 from ..database import get_db
+from ..fhir.terminology import (
+    diagnostic_report_status,
+    observation_status,
+    service_request_status,
+)
 from ..models.audit_log import AuditLog
 from ..models.lab import Lab
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..services.audit_service import get_latest_anchor, log_action, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
@@ -179,7 +184,7 @@ def audit_summary(
 @router.get("/fhir/patient/{patient_id}", summary="FHIR Patient resource (basic)")
 def get_fhir_patient(
     patient_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Returns patient data in HL7 FHIR R4 Patient resource format.
@@ -255,7 +260,7 @@ def get_fhir_patient(
 @router.get("/fhir/observation/{order_id}", summary="FHIR Observation resource (basic)")
 def get_fhir_observations(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab results in HL7 FHIR R4 Observation bundle format.
@@ -288,7 +293,10 @@ def get_fhir_observations(
         obs = {
             "resourceType": "Observation",
             "id": str(r.id),
-            "status": "final",
+            # IA-047: a fifth instance of IA-028's defect. Unconditionally
+            # "final", so every result of a pending or cancelled order was
+            # published as verified. `order` is in scope here.
+            "status": observation_status(order.status),
             "category": [
                 {
                     "coding": [
@@ -354,7 +362,7 @@ def get_fhir_observations(
 @router.get("/fhir/diagnostic-report/{order_id}", summary="FHIR DiagnosticReport resource")
 def get_fhir_diagnostic_report(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab order as HL7 FHIR R4 DiagnosticReport resource.
@@ -387,13 +395,13 @@ def get_fhir_diagnostic_report(
     patient = db.query(Patient).filter(Patient.id == order.patient_id).first()
     lab = db.query(Lab).filter(Lab.id == order.lab_id).first()
 
-    # Determine report status
-    status_map = {
-        "completed": "final",
-        "pending": "registered",
-        "cancelled": "cancelled",
-    }
-    report_status = status_map.get(order.status or "pending", "partial")
+    # IA-047: this local map called a "completed" order's report final, while
+    # FHIR reserves "final" for a report verified by an authorised person --
+    # which in GULA is the validated state, not the completed one. "validated"
+    # was not in the map at all and fell through to "partial", understating a
+    # verified report. The canonical mapping lives in app/fhir/terminology.py
+    # alongside the Observation and ServiceRequest ones.
+    report_status = diagnostic_report_status(order.status)
 
     observations_refs = [
         {"reference": f"Observation/{r.id}", "display": r.test_name} for r in results
@@ -465,7 +473,7 @@ def get_fhir_diagnostic_report(
 @router.get("/fhir/service-request/{order_id}", summary="FHIR ServiceRequest resource")
 def get_fhir_service_request(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab order as HL7 FHIR R4 ServiceRequest resource.
@@ -508,7 +516,11 @@ def get_fhir_service_request(
                 "value": str(order_id),
             },
         ],
-        "status": "completed" if order.status == "completed" else "active",
+        # IA-047: this published a validated order and a *cancelled* order both
+        # as "active" -- a withdrawn laboratory request asserted as in force and
+        # ready to be acted upon. Same defect as IA-036 in app/lims, on a third
+        # path.
+        "status": service_request_status(order.status),
         "intent": "original-order",
         "category": [
             {

@@ -270,7 +270,7 @@ class ExpiryMonitoringService:
         expired = self.db.query(DrugBatch).filter(
             DrugBatch.expiry_date < date.today(),
             ~DrugBatch.is_deleted,
-            not DrugBatch.is_quarantined,
+            ~DrugBatch.is_quarantined,
             DrugBatch.quantity_remaining > 0,
         )
         if self.lab_id:
@@ -359,7 +359,7 @@ class ReorderService:
         reorder_list: list[dict[str, Any]] = []
 
         drug_ids_q = self.db.query(StockLevel.drug_catalog_id).filter(
-            ~~StockLevel.is_deleted,
+            ~StockLevel.is_deleted,
             StockLevel.reorder_point.isnot(None),
         )
         if self.lab_id:
@@ -393,7 +393,7 @@ class ColdChainService:
                 StorageCondition.FROZEN,
             ]),
             ~DrugBatch.is_deleted,
-            not DrugBatch.is_quarantined,
+            ~DrugBatch.is_quarantined,
             DrugBatch.quantity_remaining > 0,
         )
         if self.lab_id:

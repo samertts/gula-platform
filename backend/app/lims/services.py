@@ -57,6 +57,8 @@ class SpecimenService:
         barcode: str,
         user_id: int,
         container_type: str | None = None,
+        *,
+        actor_role: str,
         **kwargs,
     ) -> Specimen:
         existing = db.query(Specimen).filter(Specimen.barcode == barcode).first()
@@ -75,7 +77,19 @@ class SpecimenService:
         )
         db.add(specimen)
         db.flush()
-        log_action(db, "create", "lims_specimen", specimen.id, user_id, "lab_tech", f"Specimen {barcode} registered")
+        # Keyword arguments: log_action takes eight positionals, and passing the
+        # description positionally landed it in ``lab_id`` — an integer column, so
+        # the INSERT raised and every registration failed with a 500.
+        log_action(
+            db,
+            action="create",
+            resource_type="lims_specimen",
+            resource_id=specimen.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=f"Specimen {barcode} registered",
+        )
         return specimen
 
     @staticmethod
@@ -85,6 +99,8 @@ class SpecimenService:
         target_status: str,
         user_id: int,
         notes: str | None = None,
+        *,
+        actor_role: str,
     ) -> Specimen:
         enforce_specimen_transition(specimen.status, target_status)
         now = datetime.now(UTC)
@@ -120,8 +136,16 @@ class SpecimenService:
             specimen.released_by = user_id
 
         db.flush()
-        log_action(db, "transition", "lims_specimen", specimen.id, user_id, "lab_tech",
-                    f"Specimen {specimen.barcode}: {specimen.status} → {target_status}")
+        log_action(
+            db,
+            action="transition",
+            resource_type="lims_specimen",
+            resource_id=specimen.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=specimen.lab_id,
+            details=f"Specimen {specimen.barcode}: {specimen.status} → {target_status}",
+        )
         return specimen
 
     @staticmethod
@@ -130,9 +154,13 @@ class SpecimenService:
         specimen: Specimen,
         reason: str,
         user_id: int,
+        *,
+        actor_role: str,
     ) -> Specimen:
         specimen.rejection_reason = reason
-        return SpecimenService.transition(db, specimen, "rejected", user_id)
+        return SpecimenService.transition(
+            db, specimen, "rejected", user_id, actor_role=actor_role
+        )
 
     @staticmethod
     def record_transportation(
@@ -173,6 +201,8 @@ class OrderService:
         user_id: int,
         accession_number: str,
         priority: str = "routine",
+        *,
+        actor_role: str,
         **kwargs,
     ) -> Order:
         existing = db.query(Order).filter(Order.accession_number == accession_number).first()
@@ -191,8 +221,16 @@ class OrderService:
         )
         db.add(lims_order)
         db.flush()
-        log_action(db, "create", "lims_order", lims_order.id, user_id, "lab_tech",
-                    f"LIMS order {accession_number} created")
+        log_action(
+            db,
+            action="create",
+            resource_type="lims_order",
+            resource_id=lims_order.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=f"LIMS order {accession_number} created",
+        )
         return lims_order
 
     @staticmethod
@@ -231,6 +269,8 @@ class ResultService:
         value_text: str | None = None,
         unit: str | None = None,
         instrument_id: int | None = None,
+        *,
+        actor_role: str,
         **kwargs,
     ) -> Result:
         result = Result(
@@ -272,8 +312,16 @@ class ResultService:
             result.flag = validation["flags"][0] if validation["flags"] else None
 
         db.flush()
-        log_action(db, "create", "lims_result", result.id, user_id, "lab_tech",
-                    f"Result {test_code}: {value_numeric} {unit or ''}".strip())
+        log_action(
+            db,
+            action="create",
+            resource_type="lims_result",
+            resource_id=result.id,
+            user_id=user_id,
+            user_role=actor_role,
+            lab_id=lab_id,
+            details=f"Result {test_code}: {value_numeric} {unit or ''}".strip(),
+        )
         return result
 
     @staticmethod

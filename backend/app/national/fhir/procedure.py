@@ -11,7 +11,10 @@ class FHIRProcedureMapper:
         resource = {
             "resourceType": cls.RESOURCE_TYPE,
             "id": str(data.get("id", "")),
-            "status": cls._map_status(data.get("status", "completed")),
+            # IA-048: `data.get("status", "completed")` asserted a performed
+            # procedure for a payload that carried no status at all. The absent
+            # case now reaches _map_status and resolves to "unknown".
+            "status": cls._map_status(data.get("status")),
             "category": {"coding": [{"code": data.get("category", "")}]} if data.get("category") else None,
             "code": {
                 "coding": [{"system": data.get("code_system", "http://snomed.info/sct"), "code": data.get("code", ""), "display": data.get("display", "")}],
@@ -50,10 +53,39 @@ class FHIRProcedureMapper:
             resource["followUp"] = [{"text": data["anesthesia"]}]
         return {k: v for k, v in resource.items() if v is not None}
 
+    # FHIR R4 Procedure.status (the platform declares fhirVersion 4.0.1 in
+    # app/contracts/fhir.py) is a required binding:
+    #   preparation | in-progress | not-done | on-hold | stopped | completed |
+    #   entered-in-error | unknown
+    #
+    # IA-048, two corrections to this table:
+    #   * "discontinued" was mapped to itself. That is not a code in this value
+    #     set -- R4 spells a halted procedure "stopped" -- so the resource went
+    #     out carrying a code no consumer can resolve.
+    #   * the fallback was "completed", so an unrecognised status published the
+    #     procedure as performed and finished. R4 has "unknown" for exactly
+    #     this, and claiming a procedure happened is the one direction in which
+    #     being wrong is unsafe.
+    _STATUS_MAP = {
+        "preparation": "preparation",
+        "in_progress": "in-progress",
+        "not_done": "not-done",
+        "on_hold": "on-hold",
+        "stopped": "stopped",
+        "discontinued": "stopped",
+        "completed": "completed",
+        "entered_in_error": "entered-in-error",
+        "unknown": "unknown",
+    }
+
+    _FALLBACK_STATUS = "unknown"
+
     @classmethod
-    def _map_status(cls, status: str) -> str:
-        mapping = {"preparation": "preparation", "in_progress": "in-progress", "on_hold": "on-hold", "completed": "completed", "discontinued": "discontinued", "entered_in_error": "entered-in-error", "unknown": "unknown"}
-        return mapping.get(status, "completed")
+    def _map_status(cls, status: str | None) -> str:
+        return cls._STATUS_MAP.get(
+            (status or "").strip().casefold().replace("-", "_"),
+            cls._FALLBACK_STATUS,
+        )
 
     @classmethod
     def _build_performers(cls, data: dict) -> list[dict]:

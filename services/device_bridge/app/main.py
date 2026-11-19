@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from typing import Annotated, Literal
 
@@ -15,13 +16,19 @@ from app.pipeline.normalizer import NormalizedResult, Normalizer
 from app.pipeline.parser_engine import ASTMParser
 from app.security.auth import verify_api_key
 from app.storage.db import InMemoryDB
-from app.storage.result_repository import ResultRepository
+from app.storage.result_repository import LogRepository, ResultRepository
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("lablink.api")
 
 app = FastAPI(title="LabLink Core", version="0.6.0")
+
+GULA_BACKEND_URL_ENV = "GULA_BACKEND_URL"
+
+# IA-052. See app/pipeline/data_pipeline.py for the other two bounds.
+_MAX_CHUNK_CHARS = max(1, int(os.getenv("LABLINK_MAX_CHUNK_CHARS", str(1024 * 1024))))
 
 repository = ResultRepository(InMemoryDB())
 device_manager = DeviceManager()
@@ -30,10 +37,23 @@ sync_engine = SyncEngine()
 mode = CommunicationMode.HYBRID
 onboarding_director = DeviceOnboardingDirector()
 
+# docker-compose passes GULA_BACKEND_URL ("http://gula-backend:8000") and the
+# configuration reference documents it as "used by the device bridge to forward
+# results". Nothing read it: the URL was hardcoded to http://gula.local, a host
+# that does not exist on the compose network, so every forward failed on DNS
+# before it could fail on anything else.
+_gula_base_url = os.getenv(GULA_BACKEND_URL_ENV, "").strip() or "http://gula.local"
+
+# result_repo/log_repo: the pipeline writes into the same store the API serves.
+# Left to its defaults it built its own InMemoryDB, so every row it wrote -- the
+# per-chunk log row and, now, every rejection -- went to a store no endpoint
+# reads, and /ingest had to save the results a second time into this one.
 pipeline = DataPipeline(
     parser=ASTMParser(),
     normalizer=Normalizer(),
-    gula_client=GulaClient(base_url="http://gula.local", lab_id="LAB001"),
+    gula_client=GulaClient(base_url=_gula_base_url, lab_id="LAB001"),
+    result_repo=repository,
+    log_repo=LogRepository(repository.db),
 )
 
 Auth = Annotated[str, Depends(verify_api_key)]
@@ -42,7 +62,15 @@ Auth = Annotated[str, Depends(verify_api_key)]
 class IngestRequest(BaseModel):
     patient_id: str = Field(min_length=1)
     device_id: str = Field(min_length=1)
-    chunk: str = Field(min_length=1, description="Raw ASTM chunk; may include control chars")
+    # IA-052: no upper bound at all, in a container capped at 256 MB. An ASTM
+    # E1381 frame is at most 247 bytes, so the default here still admits a
+    # four-thousand-frame batch; it is overridable for an operator who needs
+    # more.
+    chunk: str = Field(
+        min_length=1,
+        max_length=_MAX_CHUNK_CHARS,
+        description="Raw ASTM chunk; may include control chars",
+    )
     vendor: str | None = None
     barcode: str | None = None
 
@@ -307,8 +335,16 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
         barcode=payload.barcode,
     )
 
-    if pipeline.retry_queue.size() > 0:
-        for item in pipeline.retry_queue.list_all():
+    # Drain with dequeue(), not list_all(). list_all() returns a copy and removes
+    # nothing, so every /ingest re-staged the whole backlog: six identical ingests
+    # against an unreachable GULA produced 21 offline-queue entries and 27 audit
+    # events for six results -- N(N+1)/2, every entry a duplicate of the same
+    # result. RetryQueue.dequeue() existed and was called from nowhere. IA-045.
+    while True:
+        item = pipeline.retry_queue.dequeue()
+        if item is None:
+            break
+        try:
             repository.enqueue_offline(item)
             sync_engine.stage(
                 item_id=str(uuid.uuid4()),
@@ -316,6 +352,15 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
                 payload=item,
                 version=1,
             )
+        except Exception:
+            # Hand-off failed after the item left the queue: put it back rather
+            # than lose the only record that this result never reached GULA.
+            pipeline.retry_queue.enqueue(item)
+            logger.exception(
+                "Failed to stage a retry item; it was returned to the queue",
+                extra={"device_id": item.get("device_id")},
+            )
+            raise
 
     for _ in results:
         repository.save_log(
@@ -325,7 +370,8 @@ async def ingest(payload: IngestRequest, _auth: Auth) -> IngestResponse:
             error_message="",
         )
 
-    repository.save_results(results)
+    # No repository.save_results here: the pipeline now writes into this same
+    # store, so saving again would duplicate every result row.
     return IngestResponse(status="ok", processed=len(results), results=results)
 
 

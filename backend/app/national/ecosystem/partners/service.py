@@ -123,7 +123,7 @@ class PartnerManager:
         offset: int = 0,
         limit: int = 100,
     ) -> list[Partner]:
-        query = self._db.query(Partner).filter(~~Partner.is_deleted)
+        query = self._db.query(Partner).filter(~Partner.is_deleted)
         if status:
             query = query.filter(Partner.status == status)
         if tier:
@@ -133,7 +133,7 @@ class PartnerManager:
         return query.order_by(desc(Partner.created_at)).offset(offset).limit(limit).all()
 
     def count_partners(self, status: str | None = None) -> int:
-        query = self._db.query(func.count(Partner.id)).filter(~~Partner.is_deleted)
+        query = self._db.query(func.count(Partner.id)).filter(~Partner.is_deleted)
         if status:
             query = query.filter(Partner.status == status)
         return query.scalar() or 0

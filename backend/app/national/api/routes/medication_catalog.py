@@ -201,7 +201,7 @@ async def search_medications(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    query = db.query(MedicationCatalog).filter(~~MedicationCatalog.is_deleted)
+    query = db.query(MedicationCatalog).filter(~MedicationCatalog.is_deleted)
     if name:
         query = query.filter(MedicationCatalog.medication_name.ilike(f"%{name}%"))
     if code:

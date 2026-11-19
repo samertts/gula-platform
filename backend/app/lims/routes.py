@@ -319,7 +319,7 @@ def list_departments(
 ):
     depts = db.query(lims_models.Department).filter(
         lims_models.Department.lab_id == _lab_id(current_user),
-        not lims_models.Department.is_deleted,
+        ~lims_models.Department.is_deleted,
     ).order_by(lims_models.Department.sort_order).all()
     return {"departments": _list_to_dict(depts)}
 
@@ -341,7 +341,16 @@ def create_department(
     )
     db.add(dept)
     db.flush()
-    log_action(db, "create", "lims_department", dept.id, current_user.id, current_user.role, f"Department {dept.code} created")
+    log_action(
+        db,
+        action="create",
+        resource_type="lims_department",
+        resource_id=dept.id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        lab_id=_lab_id(current_user),
+        details=f"Department {dept.code} created",
+    )
     db.commit()
     db.refresh(dept)
     return dept
@@ -411,7 +420,7 @@ def list_instruments(
 ):
     q = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == _lab_id(current_user),
-        not lims_models.Instrument.is_deleted,
+        ~lims_models.Instrument.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Instrument.status == status)
@@ -600,7 +609,7 @@ def list_manufacturers(
     db: Session = Depends(get_db),
 ):
     mfrs = db.query(lims_models.Manufacturer).filter(
-        not lims_models.Manufacturer.is_deleted,
+        ~lims_models.Manufacturer.is_deleted,
     ).order_by(lims_models.Manufacturer.name).all()
     return {"manufacturers": _list_to_dict(mfrs)}
 
@@ -630,7 +639,7 @@ def list_instrument_models(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.InstrumentModel).filter(
-        not lims_models.InstrumentModel.is_deleted,
+        ~lims_models.InstrumentModel.is_deleted,
     )
     if manufacturer_id:
         q = q.filter(lims_models.InstrumentModel.manufacturer_id == manufacturer_id)
@@ -662,6 +671,7 @@ def register_specimen(
             db, data.order_id, _lab_id(current_user),
             data.specimen_type, data.barcode, current_user.id,
             container_type=data.container_type,
+            actor_role=current_user.role,
             volume_ml=data.volume_ml,
             clinical_info=data.clinical_info,
         )
@@ -684,7 +694,7 @@ def list_specimens(
 ):
     q = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == _lab_id(current_user),
-        not lims_models.Specimen.is_deleted,
+        ~lims_models.Specimen.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Specimen.status == status)
@@ -766,7 +776,10 @@ def transition_specimen(
         if data.rejection_reason:
             specimen = SpecimenService.reject(db, specimen, data.rejection_reason, current_user.id)
         else:
-            specimen = SpecimenService.transition(db, specimen, data.target_status, current_user.id, data.notes)
+            specimen = SpecimenService.transition(
+                db, specimen, data.target_status, current_user.id, data.notes,
+                actor_role=current_user.role,
+            )
         specimen.version = version_before + 1
         guard.complete(
             receipt,
@@ -847,6 +860,7 @@ def create_lims_order(
         lims_order = OrderService.create_lims_order(
             db, data.order_id, _lab_id(current_user), current_user.id,
             data.accession_number, data.priority,
+            actor_role=current_user.role,
             clinical_note=data.clinical_note,
             diagnosis_code=data.diagnosis_code,
         )
@@ -868,7 +882,7 @@ def list_lims_orders(
 ):
     q = db.query(lims_models.Order).filter(
         lims_models.Order.lab_id == _lab_id(current_user),
-        not lims_models.Order.is_deleted,
+        ~lims_models.Order.is_deleted,
     )
     if status:
         q = q.filter(lims_models.Order.order_status == status)
@@ -932,7 +946,20 @@ def order_fhir(
     ).first()
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
-    return order_to_fhir_service_request(lims_order)
+    # lims_orders.order_id is a foreign key to lab_orders.id, not a patient, so
+    # the subject must be resolved through the parent order. The same tenant
+    # predicate is applied here, so this cannot reach another laboratory's order.
+    patient_id = (
+        db.query(LabOrder.patient_id)
+        .filter(
+            LabOrder.id == lims_order.order_id,
+            LabOrder.lab_id == _lab_id(current_user),
+        )
+        .scalar()
+    )
+    if patient_id is None:
+        raise HTTPException(404, detail="LIMS order not found")
+    return order_to_fhir_service_request(lims_order, patient_id=patient_id)
 
 
 @router.get(
@@ -961,7 +988,20 @@ def order_fhir_bundle(
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
 
-    service_request = order_to_fhir_service_request(lims_order)
+    # The patient is resolved so the mapper's invariant holds, then the subject
+    # is dropped: this endpoint deliberately does not expand patient identity
+    # (see the docstring), which is why the wrong reference was never published
+    # on this path even before it was corrected.
+    bundle_patient_id = (
+        db.query(LabOrder.patient_id)
+        .filter(LabOrder.id == lims_order.order_id, LabOrder.lab_id == lab_id)
+        .scalar()
+    )
+    if bundle_patient_id is None:
+        raise HTTPException(404, detail="LIMS order not found")
+    service_request = order_to_fhir_service_request(
+        lims_order, patient_id=bundle_patient_id,
+    )
     service_request.pop("subject", None)
     resources = [service_request]
     specimens = db.query(lims_models.Specimen).filter(
@@ -978,7 +1018,12 @@ def order_fhir_bundle(
         lims_models.Result.is_deleted.is_(False),
     ).order_by(lims_models.Result.id).all()
     for result in results:
-        observation = result_to_fhir(result)
+        # bundle_patient_id is already resolved above for the ServiceRequest, and
+        # the subject is dropped here for the same documented reason — this
+        # endpoint deliberately does not expand patient identity. Passing it
+        # anyway keeps the mapper's required argument honest rather than
+        # satisfying it with a placeholder.
+        observation = result_to_fhir(result, patient_id=bundle_patient_id)
         observation.pop("subject", None)
         resources.append(observation)
 
@@ -1016,7 +1061,7 @@ def list_panels(
 ):
     q = db.query(lims_models.Panel).filter(
         lims_models.Panel.lab_id == _lab_id(current_user),
-        not lims_models.Panel.is_deleted,
+        ~lims_models.Panel.is_deleted,
     )
     if category:
         q = q.filter(lims_models.Panel.category == category)
@@ -1124,6 +1169,7 @@ def create_result(
             db, data.specimen_id, specimen.order_id,
             lab_id, data.test_code, data.test_name,
             current_user.id,
+            actor_role=current_user.role,
             value_numeric=data.value_numeric,
             value_text=data.value_text,
             unit=data.unit,
@@ -1160,7 +1206,7 @@ def list_results(
 ):
     q = db.query(lims_models.Result).filter(
         lims_models.Result.lab_id == _lab_id(current_user),
-        not lims_models.Result.is_deleted,
+        ~lims_models.Result.is_deleted,
     )
     if specimen_id:
         q = q.filter(lims_models.Result.specimen_id == specimen_id)
@@ -1331,17 +1377,24 @@ def release_result(
         lims_models.Specimen.id == result.specimen_id,
         lims_models.Specimen.lab_id == lab_id,
     ).with_for_update().first()
-    if not specimen or specimen.status != "verified":
+    # The specimen must be ``validated``, not ``verified``: this handler goes on to
+    # run ``SpecimenService.transition(..., "released")``, and the specimen state
+    # machine allows ``released`` only from ``validated``
+    # (app/lims/state_machine.py::_SPECIMEN_TRANSITIONS). Demanding ``verified``
+    # here made every release fail on that transition, so no result could ever be
+    # released. Requiring ``validated`` is also the stricter reading: the laboratory
+    # signs the specimen off before a result leaves the building.
+    if not specimen or specimen.status != "validated":
         guard.reject(
             operation="result.release",
             resource_type="lims_result",
             resource_id=result.id,
             state_before=state_before,
             version_before=version_before,
-            reason="verified_specimen_required",
+            reason="validated_specimen_required",
         )
         db.commit()
-        raise HTTPException(422, detail="A result can only be released from a verified specimen")
+        raise HTTPException(422, detail="A result can only be released from a validated specimen")
 
     remaining_unvalidated = db.query(lims_models.Result).filter(
         lims_models.Result.specimen_id == specimen.id,
@@ -1371,7 +1424,9 @@ def release_result(
     specimen_version_before = specimen.version
     try:
         release = ResultService.release(db, result, current_user.id)
-        specimen = SpecimenService.transition(db, specimen, "released", current_user.id)
+        specimen = SpecimenService.transition(
+            db, specimen, "released", current_user.id, actor_role=current_user.role
+        )
         specimen.version = specimen_version_before + 1
         guard.complete(
             receipt,
@@ -1406,13 +1461,25 @@ def result_fhir(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    lab_id = _lab_id(current_user)
     result = db.query(lims_models.Result).filter(
         lims_models.Result.id == result_id,
-        lims_models.Result.lab_id == _lab_id(current_user),
+        lims_models.Result.lab_id == lab_id,
     ).first()
     if not result:
         raise HTTPException(404, detail="Result not found")
-    return result_to_fhir(result)
+    # Resolve the patient the way the ServiceRequest routes above already do:
+    # lims_results.order_id is a foreign key to lab_orders.id, and the patient
+    # hangs off that order. The lab_id filter is repeated here so a result whose
+    # parent order belongs to another tenant cannot name that tenant's patient.
+    patient_id = (
+        db.query(LabOrder.patient_id)
+        .filter(LabOrder.id == result.order_id, LabOrder.lab_id == lab_id)
+        .scalar()
+    )
+    if patient_id is None:
+        raise HTTPException(404, detail="Result not found")
+    return result_to_fhir(result, patient_id=patient_id)
 
 
 # ===========================================================================
@@ -1466,7 +1533,7 @@ def list_qc_programs(
 ):
     programs = db.query(lims_models.QCProgram).filter(
         lims_models.QCProgram.lab_id == _lab_id(current_user),
-        not lims_models.QCProgram.is_deleted,
+        ~lims_models.QCProgram.is_deleted,
     ).all()
     return {"programs": _list_to_dict(programs)}
 
@@ -1540,8 +1607,15 @@ def qc_statistics(
 # ===========================================================================
 
 
+# These two were the only 2 of this module's 69 routes that required no
+# authenticated caller. The data is published ISO 15189 / CAP reference material
+# and the evaluation is stateless, so this is a consistency repair rather than a
+# disclosure fix -- but a laboratory's quality-management surface has no reason
+# to be the module's single anonymous entry point.
 @router.get("/quality/indicators")
-def list_quality_indicators():
+def list_quality_indicators(
+    current_user: LabUser = Depends(get_current_user),
+):
     from .quality import CAP_INDICATORS, ISO_15189_INDICATORS
 
     return {
@@ -1558,12 +1632,32 @@ def list_quality_indicators():
 def evaluate_indicator(
     indicator_id: str,
     value: float = Query(...),
+    current_user: LabUser = Depends(get_current_user),
 ):
-    from .quality import evaluate_iso_15189_indicator
+    from .quality import (
+        IndicatorNotEvaluable,
+        IndicatorValueOutOfRange,
+        evaluate_iso_15189_indicator,
+    )
+
     try:
         return evaluate_iso_15189_indicator(indicator_id, value)
+    except IndicatorValueOutOfRange as e:
+        # The caller sent a value the measure does not permit, e.g. -500 for a
+        # percentage. Previously this scored "passed".
+        raise HTTPException(400, detail=str(e)) from e
+    except IndicatorNotEvaluable as e:
+        # 422, not 404. The indicator exists -- the listing endpoint above
+        # publishes it -- but its target is prose rather than a threshold. All
+        # four CAP indicators previously answered 404 "Resource not found" here,
+        # denying the existence of something the sibling route had just returned.
+        raise HTTPException(
+            422,
+            detail=f"Indicator '{indicator_id}' cannot be evaluated numerically: {e}",
+        ) from e
     except ValueError as e:
-        raise HTTPException(404, detail="Resource not found") from e
+        # A genuinely unknown indicator id. 404 is right here and is kept.
+        raise HTTPException(404, detail=f"Unknown indicator: {indicator_id}") from e
 
 
 # ===========================================================================
@@ -1579,7 +1673,7 @@ def list_reagents(
 ):
     q = db.query(lims_models.Reagent).filter(
         lims_models.Reagent.lab_id == _lab_id(current_user),
-        not lims_models.Reagent.is_deleted,
+        ~lims_models.Reagent.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Reagent.current_quantity <= lims_models.Reagent.minimum_quantity)
@@ -1642,7 +1736,7 @@ def list_consumables(
 ):
     q = db.query(lims_models.Consumable).filter(
         lims_models.Consumable.lab_id == _lab_id(current_user),
-        not lims_models.Consumable.is_deleted,
+        ~lims_models.Consumable.is_deleted,
     )
     if low_stock:
         q = q.filter(lims_models.Consumable.current_quantity <= lims_models.Consumable.minimum_quantity)
@@ -1659,7 +1753,7 @@ def list_lots(
     from datetime import timedelta
     q = db.query(lims_models.Lot).filter(
         lims_models.Lot.lab_id == _lab_id(current_user),
-        not lims_models.Lot.is_deleted,
+        ~lims_models.Lot.is_deleted,
     )
     if item_type:
         q = q.filter(lims_models.Lot.item_type == item_type)
@@ -1677,7 +1771,7 @@ def list_suppliers(
 ):
     suppliers = db.query(lims_models.Supplier).filter(
         lims_models.Supplier.lab_id == _lab_id(current_user),
-        not lims_models.Supplier.is_deleted,
+        ~lims_models.Supplier.is_deleted,
     ).all()
     return {"suppliers": _list_to_dict(suppliers)}
 
@@ -1689,7 +1783,7 @@ def list_storage(
 ):
     storage = db.query(lims_models.Storage).filter(
         lims_models.Storage.lab_id == _lab_id(current_user),
-        not lims_models.Storage.is_deleted,
+        ~lims_models.Storage.is_deleted,
     ).all()
     return {"storage": _list_to_dict(storage)}
 
@@ -1725,7 +1819,7 @@ def list_reference_ranges(
     db: Session = Depends(get_db),
 ):
     q = db.query(lims_models.ReferenceRangeDef).filter(
-        not lims_models.ReferenceRangeDef.is_deleted,
+        ~lims_models.ReferenceRangeDef.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.ReferenceRangeDef.test_code == test_code)
@@ -1770,7 +1864,7 @@ def list_auto_validation_rules(
 ):
     q = db.query(lims_models.AutoValidationRule).filter(
         lims_models.AutoValidationRule.lab_id == _lab_id(current_user),
-        not lims_models.AutoValidationRule.is_deleted,
+        ~lims_models.AutoValidationRule.is_deleted,
     )
     if test_code:
         q = q.filter(lims_models.AutoValidationRule.test_code == test_code)
@@ -1806,7 +1900,7 @@ def list_delta_check_rules(
 ):
     rules = db.query(lims_models.DeltaCheckRule).filter(
         lims_models.DeltaCheckRule.lab_id == _lab_id(current_user),
-        not lims_models.DeltaCheckRule.is_deleted,
+        ~lims_models.DeltaCheckRule.is_deleted,
     ).all()
     return {"rules": _list_to_dict(rules)}
 
@@ -1883,7 +1977,7 @@ def list_reports(
 ):
     q = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.lab_id == _lab_id(current_user),
-        not lims_models.LabReport.is_deleted,
+        ~lims_models.LabReport.is_deleted,
     )
     if status:
         q = q.filter(lims_models.LabReport.status == status)
@@ -2249,7 +2343,7 @@ def lims_dashboard(
 
     specimens_total = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.lab_id == lab_id,
-        not lims_models.Specimen.is_deleted,
+        ~lims_models.Specimen.is_deleted,
     ).count()
 
     specimens_by_status = {}
@@ -2276,7 +2370,7 @@ def lims_dashboard(
 
     instruments_total = db.query(lims_models.Instrument).filter(
         lims_models.Instrument.lab_id == lab_id,
-        not lims_models.Instrument.is_deleted,
+        ~lims_models.Instrument.is_deleted,
     ).count()
 
     qc_warnings = db.query(lims_models.IQC).filter(

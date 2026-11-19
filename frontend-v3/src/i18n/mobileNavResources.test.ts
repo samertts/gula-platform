@@ -11,6 +11,7 @@ const resources = { ar, en, ku, tk, syr } as const;
 const requiredMobileNavKeys = [
   "quickNavigation",
   "openAllSections",
+  "moreSections",
   "more",
   "current",
   "skipToContent",

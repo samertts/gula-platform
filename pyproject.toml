@@ -21,7 +21,25 @@ classifiers = [
 gula = "cli.main:main"
 
 [tool.ruff]
-target-version = "py314"
+# IA-082. This was "py314", which does not match the contract this project
+# publishes: `requires-python = ">=3.12"` above, `python_requires=">=3.12"` in
+# setup.py, and two CI workflows that run Python 3.12. Under py314 ruff is
+# entitled to rewrite code into 3.14-only syntax, and it does: `ruff format`
+# turns
+#     except (TypeError, ValueError):
+# into PEP 758's
+#     except TypeError, ValueError:
+# which Python 3.11, 3.12 and 3.13 all reject with
+# "SyntaxError: multiple exception types must be parenthesized" — measured on
+# all three. It silently did exactly that to
+# services/device_bridge/app/_compat.py's pre-3.11 fallback branch, and only a
+# test caught it.
+#
+# So a repo-wide `ruff format` under py314 produces a tree that cannot be
+# imported on two of the Python versions this project says it supports. The
+# target now matches requires-python; raise both together if 3.12 and 3.13
+# support is dropped, and fix the two 3.12 workflows at the same time.
+target-version = "py312"
 line-length = 100
 fix = false
 show-fixes = true

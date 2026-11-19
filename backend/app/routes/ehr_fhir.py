@@ -3,12 +3,16 @@ from __future__ import annotations
 from datetime import date, datetime
 from html import escape
 import json
+import logging
 from typing import Any
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import func
+import sqlalchemy as sa
+from sqlalchemy import func, or_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -26,7 +30,14 @@ from ..ehr.models import (
     MedicationRequest,
     MedicationStatement,
 )
-from ..fhir.terminology import observation_code, test_matches_code
+from ..fhir.terminology import (
+    interpretation_concept,
+    observation_code,
+    observation_status,
+    search_narrowing,
+    service_request_status,
+    test_matches_code,
+)
 from ..models.audit_log import AuditLog
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
@@ -34,6 +45,8 @@ from ..models.lab_user import LabUser
 from ..national.domain.encounter import Encounter
 from ..security.dependencies import get_current_user
 from ..services import ehr_service
+
+logger = logging.getLogger("gula.fhir")
 
 class FHIRJSONResponse(JSONResponse):
     """FHIR R4 JSON representation for successful external exchange requests."""
@@ -374,10 +387,12 @@ def fhir_read_observation(
         .first()
     )
     if not order:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied: observation does not belong to your laboratory",
-        )
+        # 404, not 403. A 403 here distinguished "this id does not exist" from
+        # "it exists but belongs to another laboratory", which is a cross-tenant
+        # existence oracle: iterating ids reveals another lab's result count and
+        # id range. Every sibling FHIR read route in this module already answers
+        # 404 for both cases; Observation was the only one that did not.
+        raise HTTPException(status_code=404, detail="Observation not found")
     return _lab_result_to_observation(result, order)
 
 
@@ -385,7 +400,11 @@ def _lab_result_to_observation(result: LabResult, order: LabOrder) -> dict:
     obs: dict[str, Any] = {
         "resourceType": "Observation",
         "id": str(result.id),
-        "status": "final",
+        # Verification lives on the order: a doctor or admin verifying a result
+        # sets lab_orders.status = "validated" and locks the row. Reporting every
+        # result as "final" told a consumer that an unverified result — and a
+        # result whose order had been *cancelled* — was clinician-validated.
+        "status": observation_status(order.status),
         "code": observation_code(result.test_name),
         "subject": {"reference": f"Patient/{order.patient_id}", "type": "Patient"},
         "effectiveDateTime": _fmt_fhir_datetime(order.created_at),
@@ -405,12 +424,22 @@ def _lab_result_to_observation(result: LabResult, order: LabOrder) -> dict:
         if result.normal_range_high is not None:
             ref["high"] = {"value": result.normal_range_high}
         obs["referenceRange"] = [ref]
-    if result.flag:
-        obs["interpretation"] = [
-            _codeable_concept(result.flag, result.flag, "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"),
-        ]
+    # GULA's flag vocabulary is not v3-ObservationInterpretation's: "critical",
+    # "normal" and "unknown" are not codes in that system, and publishing them
+    # under its URI asserted codes that do not exist. The internal value is kept
+    # as `text` so nothing is lost. See fhir/terminology.interpretation_concept.
+    interpretation = interpretation_concept(
+        result.flag,
+        result.value,
+        result.normal_range_low,
+        result.normal_range_high,
+    )
+    if interpretation is not None:
+        obs["interpretation"] = [interpretation]
     obs["meta"] = {
-        "versionId": "1",
+        # lab_results.version is the optimistic-lock counter, incremented on
+        # every mutation, so an amended result is no longer published as v1.
+        "versionId": str(result.version if result.version is not None else 1),
         "lastUpdated": _fmt_fhir_datetime(result.created_at),
     }
     return obs
@@ -422,6 +451,8 @@ def fhir_search_observation(
     code: str | None = Query(None, alias="code"),
     category: str | None = Query(None, alias="category"),
     date: str | None = Query(None, alias="date"),
+    count: int = Query(100, alias="_count", ge=1, le=500),
+    offset: int = Query(0, alias="_offset", ge=0),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -429,32 +460,77 @@ def fhir_search_observation(
         "resourceType": "Bundle",
         "type": "searchset",
         "entry": [],
-        "total": 0,
     }
+    # The order is joined and kept, not re-fetched per row: the previous loop
+    # issued one SELECT per result to recover an order it had already joined.
     q = (
-        db.query(LabResult)
-        .join(LabOrder)
+        db.query(LabResult, LabOrder)
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
         .filter(LabOrder.lab_id == current_user.lab_id)
     )
     if patient:
         q = q.filter(LabOrder.patient_id == patient)
-    results = q.order_by(LabResult.created_at.desc()).limit(100).all()
-    if code:
-        results = [result for result in results if test_matches_code(result.test_name, code)]
+
+    # The code filter must restrict the query, not the page. Applying it after
+    # LIMIT meant a match older than the newest 100 results vanished and the
+    # Bundle reported total: 0 for a patient who had one. `search_narrowing`
+    # yields a superset predicate — escaped, so caller text cannot act as a
+    # wildcard — and `test_matches_code` below stays authoritative.
+    narrowing = search_narrowing(code)
+    if not narrowing.matches_everything:
+        # trim() matters and is not cosmetic: the authority normalises the name
+        # before resolving a LOINC alias, so a row stored as "  Potassium  "
+        # matches code 2823-3. Comparing an untrimmed lower() against the alias
+        # list would drop it — a false negative this filter exists to prevent,
+        # and one the superset property test caught. trim() is portable to both
+        # SQLite and PostgreSQL; collapsing interior runs is not, which is why
+        # the substring branch matches a single token rather than the whole query.
+        normalized_name = func.lower(func.trim(LabResult.test_name))
+        branches = []
+        if narrowing.exact_names:
+            branches.append(normalized_name.in_(narrowing.exact_names))
+        if narrowing.substring is not None:
+            branches.append(
+                normalized_name.like(f"%{narrowing.substring}%", escape="\\"),
+            )
+        # No branch at all would mean "no restriction", which for a non-empty
+        # query is the false positive this guards against. Fail closed instead.
+        q = q.filter(or_(*branches)) if branches else q.filter(sa.false())
+
+    # One row beyond the page, so "is there a next page" is known rather than
+    # guessed, and `total` is only published when it is actually the total.
+    rows = (
+        q.order_by(LabResult.created_at.desc(), LabResult.id.desc())
+        .offset(offset)
+        .limit(count + 1)
+        .all()
+    )
+    has_more = len(rows) > count
+    page = rows[:count]
+
     entries = []
-    for r in results:
-        order = (
-            db.query(LabOrder).filter(LabOrder.id == r.order_id).first()
-        )
-        if order:
+    for result, order in page:
+        if test_matches_code(result.test_name, code or ""):
             entries.append(
                 {
-                    "resource": _lab_result_to_observation(r, order),
-                    "fullUrl": f"Observation/{r.id}",
+                    "resource": _lab_result_to_observation(result, order),
+                    "fullUrl": f"Observation/{result.id}",
                 },
             )
     bundle["entry"] = entries
-    bundle["total"] = len(entries)
+
+    if has_more:
+        # FHIR allows Bundle.total to be absent. Publishing the page size as the
+        # total is a lie about the size of the record, so when the set is
+        # truncated the caller is given a next link instead of a false count.
+        params = [f"_count={count}", f"_offset={offset + count}"]
+        if patient:
+            params.append(f"patient={quote(str(patient))}")
+        if code:
+            params.append(f"code={quote(code)}")
+        bundle["link"] = [{"relation": "next", "url": f"Observation?{'&'.join(params)}"}]
+    else:
+        bundle["total"] = offset + len(entries)
     return bundle
 
 
@@ -1323,7 +1399,12 @@ def fhir_read_bundle(
             "resource": {
                 "resourceType": "ServiceRequest",
                 "id": str(order.id),
-                "status": order.status or "unknown",
+                # IA-047: this published GULA's internal vocabulary raw. Three of
+                # the four LabOrder states -- pending, validated, cancelled --
+                # are not codes in the ServiceRequest value set at all, and a
+                # withdrawn order went out as "cancelled", which FHIR spells
+                # "revoked".
+                "status": service_request_status(order.status),
                 "intent": "order",
                 "subject": {"reference": f"Patient/{bundle_id}"},
                 "code": {"text": order.test_name or ""},
@@ -1342,7 +1423,10 @@ def fhir_read_bundle(
                 "resource": {
                     "resourceType": "Observation",
                     "id": str(r.id),
-                    "status": "final",
+                    # IA-047: unconditionally "final" on this path. IA-028 fixed
+                    # the single-resource route and this bundle kept asserting a
+                    # verified result for a pending or withdrawn order.
+                    "status": observation_status(order.status),
                     "code": {"text": r.test_name or ""},
                     "subject": {"reference": f"Patient/{bundle_id}"},
                     "valueQuantity": {"value": r.value, "unit": r.unit or ""} if r.value is not None else None,
@@ -1435,6 +1519,7 @@ def fhir_delete_resource(
 
 
 @router.post("", summary="FHIR Batch or Transaction")
+@audit_log(action="fhir.batch")
 def fhir_batch(
     body: dict[str, Any],
     current_user: LabUser = Depends(get_current_user),
@@ -1445,6 +1530,7 @@ def fhir_batch(
         raise HTTPException(status_code=422, detail=f"Unsupported bundle type: {bundle_type}")
     entries = body.get("entry", [])
     results: list[dict[str, Any]] = []
+    any_entry_failed = False
     for entry in entries:
         resource = entry.get("resource", {})
         rt = resource.get("resourceType", "")
@@ -1497,13 +1583,53 @@ def fhir_batch(
                 status_code = 405
         except HTTPException as exc:
             status_code = exc.status_code
+        if bundle_type == "batch":
+            # A batch bundle's entries are independent interactions, so a 2xx
+            # here has to mean this entry is durable whatever the others did.
+            # Without this the endpoint reported 201 and discarded the write:
+            # get_db never commits, and closing the session rolls it back.
+            if 200 <= status_code < 300:
+                try:
+                    db.commit()
+                except SQLAlchemyError:
+                    # The store rejected the row this entry claimed to create.
+                    # Not trying is what let the old code answer 201 anyway.
+                    logger.exception("FHIR batch entry could not be persisted: %s/%s", rt, resource_id)
+                    db.rollback()
+                    status_code = 500
+            else:
+                db.rollback()
+        if not 200 <= status_code < 300:
+            any_entry_failed = True
         results.append({
             "resourceType": "Bundle",
             "type": bundle_type,
             "entry": [{"response": {"status": str(status_code), "location": f"{rt}/{resource_id}"}}],
         })
     if bundle_type == "transaction":
-        db.commit()
+        # A transaction bundle is all-or-nothing, so one failed entry must not
+        # leave the others persisted. It previously committed regardless.
+        statuses = [
+            e["entry"][0]["response"]["status"] for e in results
+        ]
+        if any_entry_failed:
+            db.rollback()
+            # And the caller must not be handed a bundle of 201s for writes that
+            # were just discarded -- that is the same false success as the batch
+            # path, one level up.
+            raise HTTPException(
+                status_code=422,
+                detail=f"transaction bundle rolled back; no entry was applied: {statuses}",
+            )
+        try:
+            db.commit()
+        except SQLAlchemyError:
+            logger.exception("FHIR transaction bundle could not be committed")
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail="transaction bundle could not be committed; no entry was applied",
+            ) from None
     return {"resourceType": "Bundle", "type": f"{bundle_type}-response", "entry": results}
 
 

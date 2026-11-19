@@ -100,7 +100,7 @@ def search_observations(
     skip: int = 0,
     limit: int = 50,
 ) -> list[Observation]:
-    query = db.query(Observation).filter(~~Observation.is_deleted)
+    query = db.query(Observation).filter(~Observation.is_deleted)
 
     filters = []
     if patient_id is not None:

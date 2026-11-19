@@ -39,15 +39,25 @@ def _raise_index_http_error(exc: Exception) -> None:
     ) from exc
 
 
+def _resolve_event_bus(kernel):
+    """Reuse the kernel's registered EventBus rather than a per-request one.
+
+    Imported lazily to keep this module free of a kernel import at load time.
+    See IA-015.
+    """
+    from app.kernel.event_bus.bus import resolve_event_bus
+
+    return resolve_event_bus(kernel)
+
+
 def _get_service(
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(require_permission("system:admin")),
 ) -> SearchPlatformService:
     from app.kernel import Kernel
-    from app.kernel.event_bus.bus import EventBus
 
     kernel = Kernel.get_instance()
-    event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else EventBus(kernel)
+    event_bus = _resolve_event_bus(kernel)
     index_adapter = PostgresFullTextSearch(db)
     return SearchPlatformService(
         index_adapter=index_adapter,

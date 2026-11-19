@@ -8,7 +8,7 @@ from sqlalchemy import Column, String
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
-from shared.models import OptimisticLockMixin, SoftDeleteMixin, TimestampMixin
+from shared.models import OptimisticLockMixin, SoftDeleteMixin, TimestampMixin, serialize_columns
 
 RadiologyBase = declarative_base()
 
@@ -25,13 +25,7 @@ class RadiologyBaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, 
     fhir_resource_type = Column(String(32), nullable=True)
 
     def to_dict(self) -> dict[str, Any]:
-        result = {}
-        for col in self.__table__.columns:
-            val = getattr(self, col.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[col.name] = val
-        return result
+        return serialize_columns(self)
 
     def soft_delete(self) -> None:
         self.is_deleted = True

@@ -86,6 +86,6 @@ class PerformanceBenchmark:
     def run_all(self) -> list[BenchmarkResult]:
         self.results = [
             self.measure_startup_time(),
-            self.measure_import_time("backend.app.kernel"),
+            self.measure_import_time("app.kernel"),
         ]
         return self.results

@@ -356,7 +356,7 @@ class ImageSharingService:
         return share
 
     def revoke_share(self, share_id: str) -> bool:
-        share = self.db.query(ImageShare).filter(ImageShare.id == share_id, not ImageShare.is_revoked).first()
+        share = self.db.query(ImageShare).filter(ImageShare.id == share_id, ~ImageShare.is_revoked).first()
         if not share:
             return False
         share.is_revoked = True
@@ -366,7 +366,7 @@ class ImageSharingService:
     def access_share(self, share_id: str, access_code: str | None = None) -> str | None:
         share = self.db.query(ImageShare).filter(
             ImageShare.id == share_id,
-            not ImageShare.is_revoked,
+            ~ImageShare.is_revoked,
         ).first()
         if not share:
             return None
@@ -379,7 +379,7 @@ class ImageSharingService:
         return share.study_uid
 
     def list_shares(self, shared_by: str | None = None, shared_with: str | None = None) -> list[ImageShare]:
-        q = self.db.query(ImageShare).filter(not ImageShare.is_revoked)
+        q = self.db.query(ImageShare).filter(~ImageShare.is_revoked)
         if shared_by:
             q = q.filter(ImageShare.shared_by == shared_by)
         if shared_with:

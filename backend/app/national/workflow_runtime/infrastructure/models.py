@@ -6,8 +6,8 @@ from typing import Any
 from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON
 
-from backend.app._compat import UTC
-from backend.app.national.base import BaseEntity, NationalBase
+from app._compat import UTC
+from app.national.base import BaseEntity, NationalBase
 
 
 class NationalWorkflowDefinition(BaseEntity, NationalBase):
@@ -35,7 +35,7 @@ class NationalWorkflowDefinition(BaseEntity, NationalBase):
     )
 
     def to_domain(self) -> dict[str, Any]:
-        from backend.app.national.workflow_runtime.domain.entities import (
+        from app.national.workflow_runtime.domain.entities import (
             WorkflowDefinition,
             WorkflowStepDefinition,
         )
@@ -86,10 +86,10 @@ class NationalWorkflowExecution(BaseEntity, NationalBase):
     )
 
     def to_domain(self):
-        from backend.app.national.workflow_runtime.domain.entities import (
+        from app.national.workflow_runtime.domain.entities import (
             WorkflowExecution,
         )
-        from backend.app.national.workflow_runtime.domain.enums import (
+        from app.national.workflow_runtime.domain.enums import (
             WorkflowExecutionStatus,
             WorkflowTrigger,
         )

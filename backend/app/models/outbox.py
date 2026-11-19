@@ -4,10 +4,14 @@ Events are written to this table inside the same DB transaction as the
 business operation that triggers them.  A background worker reads pending
 events and delivers them (notifications, webhooks, sync signals, etc.).
 
-This guarantees at-least-once delivery even when:
-  - The message broker is temporarily unavailable
+This guarantees at-least-once *hand-off to the in-process EventBus* even when:
   - The application crashes between the operation and the notification
   - The network drops mid-flight
+
+It does not guarantee that anything acts on the event. The EventBus has no
+subscribers today and there is no message broker, so a row reaching status
+"done" means it was dispatched to zero handlers. See IA-043, and
+app/services/outbox_service.py for the measurement.
 
 Status lifecycle:
     pending → processing → done

@@ -105,8 +105,46 @@ def _map_specimen_status(status: str) -> str:
 # ── Result → FHIR Observation ─────────────────────────────────────────
 
 
-def result_to_fhir(result) -> dict:
-    """Map LIMS Result to FHIR R4 Observation resource."""
+def result_to_fhir(result, *, patient_id: int | None) -> dict:
+    """Map LIMS Result to FHIR R4 Observation resource.
+
+    ``patient_id`` is keyword-only with no default, for the same reason as
+    ``order_to_fhir_service_request`` below. The subject used to be built as::
+
+        f"Patient/{result.specimen.order.patient_id}"
+            if hasattr(result, "specimen") and hasattr(result.specimen, "order")
+            else "unknown"
+
+    ``Specimen`` carries ``order_id`` — a foreign key to ``lab_orders.id`` —
+    but has no ``order`` relationship; the only ``order``-named relationship in
+    app/lims/models.py is ``Order.original_order``. So the guard never passed,
+    and every Observation this mapper produced named ``Patient/unknown``: a
+    reference to a resource that does not exist, on a clinical result. Measured
+    on the served route before this repair::
+
+        GET /lims/results/{id}/fhir
+        subject = {"reference": "unknown", "display": ""}
+
+    while ``GET /fhir/Observation/{id}`` published ``Patient/1`` correctly from
+    the same rows — the platform already knew how, on the endpoint beside it.
+
+    The patient is resolved by the caller through
+    ``lims_specimens.order_id -> lab_orders.patient_id``, exactly as the two
+    ServiceRequest call sites already do. No ``Specimen.order`` relationship was
+    added: that would have made the old guard pass and quietly turned a false
+    docstring claim true without anyone revisiting it.
+    """
+    if patient_id is None:
+        # Observation.subject is 0..1 in FHIR R4, so an absent subject would be
+        # structurally valid — and that is exactly the wrong outcome here. A
+        # laboratory result with no identifiable patient cannot be filed by a
+        # receiving system. lims_results.order_id is NOT NULL with ON DELETE
+        # CASCADE, so the order and its patient always exist; reaching here
+        # means a caller did not resolve them, which is the caller's bug.
+        raise ValueError(
+            f"cannot build Observation for LIMS result {result.id}: the patient "
+            "could not be resolved, and a Patient reference must not be guessed",
+        )
     resource: dict[str, Any] = {
         "resourceType": "Observation",
         "id": result.fhir_id or f"lims-obs-{result.id}",
@@ -114,7 +152,7 @@ def result_to_fhir(result) -> dict:
         "code": _fhir_codeable_concept(
             [_fhir_coding("http://loinc.org", result.loinc_code or result.test_code, result.test_name)],
         ),
-        "subject": _fhir_reference(f"Patient/{result.specimen.order.patient_id}" if hasattr(result, "specimen") and hasattr(result.specimen, "order") else "unknown"),
+        "subject": _fhir_reference(f"Patient/{patient_id}"),
         "specimen": _fhir_reference(f"Specimen/lims-spec-{result.specimen_id}"),
     }
 
@@ -211,17 +249,86 @@ def _map_report_status(status: str) -> str:
 # ── Order → FHIR ServiceRequest ──────────────────────────────────────
 
 
-def order_to_fhir_service_request(order) -> dict:
-    """Map LIMS Order to FHIR R4 ServiceRequest resource."""
+def _map_order_status(status: str | None) -> str:
+    """Map a LIMS order state onto FHIR ServiceRequest.status.
+
+    The source vocabulary is ``lims/state_machine._ORDER_TRANSITIONS``, which is
+    authoritative for this column; the twelve states below are its keys. They are
+    mapped onto FHIR's own codes rather than an invented set:
+
+      in flight, still to be acted upon            -> "active"
+      the requested service was performed          -> "completed"
+      withdrawn ("cancelled" is not a code here)   -> "revoked"
+
+    An unrecognised state resolves to "unknown" — FHIR's own code for "the source
+    system does not know which status applies" — and deliberately not to
+    "active". "active" asserts the request is in force and ready to be acted
+    upon, so defaulting to it would invite a consumer to act on a request that
+    may have been withdrawn. That is the unsafe direction here, exactly as
+    claiming "final" was for an Observation.
+    """
+    mapping = {
+        "pending": "active",
+        "accessioned": "active",
+        "collecting": "active",
+        "collected": "active",
+        "in_transport": "active",
+        "received": "active",
+        "in_progress": "active",
+        "completed": "completed",
+        "validated": "completed",
+        "released": "completed",
+        "corrected": "completed",
+        "cancelled": "revoked",
+    }
+    return mapping.get((status or "").strip().casefold(), "unknown")
+
+
+def order_to_fhir_service_request(order, *, patient_id: int | None) -> dict:
+    """Map LIMS Order to FHIR R4 ServiceRequest resource.
+
+    ``patient_id`` is keyword-only with no default on purpose. It used to be
+    absent and the subject was built as ``Patient/{order.order_id}`` — but
+    ``lims_orders.order_id`` is a foreign key to ``lab_orders.id``, not a
+    patient, so every ServiceRequest named a Patient resource by an *order*
+    primary key. Measured on PostgreSQL: six requests for patient 22 published
+    ``subject: Patient/36`` through ``Patient/41``. Where the two id ranges
+    overlap that resolves to a different real person, attributing a laboratory
+    request to the wrong patient. 18 of the 19 Patient references in the
+    codebase use a patient id — this was the single outlier of that kind.
+
+    An earlier version of this docstring also asserted that ``result_to_fhir``
+    in this same module "already reaches the patient correctly through
+    ``specimen.order.patient_id``". That was false: ``Specimen`` has no
+    ``order`` relationship, so that mapper's guard never passed and it published
+    ``Patient/unknown`` on every Observation. The ServiceRequest path here was
+    repaired properly; the Observation path beside it was assumed correct and
+    never measured. It now takes the same keyword-only ``patient_id`` this
+    function does, resolved by its caller from
+    ``lims_results.order_id -> lab_orders.patient_id``.
+
+    No default is the control: a call site that forgets the argument fails
+    loudly rather than silently publishing a wrong-patient reference.
+    """
+    if patient_id is None:
+        # ServiceRequest.subject is 1..1, so there is no honest resource to build
+        # without it — and an order-derived or fabricated reference is precisely
+        # what this signature exists to prevent. lims_orders.order_id is NOT NULL
+        # with ON DELETE CASCADE, so the parent order and its patient always
+        # exist; reaching here means a caller did not resolve them.
+        raise ValueError(
+            f"cannot build ServiceRequest for LIMS order {order.id}: the patient "
+            "could not be resolved, and a Patient reference must not be guessed",
+        )
     resource: dict[str, Any] = {
         "resourceType": "ServiceRequest",
         "id": order.fhir_id or f"lims-sr-{order.id}",
-        "status": "active",
+        "status": _map_order_status(order.order_status),
         "intent": "order",
         "code": _fhir_codeable_concept(
             [_fhir_coding("http://gula.iq/CodeSystem/accession-number", order.accession_number)],
         ),
-        "subject": _fhir_reference(f"Patient/{order.order_id}"),
+        "subject": _fhir_reference(f"Patient/{patient_id}"),
     }
 
     if order.priority == "urgent":

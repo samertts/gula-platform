@@ -8,6 +8,12 @@ dependencies = [
   "uvicorn[standard]>=0.51.0",
   "pydantic>=2.13.4",
   "httpx>=0.28.1",
+  # app/connectors/base.py opens a serial analyzer with `from serial import Serial`
+  # (a lazy, function-local import, so it breaks on first use rather than at
+  # startup). The package was declared nowhere. Declared here as the service's
+  # real requirement; the Dockerfile's explicit pip install still omits it, and
+  # correcting that needs an image build to verify. See IA-044.
+  "pyserial>=3.5",
 ]
 
 [project.optional-dependencies]

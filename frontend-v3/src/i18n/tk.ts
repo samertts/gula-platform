@@ -127,6 +127,7 @@ const tk = {
     quickNavigation: "Çalt nawigasiýa",
     mainNavigation: "Esasy nawigasiýa",
     openAllSections: "Ähli bölümleri aç",
+    moreSections: "Köp bölümler",
     more: "Köp",
     current: "Häzirki sahypa",
     skipToContent: "Esasy mazmuna geç",

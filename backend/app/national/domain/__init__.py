@@ -17,7 +17,9 @@ from .emergency_contact import EmergencyContact
 from .employee import Employee
 from .encounter import Encounter
 from .episode_of_care import EpisodeOfCare
-from .facility import Facility
+
+# NR-006: .facility's Facility is retired -- national_facilities has one ORM
+# owner, app.models.clinical_scope.NationalFacility. See that module.
 from .family import Family, FamilyMember
 from .foreigner import Foreigner
 from .guardian import Guardian
@@ -60,7 +62,6 @@ __all__ = [
     "Employee",
     "Encounter",
     "EpisodeOfCare",
-    "Facility",
     "Family",
     "FamilyMember",
     "Foreigner",

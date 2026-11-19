@@ -688,12 +688,53 @@ class TestLifecycle:
 
 class TestSchedule:
     @pytest.mark.asyncio
-    async def test_schedule_notification(self, svc):
+    async def test_a_future_schedule_is_refused(self, svc):
+        """IA-080. This test used to assert the fiction.
+
+        As written it scheduled for ``_now() + 2h`` and then checked only the
+        returned schedule's ``timezone`` and ``recurring`` — never that the
+        delivery was deferred. So it passed while the delivery task was
+        enqueued for immediate execution: ``delay_s`` was computed and spent
+        as the task's ``timeout_s``, which is how long a task may run, not
+        when it may start. TaskPayload has no delay field at all.
+
+        A future schedule is now refused and the gap is named, because
+        nothing in the platform can hold a task until a future time and
+        nothing polls the NotificationSchedule rows it persists.
+        """
+        from app.national.notification_platform.exceptions import (
+            NotificationSchedulingUnavailable,
+        )
+
         future = _now() + timedelta(hours=2)
         n = await svc.send(channel=NotificationChannel.EMAIL, recipients=["a@b.com"])
-        schedule = await svc.schedule_notification(n.id, future, timezone="Asia/Baghdad")
+        with pytest.raises(NotificationSchedulingUnavailable) as excinfo:
+            await svc.schedule_notification(n.id, future, timezone="Asia/Baghdad")
+        assert "no deferred-execution primitive" in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    async def test_a_schedule_for_now_still_queues_the_delivery(self, svc):
+        """The positive control: the repair is not a blanket refusal."""
+        n = await svc.send(channel=NotificationChannel.EMAIL, recipients=["a@b.com"])
+        schedule = await svc.schedule_notification(
+            n.id, _now() - timedelta(seconds=1), timezone="Asia/Baghdad",
+        )
         assert schedule.timezone == "Asia/Baghdad"
         assert schedule.recurring is False
+
+    @pytest.mark.asyncio
+    async def test_a_recurring_schedule_is_refused(self, svc):
+        """Nothing evaluates a cron expression in this platform."""
+        from app.national.notification_platform.exceptions import (
+            NotificationSchedulingUnavailable,
+        )
+
+        n = await svc.send(channel=NotificationChannel.EMAIL, recipients=["a@b.com"])
+        with pytest.raises(NotificationSchedulingUnavailable):
+            await svc.schedule_notification(
+                n.id, _now() - timedelta(seconds=1),
+                recurring=True, cron_expression="0 9 * * *",
+            )
 
     @pytest.mark.asyncio
     async def test_schedule_nonexistent_raises(self, svc):

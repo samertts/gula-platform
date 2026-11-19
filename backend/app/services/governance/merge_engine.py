@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from app._compat import UTC
-from backend.app.services.governance.identity_governance import (
+from app.services.governance.identity_governance import (
     IdentityGovernanceService,
 )
 

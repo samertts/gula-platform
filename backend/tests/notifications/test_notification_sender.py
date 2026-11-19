@@ -5,7 +5,6 @@ import logging
 from unittest.mock import MagicMock, patch
 
 import httpx
-import pytest
 
 from shared.notifications.sender import (
     NotificationMessage,
@@ -52,12 +51,20 @@ class TestNotificationSender:
             result = sender.send_push("token", "Title", "Body")
             assert isinstance(result, bool)
 
-    def test_send_email_smtp_not_configured_logs_only(self, caplog):
+    def test_send_email_smtp_not_configured_reports_failure(self, caplog):
+        """IA-076. This test previously asserted ``result is True``.
+
+        That expectation was the defect: an unconfigured deployment reported
+        every message as delivered, and NotificationService turned it into
+        ``NotificationResult(success=True)``. send_push and send_ntfy in the
+        same class already returned False here.
+        """
         sender = NotificationSender()
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(logging.ERROR):
             result = sender.send_email("test@example.com", "Subject", "Body")
-        assert result is True
-        assert "SMTP not configured" in caplog.text
+        assert result is False
+        assert "NOT DELIVERED" in caplog.text
+        assert "SMTP_HOST is not configured" in caplog.text
 
     def test_send_email_smtp_configured_sends(self):
         sender = NotificationSender(
@@ -85,12 +92,23 @@ class TestNotificationSender:
             result = sender.send_email("test@example.com", "Subject", "<html><body>Hi</body></html>")
         assert result is True
 
-    def test_send_sms_api_not_configured_logs_only(self, caplog):
+    def test_send_sms_api_not_configured_reports_failure(self, caplog):
+        """IA-076, and IA-077 for the body.
+
+        The old log line was ``Body=%s`` with ``body[:50]``, and the first
+        fifty characters of the verification message are
+        ``Your GULA verification code is 847213. It expires`` — the one-time
+        code, beside the phone number, in the application log.
+        """
         sender = NotificationSender()
+        code_bearing = "Your GULA verification code is 847213. It expires in 15 minutes."
         with caplog.at_level(logging.INFO):
-            result = sender.send_sms("+9647701234567", "Hello")
-        assert result is True
-        assert "API not configured" in caplog.text
+            result = sender.send_sms("+9647701234567", code_bearing)
+        assert result is False
+        assert "NOT DELIVERED" in caplog.text
+        assert "SMS_API_URL is not configured" in caplog.text
+        assert "847213" not in caplog.text
+        assert "verification code" not in caplog.text
 
     def test_send_sms_api_configured_sends(self):
         sender = NotificationSender(sms_api_url="https://sms.example.com/send")
@@ -113,12 +131,15 @@ class TestNotificationSender:
             result = sender.send_sms("+9647701234567", "Hello")
         assert result is False
 
-    def test_send_whatsapp_api_not_configured_logs_only(self, caplog):
+    def test_send_whatsapp_api_not_configured_reports_failure(self, caplog):
+        """IA-076 / IA-077, as the SMS case above."""
         sender = NotificationSender()
         with caplog.at_level(logging.INFO):
-            result = sender.send_whatsapp("+9647701234567", "Hello")
-        assert result is True
-        assert "API not configured" in caplog.text
+            result = sender.send_whatsapp("+9647701234567", "Potassium 7.9 mmol/L")
+        assert result is False
+        assert "NOT DELIVERED" in caplog.text
+        assert "WHATSAPP_API_URL is not configured" in caplog.text
+        assert "Potassium" not in caplog.text
 
     def test_send_whatsapp_api_configured_sends(self):
         sender = NotificationSender(
@@ -143,7 +164,7 @@ class TestNotificationSender:
         mock_client.close.assert_called_once()
         assert sender._http_client is None
 
-    def test_module_level_functions_fallback_to_logging(self):
+    def test_module_level_functions_delegate_to_the_singleton(self):
         send_push("token", "T", "B")
         send_email("t@t.com", "S", "B")
         send_sms("+9647701234567", "B")

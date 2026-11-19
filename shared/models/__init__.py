@@ -5,6 +5,7 @@ from .base import (
     SoftDeleteMixin,
     TenantMixin,
     TimestampMixin,
+    serialize_columns,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "SoftDeleteMixin",
     "TenantMixin",
     "TimestampMixin",
+    "serialize_columns",
 ]

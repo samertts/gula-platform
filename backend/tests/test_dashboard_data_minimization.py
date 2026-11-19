@@ -23,6 +23,7 @@ from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
+from app.orm_topology import own_tables
 from app.security.auth import create_token, hash_password
 
 
@@ -43,13 +44,13 @@ def dashboard_db():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine, tables=own_tables(Base))
     session = sessionmaker(bind=engine, autoflush=False)()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(engine)
+        Base.metadata.drop_all(engine, tables=own_tables(Base))
         engine.dispose()
 
 

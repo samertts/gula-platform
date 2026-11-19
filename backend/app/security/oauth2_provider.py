@@ -45,11 +45,19 @@ class OAuth2TokenRequest(BaseModel):
 class OAuth2IntrospectRequest(BaseModel):
     token: str
     token_type_hint: str | None = None
+    # RFC 7662 §2.1 requires the introspection endpoint to authenticate the caller,
+    # explicitly "to prevent token scanning attacks". Credentials may arrive here or
+    # as HTTP Basic; _authenticate_client accepts either.
+    client_id: str | None = None
+    client_secret: str | None = None
 
 
 class OAuth2RevokeRequest(BaseModel):
     token: str
     token_type_hint: str | None = None
+    # RFC 7009 §2.1: the client includes its authentication credentials.
+    client_id: str | None = None
+    client_secret: str | None = None
 
 
 def generate_client_id() -> str:

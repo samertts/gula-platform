@@ -14,7 +14,9 @@ from app.command_center.domain.entities import (
     SituationReport,
 )
 from app.command_center.exceptions import (
+    EmergencyAlreadyResolvedError,
     EmergencyNotFoundError,
+    ResourceRequestAlreadyClosedError,
     ResourceRequestNotFoundError,
 )
 from app.command_center.infrastructure.models import (
@@ -65,12 +67,39 @@ class CommandCenterService:
         query = query.order_by(EmergencyDeclarationModel.declared_at.desc()).offset(skip).limit(limit)
         return [self._emergency_from_model(m) for m in query.all()]
 
+    #: An emergency in this state has reached the end of its lifecycle.
+    _RESOLVED_STATUS = "resolved"
+
     def resolve_emergency(self, emergency_id: str, resolved_by: str = "",
-                          notes: str = "") -> EmergencyDeclaration:
-        model = self.db.query(EmergencyDeclarationModel).filter_by(id=emergency_id).first()
+                          notes: str = "", *, actor_lab_id: int) -> EmergencyDeclaration:
+        """Close an emergency declaration, once, within the actor's own tenant.
+
+        `actor_lab_id` is keyword-only with no default so a caller that forgets it
+        raises TypeError rather than reaching across tenants. It must come from
+        the authenticated subject, never from the request body.
+
+        NOTE on `resolved_by`: it is still caller-supplied free text. That is a
+        separate, registered finding (NR-018) awaiting an owner decision, because
+        the remedy — server-derive it, or keep it as the declared incident
+        commander and add a distinct authenticated-actor column — changes either
+        the API contract or the schema. It is deliberately NOT changed here.
+        """
+        model = (
+            self.db.query(EmergencyDeclarationModel)
+            .filter(
+                EmergencyDeclarationModel.id == emergency_id,
+                EmergencyDeclarationModel.lab_id == actor_lab_id,
+                EmergencyDeclarationModel.is_deleted.isnot(True),
+            )
+            .with_for_update()
+            .first()
+        )
         if not model:
             raise EmergencyNotFoundError()
-        model.status = "resolved"
+        if model.status == self._RESOLVED_STATUS:
+            raise EmergencyAlreadyResolvedError()
+        model.version = (model.version or 0) + 1
+        model.status = self._RESOLVED_STATUS
         model.resolved_at = datetime.now(UTC)
         model.resolved_by = resolved_by
         if notes:
@@ -98,10 +127,27 @@ class CommandCenterService:
         query = query.order_by(ResourceRequestModel.requested_at.desc()).offset(skip).limit(limit)
         return [self._resource_from_model(m) for m in query.all()]
 
-    def fulfill_resource(self, request_id: str, data: dict[str, Any]) -> ResourceRequest:
-        model = self.db.query(ResourceRequestModel).filter_by(id=request_id).first()
+    #: A resource request in one of these states is closed.
+    _CLOSED_REQUEST_STATES = frozenset({"fulfilled", "cancelled"})
+
+    def fulfill_resource(self, request_id: str, data: dict[str, Any], *,
+                         actor_lab_id: int) -> ResourceRequest:
+        """Fulfil a resource request, once, within the actor's own tenant."""
+        model = (
+            self.db.query(ResourceRequestModel)
+            .filter(
+                ResourceRequestModel.id == request_id,
+                ResourceRequestModel.lab_id == actor_lab_id,
+                ResourceRequestModel.is_deleted.isnot(True),
+            )
+            .with_for_update()
+            .first()
+        )
         if not model:
             raise ResourceRequestNotFoundError()
+        if model.status in self._CLOSED_REQUEST_STATES:
+            raise ResourceRequestAlreadyClosedError()
+        model.version = (model.version or 0) + 1
         model.status = "fulfilled"
         model.fulfilled_quantity = data.get("fulfilled_quantity", model.quantity)
         model.fulfilled_by = data.get("fulfilled_by", "")

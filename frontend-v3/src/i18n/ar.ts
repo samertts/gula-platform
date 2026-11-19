@@ -222,6 +222,7 @@ const ar = {
     quickNavigation: "التنقل السريع",
     mainNavigation: "التنقل الرئيسي",
     openAllSections: "فتح جميع الأقسام",
+    moreSections: "المزيد من الأقسام",
     more: "المزيد",
     current: "الصفحة الحالية",
     skipToContent: "تخطى إلى المحتوى الرئيسي",

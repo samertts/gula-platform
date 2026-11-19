@@ -9,6 +9,8 @@ import time
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from app.orm_topology import SHARED_METADATA
+
 from .config import DATABASE_URL, READ_REPLICA_ENABLED, READ_REPLICA_URL
 
 logger = logging.getLogger("gula.database")
@@ -269,7 +271,9 @@ if READ_REPLICA_ENABLED and READ_REPLICA_URL:
 
 ReadSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=read_engine or engine)
 
-Base = declarative_base()
+#: NR-086 -- constructed against the one shared namespace so this base's
+#: cross-base foreign keys resolve. See app/orm_topology.py.
+Base = declarative_base(metadata=SHARED_METADATA)
 
 # Block edge_* table access from API/test/CLI runtimes. No-op inside worker.
 try:

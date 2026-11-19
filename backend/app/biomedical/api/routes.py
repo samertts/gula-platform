@@ -8,10 +8,12 @@ from sqlalchemy.orm import Session
 from app.biomedical.application.service import BiomedicalService
 from app.biomedical.exceptions import (
     DeviceNotFoundError,
+    WorkOrderAlreadyClosedError,
     WorkOrderNotFoundError,
 )
 from app.database import get_db
-from app.security.dependencies import require_permission
+from app.models.lab_user import LabUser
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(
     prefix="/biomedical",
@@ -129,11 +131,19 @@ async def complete_work_order(
     wo_id: str,
     body: dict[str, Any],
     service: BiomedicalService = Depends(_get_service),
+    current_user: LabUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     try:
-        return _work_order_to_dict(service.complete_work_order(wo_id, body))
+        return _work_order_to_dict(
+            service.complete_work_order(wo_id, body, actor_lab_id=current_user.lab_id),
+        )
     except WorkOrderNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+    except WorkOrderAlreadyClosedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Work order is already closed",
+        ) from e
 
 
 # ---- Calibrations ----

@@ -155,17 +155,23 @@ class TestFHIRMapperOutput:
             instrument_id = None
             specimen_id = 1
 
-            class FakeSpecimen:
-                class FakeOrder:
-                    patient_id = 1
-                order = FakeOrder()
-            specimen = FakeSpecimen()
-
-        resource = result_to_fhir(FakeResult())
+        # IA-061: this fake used to carry a nested ``specimen.order.patient_id``,
+        # which the real ``app.lims.models.Specimen`` does not have -- it has
+        # ``order_id`` and no ``order`` relationship. The mapper guarded on that
+        # non-existent attribute, so the guard never passed in production while
+        # this fake made it pass here. A contract fake that is richer than the
+        # model it stands for cannot hold the contract, so it is gone: the
+        # patient is now resolved by the caller and passed in explicitly.
+        patient_id = 7
+        resource = result_to_fhir(FakeResult(), patient_id=patient_id)
         assert resource["resourceType"] == "Observation"
         assert resource["id"] == "lims-obs-42"
+        assert resource["subject"]["reference"] == f"Patient/{patient_id}"
         issues = _validate_resource(resource)
         assert not issues, f"Observation validation issues: {issues}"
+
+        with pytest.raises(ValueError):
+            result_to_fhir(FakeResult(), patient_id=None)
 
     def test_order_mapper_produces_valid_fhir(self):
         from app.lims.fhir_mappers import order_to_fhir_service_request
@@ -175,6 +181,9 @@ class TestFHIRMapperOutput:
             fhir_id = None
             accession_number = "ACC-001"
             priority = "routine"
+            # app.lims.models.Order.order_status, which this fake had drifted
+            # away from -- the mapper reads it unconditionally. Part of IA-069.
+            order_status = "ordered"
             ordered_at = datetime.now()
             ordered_by = None
             lab_id = 1
@@ -183,10 +192,19 @@ class TestFHIRMapperOutput:
                 return 1
             order_id = property(_get_order_id)
 
-        resource = order_to_fhir_service_request(FakeOrder())
+        # NR-219 made ``patient_id`` keyword-only with no default so a wrong
+        # patient could not be guessed. This call site was never updated, and
+        # nothing ran it: backend/pytest.ini sets ``testpaths = tests``, so
+        # contracts/ is outside every executed suite. Recorded as IA-069.
+        patient_id = 7
+        resource = order_to_fhir_service_request(FakeOrder(), patient_id=patient_id)
         assert resource["resourceType"] == "ServiceRequest"
+        assert resource["subject"]["reference"] == f"Patient/{patient_id}"
         issues = _validate_resource(resource)
         assert not issues, f"ServiceRequest issues: {issues}"
+
+        with pytest.raises(ValueError):
+            order_to_fhir_service_request(FakeOrder(), patient_id=None)
 
     def test_instrument_mapper_produces_valid_fhir(self):
         from app.lims.fhir_mappers import instrument_to_fhir_device
