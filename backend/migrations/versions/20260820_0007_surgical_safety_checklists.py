@@ -1,7 +1,7 @@
 """Create surgical safety checklists.
 
-Revision ID: 20260820_0004
-Revises: 20260819_0003
+Revision ID: 20260820_0007
+Revises: 20260820_0006
 """
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "20260820_0004"
-down_revision = "20260819_0003"
+revision = "20260820_0007"
+down_revision = "20260820_0006"
 branch_labels = None
 depends_on = None
 
