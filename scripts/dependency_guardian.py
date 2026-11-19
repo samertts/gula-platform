@@ -40,6 +40,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from packaging.specifiers import SpecifierSet
+    from packaging.version import Version
+except ImportError:  # pragma: no cover - packaging is present in supported environments
+    SpecifierSet = None  # type: ignore[assignment,misc]
+    Version = None  # type: ignore[assignment,misc]
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -276,8 +283,12 @@ def _classify_packages(report: FileReport) -> None:
             report.unpinned.append(pkg)
             continue
         specs = [s.strip() for s in pkg.specifier.split(",")]
-        has_min = any(s.startswith(">=") for s in specs)
-        if not has_min:
+        # Exact lock pins (`==`) are bounded and intentional. Treating them as
+        # missing lower bounds made requirements-lock.txt fail every scan.
+        has_lower_bound = any(
+            s.startswith((">=", ">", "~=", "==", "===")) for s in specs
+        )
+        if not has_lower_bound:
             report.no_min_bound.append(pkg)
 
 
@@ -565,6 +576,41 @@ def _extract_bounds(specifier: str) -> list[Tuple[str, str]]:
     return result
 
 
+def _exact_versions(specifiers: list[str]) -> list[str]:
+    versions: list[str] = []
+    for specifier in specifiers:
+        for part in specifier.split(","):
+            match = re.fullmatch(r"\s*={2,3}\s*([0-9][^,\s]+)\s*", part)
+            if match:
+                versions.append(match.group(1))
+    return versions
+
+
+def _has_incompatible_specifiers(specifiers: list[str]) -> bool:
+    unique_specs = set(specifiers)
+    if len(unique_specs) <= 1:
+        return False
+
+    exact_versions = _exact_versions(specifiers)
+    if not exact_versions:
+        # Without an exact pin, preserve the conservative historical behavior:
+        # two different ranges are reported for human review.
+        return True
+
+    if len(set(exact_versions)) > 1 or SpecifierSet is None or Version is None:
+        return True
+
+    try:
+        candidate = Version(exact_versions[0])
+        return any(
+            not SpecifierSet(specifier).contains(candidate, prereleases=True)
+            for specifier in specifiers
+        )
+    except Exception:
+        # Invalid or unsupported PEP 440 input must not be silently accepted.
+        return True
+
+
 def detect_conflicts(python_reports: list[FileReport]) -> list[Conflict]:
     pyproject_deps = parse_pyproject_deps(PYPROJECT)
 
@@ -588,8 +634,7 @@ def detect_conflicts(python_reports: list[FileReport]) -> list[Conflict]:
         if len(entries) < 2:
             continue
         specs = [e[1] for e in entries]
-        unique_specs = list(set(specs))
-        if len(unique_specs) <= 1:
+        if not _has_incompatible_specifiers(specs):
             continue
         conflicts.append(Conflict(
             package=pkg_name,
