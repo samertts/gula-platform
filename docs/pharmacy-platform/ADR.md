@@ -144,3 +144,62 @@ Use the **WHO ATC (Anatomical Therapeutic Chemical) classification system** as t
 
 - **Positive**: International standard, therapeutic alternatives, national reporting compatibility, integration ready
 - **Negative**: ATC maintenance overhead (WHO updates ATC annually); custom Iraqi extensions require governance; training needed for pharmacy staff on ATC navigation
+
+---
+
+## ADR-006: Pharmacy Drug Identity Model (NR-003)
+
+**Status:** Accepted
+**Date:** 2026-09-09
+**Deciders:** Platform Owner
+**Supersedes:** nothing. **Extends:** ADR-001, ADR-002, ADR-005
+
+### Context
+
+Three incompatible Pharmacy generations exist in this repository:
+
+- **Generation A (physical/Alembic)** — 23 tables created by `20260716_0003`, `Integer` primary keys, `drug_id` foreign keys, `drug_code` business code, catalog global with no `lab_id`.
+- **Generation B (ORM/API)** — `backend/app/pharmacy/`, `String(26)` application-generated primary keys, `drug_catalog_id` foreign keys, `code`, and a **tenant-scoped** catalog carrying `lab_id`. It cannot execute against Generation A.
+- **Generation C (documented target)** — `docs/pharmacy-platform/ARCHITECTURE.md`, a normalized 22-model design (formulation / package / pricing / ATC hierarchy / ingredients). Not implemented; it references drugs by `drug_id` and leaves the immutable drug identity undefined.
+
+NR-003 surfaced as a foreign-key type clash, but the underlying defect is this three-way divergence. Analysis established that `drug_code` is **unique but mutable**: it is changeable through the service layer, has no defined minting authority, is absent from Generation C's catalog key fields, and is denormalized into four clinical-safety rule tables without a foreign key.
+
+### Decision
+
+The National Drug Catalog is **global** and MoH-governed (per ADR-001). Its identity model is:
+
+| Concern                             | Identity                                | Rule                                                                         |
+| ----------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------- |
+| Internal database key               | `Integer` primary key                   | Never exposed publicly                                                       |
+| Public/canonical GULA drug identity | **opaque UUID4**, server-generated      | Immutable, unique, non-null, indexed                                         |
+| Business/catalog code               | `drug_code`                             | Mutable. Never a primary key, foreign key, or clinical-rule key              |
+| Package identifier                  | GTIN (GS1)                              | Package level only (ADR-002)                                                 |
+| Classification                      | ATC                                     | Classification only, never identity (ADR-005)                                |
+| FHIR identity                       | `fhir_id`                               | FHIR resource identity only                                                  |
+| Synchronisation identity            | `sync_id`                               | Offline/sync identity only                                                   |
+| Facility inventory                  | internal foreign key to the drug entity | Tenant scope belongs to inventory and location records, never to the catalog |
+| Clinical safety rules               | internal foreign key to the drug entity | Never a duplicated `drug_code` as the authoritative relationship             |
+
+**The GULA UUID4 drug identity is a platform identity, not a national regulatory registration number.**
+
+A future Ministry of Health drug registration identifier must be added as an **additional external identifier**. It must not replace the internal primary key or the public UUID identity without a separate architecture decision.
+
+### Rejected alternatives
+
+- **`Integer` primary key as the public identity** — rejected: sequential and enumerable, and it couples the public contract to a storage detail.
+- **`drug_code` as the canonical immutable identity** — rejected: mutable through the service layer, no defined minting authority, absent from Generation C's catalog key fields. Uniqueness is not immutability.
+- **GTIN as the drug identity** — rejected: GTIN identifies a _package_, not a drug.
+- **ATC as identity** — rejected: a classification, not unique per product.
+- **`String(26)` (Generation B) as the catalog primary key** — rejected: it is a truncated UUID4 (`uuid4().hex.upper()[:26]`), not a ULID; it has no time ordering, and adopting it would require rewriting 23 tables' primary keys with no corresponding benefit.
+
+### Consequences
+
+- **Positive**: identity is separated from storage, classification, packaging and pricing; clinical rules can no longer be silently detached by a business-code edit; the public contract stops exposing a database sequence; room is preserved for a future MoH identifier.
+- **Negative**: the catalog gains a second identifier column that must be backfilled exactly once and never regenerated; Generation B must be reconciled to Generation A before the model can be realised; Generation C normalisation remains outstanding.
+
+### Implementation status
+
+**NOT IMPLEMENTED.** This record captures the decision only. Two blockers are documented in the NR-003 implementation report and must be resolved by the platform owner before any schema or code change:
+
+1. Repairing the `String(26)` → `Integer` foreign keys on `pharmacy_drug_substitution_rules` requires modifying migration `20260815_0023`, which the repository's mandatory migration policy forbids.
+2. Reconciling Generation B to Generation A is a full-domain rewrite, not a localized change.
