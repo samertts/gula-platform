@@ -1,0 +1,91 @@
+# GULA Medical Ontology — Concept Relations
+#
+# Directed edges in the ontology graph. Every row becomes a
+# `medical_ontology_relations` row.
+#
+# relation_type values:
+#   panel_includes      — a panel that reports this biomarker
+#   measured_in         — biomarker measured in this specimen (default)
+#   part_of             — organ / anatomical containment
+#   indicates           — biomarker abnormality suggests a disease (soft edge,
+#                         must include `strength`)
+#   is_a                — taxonomic parent (disease taxonomy)
+#   associated_with     — symptom co-occurs with a disease
+#   contraindicates     — condition that precludes use of a medication
+#   normalized_from     — links a legacy medical_terminology_normalized code
+#                         back into the ontology (interop)
+
+version: 1
+relations:
+
+  # ─── Panel membership (a panel includes its constituent biomarkers) ────────
+  - {source: panel:cbc,             target: biomarker:hemoglobin,       relation: panel_includes}
+  - {source: panel:cbc,             target: biomarker:hematocrit,       relation: panel_includes}
+  - {source: panel:cbc,             target: biomarker:mcv,              relation: panel_includes}
+  - {source: panel:cbc,             target: biomarker:mch,              relation: panel_includes}
+  - {source: panel:cbc,             target: biomarker:wbc,              relation: panel_includes}
+  - {source: panel:cbc,             target: biomarker:platelets,        relation: panel_includes}
+
+  - {source: panel:bmp,             target: biomarker:sodium,           relation: panel_includes}
+  - {source: panel:bmp,             target: biomarker:potassium,        relation: panel_includes}
+  - {source: panel:bmp,             target: biomarker:calcium_total,    relation: panel_includes}
+  - {source: panel:bmp,             target: biomarker:urea_bun,         relation: panel_includes}
+  - {source: panel:bmp,             target: biomarker:creatinine,       relation: panel_includes}
+  - {source: panel:bmp,             target: biomarker:glucose_random,   relation: panel_includes}
+
+  - {source: panel:lipid,           target: biomarker:cholesterol_total, relation: panel_includes}
+  - {source: panel:lipid,           target: biomarker:ldl,              relation: panel_includes}
+  - {source: panel:lipid,           target: biomarker:hdl,              relation: panel_includes}
+  - {source: panel:lipid,           target: biomarker:triglycerides,    relation: panel_includes}
+
+  - {source: panel:liver_function,  target: biomarker:alt,              relation: panel_includes}
+  - {source: panel:liver_function,  target: biomarker:ast,              relation: panel_includes}
+  - {source: panel:liver_function,  target: biomarker:alp,              relation: panel_includes}
+  - {source: panel:liver_function,  target: biomarker:bilirubin_total,  relation: panel_includes}
+
+  - {source: panel:thyroid_function, target: biomarker:tsh,             relation: panel_includes}
+  - {source: panel:thyroid_function, target: biomarker:free_t4,         relation: panel_includes}
+
+  - {source: panel:iron_studies,    target: biomarker:iron,             relation: panel_includes}
+  - {source: panel:iron_studies,    target: biomarker:ferritin,         relation: panel_includes}
+  - {source: panel:iron_studies,    target: biomarker:tibc,             relation: panel_includes}
+
+  # ─── Anatomical containment (biomarker measures function of organ system) ─
+  - {source: biomarker:hemoglobin,      target: system:hematologic,      relation: part_of}
+  - {source: biomarker:wbc,             target: system:hematologic,      relation: part_of}
+  - {source: biomarker:platelets,       target: system:hematologic,      relation: part_of}
+  - {source: biomarker:creatinine,      target: system:kidney,           relation: part_of}
+  - {source: biomarker:urea_bun,        target: system:kidney,           relation: part_of}
+  - {source: biomarker:alt,             target: system:liver,            relation: part_of}
+  - {source: biomarker:ast,             target: system:liver,            relation: part_of}
+  - {source: biomarker:alp,             target: system:liver,            relation: part_of}
+  - {source: biomarker:bilirubin_total, target: system:liver,            relation: part_of}
+  - {source: biomarker:tsh,             target: system:thyroid,          relation: part_of}
+  - {source: biomarker:free_t4,         target: system:thyroid,          relation: part_of}
+  - {source: biomarker:glucose_fasting, target: system:endocrine_pancreas, relation: part_of}
+  - {source: biomarker:hba1c,           target: system:endocrine_pancreas, relation: part_of}
+
+  # ─── Biomarker → disease (soft, evidence-weighted edges) ───────────────────
+  # `strength` in [0..1] captures how strongly abnormality suggests the disease.
+  # These are hint edges — never used as sole basis for interpretation.
+  - {source: biomarker:hba1c,           target: disease:diabetes_type_2,       relation: indicates, strength: 0.9}
+  - {source: biomarker:hba1c,           target: disease:prediabetes,           relation: indicates, strength: 0.85}
+  - {source: biomarker:glucose_fasting, target: disease:diabetes_type_2,       relation: indicates, strength: 0.85}
+  - {source: biomarker:glucose_fasting, target: disease:prediabetes,           relation: indicates, strength: 0.8}
+  - {source: biomarker:hemoglobin,      target: disease:iron_deficiency_anemia, relation: indicates, strength: 0.7}
+  - {source: biomarker:ferritin,        target: disease:iron_deficiency_anemia, relation: indicates, strength: 0.85}
+  - {source: biomarker:iron,            target: disease:iron_deficiency_anemia, relation: indicates, strength: 0.75}
+  - {source: biomarker:tibc,            target: disease:iron_deficiency_anemia, relation: indicates, strength: 0.6}
+  - {source: biomarker:tsh,             target: disease:hypothyroidism,        relation: indicates, strength: 0.85}
+  - {source: biomarker:tsh,             target: disease:hyperthyroidism,       relation: indicates, strength: 0.85}
+  - {source: biomarker:free_t4,         target: disease:hypothyroidism,        relation: indicates, strength: 0.75}
+  - {source: biomarker:vitamin_d_25oh,  target: disease:vitamin_d_deficiency,  relation: indicates, strength: 0.95}
+  - {source: biomarker:creatinine,      target: disease:ckd,                   relation: indicates, strength: 0.7}
+
+  # ─── Symptom ↔ disease associations ────────────────────────────────────────
+  - {source: symptom:polyuria,   target: disease:diabetes_type_2,        relation: associated_with, strength: 0.8}
+  - {source: symptom:polydipsia, target: disease:diabetes_type_2,        relation: associated_with, strength: 0.8}
+  - {source: symptom:fatigue,    target: disease:iron_deficiency_anemia, relation: associated_with, strength: 0.6}
+  - {source: symptom:fatigue,    target: disease:hypothyroidism,         relation: associated_with, strength: 0.65}
+  - {source: symptom:fatigue,    target: disease:vitamin_d_deficiency,   relation: associated_with, strength: 0.5}
+  - {source: symptom:pallor,     target: disease:iron_deficiency_anemia, relation: associated_with, strength: 0.75}

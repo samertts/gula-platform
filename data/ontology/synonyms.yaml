@@ -1,0 +1,228 @@
+# GULA Medical Ontology — Multilingual Synonyms + Iraqi Aliases
+#
+# Every entry becomes a row in `medical_ontology_synonyms`, keyed to a
+# `concept_key` from concepts.yaml.
+#
+# locale values:
+#   en        — English (any variant)
+#   ar        — Modern Standard Arabic
+#   ar-IQ     — Iraqi dialect / spoken forms
+#   arabizi   — Arabic written with Latin characters + digits (chat form)
+#
+# variant values:
+#   preferred      — the primary display term
+#   abbreviation   — short form (HbA1c, WBC)
+#   colloquial     — everyday/spoken form ("السكر التراكمي")
+#   phonetic       — phonetic transliteration variant
+#   misspelling    — common wrong spelling that should still resolve
+#
+# The normaliser lowercases English, strips Arabic diacritics, and folds
+# arabizi digits (3→ع, 7→ح, 2→ء, 5→خ, 8→غ, 6→ط, 9→ق). Entries here should
+# be the canonical spelling — the normaliser handles trivial variants.
+
+version: 1
+synonyms:
+
+  # ─── Glucose ───────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:glucose_fasting, term: "Fasting Blood Glucose", locale: en, variant: preferred}
+  - {concept_key: biomarker:glucose_fasting, term: "FBS", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:glucose_fasting, term: "FPG", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:glucose_fasting, term: "fasting glucose", locale: en, variant: colloquial}
+  - {concept_key: biomarker:glucose_fasting, term: "سكر صائم", locale: ar}
+  - {concept_key: biomarker:glucose_fasting, term: "سكر الدم الصائم", locale: ar, variant: preferred}
+  - {concept_key: biomarker:glucose_fasting, term: "السكر الصايم", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:glucose_fasting, term: "سكر صايم", locale: ar-IQ}
+  - {concept_key: biomarker:glucose_fasting, term: "sukkar sayem", locale: arabizi}
+  - {concept_key: biomarker:glucose_fasting, term: "sukar sa2em", locale: arabizi}
+
+  - {concept_key: biomarker:glucose_random, term: "Random Blood Sugar", locale: en, variant: preferred}
+  - {concept_key: biomarker:glucose_random, term: "RBS", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:glucose_random, term: "سكر عشوائي", locale: ar}
+  - {concept_key: biomarker:glucose_random, term: "السكر العشوائي", locale: ar-IQ}
+
+  # ─── HbA1c — heavy Iraqi vernacular coverage ──────────────────────────────
+  - {concept_key: biomarker:hba1c, term: "HbA1c", locale: en, variant: preferred}
+  - {concept_key: biomarker:hba1c, term: "A1C", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:hba1c, term: "Glycated hemoglobin", locale: en}
+  - {concept_key: biomarker:hba1c, term: "Glycohemoglobin", locale: en}
+  - {concept_key: biomarker:hba1c, term: "hb a1c", locale: en, variant: misspelling}
+  - {concept_key: biomarker:hba1c, term: "الهيموغلوبين السكري", locale: ar, variant: preferred}
+  - {concept_key: biomarker:hba1c, term: "خضاب الدم السكري", locale: ar}
+  - {concept_key: biomarker:hba1c, term: "السكر التراكمي", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:hba1c, term: "السكر مال 3 اشهر", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:hba1c, term: "السكر تراكمي", locale: ar-IQ}
+  - {concept_key: biomarker:hba1c, term: "التراكمي", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:hba1c, term: "sukkar tarakumi", locale: arabizi}
+  - {concept_key: biomarker:hba1c, term: "sukar tarakomi", locale: arabizi}
+  - {concept_key: biomarker:hba1c, term: "sukkar mal 3 ashhur", locale: arabizi}
+  - {concept_key: biomarker:hba1c, term: "el sukkar el tarakumi", locale: arabizi}
+
+  # ─── Hemoglobin ────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:hemoglobin, term: "Hemoglobin", locale: en, variant: preferred}
+  - {concept_key: biomarker:hemoglobin, term: "Hb", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:hemoglobin, term: "HGB", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:hemoglobin, term: "Haemoglobin", locale: en}
+  - {concept_key: biomarker:hemoglobin, term: "الهيموغلوبين", locale: ar, variant: preferred}
+  - {concept_key: biomarker:hemoglobin, term: "خضاب الدم", locale: ar}
+  - {concept_key: biomarker:hemoglobin, term: "الهيموكلوبين", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:hemoglobin, term: "الدم", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:hemoglobin, term: "hemoglobin", locale: arabizi}
+  - {concept_key: biomarker:hemoglobin, term: "haemoglobin", locale: arabizi}
+
+  # ─── WBC / Platelets ───────────────────────────────────────────────────────
+  - {concept_key: biomarker:wbc, term: "White Blood Cells", locale: en, variant: preferred}
+  - {concept_key: biomarker:wbc, term: "WBC", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:wbc, term: "Leukocytes", locale: en}
+  - {concept_key: biomarker:wbc, term: "كريات الدم البيضاء", locale: ar, variant: preferred}
+  - {concept_key: biomarker:wbc, term: "الكريات البيض", locale: ar-IQ}
+
+  - {concept_key: biomarker:platelets, term: "Platelets", locale: en, variant: preferred}
+  - {concept_key: biomarker:platelets, term: "PLT", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:platelets, term: "Thrombocytes", locale: en}
+  - {concept_key: biomarker:platelets, term: "الصفائح الدموية", locale: ar}
+  - {concept_key: biomarker:platelets, term: "الصفيحات", locale: ar-IQ}
+
+  # ─── Kidney panel ──────────────────────────────────────────────────────────
+  - {concept_key: biomarker:creatinine, term: "Creatinine", locale: en, variant: preferred}
+  - {concept_key: biomarker:creatinine, term: "Cr", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:creatinine, term: "sCr", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:creatinine, term: "الكرياتينين", locale: ar}
+  - {concept_key: biomarker:creatinine, term: "الكرياتنين", locale: ar-IQ, variant: misspelling}
+  - {concept_key: biomarker:creatinine, term: "creatinin", locale: arabizi, variant: misspelling}
+
+  - {concept_key: biomarker:urea_bun, term: "Blood Urea Nitrogen", locale: en, variant: preferred}
+  - {concept_key: biomarker:urea_bun, term: "BUN", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:urea_bun, term: "Urea", locale: en}
+  - {concept_key: biomarker:urea_bun, term: "اليوريا", locale: ar}
+  - {concept_key: biomarker:urea_bun, term: "يوريا", locale: ar-IQ}
+
+  # ─── Electrolytes ──────────────────────────────────────────────────────────
+  - {concept_key: biomarker:sodium, term: "Sodium", locale: en, variant: preferred}
+  - {concept_key: biomarker:sodium, term: "Na", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:sodium, term: "Na+", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:sodium, term: "الصوديوم", locale: ar}
+  - {concept_key: biomarker:potassium, term: "Potassium", locale: en, variant: preferred}
+  - {concept_key: biomarker:potassium, term: "K", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:potassium, term: "K+", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:potassium, term: "البوتاسيوم", locale: ar}
+  - {concept_key: biomarker:potassium, term: "الپوتاسيوم", locale: ar-IQ}
+  - {concept_key: biomarker:calcium_total, term: "Calcium", locale: en, variant: preferred}
+  - {concept_key: biomarker:calcium_total, term: "Ca", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:calcium_total, term: "الكالسيوم", locale: ar}
+
+  # ─── Liver ─────────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:alt, term: "ALT", locale: en, variant: preferred}
+  - {concept_key: biomarker:alt, term: "SGPT", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:alt, term: "Alanine aminotransferase", locale: en}
+  - {concept_key: biomarker:alt, term: "إنزيمات الكبد ALT", locale: ar}
+  - {concept_key: biomarker:ast, term: "AST", locale: en, variant: preferred}
+  - {concept_key: biomarker:ast, term: "SGOT", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:ast, term: "Aspartate aminotransferase", locale: en}
+  - {concept_key: biomarker:alp, term: "ALP", locale: en, variant: preferred}
+  - {concept_key: biomarker:alp, term: "Alkaline phosphatase", locale: en}
+  - {concept_key: biomarker:alp, term: "الفوسفاتاز القلوية", locale: ar}
+  - {concept_key: biomarker:bilirubin_total, term: "Total bilirubin", locale: en, variant: preferred}
+  - {concept_key: biomarker:bilirubin_total, term: "T. Bilirubin", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:bilirubin_total, term: "البيليروبين الكلي", locale: ar}
+  - {concept_key: biomarker:bilirubin_total, term: "الصفراء", locale: ar-IQ, variant: colloquial}
+
+  # ─── Lipids ────────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:cholesterol_total, term: "Total cholesterol", locale: en, variant: preferred}
+  - {concept_key: biomarker:cholesterol_total, term: "TC", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:cholesterol_total, term: "الكوليسترول", locale: ar}
+  - {concept_key: biomarker:cholesterol_total, term: "الكولسترول", locale: ar-IQ}
+  - {concept_key: biomarker:ldl, term: "LDL", locale: en, variant: preferred}
+  - {concept_key: biomarker:ldl, term: "LDL-C", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:ldl, term: "الكوليسترول الضار", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:hdl, term: "HDL", locale: en, variant: preferred}
+  - {concept_key: biomarker:hdl, term: "HDL-C", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:hdl, term: "الكوليسترول الجيد", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:triglycerides, term: "Triglycerides", locale: en, variant: preferred}
+  - {concept_key: biomarker:triglycerides, term: "TG", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:triglycerides, term: "الدهون الثلاثية", locale: ar}
+  - {concept_key: biomarker:triglycerides, term: "الشحوم الثلاثية", locale: ar-IQ}
+
+  # ─── Thyroid ───────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:tsh, term: "TSH", locale: en, variant: preferred}
+  - {concept_key: biomarker:tsh, term: "Thyrotropin", locale: en}
+  - {concept_key: biomarker:tsh, term: "هرمون الغدة الدرقية", locale: ar}
+  - {concept_key: biomarker:tsh, term: "الدرقية", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:free_t4, term: "Free T4", locale: en, variant: preferred}
+  - {concept_key: biomarker:free_t4, term: "FT4", locale: en, variant: abbreviation}
+
+  # ─── Vitamins / iron ───────────────────────────────────────────────────────
+  - {concept_key: biomarker:vitamin_d_25oh, term: "Vitamin D", locale: en, variant: preferred}
+  - {concept_key: biomarker:vitamin_d_25oh, term: "25-OH Vitamin D", locale: en}
+  - {concept_key: biomarker:vitamin_d_25oh, term: "25(OH)D", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:vitamin_d_25oh, term: "فيتامين د", locale: ar}
+  - {concept_key: biomarker:vitamin_d_25oh, term: "vitamin d", locale: arabizi}
+  - {concept_key: biomarker:vitamin_b12, term: "Vitamin B12", locale: en, variant: preferred}
+  - {concept_key: biomarker:vitamin_b12, term: "Cobalamin", locale: en}
+  - {concept_key: biomarker:vitamin_b12, term: "فيتامين ب12", locale: ar}
+  - {concept_key: biomarker:iron, term: "Serum iron", locale: en, variant: preferred}
+  - {concept_key: biomarker:iron, term: "Fe", locale: en, variant: abbreviation}
+  - {concept_key: biomarker:iron, term: "الحديد", locale: ar}
+  - {concept_key: biomarker:ferritin, term: "Ferritin", locale: en, variant: preferred}
+  - {concept_key: biomarker:ferritin, term: "الفيريتين", locale: ar}
+  - {concept_key: biomarker:ferritin, term: "مخزون الحديد", locale: ar-IQ, variant: colloquial}
+  - {concept_key: biomarker:tibc, term: "TIBC", locale: en, variant: preferred}
+
+  # ─── Inflammation ──────────────────────────────────────────────────────────
+  - {concept_key: biomarker:crp, term: "CRP", locale: en, variant: preferred}
+  - {concept_key: biomarker:crp, term: "C-reactive protein", locale: en}
+  - {concept_key: biomarker:crp, term: "البروتين المتفاعل", locale: ar}
+  - {concept_key: biomarker:esr, term: "ESR", locale: en, variant: preferred}
+  - {concept_key: biomarker:esr, term: "Sed rate", locale: en, variant: colloquial}
+  - {concept_key: biomarker:esr, term: "سرعة الترسيب", locale: ar}
+  - {concept_key: biomarker:esr, term: "سرعة الترسيب", locale: ar-IQ}
+
+  # ─── Panels ────────────────────────────────────────────────────────────────
+  - {concept_key: panel:cbc, term: "CBC", locale: en, variant: abbreviation}
+  - {concept_key: panel:cbc, term: "Complete Blood Count", locale: en, variant: preferred}
+  - {concept_key: panel:cbc, term: "تعداد الدم", locale: ar}
+  - {concept_key: panel:cbc, term: "فحص دم كامل", locale: ar-IQ, variant: colloquial}
+  - {concept_key: panel:lipid, term: "Lipid Panel", locale: en, variant: preferred}
+  - {concept_key: panel:lipid, term: "Lipid Profile", locale: en}
+  - {concept_key: panel:lipid, term: "الدهون", locale: ar-IQ, variant: colloquial}
+  - {concept_key: panel:liver_function, term: "LFT", locale: en, variant: abbreviation}
+  - {concept_key: panel:liver_function, term: "Liver Function Test", locale: en, variant: preferred}
+  - {concept_key: panel:liver_function, term: "وظائف الكبد", locale: ar}
+  - {concept_key: panel:thyroid_function, term: "TFT", locale: en, variant: abbreviation}
+  - {concept_key: panel:thyroid_function, term: "Thyroid Function Test", locale: en, variant: preferred}
+  - {concept_key: panel:thyroid_function, term: "وظائف الغدة الدرقية", locale: ar}
+  - {concept_key: panel:iron_studies, term: "Iron studies", locale: en, variant: preferred}
+  - {concept_key: panel:iron_studies, term: "Iron profile", locale: en}
+
+  # ─── Diseases ──────────────────────────────────────────────────────────────
+  - {concept_key: disease:diabetes_type_2, term: "Type 2 diabetes", locale: en, variant: preferred}
+  - {concept_key: disease:diabetes_type_2, term: "T2DM", locale: en, variant: abbreviation}
+  - {concept_key: disease:diabetes_type_2, term: "السكري", locale: ar}
+  - {concept_key: disease:diabetes_type_2, term: "السكر", locale: ar-IQ, variant: colloquial}
+  - {concept_key: disease:diabetes_type_2, term: "مرض السكر", locale: ar-IQ}
+  - {concept_key: disease:iron_deficiency_anemia, term: "Iron deficiency anemia", locale: en, variant: preferred}
+  - {concept_key: disease:iron_deficiency_anemia, term: "IDA", locale: en, variant: abbreviation}
+  - {concept_key: disease:iron_deficiency_anemia, term: "فقر الدم", locale: ar}
+  - {concept_key: disease:iron_deficiency_anemia, term: "الأنيميا", locale: ar-IQ, variant: colloquial}
+  - {concept_key: disease:hypothyroidism, term: "Hypothyroidism", locale: en, variant: preferred}
+  - {concept_key: disease:hypothyroidism, term: "قصور الغدة الدرقية", locale: ar}
+  - {concept_key: disease:hyperthyroidism, term: "Hyperthyroidism", locale: en, variant: preferred}
+  - {concept_key: disease:hyperthyroidism, term: "فرط الغدة الدرقية", locale: ar}
+  - {concept_key: disease:vitamin_d_deficiency, term: "Vitamin D deficiency", locale: en, variant: preferred}
+  - {concept_key: disease:vitamin_d_deficiency, term: "نقص فيتامين د", locale: ar}
+  - {concept_key: disease:ckd, term: "Chronic kidney disease", locale: en, variant: preferred}
+  - {concept_key: disease:ckd, term: "CKD", locale: en, variant: abbreviation}
+  - {concept_key: disease:ckd, term: "قصور الكلى المزمن", locale: ar}
+
+  # ─── Symptoms ──────────────────────────────────────────────────────────────
+  - {concept_key: symptom:polyuria, term: "Polyuria", locale: en, variant: preferred}
+  - {concept_key: symptom:polyuria, term: "Frequent urination", locale: en, variant: colloquial}
+  - {concept_key: symptom:polyuria, term: "كثرة التبول", locale: ar}
+  - {concept_key: symptom:polydipsia, term: "Polydipsia", locale: en, variant: preferred}
+  - {concept_key: symptom:polydipsia, term: "Excessive thirst", locale: en, variant: colloquial}
+  - {concept_key: symptom:polydipsia, term: "العطش الشديد", locale: ar}
+  - {concept_key: symptom:fatigue, term: "Fatigue", locale: en, variant: preferred}
+  - {concept_key: symptom:fatigue, term: "Tiredness", locale: en, variant: colloquial}
+  - {concept_key: symptom:fatigue, term: "التعب", locale: ar}
+  - {concept_key: symptom:fatigue, term: "الإرهاق", locale: ar}
+  - {concept_key: symptom:pallor, term: "Pallor", locale: en, variant: preferred}
+  - {concept_key: symptom:pallor, term: "الشحوب", locale: ar}

@@ -38,6 +38,14 @@ from .lab import Lab
 from .lab_order import LabOrder
 from .lab_result import LabResult
 from .lab_user import LabUser
+from .medical_ontology import (
+    MedicalOntologyCode,
+    MedicalOntologyConcept,
+    MedicalOntologyReferenceRange,
+    MedicalOntologyRelation,
+    MedicalOntologySynonym,
+    MedicalOntologyUnitConversion,
+)
 from .oauth2_client import OAuth2Client
 from .oauth2_token import OAuth2Token
 from .organization import Facility, Organization
@@ -86,6 +94,12 @@ __all__ = [
     "LabResult",
     "LabSubscription",
     "LabUser",
+    "MedicalOntologyCode",
+    "MedicalOntologyConcept",
+    "MedicalOntologyReferenceRange",
+    "MedicalOntologyRelation",
+    "MedicalOntologySynonym",
+    "MedicalOntologyUnitConversion",
     "MedicalTerminologyNormalized",
     "OAuth2Client",
     "OAuth2Token",

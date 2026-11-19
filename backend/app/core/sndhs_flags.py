@@ -83,6 +83,23 @@ def national_id_enabled() -> bool:
     return _read_env_bool("SNDHS_ENABLE_NATIONAL_ID", False)
 
 
+def medical_ontology_enabled() -> bool:
+    """Deployment-wide flag for the Medical Ontology Core (directive §1 §2 §9).
+
+    When ``False`` the tables created by
+    ``20260908_0001_medical_ontology_core`` exist but no runtime code path
+    reads them; ``services.interpretation`` (the legacy hardcoded engine)
+    stays authoritative. When ``True``, ontology-backed normalization and
+    demographic-aware reference-range interpretation become available; the
+    legacy engine remains as a fallback for concepts the ontology has not
+    yet seeded.
+    """
+    with _lock:
+        if "ENABLE_MEDICAL_ONTOLOGY" in _overrides:
+            return _overrides["ENABLE_MEDICAL_ONTOLOGY"]
+    return _read_env_bool("ENABLE_MEDICAL_ONTOLOGY", False)
+
+
 # ── Runtime toggles (admin-only) ─────────────────────────────────────────────
 
 
@@ -117,6 +134,18 @@ def disable_national_id() -> None:
 
 def reset_national_id_override() -> None:
     _set_override("ENABLE_NATIONAL_ID", None)
+
+
+def enable_medical_ontology() -> None:
+    _set_override("ENABLE_MEDICAL_ONTOLOGY", True)
+
+
+def disable_medical_ontology() -> None:
+    _set_override("ENABLE_MEDICAL_ONTOLOGY", False)
+
+
+def reset_medical_ontology_override() -> None:
+    _set_override("ENABLE_MEDICAL_ONTOLOGY", None)
 
 
 # ── FastAPI helpers ──────────────────────────────────────────────────────────
@@ -169,4 +198,5 @@ def status_snapshot() -> dict[str, bool]:
     return {
         "visits_enabled": visits_enabled(),
         "national_id_enabled": national_id_enabled(),
+        "medical_ontology_enabled": medical_ontology_enabled(),
     }
