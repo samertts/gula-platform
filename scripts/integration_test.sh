@@ -428,9 +428,10 @@ fi
 # Write machine-readable result
 RESULT_FILE="$(dirname "$0")/../last_integration_test.json"
 python3 -c "
-import json, datetime
+import json
+from datetime import datetime, timezone
 print(json.dumps({
-    'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
+    'timestamp': datetime.now(timezone.utc).isoformat(),
     'pass': ${PASS},
     'warn': ${WARN},
     'fail': ${FAIL},

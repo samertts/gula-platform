@@ -9,21 +9,27 @@ Exit codes:
   1 — WARNING (some checks need attention)
   2 — FAIL (one or more rules violated — blocks merge)
 
+The default scan remains advisory for legacy rollout work (exit 1). Use
+--strict for release readiness; real business-model gaps are then blocking.
+
 Usage:
   python scripts/data_preservation_gate.py              # full scan
   python scripts/data_preservation_gate.py --ci         # CI-friendly JSON
   python scripts/data_preservation_gate.py --pre-commit # staged files only
   python scripts/data_preservation_gate.py --verbose    # detailed output
+  python scripts/data_preservation_gate.py --ci --strict # release-blocking Rule 10 scan
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import pathlib
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
@@ -79,22 +85,26 @@ SAFE_PATTERNS: list[tuple[str, str]] = [
 PROTECTED_TABLES = [
     "patients", "canonical_patients", "patient_links", "citizen_links",
     "lab_orders", "lab_results", "samples", "test_results",
-    "audit_logs", "outbox_events",
+    "audit_logs", "outbox_events", "authorization_audit",
+    "clinical_command_receipts", "edge_events", "integration_inbox_events",
     "labs", "organizations", "facilities", "lab_users",
+    "accessibility_profiles", "health_preferences",
     "users", "roles", "permissions", "role_permissions", "role_assignments",
-    "tenants", "subscriptions", "feature_flags",
-    "test_types", "quality_control", "consents", "claims", "claim_items",
+    "tenants", "lab_subscriptions", "feature_flags",
+    "test_types", "quality_controls", "consents", "claims", "claim_items",
+    "clinical_lab_facility_bindings", "national_facilities", "clinical_ehr_facility_bindings",
     "ai_embeddings", "ai_conversations", "ai_conversation_messages",
-    "ai_agent_executions", "ai_knowledge_nodes",
+    "ai_agent_executions", "ai_knowledge_nodes", "ai_knowledge_edges",
+    "ai_model_registry", "ai_evaluations",
     "ai_interactions", "ai_retrieval_refs", "ai_feedback",
     "ai_unresolved_questions", "medical_terminology_normalized",
     "edge_devices", "edge_tasks", "edge_telemetry", "edge_models",
-    "edge_model_assignments",
-    "mfa_devices", "mfa_sessions",
+    "edge_model_assignments", "edge_policies",
+    "mfa_devices", "mfa_sessions", "break_glass_sessions",
     "oauth2_clients", "oauth2_tokens",
-    "service_accounts",
+    "service_accounts", "delegations", "role_groups", "role_group_members",
+    "abac_policies", "field_security",
     "upgrade_requests", "upgrade_demand_scores",
-    "notifications", "appointments",
 ]
 
 
@@ -240,63 +250,228 @@ def check_protected_tables(
 
     details.append(f"{len(PROTECTED_TABLES)} protected tables registered")
 
-    model_files = list(MODELS_DIR.rglob("*.py")) if MODELS_DIR.exists() else []
-    model_tables = 0
-    for mf in model_files:
-        if mf.name == "__init__.py" or mf.name == "base.py":
-            continue
-        content = mf.read_text(encoding="utf-8", errors="replace")
-        if re.search(r"class\s+\w+\(Base\)", content):
-            model_tables += 1
+    model_tables = len(_model_inventory())
     details.append(f"{model_tables} model classes found in backend/app/models/")
 
     return {"status": status, "details": details}
 
 
-def check_soft_delete_models(verbose: bool = False) -> dict[str, Any]:
+# These tables are intentionally not soft-deleted.  They are append-only or
+# short-lived operational records and have a different lifecycle policy.  Keeping
+# the policy explicit prevents a filename heuristic from silently exempting a
+# real business entity.
+IMMUTABLE_APPEND_ONLY_TABLES: dict[str, str] = {
+    "audit_logs": "append-only tamper-evident audit trail; deletion is prohibited",
+    "outbox_events": "delivery outbox; lifecycle is replay/retention, not soft delete",
+    "authorization_audit": "append-only authorization decision history",
+    "clinical_command_receipts": "append-only idempotency claims for clinical commands",
+    "edge_events": "append-only edge lifecycle and security event history",
+}
+
+TRANSIENT_OPERATIONAL_TABLES: dict[str, str] = {
+    "mfa_sessions": "short-lived authentication session with expiry",
+    "oauth2_tokens": "revocable/expiring token store",
+}
+
+
+@dataclass(frozen=True)
+class ModelInventoryEntry:
+    file: str
+    model: str
+    table: str
+    category: str
+    fields: tuple[str, ...]
+    inherited_soft_delete: bool
+    default_filter_verified: bool = False
+
+
+def _ast_name(node: ast.AST) -> str:
+    """Return a stable dotted name for an AST expression."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _ast_name(node.value)
+        return f"{parent}.{node.attr}" if parent else node.attr
+    return ""
+
+
+def _ast_string(node: ast.AST | None) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def _class_assignments(node: ast.ClassDef) -> dict[str, ast.AST]:
+    assignments: dict[str, ast.AST] = {}
+    for statement in node.body:
+        if isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            targets: list[ast.AST] = []
+            if isinstance(statement, ast.Assign):
+                targets = list(statement.targets)
+                value = statement.value
+            else:
+                targets = [statement.target]
+                value = statement.value
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    assignments[target.id] = value
+    return assignments
+
+
+def _model_inventory() -> list[ModelInventoryEntry]:
+    """Build a class/table inventory without importing application code.
+
+    The gate must remain safe to run with a broken or unavailable database, so
+    this deliberately uses AST inspection rather than SQLAlchemy imports.
+    """
+    entries: list[ModelInventoryEntry] = []
+    if not MODELS_DIR.exists():
+        return entries
+
+    for mf in sorted(MODELS_DIR.rglob("*.py")):
+        if mf.name in {"__init__.py", "base.py"}:
+            continue
+        try:
+            tree = ast.parse(mf.read_text(encoding="utf-8", errors="replace"), str(mf))
+        except SyntaxError:
+            # A syntax error is handled by the normal quality gates; do not
+            # manufacture a false soft-delete result here.
+            continue
+
+        local_classes = {node.name: node for node in tree.body if isinstance(node, ast.ClassDef)}
+        soft_aliases = {"SoftDeleteMixin"}
+        for node in tree.body:
+            if isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.name == "SoftDeleteMixin":
+                        soft_aliases.add(alias.asname or alias.name)
+
+        def inherits_soft(node: ast.ClassDef, seen: set[str] | None = None) -> bool:
+            seen = seen or set()
+            if node.name in seen:
+                return False
+            seen.add(node.name)
+            for base in node.bases:
+                base_name = _ast_name(base).split(".")[-1]
+                if base_name in soft_aliases:
+                    return True
+                parent = local_classes.get(base_name)
+                if parent is not None and inherits_soft(parent, seen):
+                    return True
+            return False
+
+        for node in local_classes.values():
+            bases = {_ast_name(base).split(".")[-1] for base in node.bases}
+            if "Base" not in bases:
+                continue
+            assignments = _class_assignments(node)
+            table = _ast_string(assignments.get("__tablename__"))
+            if not table:
+                continue
+            fields = tuple(sorted(name for name in {"is_deleted", "deleted_at", "deleted_by"} if name in assignments))
+            inherited = inherits_soft(node)
+            if table in IMMUTABLE_APPEND_ONLY_TABLES:
+                category = "immutable_append_only_exception"
+            elif table in TRANSIENT_OPERATIONAL_TABLES:
+                category = "transient_operational_exception"
+            elif table in PROTECTED_TABLES:
+                category = "protected_business"
+            else:
+                category = "business_unregistered"
+            try:
+                display_file = str(mf.relative_to(REPO_ROOT))
+            except ValueError:
+                display_file = str(mf)
+            entries.append(ModelInventoryEntry(
+                file=display_file,
+                model=node.name,
+                table=table,
+                category=category,
+                fields=fields,
+                inherited_soft_delete=inherited,
+            ))
+    return entries
+
+
+def check_soft_delete_models(
+    verbose: bool = False,
+    strict: bool = False,
+) -> dict[str, Any]:
     details: list[str] = []
     status = PASS
+    inventory = _model_inventory()
 
     if not MODELS_DIR.exists():
         details.append("Models directory not found")
-        return {"status": WARNING, "details": details}
+        return {"status": WARNING, "details": details, "inventory": []}
 
-    business_models: list[str] = []
-    missing_soft_delete: list[str] = []
+    missing: list[str] = []
+    missing_default_filter: list[str] = []
+    unregistered: list[str] = []
+    exceptions: list[str] = []
+    compliant: list[str] = []
 
-    skip_files = {"__init__.py", "base.py"}
-    for mf in sorted(MODELS_DIR.rglob("*.py")):
-        if mf.name in skip_files:
-            continue
-        content = mf.read_text(encoding="utf-8", errors="replace")
-        if not re.search(r"class\s+\w+\(Base\)", content):
-            continue
+    for entry in inventory:
+        has_soft_delete = bool(entry.fields) or entry.inherited_soft_delete
+        if entry.category.endswith("exception"):
+            exceptions.append(f"{entry.table} ({entry.category})")
+        elif has_soft_delete:
+            compliant.append(entry.table)
+            if entry.category == "protected_business" and not entry.default_filter_verified:
+                missing_default_filter.append(entry.table)
+        else:
+            missing.append(entry.table)
+            if entry.category == "business_unregistered":
+                unregistered.append(entry.table)
 
-        is_business_model = True
-        transient_keywords = ["session", "token", "cache", "temp"]
-        if any(kw in mf.stem.lower() for kw in transient_keywords):
-            is_business_model = False
-
-        if is_business_model:
-            business_models.append(mf.stem)
-            has_soft_delete = (
-                "deleted_at" in content
-                or "is_deleted" in content
-                or "deleted_by" in content
-            )
-            if not has_soft_delete:
-                missing_soft_delete.append(mf.stem)
-
-    details.append(f"{len(business_models)} business model(s) checked")
-    if missing_soft_delete:
+    details.append(f"{len(inventory)} model class(es) inventoried at class/table level")
+    details.append(f"{len(compliant)} model(s) with direct or inherited soft-delete support")
+    if exceptions:
+        details.append("Documented lifecycle exceptions: " + ", ".join(sorted(exceptions)))
+    if missing:
         details.append(
-            f"Model(s) without soft delete: {', '.join(missing_soft_delete)}"
+            "Business model(s) without soft delete: " + ", ".join(sorted(missing))
         )
-        status = WARNING
-    else:
-        details.append("All business models implement soft delete")
+        details.append(
+            "Default query filtering and restore authorization require runtime tests; "
+            "static inventory does not claim those controls are present."
+        )
+        status = FAIL if strict else WARNING
+    if unregistered:
+        details.append(
+            "Unregistered business table(s) require registry ownership: "
+            + ", ".join(sorted(unregistered))
+        )
+        status = FAIL if strict else WARNING
+    if missing_default_filter:
+        details.append(
+            "Default-filter evidence is not statically verified for protected business table(s): "
+            + ", ".join(sorted(missing_default_filter))
+        )
+        status = FAIL if strict else WARNING
+    if not missing and not unregistered and not missing_default_filter:
+        details.append("All inventoried business models have direct or inherited soft-delete support")
 
-    return {"status": status, "details": details}
+    serialised_inventory = [
+        {
+            "file": entry.file,
+            "model": entry.model,
+            "table": entry.table,
+            "category": entry.category,
+            "fields": list(entry.fields),
+            "inherited_soft_delete": entry.inherited_soft_delete,
+            "default_filter_verified": entry.default_filter_verified,
+        }
+        for entry in inventory
+    ]
+    return {
+        "status": status,
+        "details": details,
+        "inventory": serialised_inventory,
+        "strict": strict,
+        "missing_soft_delete": sorted(missing),
+        "missing_default_filter": sorted(missing_default_filter),
+    }
 
 
 def check_constitution_documents(verbose: bool = False) -> dict[str, Any]:
@@ -376,6 +551,7 @@ def check_migration_safety_policy_compliance(
 def run_all_checks(
     staged_only: bool = False,
     verbose: bool = False,
+    strict: bool = False,
 ) -> list[dict[str, Any]]:
     return [
         {
@@ -394,7 +570,7 @@ def run_all_checks(
         },
         {
             "name": "Soft Delete Check (Rule 10)",
-            **check_soft_delete_models(verbose=verbose),
+            **check_soft_delete_models(verbose=verbose, strict=strict),
         },
         {
             "name": "Constitution Documents (Rule 16)",
@@ -504,6 +680,10 @@ def main(argv: list[str] | None = None) -> int:
         "--verbose", "-v", action="store_true",
         help="Verbose output",
     )
+    parser.add_argument(
+        "--strict", action="store_true",
+        help="Treat real Rule 10 business-model gaps as blocking failures",
+    )
     args = parser.parse_args(argv)
 
     if args.ci:
@@ -513,6 +693,7 @@ def main(argv: list[str] | None = None) -> int:
     results = run_all_checks(
         staged_only=args.pre_commit,
         verbose=args.verbose,
+        strict=args.strict,
     )
 
     output = format_results(results, ci=args.ci)

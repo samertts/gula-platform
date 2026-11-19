@@ -8,7 +8,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -195,7 +195,7 @@ class HealthChecker:
         return {
             "status": "healthy" if all_ok else "degraded",
             "checks": results,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     def get_results(self) -> dict[str, Any]:
@@ -211,7 +211,7 @@ class StructuredLogger:
 
     def _log(self, level: str, message: str, **kwargs: Any):
         record = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "service": self._service,
             "level": level,
             "message": message,
@@ -272,7 +272,7 @@ class AlertManager:
                         "rule": rule["name"],
                         "severity": rule["severity"],
                         "message": rule["message"],
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(UTC).isoformat(),
                     }
                     triggered.append(alert)
                     self._alerts.append(alert)

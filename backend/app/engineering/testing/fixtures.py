@@ -15,7 +15,7 @@ class FixturesGenerator(BaseGenerator):
         for entity in entities:
             fixtures.append(self._entity_fixture(entity, use_faker))
 
-        datetime_import = "from datetime import datetime"
+        datetime_import = "from datetime import UTC, datetime"
         faker_import = "from faker import Faker" if use_faker else ""
         faker_instance = "faker = Faker()" if use_faker else ""
         content = f'''"""Test fixtures for {module}."""
@@ -42,13 +42,13 @@ import pytest
             fake_body = f"""{entity}(
         id=faker.random_int(min=1, max=99999),
         name=faker.name(),
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )"""
         else:
             fake_body = f"""{entity}(
         id=1,
         name="test-{entity_lower}",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )"""
 
         return f'''

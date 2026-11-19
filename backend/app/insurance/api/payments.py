@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -246,7 +246,7 @@ def reconcile_payment(
         raise HTTPException(status_code=400, detail="Cannot reconcile a reversed payment")
 
     payment.status = PaymentStatus.COMPLETED
-    payment.processed_at = datetime.utcnow()
+    payment.processed_at = datetime.now(UTC)
     if reference_number:
         payment.reference_number = reference_number
     if notes:
@@ -411,7 +411,7 @@ def reconcile_settlement(
         raise HTTPException(status_code=400, detail=f"Settlement is already {settlement.status.value}")
 
     settlement.status = SettlementStatus.RECONCILED
-    settlement.reconciled_at = datetime.utcnow()
+    settlement.reconciled_at = datetime.now(UTC)
 
     log_action(
         db=db,
@@ -444,7 +444,7 @@ def close_settlement(
         raise HTTPException(status_code=400, detail="Settlement is already closed")
 
     settlement.status = SettlementStatus.COMPLETED
-    settlement.paid_at = datetime.combine(paid_at or date.today(), datetime.min.time()) if paid_at else datetime.utcnow()
+    settlement.paid_at = datetime.combine(paid_at or date.today(), datetime.min.time()) if paid_at else datetime.now(UTC)
 
     log_action(
         db=db,

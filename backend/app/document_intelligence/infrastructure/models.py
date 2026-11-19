@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -97,8 +97,8 @@ class ScannedDocumentModel(DocIntelBase):
     retry_count = Column(Integer, nullable=False, default=0)
     metadata_json = Column(JSON, nullable=True, default=dict)
     tags = Column(JSON, nullable=True, default=list)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     processed_at = Column(DateTime, nullable=True)
 
     ocr_results = relationship("OcrResultModel", back_populates="document", cascade="all, delete-orphan")
@@ -183,7 +183,7 @@ class OcrResultModel(DocIntelBase):
     success = Column(Integer, nullable=False, default=1)
     error_message = Column(Text, nullable=True, default="")
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel", back_populates="ocr_results")
 
@@ -235,7 +235,7 @@ class ExtractedEntityModel(DocIntelBase):
     snomed_code = Column(String(32), nullable=True)
     icd_code = Column(String(16), nullable=True)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel", back_populates="entities")
 
@@ -288,7 +288,7 @@ class ExtractedFieldModel(DocIntelBase):
     original_text = Column(Text, nullable=True)
     language = Column(String(16), nullable=True)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel", back_populates="fields")
 
@@ -334,7 +334,7 @@ class ExtractedTableModel(DocIntelBase):
     confidence = Column(Float, nullable=False, default=0.0)
     caption = Column(String(512), nullable=True)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel", back_populates="tables")
 
@@ -377,7 +377,7 @@ class ClassificationResultModel(DocIntelBase):
     features = Column(JSON, nullable=True, default=dict)
     processing_time_ms = Column(Float, nullable=False, default=0.0)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -425,8 +425,8 @@ class PipelineResultModel(DocIntelBase):
     success = Column(Integer, nullable=False, default=0)
     error_message = Column(Text, nullable=True, default="")
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel", back_populates="pipeline_result")
 
@@ -474,7 +474,7 @@ class DocumentVersionModel(DocIntelBase):
     size_bytes = Column(Integer, nullable=False, default=0)
     created_by = Column(String(128), nullable=False)
     change_summary = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -501,8 +501,8 @@ class GovernmentDocumentModel(DocIntelBase):
     effective_date = Column(DateTime, nullable=True)
     expiry_date = Column(DateTime, nullable=True)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -563,10 +563,10 @@ class DocumentReviewModel(DocIntelBase):
     decision = Column(Enum(ReviewDecision), nullable=True)
     comments = Column(Text, nullable=True)
     suggested_changes = Column(JSON, nullable=True, default=list)
-    assigned_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    assigned_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
     completed_at = Column(DateTime, nullable=True)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -613,8 +613,8 @@ class DocumentAnnotationModel(DocIntelBase):
     content = Column(Text, nullable=False)
     annotation_type = Column(String(64), nullable=False, default="comment")
     resolved = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     metadata_json = Column(JSON, nullable=True, default=dict)
 
     document = relationship("ScannedDocumentModel")
@@ -666,11 +666,11 @@ class DigitalPreservationRecordModel(DocIntelBase):
     preservation_location = Column(String(1024), nullable=False)
     cold_storage_location = Column(String(1024), nullable=True)
     integrity_log = Column(JSON, nullable=True, default=list)
-    preservation_date = Column(DateTime, nullable=False, default=datetime.utcnow)
+    preservation_date = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
     next_integrity_check = Column(DateTime, nullable=True)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -725,8 +725,8 @@ class GovernancePolicyModel(DocIntelBase):
     action = Column(Enum(GovernancePolicyAction), nullable=False, default=GovernancePolicyAction.flag)
     conditions = Column(JSON, nullable=False, default=dict)
     enabled = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     def to_domain(self) -> GovernancePolicy:
         return GovernancePolicy(
@@ -771,7 +771,7 @@ class GovernanceEventModel(DocIntelBase):
     message = Column(Text, nullable=False)
     action_taken = Column(Enum(GovernancePolicyAction), nullable=False, default=GovernancePolicyAction.notify)
     details = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     def to_domain(self) -> GovernanceEvent:
         return GovernanceEvent(
@@ -811,7 +811,7 @@ class DocumentEventModel(DocIntelBase):
     actor_id = Column(String(128), nullable=False)
     actor_name = Column(String(256), nullable=True)
     payload = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -850,7 +850,7 @@ class DocumentLifecycleModel(DocIntelBase):
     actor = Column(String(256), nullable=False)
     reason = Column(Text, nullable=True)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -879,8 +879,8 @@ class WebhookRegistrationModel(DocIntelBase):
     last_success = Column(DateTime, nullable=True)
     last_failure = Column(DateTime, nullable=True)
     failure_count = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class KnowledgeGraphEdgeModel(DocIntelBase):
@@ -899,7 +899,7 @@ class KnowledgeGraphEdgeModel(DocIntelBase):
     confidence = Column(Float, nullable=False, default=0.0)
     weight = Column(Float, nullable=False, default=1.0)
     metadata_json = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     def to_domain(self) -> KnowledgeGraphEdge:
         return KnowledgeGraphEdge(
@@ -942,8 +942,8 @@ class PipelineHealthModel(DocIntelBase):
     throughput_per_minute = Column(Float, nullable=False, default=0.0)
     last_error = Column(Text, nullable=True)
     last_error_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     def to_domain(self) -> PipelineHealth:
         return PipelineHealth(
@@ -972,8 +972,8 @@ class AccessControlModel(DocIntelBase):
     role = Column(Enum(CollaborationRole), nullable=False, default=CollaborationRole.viewer)
     delegated_from = Column(String(128), nullable=True)
     delegated_expiry = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")
 
@@ -987,12 +987,12 @@ class DocumentRetentionModel(DocIntelBase):
     )
     policy = Column(Enum(RetentionPolicy), nullable=False, default=RetentionPolicy.standard_7y)
     archive_status = Column(Enum(ArchiveStatus), nullable=False, default=ArchiveStatus.active)
-    retention_start = Column(DateTime, nullable=False, default=datetime.utcnow)
+    retention_start = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
     retention_end = Column(DateTime, nullable=True)
     legal_hold = Column(Integer, nullable=False, default=0)
     legal_hold_reason = Column(Text, nullable=True)
     purge_scheduled_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     document = relationship("ScannedDocumentModel")

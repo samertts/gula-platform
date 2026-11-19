@@ -6,7 +6,7 @@ Executive Order 5: Audit on SampleCollected
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 import asyncpg
 from fastapi import FastAPI, HTTPException
@@ -46,7 +46,7 @@ def publish_event(event_type: str, payload: dict):
         ch.basic_publish(
             exchange="gula.events",
             routing_key="samples.events",
-            body=json.dumps({"event_type": event_type, "payload": payload, "timestamp": datetime.utcnow().isoformat()}),
+            body=json.dumps({"event_type": event_type, "payload": payload, "timestamp": datetime.now(UTC).isoformat()}),
             properties=pika.BasicProperties(delivery_mode=2),
         )
         conn.close()

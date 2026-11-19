@@ -15,10 +15,12 @@ Operators MUST tick every item below before staged national rollout.
 
 ### 1.1 Migration & schema
 
+- [ ] `python scripts/data_preservation_gate.py --ci --strict` passes for the release scope (see `docs/adr/ADR-026-rule10-soft-delete-rollout.md`)
 - [ ] `alembic upgrade head` succeeds on a fresh PostgreSQL 16 instance
 - [ ] PR #97 (duplicate-revision fix) merged
 - [ ] `tests/test_migrations.py` — 9/9 pass (no duplicate revisions, single head)
 - [ ] `tests/test_migration_resilience.py` — 10/10 pass (idempotency guards present)
+- [ ] Any protected-table Rule 10 schema change has written Architecture Board approval, pre-migration backup, clone restore evidence, and rollback record
 - [ ] DHIS2 endpoint query rewritten to JOIN through `lab_orders`
   (compliance.py:562 — currently references nonexistent `lab_results.lab_id`)
 - [ ] SNDHS Phase 1 backfill (`scripts/sndhs_phase1_backfill.py`) executed

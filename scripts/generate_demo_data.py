@@ -30,7 +30,7 @@ import random
 import secrets
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -379,7 +379,7 @@ class DemoDataGenerator:
             name_ar=f"{DEMO_PREFIX} منصة الصحة الوطنية",
             tenant_type="national",
             domain=f"{DEMO_PREFIX.lower()}.gula.iq",
-            settings={"environment": "demo", "generated_at": datetime.utcnow().isoformat()},
+            settings={"environment": "demo", "generated_at": datetime.now(UTC).isoformat()},
         )
         self.db.add(tenant)
         self.db.flush()
@@ -527,6 +527,7 @@ class DemoDataGenerator:
         self.stats["Sections"] = len(sections)
 
     def _create_users(self) -> None:
+        from app.models.lab import Lab
         from app.models.lab_user import LabUser
         from app.security.auth import hash_password
 
@@ -919,7 +920,7 @@ class DemoDataGenerator:
         # DEMO_DATA_REPORT.md
         with open(os.path.join(self.output_dir, "DEMO_DATA_REPORT.md"), "w") as f:
             f.write("# GULA Demo Data Generation Report\n\n")
-            f.write(f"**Generated**: {datetime.utcnow().isoformat()}\n\n")
+            f.write(f"**Generated**: {datetime.now(UTC).isoformat()}\n\n")
             f.write("## Summary\n\n")
             for k, v in sorted(self.stats.items()):
                 f.write(f"- **{k}**: {v}\n")
@@ -949,7 +950,7 @@ class DemoDataGenerator:
             f.write("# GULA Platform — Enterprise Demo Certification Report\n\n")
             f.write(f"**Program**: PROGRAM-DEMO-NATIONAL-001\n")
             f.write(f"**Version**: 1.0\n")
-            f.write(f"**Date**: {datetime.utcnow().isoformat()}\n")
+            f.write(f"**Date**: {datetime.now(UTC).isoformat()}\n")
             f.write(f"**Status**: COMPLETED\n\n")
             f.write("## Objectives\n\n")
             f.write("- [x] Generate complete National Demo Environment\n")
@@ -1048,7 +1049,7 @@ class DemoDataGenerator:
         ]
         with open(os.path.join(self.output_dir, "WORKFLOW_VALIDATION.md"), "w") as f:
             f.write("# National Digital Twin — Workflow Validation\n\n")
-            f.write(f"**Date**: {datetime.utcnow().isoformat()}\n\n")
+            f.write(f"**Date**: {datetime.now(UTC).isoformat()}\n\n")
             f.write("| # | Workflow | Endpoint | Status |\n")
             f.write("|---|----------|----------|--------|\n")
             for i, (name, ep) in enumerate(workflows, 1):
@@ -1062,7 +1063,7 @@ class DemoDataGenerator:
             role_counts[u["role"]] = role_counts.get(u["role"], 0) + 1
         with open(os.path.join(self.output_dir, "ROLE_VALIDATION.md"), "w") as f:
             f.write("# National Digital Twin — Role Validation\n\n")
-            f.write(f"**Date**: {datetime.utcnow().isoformat()}\n\n")
+            f.write(f"**Date**: {datetime.now(UTC).isoformat()}\n\n")
             f.write("| Role | Users | Dashboard | Auth | Status |\n")
             f.write("|------|-------|-----------|------|--------|\n")
             for rk, ren, _, _ in ROLE_DEFINITIONS:
@@ -1091,7 +1092,7 @@ class DemoDataGenerator:
                 results.append((name, 0, f"ERROR: {e}"))
         with open(os.path.join(self.output_dir, "PERFORMANCE_REPORT.md"), "w") as f:
             f.write("# National Digital Twin — Performance Report\n\n")
-            f.write(f"**Date**: {datetime.utcnow().isoformat()}\n")
+            f.write(f"**Date**: {datetime.now(UTC).isoformat()}\n")
             f.write(f"**Mode**: {self.mode.upper()}, Scale: {self.scale_factor}x\n\n")
             f.write("| Metric | Count | Response Time |\n")
             f.write("|--------|-------|---------------|\n")
@@ -1186,7 +1187,7 @@ class DemoDataGenerator:
         with open(os.path.join(self.output_dir, "ENTERPRISE_READINESS_REPORT.md"), "w") as f:
             f.write("# GULA Platform — National Digital Twin Certification\n\n")
             f.write(f"**Program**: PROGRAM-NATIONAL-DIGITAL-TWIN-001\n")
-            f.write(f"**Date**: {datetime.utcnow().isoformat()}\n")
+            f.write(f"**Date**: {datetime.now(UTC).isoformat()}\n")
             f.write(f"**Mode**: {self.mode.upper()} (Scale: {self.scale_factor}x)\n\n")
             f.write("## Verification\n\n")
             for item in ["National Structure", "Organization Hierarchy", "User Directory",

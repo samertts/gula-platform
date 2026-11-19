@@ -11,7 +11,7 @@ import contextlib
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 import asyncpg
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -74,7 +74,7 @@ def publish_event(event_type: str, payload: dict):
         ch.basic_publish(
             exchange="gula.events",
             routing_key="results.events",
-            body=json.dumps({"event_type": event_type, "payload": payload, "timestamp": datetime.utcnow().isoformat()}),
+            body=json.dumps({"event_type": event_type, "payload": payload, "timestamp": datetime.now(UTC).isoformat()}),
             properties=pika.BasicProperties(delivery_mode=2),
         )
         conn.close()
@@ -103,7 +103,7 @@ def send_to_clickhouse(result_data: dict):
             "value": value,
             "numeric_value": numeric_value,
             "is_abnormal": is_abnormal,
-            "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
             "lab_id": lab_id,
         })
         requests.post(
@@ -135,7 +135,7 @@ def send_to_kafka(result_data: dict):
         )
         producer.send(KAFKA_TOPIC, value={
             **result_data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source": "result-service",
         })
         producer.flush(timeout=5)
@@ -286,7 +286,7 @@ async def upload_report(file: UploadFile = File(...), order_id: int = 0):
             raise HTTPException(status_code=413, detail="File too large (max 50MB)")
         # Sanitize filename to prevent path traversal
         safe_filename = file.filename.replace("/", "_").replace("\\", "_").replace("..", "_") if file.filename else "report"
-        object_name = f"reports/{order_id}/{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{safe_filename}"
+        object_name = f"reports/{order_id}/{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_{safe_filename}"
         import io
         minio.put_object(MINIO_BUCKET, object_name, io.BytesIO(content), len(content), content_type=file.content_type)
         file_url = f"http://{MINIO_ENDPOINT}/{MINIO_BUCKET}/{object_name}"

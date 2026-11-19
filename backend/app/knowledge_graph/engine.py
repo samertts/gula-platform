@@ -7,11 +7,10 @@ import os
 import re
 from collections import deque
 from pathlib import Path
+from datetime import datetime, timezone
 
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
-
-from app._compat import UTC
 
 from ..database import SessionLocal
 from .models import EdgeType, KnowledgeEdge, KnowledgeGraphSnapshot, KnowledgeNode, NodeType
@@ -777,7 +776,7 @@ class KnowledgeGraphEngine:
                 node_count=node_count,
                 edge_count=edge_count,
                 graph_hash=graph_hash,
-                metadata={"generated_at": str(UTC.utcnow())},
+                metadata={"generated_at": datetime.now(timezone.utc).isoformat()},
             )
             db.add(snap)
             db.commit()

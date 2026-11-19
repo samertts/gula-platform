@@ -1,174 +1,237 @@
-#!/usr/bin/env python3
 """
-GULA Citizen Portal & Patient Health Record (PHR) Module
-------------------------------------------------------------------------
-Description: Implements secure citizen accounts linked to the National ID (البطاقة الوطنية)
-and Health Insurance ID (منصة ضماني)، allowing citizens to view their electronic health records,
-lab results, prescriptions, and manage medical appointments securely.
+GULA Citizen Portal & Patient Health Record (PHR) Module.
+
+This standalone SQLite sample is not a production clinical service. Production
+traffic must use the governed backend, encrypted storage, tenant controls, and
+approved audit pipeline.
 """
 
+from __future__ import annotations
+
+import base64
 import hashlib
-import json
+import hmac
 import logging
+import os
+import secrets
 import sqlite3
 import time
-from typing import Dict, Any, List
+from typing import Any
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] GULA-CITIZEN-PORTAL: %(message)s'
+    format="%(asctime)s [%(levelname)s] GULA-CITIZEN-PORTAL: %(message)s",
 )
 
-CITIZEN_DB_PATH = "/home/ubuntu/gula_citizens.db"
+CITIZEN_DB_PATH = os.getenv("GULA_CITIZEN_DB_PATH", "/home/ubuntu/gula_citizens.db")
+_PBKDF2_ITERATIONS = 600_000
+
 
 class GulaCitizenPortal:
+    """Small local sample with authenticated access to synthetic records only."""
+
     def __init__(self, db_path: str = CITIZEN_DB_PATH):
         self.db_path = db_path
         self._init_db()
 
-    def _init_db(self):
-        """Initializes the secure citizen registry and PHR database."""
+    def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS citizens (
-                national_id TEXT PRIMARY KEY,
-                insurance_id TEXT UNIQUE NOT NULL,
-                full_name TEXT NOT NULL,
-                phone_number TEXT NOT NULL,
-                password_hash TEXT NOT NULL,
-                created_at REAL
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
+    def _init_db(self) -> None:
+        """Initialize the local sample registry."""
+        with self._connect() as conn:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS citizens (
+                    national_id TEXT PRIMARY KEY,
+                    insurance_id TEXT UNIQUE NOT NULL,
+                    full_name TEXT NOT NULL,
+                    phone_number TEXT NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS medical_records (
+                    record_id TEXT PRIMARY KEY,
+                    national_id TEXT NOT NULL,
+                    hospital_name TEXT NOT NULL,
+                    diagnosis TEXT NOT NULL,
+                    prescription TEXT NOT NULL,
+                    lab_results TEXT NOT NULL,
+                    timestamp REAL NOT NULL,
+                    FOREIGN KEY (national_id) REFERENCES citizens (national_id)
+                );
+                """
             )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS medical_records (
-                record_id TEXT PRIMARY KEY,
-                national_id TEXT NOT NULL,
-                hospital_name TEXT NOT NULL,
-                diagnosis TEXT NOT NULL,
-                prescription TEXT NOT NULL,
-                lab_results TEXT NOT NULL,
-                timestamp REAL,
-                FOREIGN KEY (national_id) REFERENCES citizens (national_id)
-            )
-        ''')
-        conn.commit()
-        conn.close()
-        logging.info("GULA Citizen Portal database initialized successfully.")
+        logging.info("GULA Citizen Portal sample database initialized.")
 
     def _hash_password(self, password: str) -> str:
-        """Applies secure salted hashing to citizen passwords."""
-        salt = "GULA_CITIZEN_SALT_2026"
-        h = hashlib.sha256()
-        h.update((password + salt).encode('utf-8'))
-        return h.hexdigest()
+        """Hash a password with a per-record random salt and PBKDF2."""
+        if not password or len(password) < 12:
+            raise ValueError("Password must contain at least 12 characters")
+        salt = secrets.token_bytes(16)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            _PBKDF2_ITERATIONS,
+        )
+        return "pbkdf2_sha256${}${}${}".format(
+            _PBKDF2_ITERATIONS,
+            base64.urlsafe_b64encode(salt).decode("ascii"),
+            base64.urlsafe_b64encode(digest).decode("ascii"),
+        )
 
-    def register_citizen(self, national_id: str, insurance_id: str, full_name: str, phone_number: str, password: str) -> Dict[str, Any]:
-        """Registers a citizen in the platform using National ID and Health Insurance ID (Dhamani integration)."""
-        pwd_hash = self._hash_password(password)
-        timestamp = time.time()
+    def _verify_password(self, password: str, stored_hash: str) -> bool:
+        """Verify only the versioned PBKDF2 format; legacy SHA-256 is rejected."""
+        try:
+            scheme, iterations, salt_text, digest_text = stored_hash.split("$", 3)
+            if scheme != "pbkdf2_sha256":
+                return False
+            salt = base64.urlsafe_b64decode(salt_text.encode("ascii"))
+            expected = base64.urlsafe_b64decode(digest_text.encode("ascii"))
+            actual = hashlib.pbkdf2_hmac(
+                "sha256",
+                password.encode("utf-8"),
+                salt,
+                int(iterations),
+            )
+            return hmac.compare_digest(actual, expected)
+        except (ValueError, TypeError):
+            return False
 
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    def _authenticate(self, national_id: str, password: str) -> bool:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT password_hash FROM citizens WHERE national_id = ?",
+                (national_id,),
+            ).fetchone()
+        return bool(row and self._verify_password(password, row[0]))
+
+    def register_citizen(
+        self,
+        national_id: str,
+        insurance_id: str,
+        full_name: str,
+        phone_number: str,
+        password: str,
+    ) -> dict[str, Any]:
+        """Register a synthetic citizen without logging the password or PII."""
+        try:
+            password_hash = self._hash_password(password)
+        except ValueError as exc:
+            return {"status": "ERROR", "message": str(exc)}
 
         try:
-            cursor.execute(
-                "INSERT INTO citizens (national_id, insurance_id, full_name, phone_number, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (national_id, insurance_id, full_name, phone_number, pwd_hash, timestamp)
-            )
-            conn.commit()
-            logging.info(f"Citizen '{full_name}' (National ID: {national_id}) registered successfully.")
-            return {
-                "status": "SUCCESS",
-                "national_id": national_id,
-                "insurance_id": insurance_id,
-                "message": "Citizen account created successfully. Welcome to GULA & Dhamani Health Network."
-            }
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO citizens
+                        (national_id, insurance_id, full_name, phone_number,
+                         password_hash, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        national_id,
+                        insurance_id,
+                        full_name,
+                        phone_number,
+                        password_hash,
+                        time.time(),
+                    ),
+                )
         except sqlite3.IntegrityError:
-            logging.warning(f"Registration failed: National ID or Insurance ID already exists.")
-            return {"status": "ERROR", "message": "National ID or Insurance ID is already registered."}
-        finally:
-            conn.close()
+            logging.warning("Citizen registration rejected because an identifier exists.")
+            return {"status": "ERROR", "message": "Citizen identifier is already registered."}
 
-    def add_medical_record(self, national_id: str, hospital_name: str, diagnosis: str, prescription: str, lab_results: str) -> Dict[str, Any]:
-        """Adds an electronic medical record (PHR) for a citizen."""
-        record_id = f"REC-{int(time.time())}"
-        timestamp = time.time()
+        logging.info("Citizen registration completed without logging identifiers.")
+        return {
+            "status": "SUCCESS",
+            "message": "Citizen account created successfully.",
+        }
 
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO medical_records (record_id, national_id, hospital_name, diagnosis, prescription, lab_results, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (record_id, national_id, hospital_name, diagnosis, prescription, lab_results, timestamp)
-        )
-        conn.commit()
-        conn.close()
-        logging.info(f"Medical record '{record_id}' added for citizen '{national_id}'.")
-        return {"status": "SUCCESS", "record_id": record_id, "message": "Medical record securely added."}
+    def add_medical_record(
+        self,
+        national_id: str,
+        password: str,
+        hospital_name: str,
+        diagnosis: str,
+        prescription: str,
+        lab_results: str,
+    ) -> dict[str, Any]:
+        """Add a record only after authenticating the citizen."""
+        if not self._authenticate(national_id, password):
+            return {"status": "ERROR", "message": "Authentication failed."}
 
-    def get_citizen_records(self, national_id: str, password: str) -> Dict[str, Any]:
-        """Retrieves citizen medical records after verifying credentials."""
-        pwd_hash = self._hash_password(password)
+        record_id = f"REC-{secrets.token_hex(12)}"
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO medical_records
+                    (record_id, national_id, hospital_name, diagnosis,
+                     prescription, lab_results, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record_id,
+                    national_id,
+                    hospital_name,
+                    diagnosis,
+                    prescription,
+                    lab_results,
+                    time.time(),
+                ),
+            )
+        logging.info("Medical record created after authenticated access.")
+        return {"status": "SUCCESS", "record_id": record_id}
 
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    def get_citizen_records(self, national_id: str, password: str) -> dict[str, Any]:
+        """Retrieve records only after verifying the citizen credentials."""
+        with self._connect() as conn:
+            citizen = conn.execute(
+                """
+                SELECT full_name, insurance_id, password_hash
+                FROM citizens
+                WHERE national_id = ?
+                """,
+                (national_id,),
+            ).fetchone()
+            if not citizen or not self._verify_password(password, citizen[2]):
+                return {"status": "ERROR", "message": "Authentication failed."}
 
-        cursor.execute("SELECT full_name, insurance_id FROM citizens WHERE national_id = ? AND password_hash = ?", (national_id, pwd_hash))
-        citizen = cursor.fetchone()
-
-        if not citizen:
-            conn.close()
-            return {"status": "ERROR", "message": "Invalid National ID or password."}
-
-        full_name, insurance_id = citizen
-
-        cursor.execute("SELECT record_id, hospital_name, diagnosis, prescription, lab_results, timestamp FROM medical_records WHERE national_id = ?", (national_id,))
-        rows = cursor.fetchall()
-        conn.close()
-
-        records = []
-        for r in rows:
-            records.append({
-                "record_id": r[0],
-                "hospital_name": r[1],
-                "diagnosis": r[2],
-                "prescription": r[3],
-                "lab_results": r[4],
-                "timestamp": r[5]
-            })
+            rows = conn.execute(
+                """
+                SELECT record_id, hospital_name, diagnosis, prescription,
+                       lab_results, timestamp
+                FROM medical_records
+                WHERE national_id = ?
+                ORDER BY timestamp DESC
+                """,
+                (national_id,),
+            ).fetchall()
 
         return {
             "status": "SUCCESS",
-            "full_name": full_name,
+            "full_name": citizen[0],
             "national_id": national_id,
-            "insurance_id": insurance_id,
-            "medical_records": records
+            "insurance_id": citizen[1],
+            "medical_records": [
+                {
+                    "record_id": row[0],
+                    "hospital_name": row[1],
+                    "diagnosis": row[2],
+                    "prescription": row[3],
+                    "lab_results": row[4],
+                    "timestamp": row[5],
+                }
+                for row in rows
+            ],
         }
 
+
 if __name__ == "__main__":
-    portal = GulaCitizenPortal()
-    # Test citizen registration
-    reg_res = portal.register_citizen(
-        national_id="199012345678",
-        insurance_id="DHAMANI-987654",
-        full_name="Mohammed Al-Baghdadi",
-        phone_number="07801234567",
-        password="CitizenSecure2026!"
+    raise SystemExit(
+        "This standalone sample has no default demo credentials. "
+        "Use synthetic fixtures explicitly through a test harness."
     )
-    print("Registration:", reg_res)
-
-    # Test adding medical record
-    portal.add_medical_record(
-        national_id="199012345678",
-        hospital_name="مستشفى بغداد التعليمي",
-        diagnosis="التهاب الحلق الحاد (Acute Pharyngitis)",
-        prescription="Paracetamol 500mg, Amoxicillin 875mg",
-        lab_results="WBC: 11,200 /uL (Slight Elevation)"
-    )
-
-    # Test fetching records
-    fetch_res = portal.get_citizen_records(
-        national_id="199012345678",
-        password="CitizenSecure2026!"
-    )
-    print("Citizen Records Fetch:", json.dumps(fetch_res, ensure_ascii=False, indent=2))

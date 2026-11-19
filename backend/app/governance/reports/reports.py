@@ -1,13 +1,13 @@
 """Governance Report Generator — produces structured reports for Phase 12 freeze."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 def generate_governance_report() -> dict:
     return {
         "report": "National Governance Report",
         "version": "1.0.0",
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "status": "FROZEN",
         "domains": {
             "hierarchy": {
@@ -106,7 +106,7 @@ def generate_architecture_report() -> dict:
     return {
         "report": "Governance Architecture Report",
         "version": "1.0.0",
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "package": "backend/app/governance/",
         "structure": {
             "models": "10 model modules (hierarchy, health_number, workforce, laboratory, clinical, security, interoperability, ai + __init__)",
@@ -130,7 +130,7 @@ def generate_policy_report() -> dict:
     return {
         "report": "Governance Policy Report",
         "version": "1.0.0",
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "policies": {
             "governance_actions": {
                 "total": 17,
@@ -153,7 +153,7 @@ def generate_security_report() -> dict:
     return {
         "report": "Governance Security Report",
         "version": "1.0.0",
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "security_layers": {
             "audit": "NationalAuditEvent with full event type, actor, resource, and severity tracking",
             "break_glass": "BreakGlassPolicy with configurable reasons, auto-approve roles, duration limits, and notification",

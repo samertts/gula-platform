@@ -55,7 +55,7 @@ class CRUDGenerator(BaseGenerator):
         lines = [
             "from __future__ import annotations",
             "",
-            "from datetime import datetime",
+            "from datetime import UTC, datetime",
             "from typing import Optional",
             "from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text",
             "from sqlalchemy.orm import declarative_base",
@@ -65,8 +65,8 @@ class CRUDGenerator(BaseGenerator):
             "",
         ]
         audit = """
-    created_at: datetime = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: datetime = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: datetime = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at: datetime = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 """
         soft_del = "    deleted_at: Optional[datetime] = Column(DateTime, nullable=True)\n"
         version = "    version: int = Column(Integer, default=1, nullable=False)\n"
@@ -183,7 +183,7 @@ class {spec.name}Service:
 
         content = f"""from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 

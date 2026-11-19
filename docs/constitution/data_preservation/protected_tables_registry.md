@@ -51,7 +51,7 @@ Changes to these tables require full Architecture Board review and written appro
 | `role_permissions` | `backend/app/models/authorization.py` | Role-permission assignments |
 | `role_assignments` | `backend/app/models/authorization.py` | User-role assignments |
 | `tenants` | `backend/app/models/tenant.py` | Multi-tenant isolation |
-| `subscriptions` | `backend/app/models/subscription.py` | Lab subscriptions |
+| `lab_subscriptions` | `backend/app/models/subscription.py` | Lab subscriptions |
 | `feature_flags` | `backend/app/models/subscription.py` | Per-tenant feature configuration |
 
 ### TIER 4 — Clinical Context
@@ -59,7 +59,7 @@ Changes to these tables require full Architecture Board review and written appro
 | Table | Model File | Reason |
 |-------|-----------|--------|
 | `test_types` | `backend/app/models/test_type.py` | Clinical test catalog |
-| `quality_control` | `backend/app/models/quality_control.py` | QC results and rules |
+| `quality_controls` | `backend/app/models/quality_control.py` | QC results and rules |
 | `consents` | `backend/app/models/consent.py` | Patient consent records |
 | `claims` | `backend/app/models/claim.py` | Insurance/billing claims |
 | `claim_items` | `backend/app/models/claim.py` | Claim line items |
@@ -192,3 +192,63 @@ models/test_result.py
 models/test_type.py
 models/user.py
 ```
+
+
+## 7. ADDITIONAL INVENTORIED TABLES
+
+The following tables were present in `backend/app/models/` but were missing from the original registry inventory. They are now explicitly protected and require the same change-control process as their assigned tier.
+
+### TIER 2 — Audit, Idempotency & Event History
+
+| Table | Model File | Reason |
+|---|---|---|
+| `authorization_audit` | `backend/app/models/authorization.py` | Append-only authorization decision history |
+| `clinical_command_receipts` | `backend/app/models/clinical_command.py` | Append-only idempotency claims for safety-critical commands |
+| `integration_inbox_events` | `backend/app/models/integration_inbox.py` | Durable inbound event/idempotency history |
+
+### TIER 3 — Business Operations & Preferences
+
+| Table | Model File | Reason |
+|---|---|---|
+| `role_groups` | `backend/app/models/authorization.py` | Group-based authorization structure |
+| `role_group_members` | `backend/app/models/authorization.py` | Group membership assignments |
+| `abac_policies` | `backend/app/models/authorization.py` | Attribute-based access policy definitions |
+| `field_security` | `backend/app/models/authorization.py` | Field-level access policy definitions |
+| `delegations` | `backend/app/models/authorization.py` | Time-bounded authorization delegation |
+| `accessibility_profiles` | `backend/app/models/user_preferences.py` | User presentation preferences |
+| `health_preferences` | `backend/app/models/user_preferences.py` | Sensitive, consent-bound health preferences |
+
+### TIER 4 — Clinical Scope & Reference Data
+
+| Table | Model File | Reason |
+|---|---|---|
+| `clinical_lab_facility_bindings` | `backend/app/models/clinical_scope.py` | Reviewed legacy-lab to facility scope bridge |
+| `national_facilities` | `backend/app/models/clinical_scope.py` | Canonical national EHR facility resource |
+| `clinical_ehr_facility_bindings` | `backend/app/models/clinical_scope.py` | Reviewed national facility to EHR scope bridge |
+
+### TIER 5 — AI & Intelligence
+
+| Table | Model File | Reason |
+|---|---|---|
+| `ai_knowledge_edges` | `backend/app/models/ai.py` | AI knowledge graph relationships |
+| `ai_model_registry` | `backend/app/models/ai.py` | Registered AI model metadata and lifecycle |
+| `ai_evaluations` | `backend/app/models/ai.py` | AI evaluation and safety evidence |
+
+### TIER 6 — Edge & Device Integration
+
+| Table | Model File | Reason |
+|---|---|---|
+| `edge_policies` | `backend/app/models/edge.py` | Per-tenant edge execution policy |
+| `edge_events` | `backend/app/models/edge.py` | Edge lifecycle and security event history |
+
+### TIER 7 — Security & Auth
+
+| Table | Model File | Reason |
+|---|---|---|
+| `break_glass_sessions` | `backend/app/models/authorization.py` | Emergency-access sessions with clinical justification and review |
+
+`break_glass_sessions` is not treated as a disposable session table: its justification, patient scope, expiry, deactivation, and review fields are security and clinical evidence. It therefore requires retention, revocation, and audit controls even if a future policy permits a separate archival lifecycle.
+
+### Registry maintenance note
+
+This section records inventory completeness only; it does not grant a soft-delete exception and does not authorize schema changes. Each table remains subject to Rule 10 classification and Architecture Board approval before structural modification.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,10 +25,10 @@ class SBOMGenerator:
         sbom = {
             "bomFormat": "CycloneDX",
             "specVersion": "1.4",
-            "serialNumber": f"urn:uuid:{datetime.utcnow().timestamp()}",
+            "serialNumber": f"urn:uuid:{datetime.now(UTC).timestamp()}",
             "version": 1,
             "metadata": {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "tools": [{"name": "gula-engineering", "version": "2.1.0"}],
             },
             "components": [c.__dict__ for c in components],
