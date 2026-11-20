@@ -235,3 +235,39 @@ Actions:
 - Remaining CI failures are pre-existing or outside NC013 scope and are recorded as NC013-H15; CI green is not claimed.
 
 The environment restarted during this work and removed the first isolated clone. It was recreated from the pushed branch at `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684` via SSH (`gula013_reclone.log`, exit 0). The protected workspace was rechecked: branch `remediate-security-001`, HEAD `f478676b6fc375338648dde46fbf076c015a3f91`, status SHA `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`, 6 worktrees, 2 stashes. No mutation occurred.
+
+## 12. Final push, CI verification, and publication state
+
+```text
+git commit -m "fix(program-013): close CI dependency gap and finalise delivery evidence"
+# exit 0 — a406cde1f991cd5cbb23676a7606ce1fcb600450
+
+git push origin execution/gula-national-completion-013
+# exit 0 — a5c2a0de..a406cde1; evidence/test_logs/push_ci_closure_nc013.log
+
+gh pr checks 307
+# exit 1 — 23 pass / 6 fail; evidence/test_logs/pr_checks_final_nc013.log
+
+gh run view 44771751653 --job 136411207159 --log
+# Backend Tests: Invalid transfusion transition: verified -> in_progress (NC013-C05)
+# evidence/test_logs/ci_backend_tests_final.log
+
+gh run view 44771752341 --job 136410930196 --log
+# Constitution Compliance: AttributeError: module 'ast' has no attribute 'Str'
+# evidence/test_logs/ci_constitution_final.log
+
+gh run view 44771751961 --job 136410930276 --log
+# Prettier: config/runtime-protection/seccomp-profile.json SyntaxError (11:1)
+# evidence/test_logs/ci_prettier_final.log
+
+gh pr view 307 --json number,state,isDraft,url,headRefOid,mergeable
+# pr=307 state=OPEN draft=true sha=a406cde1f991cd5cbb23676a7606ce1fcb600450 mergeable=MERGEABLE
+```
+
+Confirmed outcomes:
+
+- NC013-C06 resolved: `Backend identity unit and compile gates` PASS, `Security and tenant isolation regression` PASS, `Python Dependency Audit` (3 jobs) PASS.
+- `Secret Scan` PASS with `no leaks found`; `PostgreSQL migration and schema gate` PASS; `Security Scan`, `Syntax Gate`, `Lint`, `Data Preservation Gate`, CodeQL, Analyze jobs and changed-file Ruff/MyPy all PASS.
+- Six failures remain: Backend Tests (NC013-C05, pre-existing), Constitution Compliance (Python 3.14 `ast.Str` tool crash), Frontend v3 (unchanged frontend), Migration Check (pre-existing three-parent head downgrade), Prettier (pre-existing JSON syntax error), Ruff Format (1,012 files repo-wide). Details in `evidence/test_logs/final_ci_summary.md`.
+- `mergeable=MERGEABLE` is a structural GitHub attribute only. PR #307 is OPEN, draft, has no approval, and no merge or production deployment was performed. An automatic Vercel preview from the existing repository webhook is not a production deployment.
+- Protected workspace rechecked after the final push: branch `remediate-security-001`, HEAD `f478676b6fc375338648dde46fbf076c015a3f91`, status SHA `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`, 6 worktrees, 2 stashes. Still unchanged.

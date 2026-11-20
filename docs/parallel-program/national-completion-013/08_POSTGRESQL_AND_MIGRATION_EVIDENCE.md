@@ -70,4 +70,4 @@ A disposable PostgreSQL 16 container (`gula-nc013-pg`, port 55432, synthetic cre
 
 Evidence: `evidence/test_logs/pg_upgrade_nc013.log`, `pg_schema_check_nc013.log`, `alembic_heads_nc013.log`, `alembic_current_nc013_final.log`, `migration_graph_nc013.log`, `app_startup_nc013_final.log`, `pg_container_cleanup.log`, and `evidence/implementation_log.md`.
 
-Verification state: **FRESH-DATABASE UPGRADE PASSED; INDEPENDENT VERIFICATION IN PROGRESS**. This does not prove upgrade compatibility from an arbitrary deployed database or satisfy database-owner approval.
+Verification state: **FRESH-DATABASE UPGRADE PASSED; INDEPENDENT VERIFICATION COMPLETE AT CODE LEVEL**. The CI `PostgreSQL migration and schema gate` also passes at `a406cde1…`, while `Migration Check` still fails on the pre-existing three-parent-head downgrade. This does not prove upgrade compatibility from an arbitrary deployed database or satisfy database-owner approval.

@@ -38,7 +38,7 @@ All exit 0.
 
 ## Verification state
 
-`NOT VERIFIED`.
+`PARTIAL` — scanner-clean results for changed Python files, the Python dependency lock and CI secret/security checks; 490 infrastructure misconfigurations, an incomplete Trivy vulnerability-DB download and absent SBOM remain open.
 
 ## Limitations
 

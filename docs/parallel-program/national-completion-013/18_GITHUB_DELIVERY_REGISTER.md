@@ -36,30 +36,32 @@ git -C /tmp/opencode/gula-national-completion-013 rev-parse HEAD
 - DEL-06 — INFO — GitHub reported 384 pre-existing Dependabot vulnerabilities on the default branch at push time (20 critical, 194 high, 142 moderate, 28 low); not introduced by this program.
 - DEL-07 — RESOLVED — CI `Secret Scan` initially failed on a gitleaks `generic-api-key` false positive in `14_SECURITY_SCAN_AND_SBOM.md` line 5 of docs commit `5079d67d` (phrase "dependency/vulnerability"). A targeted stopword was added and the sentence rephrased; the re-run reports `no leaks found`, exit 0.
 - DEL-08 — MEDIUM — CI `Ruff Format (Python)` fails repo-wide: 1,012 files need reformat. Pre-existing and unrelated to NC013; `ruff check` on changed files passes.
-- DEL-09 — HIGH — CI identity, security/tenant-isolation and backend-test jobs failed because `backend/requirements.txt` omitted `greenlet` although the app imports `sqlalchemy.ext.asyncio`. FIXED by declaring `greenlet>=3.5.5` (MIT, free/open source, already pinned in `requirements-lock.txt`).
+- DEL-09 — RESOLVED — CI identity, security/tenant-isolation and backend-test jobs failed because `backend/requirements.txt` omitted `greenlet` although the app imports `sqlalchemy.ext.asyncio`. FIXED by declaring `greenlet>=3.5.5` (MIT, free/open source, already pinned in `requirements-lock.txt`); final CI re-run shows identity and security/tenant-isolation PASS.
 - DEL-10 — HIGH — CI `Migration Check` passes `alembic upgrade head` but fails `alembic downgrade -1` with `Ambiguous walk`. Baseline head `20260908_0001` already has three parents; pre-existing, not introduced by NC013.
 - DEL-11 — MEDIUM — CI `Constitution Compliance` crashed on Python 3.14 at `ast.Str`; a local diff-mode audit found four pre-existing/scope-limited rule failures (duplicate-code heuristic, quality-gate/py_compile on 3.12-only syntax plus tool timeout, aggregate rule, dead-code heuristic). No secret, vendor-lock-in, paid-dependency or SaaS violation was introduced.
 - DEL-12 — MEDIUM — CI Prettier fails on a pre-existing JSON syntax error and pre-existing files; all 18 NC013 markdown/JSON files were formatted with Prettier 3.10.1 and now pass locally.
 - DEL-13 — INFO — Frontend v3 test failure (`Open all sections`) is in unchanged frontend code; pre-existing.
 - DEL-14 — INFO — Environment restart removed the first isolated clone. It was recreated from the pushed branch at `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684`; no approved work was lost and the protected workspace stayed unchanged.
+- DEL-15 — INFO — Final CI at `a406cde1…`: 23 PASS / 6 FAIL. `mergeable=MERGEABLE` is structural only; PR remains OPEN draft with no approval, merge or production deployment.
+- DEL-16 — INFO — Repository Vercel integration automatically created a PR preview deployment via an existing webhook. This is not a production deployment and was not initiated by this program.
 
 ## Delivery record
 
-| Item                           | Value                                                                                                                              |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Branch                         | `execution/gula-national-completion-013`                                                                                           |
-| Base                           | `main` @ `2ee9e8bcb9d81e9cac6801f5dea9b86d59beaffa`                                                                                |
-| Implementation commit          | `05c8fd870745a06fea41230cfe98d2b90501d957` — `feat(program-013): remediate critical clinical and identity defects`                 |
-| Documentation/CI-fix commits   | `7174873477b26585998728317b193dcd5df44131`, `fa50f839fe904fc916c5bbacd3fee536d6a4c2a9`, `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684` |
-| Ancestor commit                | `5079d67d` — `docs(program-013): establish protected baseline and unified findings register`                                       |
-| Initial pre-push fetch         | exit 0; `origin/main` unchanged; ahead 2 / behind 0; remote branch absent                                                          |
-| Initial push                   | `git push -u origin execution/gula-national-completion-013`, exit 0, new branch                                                    |
-| PR head at last verified check | `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684`                                                                                         |
-| Pull request                   | #307 — OPEN, `isDraft=true`                                                                                                        |
-| PR URL                         | https://github.com/samertts/gula-platform/pull/307                                                                                 |
-| Merge / deployment             | **None. Not authorized.**                                                                                                          |
+| Item                           | Value                                                                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Branch                         | `execution/gula-national-completion-013`                                                                                                                                       |
+| Base                           | `main` @ `2ee9e8bcb9d81e9cac6801f5dea9b86d59beaffa`                                                                                                                            |
+| Implementation commit          | `05c8fd870745a06fea41230cfe98d2b90501d957` — `feat(program-013): remediate critical clinical and identity defects`                                                             |
+| Documentation/CI-fix commits   | `7174873477b26585998728317b193dcd5df44131`, `fa50f839fe904fc916c5bbacd3fee536d6a4c2a9`, `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684`, `a406cde1f991cd5cbb23676a7606ce1fcb600450` |
+| Ancestor commit                | `5079d67d` — `docs(program-013): establish protected baseline and unified findings register`                                                                                   |
+| Initial pre-push fetch         | exit 0; `origin/main` unchanged; ahead 2 / behind 0; remote branch absent                                                                                                      |
+| Initial push                   | `git push -u origin execution/gula-national-completion-013`, exit 0, new branch                                                                                                |
+| PR head at last verified check | `a406cde1f991cd5cbb23676a7606ce1fcb600450` (`state=OPEN, isDraft=true, mergeable=MERGEABLE`)                                                                                   |
+| Pull request                   | #307 — OPEN, `isDraft=true`                                                                                                                                                    |
+| PR URL                         | https://github.com/samertts/gula-platform/pull/307                                                                                                                             |
+| Merge / deployment             | **None. Not authorized.**                                                                                                                                                      |
 
-Commands and raw outputs: `evidence/test_logs/prepush_fetch.log`, `push_nc013.log`, `pr_create_nc013.log`, `push_final_nc013.log`, `push_ci_fix_nc013.log`, `fetch_main_ref_final.log`, `ci_failure_triage.md`. Current head must be confirmed with `gh pr view 307 --json headRefOid` after any subsequent docs-only commit.
+Commands and raw outputs: `evidence/test_logs/prepush_fetch.log`, `push_nc013.log`, `pr_create_nc013.log`, `push_final_nc013.log`, `push_ci_fix_nc013.log`, `push_ci_closure_nc013.log`, `fetch_main_ref_final.log`, `ci_failure_triage.md`, `final_ci_summary.md`, `pr_checks_final_nc013.log`. Any subsequent bookkeeping commit is docs-only and does not alter the verified implementation.
 
 ## Verification state
 
@@ -76,7 +78,7 @@ Commands and raw outputs: `evidence/test_logs/prepush_fetch.log`, `push_nc013.lo
 | Base/dependencies understood      | base `2ee9e8bc…`, ahead 5 / behind 0, lock upgraded and re-audited, `greenlet` dependency gap closed                       | PASS                                                          |
 | No concurrent-work overwrite      | `git fetch origin refs/heads/main:refs/remotes/origin/main` exit 0; `origin/main` unchanged                                | PASS                                                          |
 | Exact commit/evidence recorded    | implementation `05c8fd87…`, PR #307 draft, raw logs preserved                                                              | PASS                                                          |
-| CI green                          | several failures; see `ci_failure_triage.md`                                                                               | **FAIL — pre-existing/scope-limited; not a release approval** |
+| CI green                          | final: 23 PASS / 6 FAIL; see `final_ci_summary.md`                                                                         | **FAIL — pre-existing/scope-limited; not a release approval** |
 
 A draft PR is the maximum authorized delivery. No merge, release promotion, or deployment.
 

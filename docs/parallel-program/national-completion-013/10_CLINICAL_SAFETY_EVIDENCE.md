@@ -65,4 +65,4 @@ Evidence:
 
 No live event subscriber is wired while `AUD-CLIN-001` is `BLOCKED`; the tested consumer path fails closed on ambiguous payloads.
 
-Verification state: **ENGINEERING FIX LOCALLY TESTED; INDEPENDENT VERIFICATION IN PROGRESS**. Critical-result notification delivery remains disabled and clinical policy, recipient, escalation, and acknowledgement rules remain human-owned and `BLOCKED`.
+Verification state: **INDEPENDENT VERIFICATION COMPLETE AT CODE LEVEL; RELEASE BLOCKED BY GOVERNANCE**. Critical-result notification delivery remains deliberately disabled and clinical policy, recipient, escalation, and acknowledgement rules remain human-owned and `BLOCKED`.

@@ -66,4 +66,4 @@ Evidence:
 - `evidence/test_logs/regression_identity_lims_mpi_py312_locked_final.log` — exit 0, 471 passed, 4 skipped.
 - `evidence/implementation_log.md` — exact commands and change inventory.
 
-Verification state: **LOCAL TESTS PASS; INDEPENDENT VERIFICATION IN PROGRESS**. No authorization policy, production identity, or deployment approval is implied.
+Verification state: **INDEPENDENT VERIFICATION COMPLETE AT CODE LEVEL; RELEASE BLOCKED BY GOVERNANCE**. Final CI confirms identity and tenant-isolation checks PASS at `a406cde1…`. No authorization policy, production identity, or deployment approval is implied.

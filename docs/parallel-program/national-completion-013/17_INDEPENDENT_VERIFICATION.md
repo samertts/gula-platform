@@ -110,6 +110,8 @@ After the draft PR was published, GitHub Actions checks were inspected. `Secret 
 
 The environment restarted during this work and removed the first isolated clone. It was recreated from the pushed branch at `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684`; no approved work was lost, and the protected workspace invariants remained unchanged (`e3b0c44…`, branch `remediate-security-001`, HEAD `f478676b…`, 6 worktrees, 2 stashes).
 
+Final independent CI observation at `a406cde1f991cd5cbb23676a7606ce1fcb600450`: `gh pr checks 307` → 23 PASS / 6 FAIL. The previously failing identity, security/tenant-isolation, secret-scan, dependency-audit and PostgreSQL schema checks now pass. The six remaining failures were read from raw GitHub job logs and confirmed pre-existing or out of scope; none is an NC013 code regression. `mergeable=MERGEABLE` is structural only. Full matrix: `evidence/test_logs/final_ci_summary.md`.
+
 ## Verification state
 
 Two independent passes complete. The first found four contract gaps and five verified claims; the second verified three closures directly and one partially, and the remaining schema flaw was closed and re-validated with a JSON Schema engine. Independent verification is **not** release approval. Posture remains `NOT ACCEPTED FOR PRODUCTION — HOLD`.

@@ -29,7 +29,7 @@ Baseline inspection: `sed -n '1,100p' backend/app/integration/gateway/grpc_gatew
 
 ## Verification state
 
-`NOT VERIFIED` for offline safety; targeted gRPC fix will be marked FIXED only after tests.
+`NOT VERIFIED` for general offline safety; the targeted gRPC fail-closed fix is `FIXED — INDEPENDENTLY VERIFIED AT CODE LEVEL` with negative tests and CI security checks passing. Offline capability beyond this fix remains unproven.
 
 ## Limitations
 
