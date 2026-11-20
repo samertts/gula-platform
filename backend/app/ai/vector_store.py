@@ -124,7 +124,7 @@ class VectorStore:
         try:
             vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
             params: dict[str, Any] = {"vec": vec_str, "limit": limit}
-            lab = lab_id or self.lab_id
+            lab = lab_id if lab_id is not None else self.lab_id
             if lab is not None:
                 params["lab"] = lab
             if content_type:
@@ -158,17 +158,34 @@ class VectorStore:
     def _search_in_memory(self, query_embedding, content_type, limit, threshold, lab_id):
         db = next(get_db())
         try:
-            query = db.query(
-                text("id, content_type, content_id, text, metadata"),
-            ).select_from(text("ai_embeddings"))
-            if lab_id or self.lab_id:
-                query = query.where(text("lab_id = :lab"))
+            conditions = []
+            params: dict[str, Any] = {"limit": limit}
+            lab = lab_id if lab_id is not None else self.lab_id
+            if lab is not None:
+                conditions.append("lab_id = :lab")
+                params["lab"] = lab
             if content_type:
-                query = query.where(text("content_type = :ct"))
-            rows = db.execute(query).fetchall()
+                conditions.append("content_type = :ct")
+                params["ct"] = content_type
+            where = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+            rows = db.execute(
+                text(
+                    "SELECT id, content_type, content_id, text, metadata, embedding "
+                    f"FROM ai_embeddings{where} LIMIT :limit"
+                ),
+                params,
+            ).fetchall()
             scored = []
             for row in rows:
-                score = cosine_similarity(query_embedding, [0.0] * len(query_embedding))
+                embedding = row.embedding
+                if isinstance(embedding, str):
+                    try:
+                        embedding = json.loads(embedding)
+                    except json.JSONDecodeError:
+                        embedding = [float(value) for value in embedding.strip("[]").split(",") if value.strip()]
+                if not embedding:
+                    continue
+                score = cosine_similarity(query_embedding, embedding)
                 if score >= threshold:
                     scored.append((score, row))
             scored.sort(key=lambda x: x[0], reverse=True)
@@ -180,18 +197,30 @@ class VectorStore:
                     text=row.text, score=round(score, 4), metadata=meta,
                 ))
             return results
-        except Exception:
+        except Exception as exc:
+            logger.error("[VectorStore] fallback search failed: %s", exc)
             return []
         finally:
             db.close()
 
-    def delete(self, content_type: str, content_id: int) -> bool:
+    def delete(
+        self,
+        content_type: str,
+        content_id: int,
+        lab_id: int | None = None,
+    ) -> bool:
         if self._check_pgvector():
             db = next(get_db())
             try:
+                lab = lab_id if lab_id is not None else self.lab_id
+                if lab is None:
+                    logger.error("[VectorStore] refusing unscoped embedding delete")
+                    return False
+                conditions = ["content_type = :ct", "content_id = :cid", "lab_id = :lab"]
+                params: dict[str, Any] = {"ct": content_type, "cid": content_id, "lab": lab}
                 db.execute(
-                    text("DELETE FROM ai_embeddings WHERE content_type = :ct AND content_id = :cid"),
-                    {"ct": content_type, "cid": content_id},
+                    text(f"DELETE FROM ai_embeddings WHERE {' AND '.join(conditions)}"),
+                    params,
                 )
                 db.commit()
                 return True

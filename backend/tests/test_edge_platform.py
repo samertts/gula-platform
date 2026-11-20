@@ -377,6 +377,25 @@ def test_http_agent_heartbeat_claims_task(client, db, lab, admin_user,
     assert body["task"]["kind"] == "diag.ping"
 
 
+def test_http_expired_agent_token_rejected(client, db, lab, admin_user, public_key_pem):
+    import time
+    from app.routes.edge import _make_agent_token
+
+    headers = _auth(admin_user.id, lab.id, "admin")
+    reg = client.post("/edge/devices/register", json={
+        "public_key_pem": public_key_pem, "role_mode": "personal",
+    }, headers=headers).json()
+    device = db.query(EdgeDevice).filter(EdgeDevice.device_id == reg["device_id"]).first()
+    expired = _make_agent_token(device, expires_at=int(time.time()) - 1)
+    response = client.post(
+        "/edge/agent/heartbeat",
+        json={},
+        headers={"Authorization": f"Bearer {expired}"},
+    )
+    assert response.status_code == 401
+    assert "Expired agent token" in response.text
+
+
 def test_http_agent_token_invalid_signature_rejected(client, db, lab,
                                                      admin_user, public_key_pem):
 

@@ -73,3 +73,11 @@
 ## ملفات التوثيق
 
 يوجد سجل تحقق Dependabot المرئي في [`docs/DEPENDABOT_GITHUB_STATUS_2026-08-20.md`](./DEPENDABOT_GITHUB_STATUS_2026-08-20.md)، كما يوجد تقرير التبعيات الكامل في [`docs/DEPENDENCY_SECURITY_AUDIT_2026-08-20_AR.md`](./DEPENDENCY_SECURITY_AUDIT_2026-08-20_AR.md). يحافظ السجلان على الدليل الزمني لحالة GitHub ونتائج الفحص المحلي، ولا يدّعيان إغلاق التنبيه قبل اكتمال فحص GitHub.
+
+## جولة المعالجة الإضافية — PR #241 — 21 أغسطس 2026
+
+أظهرت مراجعة PR #241 بعد حل التعارضات مشكلتين فعليتين في الكود، وتمت معالجتهما قبل الدفع. الأولى كانت ثلاث صيغ Python غير صالحة من الشكل `except ValueError, TypeError` داخل `backend/app/national/ecosystem/transformation/engine.py`، وقد صُححت إلى صيغة tuple المتوافقة مع Python 3. والثانية كانت تكرار revision `20260819_0003` ورأسان مستقلان في Alembic؛ أُعيدت تسمية migrations المتأثرة وربطها بالسلسلة الفريدة `20260819_0004 → 20260820_0006 → 20260820_0007 → 20260820_0008` دون تغيير عمليات إنشاء الجداول أو التراجع عنها.
+
+سُجلت المعالجة في commit [`17b234d5`](https://github.com/samertts/gula-platform/commit/17b234d5ea512da6065ef531340f25077d9a79f2) ودُفعت إلى فرع PR #241 `fix/mobile-expo-dependency-audit`. بعد الإصلاح، اجتاز `compileall`، واختبارات migrations المستهدفة وعددها 20 اختباراً، ومجموعة backend الكاملة بنتيجة **2727 ناجحة، 4 متجاوزة، و165 تحذيراً، دون أي فشل**. كما اجتازت mobile-expo عملية `npm ci`، و`typecheck`، واختبار image-size الأمني، و`npm audit` بنتيجة صفر ثغرات، وExpo Doctor بنتيجة 17/17.
+
+ظل `mergeable=true` في PR بعد الدفع. أما حالة الفحوصات المنشورة فلم يمكن قراءتها عبر GitHub Checks API بسبب HTTP 403 من صلاحيات التكامل، كما أن صفحة المتصفح تعذرت تقنياً؛ لذلك لا يُسجّل هذا التقرير نجاح CI المنشور إلا بعد ظهور النتائج في GitHub. الفشل السابق في Security Hardening وQuality Gate وCI Pipeline كان قبل بدء الوظائف بسبب billing/spending limit، وليس traceback من الكود. ويظل ربط Vercel بحساب GitHub الصحيح ومعالجة حد الإنفاق إجراءين خارجيين مطلوبين قبل اعتماد نتائج CI النهائية.

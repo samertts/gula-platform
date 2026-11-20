@@ -1,4 +1,5 @@
 {{- if .Values.backend.enabled }}
+{{- include "gula.validateApplicationImageTag" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -51,7 +52,7 @@ spec:
         {{- end }}
       containers:
         - name: {{ .Values.backend.name }}
-          {{- include "gula.image" (dict "repository" .Values.backend.image.repository "tag" (default .Values.global.imageTag .Values.backend.image.tag) "pullPolicy" (default .Values.global.imagePullPolicy .Values.backend.image.pullPolicy)) | nindent 10 }}
+          {{- include "gula.image" (dict "repository" .Values.backend.image.repository "tag" (default .Values.global.imageTag .Values.backend.image.tag) "pullPolicy" (default .Values.global.imagePullPolicy .Values.backend.image.pullPolicy) "root" $) | nindent 10 }}
           {{- include "gula.containerSecurityContext" . | nindent 10 }}
           {{- include "gula.envFromConfigMap" . | nindent 10 }}
           env:

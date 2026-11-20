@@ -1,16 +1,17 @@
 """add independent verification to critical care infusions
 
-Revision ID: 20260820_0005
-Revises: 20260820_0004
+Revision ID: 20260820_0008
+Revises: 20260820_0007
 """
+
 from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
 
 
-revision = "20260820_0005"
-down_revision = "20260820_0004"
+revision = "20260820_0008"
+down_revision = "20260820_0007"
 branch_labels = None
 depends_on = None
 

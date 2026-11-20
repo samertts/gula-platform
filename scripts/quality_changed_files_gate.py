@@ -136,7 +136,8 @@ def parse_mypy_text(repo: Path, output: str) -> tuple[Diagnostic, ...]:
 
 
 def limit_to_requested_paths(
-    diagnostics: Sequence[Diagnostic], paths: Sequence[str],
+    diagnostics: Sequence[Diagnostic],
+    paths: Sequence[str],
 ) -> tuple[Diagnostic, ...]:
     """Keep only diagnostics emitted for the exact files this gate evaluates.
 
@@ -200,11 +201,7 @@ def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
 
 
 def existing_python_paths(repo: Path, paths: Iterable[str]) -> list[str]:
-    return sorted(
-        path
-        for path in paths
-        if (repo / path).is_file() and path.endswith(".py")
-    )
+    return sorted(path for path in paths if (repo / path).is_file() and path.endswith(".py"))
 
 
 def scope_paths(repo: Path, scopes: Sequence[str]) -> list[str]:
@@ -235,9 +232,7 @@ def execution_error_regression(baseline: ToolResult, head: ToolResult) -> list[s
     return []
 
 
-def compare_counts(
-    baseline: Counter[str], head: Counter[str], label: str
-) -> list[str]:
+def compare_counts(baseline: Counter[str], head: Counter[str], label: str) -> list[str]:
     failures: list[str] = []
     for path in sorted(set(baseline) | set(head)):
         before = baseline[path]
@@ -319,7 +314,9 @@ def main() -> int:
         sys.stdout.write(f"Changed Python files:  {len(changed)}\n")
 
         if not changed and args.require_python_change:
-            failures.append("No changed Python files were found; Python changes are required for this invocation.")
+            failures.append(
+                "No changed Python files were found; Python changes are required for this invocation."
+            )
 
         temp_dir, baseline_repo = checkout_ref(repo, base)
         baseline_changed = existing_python_paths(baseline_repo, changed)
@@ -379,7 +376,9 @@ def main() -> int:
         report["failures"] = failures
         report["status"] = "FAIL" if failures else "PASS"
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        args.report.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
 
         for section, results in (("baseline", baseline_results), ("head", head_results)):
             for name, result in results.items():
@@ -395,7 +394,9 @@ def main() -> int:
         report["status"] = "ERROR"
         report["failures"] = [str(exc)]
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        args.report.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
         sys.stderr.write(f"QUALITY_CHANGED_FILES_GATE: ERROR: {exc}\n")
         return 2
     finally:

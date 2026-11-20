@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn, getRoleLabel } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import type { UserRole } from "@/types";
 import { useLocale } from "@/contexts/LocaleContext";
 import { NAV_ITEMS, hasPermission } from "@/permissions";
 import { hasReflectedPermission } from "@/permissions/liveCapabilities";
@@ -102,6 +103,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           item.institutionalOnly &&
           (!user?.lab_id || user.role === "citizen")
         )
+          return false;
+        if (item.roles && !item.roles.includes(user?.role as UserRole))
           return false;
         if (!item.permissions) return true;
         if (demoMode) {

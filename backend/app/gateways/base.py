@@ -153,17 +153,23 @@ def validate_schema(data: Any, rules: list[FieldRule], context: str = "") -> Non
                 f"[{context}] field '{rule.name}': value {value!r} not in allowed set",
             )
 
-        if rule.min_value is not None and isinstance(value, (int, float)):
-            if value < rule.min_value:
-                raise ValidationError(
-                    f"[{context}] field '{rule.name}': {value} < min {rule.min_value}",
-                )
+        if (
+            rule.min_value is not None
+            and isinstance(value, (int, float))
+            and value < rule.min_value
+        ):
+            raise ValidationError(
+                f"[{context}] field '{rule.name}': {value} < min {rule.min_value}",
+            )
 
-        if rule.max_value is not None and isinstance(value, (int, float)):
-            if value > rule.max_value:
-                raise ValidationError(
-                    f"[{context}] field '{rule.name}': {value} > max {rule.max_value}",
-                )
+        if (
+            rule.max_value is not None
+            and isinstance(value, (int, float))
+            and value > rule.max_value
+        ):
+            raise ValidationError(
+                f"[{context}] field '{rule.name}': {value} > max {rule.max_value}",
+            )
 
 
 # ─── Circuit Breaker ──────────────────────────────────────────────────────────
@@ -343,8 +349,8 @@ class ExternalGateway:
     @staticmethod
     def _make_cache_key(gateway_name: str, **kwargs: Any) -> str:
         raw = f"{gateway_name}:{sorted(kwargs.items())}"
-        # Non-crypto cache key; usedforsecurity=False silences the SAST finding.
-        return hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()
+        # Cache key only; SHA3 avoids weak-hash SAST findings.
+        return hashlib.sha3_256(raw.encode()).hexdigest()[:32]
 
     # ── Audit ─────────────────────────────────────────────────────────────────
 
@@ -409,7 +415,7 @@ class ExternalGateway:
         your internal data before switching to live mode — with zero risk.
         """
         try:
-            external = self._do_call(action, **call_kwargs)
+            self._do_call(action, **call_kwargs)
             logger.info(
                 "[SHADOW] gateway=%s action=%s comparison=completed",
                 self.name,

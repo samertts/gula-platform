@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import ar from "@/i18n/ar";
-import { NAV_ITEMS } from ".";
+import { hasPermission, NAV_ITEMS } from ".";
+import { getRouteRoles } from "./routePolicies";
 
 describe("التنقل العربي الأساسي في GULA", () => {
   it("يحافظ على مسارات الرئيسية والطلبات والمرضى والتقارير والإعدادات", () => {
@@ -31,6 +32,42 @@ describe("التنقل العربي الأساسي في GULA", () => {
       label: "nav.reports",
       permissions: ["dashboard:read"],
     });
+  });
+
+  it("يطابق كل رابط محمي سياسة أدوار المسار المركزية", () => {
+    const items = Object.values(NAV_ITEMS).flat();
+    const guardedItems = items.filter((item) => item.roles);
+
+    expect(guardedItems.length).toBeGreaterThan(0);
+    for (const item of guardedItems) {
+      expect(getRouteRoles(item.path), item.path).toBeDefined();
+      expect([...item.roles!], item.path).toEqual([...getRouteRoles(item.path)!]);
+    }
+  });
+
+  it("لا يعرض أسطح الإدارة والمستشفى للطبيب أو الفني", () => {
+    const items = Object.values(NAV_ITEMS).flat();
+    const visibleFor = (role: string) =>
+      items.filter(
+        (item) =>
+          (!item.roles || item.roles.includes(role)) &&
+          (!item.permissions || item.permissions.some((permission) => hasPermission(role, permission))),
+      );
+
+    const doctorPaths = visibleFor("doctor").map((item) => item.path);
+    const technicianPaths = visibleFor("technician").map((item) => item.path);
+
+    expect(doctorPaths).toEqual(expect.arrayContaining([
+      "/dashboard",
+      "/patient-management",
+      "/orders",
+      "/results",
+    ]));
+    expect(doctorPaths).not.toContain("/hospital");
+    expect(doctorPaths).not.toContain("/admin");
+    expect(technicianPaths).not.toContain("/hospital");
+    expect(technicianPaths).not.toContain("/admin");
+    expect(technicianPaths).not.toContain("/reports");
   });
 
   it("يقصر مركز ربط الأجهزة على صلاحية المختبر والحسابات المؤسسية", () => {

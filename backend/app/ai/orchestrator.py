@@ -8,6 +8,7 @@ from typing import Any
 
 from app.ai.agent_runtime import AgentContext, AgentRuntime, agent_runtime
 from app.ai.rag_pipeline import rag
+from app.ai.security import sanitize_response, scan_input
 from app.gateways.google_ai import generate_chat
 
 logger = logging.getLogger("gula.ai.orchestrator")
@@ -41,6 +42,11 @@ class AIOrchestrator:
         user_id: int | None = None,
         session_id: str | None = None,
     ) -> dict[str, Any]:
+        security = await scan_input(query)
+        if not security.is_safe:
+            logger.warning("[Orchestrator] query rejected by AI safety policy")
+            return {"error": "تم رفض الطلب وفق سياسة سلامة المساعد.", "intent": "blocked"}
+
         intent = await self._classify_intent(query)
         task_id = str(uuid.uuid4())
         task = OrchestrationTask(id=task_id, type=intent, query=query, lab_id=lab_id, user_id=user_id, session_id=session_id)
@@ -53,11 +59,11 @@ class AIOrchestrator:
             task.result = result
             task.completed_at = time.time()
             return result
-        except Exception as exc:
+        except Exception:
             task.status = "failed"
-            task.error = str(exc)
-            logger.error("[Orchestrator] task %s failed: %s", task_id, exc)
-            return {"error": str(exc), "intent": intent, "task_id": task_id}
+            task.error = "AI processing failed"
+            logger.exception("[Orchestrator] task %s failed", task_id)
+            return {"error": "AI processing failed", "intent": intent, "task_id": task_id}
 
     async def _classify_intent(self, query: str) -> str:
         q = query.lower().strip()
@@ -105,7 +111,7 @@ class AIOrchestrator:
         rag_result = await rag.query(query, content_type="lab_result", lab_id=lab_id)
         return {
             "type": "clinical_analysis",
-            "rag_response": rag_result.get("response", ""),
+            "rag_response": await sanitize_response(str(rag_result.get("response", ""))),
             "citations": rag_result.get("citations", []),
         }
 
@@ -120,7 +126,7 @@ class AIOrchestrator:
         rag_result = await rag.query(query, content_type="knowledge")
         return {
             "type": "knowledge_query",
-            "response": rag_result.get("response", ""),
+            "response": await sanitize_response(str(rag_result.get("response", ""))),
             "citations": rag_result.get("citations", []),
             "source": "rag_pipeline",
         }
@@ -131,21 +137,29 @@ class AIOrchestrator:
         if not session_id:
             session_id = str(uuid.uuid4())
         results = await agent_runtime.run_session(session_id, query, lab_id, user_id)
+        steps = []
+        for result in results:
+            steps.append(
+                {
+                    "agent": result.agent_name,
+                    "success": result.success,
+                    "output": await sanitize_response(str(result.output)[:300]),
+                    "duration_ms": result.duration_ms,
+                }
+            )
         return {
             "type": "agent_execution",
             "session_id": session_id,
-            "steps": [
-                {"agent": r.agent_name, "success": r.success, "output": str(r.output)[:300], "duration_ms": r.duration_ms}
-                for r in results
-            ],
+            "steps": steps,
         }
 
     async def _handle_chat(self, query: str) -> dict[str, Any]:
         try:
             response = await generate_chat(query)
-            return {"type": "chat", "response": response}
-        except Exception as exc:
-            return {"type": "chat", "response": f"عذراً: {exc!s}"}
+            return {"type": "chat", "response": await sanitize_response(response)}
+        except Exception:
+            logger.exception("[Orchestrator] chat generation failed")
+            return {"type": "chat", "response": "عذراً، تعذر إنشاء الرد. يرجى المحاولة لاحقاً."}
 
     def get_task(self, task_id: str) -> OrchestrationTask | None:
         return self._tasks.get(task_id)

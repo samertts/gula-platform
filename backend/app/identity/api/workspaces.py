@@ -79,6 +79,7 @@ async def get_current_niam_actor(
             Account.uuid == payload["account_uuid"],
             Account.status == AccountStatus.active.value,
             Account.is_active.is_(True),
+            Account.is_locked.is_(False),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
         ),

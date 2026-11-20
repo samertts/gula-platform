@@ -13,7 +13,9 @@ export interface AuthUser {
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 export interface AuthConfig {
+  /** Retained for API compatibility; browser persistence is intentionally disabled. */
   storageKey?: string;
+  /** Retained for API compatibility; bearer tokens must not be persisted in web storage. */
   tokenKey?: string;
   refreshThreshold?: number;
 }
@@ -37,6 +39,15 @@ const defaultConfig: AuthConfig = {
   refreshThreshold: 300,
 };
 
+function clearLegacyWebStorage(config: AuthConfig): void {
+  try {
+    localStorage.removeItem(config.storageKey ?? defaultConfig.storageKey!);
+    localStorage.removeItem(config.tokenKey ?? defaultConfig.tokenKey!);
+  } catch {
+    // Storage may be unavailable in SSR/private browsing; memory state remains safe.
+  }
+}
+
 export const useAuth = create<AuthState>((set, get) => ({
   user: null,
   status: 'loading',
@@ -45,28 +56,20 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   setUser: (user: AuthUser, token: string) => {
     set({ user, status: 'authenticated', token });
-    try {
-      localStorage.setItem(get().config.storageKey!, JSON.stringify(user));
-      localStorage.setItem(get().config.tokenKey!, token);
-    } catch {}
+    // The token remains memory-only. Production web authentication must use an
+    // HttpOnly, Secure, SameSite cookie managed by the authoritative backend.
+    clearLegacyWebStorage(get().config);
   },
 
   clearSession: () => {
     set({ user: null, status: 'unauthenticated', token: null });
-    try {
-      localStorage.removeItem(get().config.storageKey!);
-      localStorage.removeItem(get().config.tokenKey!);
-    } catch {}
+    clearLegacyWebStorage(get().config);
   },
 
   updateUser: (updates: Partial<AuthUser>) => {
     const current = get().user;
     if (!current) return;
-    const updated = { ...current, ...updates };
-    set({ user: updated });
-    try {
-      localStorage.setItem(get().config.storageKey!, JSON.stringify(updated));
-    } catch {}
+    set({ user: { ...current, ...updates } });
   },
 
   hasPermission: (permission: string, resource?: string): boolean => {
@@ -90,15 +93,9 @@ export const useAuth = create<AuthState>((set, get) => ({
 }));
 
 export const restoreSession = (): boolean => {
-  try {
-    const stored = localStorage.getItem('gula-auth');
-    const token = localStorage.getItem('gula-token');
-    if (stored && token) {
-      const user = JSON.parse(stored) as AuthUser;
-      useAuth.getState().setUser(user, token);
-      return true;
-    }
-  } catch {}
+  // Deliberately do not restore bearer tokens from localStorage. The caller
+  // should restore an HttpOnly-cookie session through the authoritative API.
+  clearLegacyWebStorage(useAuth.getState().config);
   useAuth.getState().clearSession();
   return false;
 };

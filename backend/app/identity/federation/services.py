@@ -15,10 +15,13 @@ from app.identity.federation.models import (
     FederatedSession,
     FederationAgreement,
 )
+from app.identity.federation.security import (
+    validate_endpoint_url,
+    validate_redirect_uris,
+)
 
 
 class FederationService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -42,25 +45,31 @@ class FederationService:
         trust_anchor_id: str | None = None,
         metadata_url: str | None = None,
     ) -> FederatedProvider:
+        validated_issuer_url = validate_endpoint_url(issuer_url, "issuer_url")
+        if validated_issuer_url is None:
+            raise ValueError("issuer_url is required")
+
         provider = FederatedProvider(
             uuid=str(uuid.uuid4()),
             provider_id=provider_id,
             name_en=name_en,
             name_ar=name_ar,
             provider_type=provider_type,
-            issuer_url=issuer_url,
-            authorization_endpoint=authorization_endpoint,
-            token_endpoint=token_endpoint,
-            jwks_uri=jwks_uri,
-            userinfo_endpoint=userinfo_endpoint,
+            issuer_url=validated_issuer_url,
+            authorization_endpoint=validate_endpoint_url(
+                authorization_endpoint, "authorization_endpoint"
+            ),
+            token_endpoint=validate_endpoint_url(token_endpoint, "token_endpoint"),
+            jwks_uri=validate_endpoint_url(jwks_uri, "jwks_uri"),
+            userinfo_endpoint=validate_endpoint_url(userinfo_endpoint, "userinfo_endpoint"),
             client_id=client_id,
             client_secret_encrypted=client_secret_encrypted,
             scopes=scopes,
-            redirect_uris=redirect_uris,
+            redirect_uris=validate_redirect_uris(redirect_uris),
             certificate=certificate,
             signature_algorithm=signature_algorithm,
             trust_anchor_id=trust_anchor_id,
-            metadata_url=metadata_url,
+            metadata_url=validate_endpoint_url(metadata_url, "metadata_url"),
             status="active",
             is_active=True,
         )
@@ -84,9 +93,22 @@ class FederationService:
         provider = await self.get_provider(provider_id)
         if not provider:
             return None
+        endpoint_fields = {
+            "issuer_url",
+            "authorization_endpoint",
+            "token_endpoint",
+            "jwks_uri",
+            "userinfo_endpoint",
+            "metadata_url",
+        }
         for key, value in kwargs.items():
-            if hasattr(provider, key) and value is not None:
-                setattr(provider, key, value)
+            if not hasattr(provider, key) or value is None:
+                continue
+            if key in endpoint_fields:
+                value = validate_endpoint_url(value, key)
+            elif key == "redirect_uris":
+                value = validate_redirect_uris(value)
+            setattr(provider, key, value)
         await self.session.flush()
         return provider
 
@@ -215,7 +237,6 @@ class FederationService:
 
 
 class CrossOrgTrustService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -287,7 +308,6 @@ class CrossOrgTrustService:
 
 
 class FederationAgreementService:
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -347,10 +367,7 @@ class FederationAgreementService:
             FederationAgreement.status == "active",
         )
         result = await self.session.execute(stmt)
-        return [
-            a for a in result.scalars().all()
-            if a.parties and org_id in a.parties
-        ]
+        return [a for a in result.scalars().all() if a.parties and org_id in a.parties]
 
     async def get_agreement(self, agreement_id: str) -> FederationAgreement | None:
         stmt = select(FederationAgreement).where(

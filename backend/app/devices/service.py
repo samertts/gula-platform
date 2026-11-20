@@ -9,15 +9,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.models.patient import Patient
 
 from .models import (
     DEVICE_CATEGORIES,
     DEVICE_PROTOCOLS,
     DEVICE_STATUSES,
     DEVICE_TRANSPORTS,
-    EVENT_DIRECTIONS,
-    EVENT_SEVERITIES,
-    PRINT_STATUSES,
     DeviceConnector,
     DeviceEvent,
     DeviceGateway,
@@ -28,8 +26,9 @@ from .models import (
     IntegratedDevice,
     WearableMeasurement,
 )
-from .outbox import enqueue_message, list_messages as list_outbox_messages, summarize as summarize_outbox
-from app.models.patient import Patient
+from .outbox import enqueue_message
+from .outbox import list_messages as list_outbox_messages
+from .outbox import summarize as summarize_outbox
 from .schemas import (
     ConnectorRegisterRequest,
     ConnectorStatusUpdateRequest,
@@ -43,7 +42,6 @@ from .schemas import (
     ProtocolProfileRequest,
     WearableMeasurementIngestRequest,
 )
-
 
 PROTOCOL_CATALOG = [
     {
@@ -75,7 +73,12 @@ PROTOCOL_CATALOG = [
         "label": "FHIR Device and Observation",
         "family": "health_data",
         "transports": ["HTTP"],
-        "intended_categories": ["medical_measurement", "patient_monitor", "laboratory_analyzer", "imaging"],
+        "intended_categories": [
+            "medical_measurement",
+            "patient_monitor",
+            "laboratory_analyzer",
+            "imaging",
+        ],
         "production_requirement": "Authenticated FHIR server/client adapter with profile validation, provenance, and consent-aware routing.",
     },
     {
@@ -91,7 +94,12 @@ PROTOCOL_CATALOG = [
         "label": "USB / RS-232 Serial",
         "family": "local_transport",
         "transports": ["USB", "Serial"],
-        "intended_categories": ["laboratory_analyzer", "medical_measurement", "barcode_scanner", "printer"],
+        "intended_categories": [
+            "laboratory_analyzer",
+            "medical_measurement",
+            "barcode_scanner",
+            "printer",
+        ],
         "production_requirement": "On-premises connector with OS device permissions, port binding, driver validation, and encrypted upstream channel.",
     },
     {
@@ -183,7 +191,14 @@ def _event(
     return event
 
 
-def list_devices(db: Session, lab_id: int, *, category: str | None = None, status: str | None = None, limit: int = 100) -> tuple[int, list[IntegratedDevice]]:
+def list_devices(
+    db: Session,
+    lab_id: int,
+    *,
+    category: str | None = None,
+    status: str | None = None,
+    limit: int = 100,
+) -> tuple[int, list[IntegratedDevice]]:
     query = db.query(IntegratedDevice).filter(IntegratedDevice.lab_id == lab_id)
     if category:
         query = query.filter(IntegratedDevice.category == category)
@@ -203,7 +218,11 @@ def get_device(db: Session, lab_id: int, device_uid: str) -> IntegratedDevice | 
 
 
 def register_device(db: Session, lab_id: int, payload: DeviceRegisterRequest) -> IntegratedDevice:
-    if payload.category not in DEVICE_CATEGORIES or payload.protocol not in DEVICE_PROTOCOLS or payload.transport not in DEVICE_TRANSPORTS:
+    if (
+        payload.category not in DEVICE_CATEGORIES
+        or payload.protocol not in DEVICE_PROTOCOLS
+        or payload.transport not in DEVICE_TRANSPORTS
+    ):
         raise ValueError("Unsupported device category, protocol, or transport")
     if (
         db.query(IntegratedDevice)
@@ -239,14 +258,20 @@ def register_device(db: Session, lab_id: int, payload: DeviceRegisterRequest) ->
         device=device,
         event_type="device_registered",
         summary="Device registered in local simulation mode",
-        safe_metadata={"simulation_only": True, "protocol": device.protocol, "transport": device.transport},
+        safe_metadata={
+            "simulation_only": True,
+            "protocol": device.protocol,
+            "transport": device.transport,
+        },
     )
     db.commit()
     db.refresh(device)
     return device
 
 
-def update_status(db: Session, lab_id: int, device_uid: str, payload: DeviceStatusUpdateRequest) -> IntegratedDevice:
+def update_status(
+    db: Session, lab_id: int, device_uid: str, payload: DeviceStatusUpdateRequest
+) -> IntegratedDevice:
     if payload.status not in DEVICE_STATUSES:
         raise ValueError("Unsupported device status")
     device = get_device(db, lab_id, device_uid)
@@ -262,7 +287,11 @@ def update_status(db: Session, lab_id: int, device_uid: str, payload: DeviceStat
         event_type="status_changed",
         summary=f"Status changed from {old_status} to {payload.status}",
         severity="warning" if payload.status in {"error", "maintenance"} else "info",
-        safe_metadata={"simulation_only": True, "previous_status": old_status, "reason": payload.reason},
+        safe_metadata={
+            "simulation_only": True,
+            "previous_status": old_status,
+            "reason": payload.reason,
+        },
     )
     db.commit()
     db.refresh(device)
@@ -287,7 +316,14 @@ def probe_device(db: Session, lab_id: int, device_uid: str) -> IntegratedDevice:
     return device
 
 
-def list_events(db: Session, lab_id: int, *, device_uid: str | None = None, severity: str | None = None, limit: int = 100) -> tuple[int, list[tuple[DeviceEvent, str]]]:
+def list_events(
+    db: Session,
+    lab_id: int,
+    *,
+    device_uid: str | None = None,
+    severity: str | None = None,
+    limit: int = 100,
+) -> tuple[int, list[tuple[DeviceEvent, str]]]:
     query = (
         db.query(DeviceEvent, IntegratedDevice.device_uid)
         .join(IntegratedDevice, IntegratedDevice.id == DeviceEvent.device_id)
@@ -325,7 +361,9 @@ def summary(db: Session, lab_id: int) -> dict:
     }
 
 
-def create_print_job(db: Session, lab_id: int, actor_user_id: int, payload: PrinterJobRequest) -> DevicePrintJob:
+def create_print_job(
+    db: Session, lab_id: int, actor_user_id: int, payload: PrinterJobRequest
+) -> DevicePrintJob:
     device = get_device(db, lab_id, payload.device_uid)
     if device is None:
         raise LookupError("device not found")
@@ -335,7 +373,12 @@ def create_print_job(db: Session, lab_id: int, actor_user_id: int, payload: Prin
         raise ValueError("unsupported printer language")
     if payload.printer_language == "PDF" and device.protocol not in {"PDF", "None", "IPP"}:
         raise ValueError("printer protocol does not accept PDF jobs")
-    if payload.printer_language in {"ZPL", "IPL"} and device.protocol not in {payload.printer_language, "TCP_IP", "USB_Serial", "None"}:
+    if payload.printer_language in {"ZPL", "IPL"} and device.protocol not in {
+        payload.printer_language,
+        "TCP_IP",
+        "USB_Serial",
+        "None",
+    }:
         raise ValueError("printer protocol does not accept this label language")
     now = datetime.now(UTC)
     job = DevicePrintJob(
@@ -358,14 +401,20 @@ def create_print_job(db: Session, lab_id: int, actor_user_id: int, payload: Prin
         event_type="print_job_simulated",
         direction="outbound",
         summary=f"Simulated {payload.printer_language} print job completed",
-        safe_metadata={"simulation_only": True, "document_type": payload.document_type, "label_count": payload.label_count},
+        safe_metadata={
+            "simulation_only": True,
+            "document_type": payload.document_type,
+            "label_count": payload.label_count,
+        },
     )
     db.commit()
     db.refresh(job)
     return job
 
 
-def list_print_jobs(db: Session, lab_id: int, *, device_uid: str | None = None, limit: int = 100) -> tuple[int, list[tuple[DevicePrintJob, str]]]:
+def list_print_jobs(
+    db: Session, lab_id: int, *, device_uid: str | None = None, limit: int = 100
+) -> tuple[int, list[tuple[DevicePrintJob, str]]]:
     query = (
         db.query(DevicePrintJob, IntegratedDevice.device_uid)
         .join(IntegratedDevice, IntegratedDevice.id == DevicePrintJob.device_id)
@@ -399,14 +448,18 @@ def list_connectors(
     return total, query.order_by(DeviceConnector.updated_at.desc()).limit(limit).all()
 
 
-def register_connector(db: Session, lab_id: int, payload: ConnectorRegisterRequest) -> DeviceConnector:
+def register_connector(
+    db: Session, lab_id: int, payload: ConnectorRegisterRequest
+) -> DeviceConnector:
     if payload.protocol not in DEVICE_PROTOCOLS or payload.transport not in DEVICE_TRANSPORTS:
         raise ValueError("Unsupported connector protocol or transport")
     if payload.mode == "active":
         raise ValueError("active connectors require a separately governed gateway")
     if (
         db.query(DeviceConnector)
-        .filter(DeviceConnector.lab_id == lab_id, DeviceConnector.connector_uid == payload.connector_uid)
+        .filter(
+            DeviceConnector.lab_id == lab_id, DeviceConnector.connector_uid == payload.connector_uid
+        )
         .first()
     ):
         raise ValueError("connector_uid already exists in this laboratory")
@@ -427,7 +480,12 @@ def register_connector(db: Session, lab_id: int, payload: ConnectorRegisterReque
         mode=payload.mode,
         status="pending",
         contract_version=payload.contract_version,
-        gateway_ref=payload.gateway_ref or (f"gateway://pending/{payload.connector_uid}" if payload.mode == "gateway_pending" else None),
+        gateway_ref=payload.gateway_ref
+        or (
+            f"gateway://pending/{payload.connector_uid}"
+            if payload.mode == "gateway_pending"
+            else None
+        ),
         config_safe=payload.config_safe,
         capability_manifest=payload.capability_manifest,
         enabled=payload.enabled,
@@ -463,17 +521,27 @@ def update_connector_status(
         raise LookupError("connector not found")
     old_status = connector.status
     connector.status = payload.status
-    connector.last_error = payload.last_error or (payload.reason if payload.status == "error" else None)
+    connector.last_error = payload.last_error or (
+        payload.reason if payload.status == "error" else None
+    )
     if payload.status in {"healthy", "degraded"}:
         connector.last_heartbeat_at = datetime.now(UTC)
-    device = db.query(IntegratedDevice).filter(IntegratedDevice.id == connector.device_id, IntegratedDevice.lab_id == lab_id).first()
+    device = (
+        db.query(IntegratedDevice)
+        .filter(IntegratedDevice.id == connector.device_id, IntegratedDevice.lab_id == lab_id)
+        .first()
+    )
     if device:
         _event(
             db,
             device=device,
             event_type="connector_status_changed",
             summary=f"Connector status changed from {old_status} to {payload.status}",
-            severity="error" if payload.status == "error" else ("warning" if payload.status in {"degraded", "offline", "maintenance"} else "info"),
+            severity="error"
+            if payload.status == "error"
+            else (
+                "warning" if payload.status in {"degraded", "offline", "maintenance"} else "info"
+            ),
             safe_metadata={
                 "simulation_only": True,
                 "connector_uid": connector.connector_uid,
@@ -486,7 +554,9 @@ def update_connector_status(
     return connector
 
 
-def list_protocol_profiles(db: Session, lab_id: int, *, status: str | None = None, limit: int = 100) -> tuple[int, list[DeviceProtocolProfile]]:
+def list_protocol_profiles(
+    db: Session, lab_id: int, *, status: str | None = None, limit: int = 100
+) -> tuple[int, list[DeviceProtocolProfile]]:
     query = db.query(DeviceProtocolProfile).filter(DeviceProtocolProfile.lab_id == lab_id)
     if status:
         query = query.filter(DeviceProtocolProfile.status == status)
@@ -494,12 +564,17 @@ def list_protocol_profiles(db: Session, lab_id: int, *, status: str | None = Non
     return total, query.order_by(DeviceProtocolProfile.updated_at.desc()).limit(limit).all()
 
 
-def register_protocol_profile(db: Session, lab_id: int, actor_user_id: int, payload: ProtocolProfileRequest) -> DeviceProtocolProfile:
+def register_protocol_profile(
+    db: Session, lab_id: int, actor_user_id: int, payload: ProtocolProfileRequest
+) -> DeviceProtocolProfile:
     if payload.protocol not in DEVICE_PROTOCOLS:
         raise ValueError("Unsupported protocol profile")
     if (
         db.query(DeviceProtocolProfile)
-        .filter(DeviceProtocolProfile.lab_id == lab_id, DeviceProtocolProfile.profile_key == payload.profile_key)
+        .filter(
+            DeviceProtocolProfile.lab_id == lab_id,
+            DeviceProtocolProfile.profile_key == payload.profile_key,
+        )
         .first()
     ):
         raise ValueError("profile_key already exists in this laboratory")
@@ -597,10 +672,14 @@ def simulate_connector(db: Session, lab_id: int, connector_uid: str, payload) ->
     if not connector.simulation_only or connector.mode == "active":
         raise ValueError("simulation is disabled for active gateway connectors")
 
-    device = db.query(IntegratedDevice).filter(
-        IntegratedDevice.id == connector.device_id,
-        IntegratedDevice.lab_id == lab_id,
-    ).first()
+    device = (
+        db.query(IntegratedDevice)
+        .filter(
+            IntegratedDevice.id == connector.device_id,
+            IntegratedDevice.lab_id == lab_id,
+        )
+        .first()
+    )
     scenario = payload.scenario
     if scenario == "success":
         connector_status = "healthy"
@@ -675,7 +754,9 @@ def get_gateway(db: Session, lab_id: int, gateway_ref: str) -> DeviceGateway | N
     )
 
 
-def list_gateways(db: Session, lab_id: int, *, status: str | None = None, limit: int = 100) -> tuple[int, list[DeviceGateway]]:
+def list_gateways(
+    db: Session, lab_id: int, *, status: str | None = None, limit: int = 100
+) -> tuple[int, list[DeviceGateway]]:
     query = db.query(DeviceGateway).filter(DeviceGateway.lab_id == lab_id)
     if status:
         query = query.filter(DeviceGateway.status == status)
@@ -683,7 +764,9 @@ def list_gateways(db: Session, lab_id: int, *, status: str | None = None, limit:
     return total, query.order_by(DeviceGateway.updated_at.desc()).limit(limit).all()
 
 
-def register_gateway(db: Session, lab_id: int, payload: GatewayRegistrationRequest) -> DeviceGateway:
+def register_gateway(
+    db: Session, lab_id: int, payload: GatewayRegistrationRequest
+) -> DeviceGateway:
     gateway = get_gateway(db, lab_id, payload.gateway_ref)
     if gateway is None:
         gateway = DeviceGateway(
@@ -714,7 +797,9 @@ def register_gateway(db: Session, lab_id: int, payload: GatewayRegistrationReque
     return gateway
 
 
-def _ensure_gateway_from_metrics(db: Session, lab_id: int, payload: GatewayMetricIngestRequest) -> DeviceGateway:
+def _ensure_gateway_from_metrics(
+    db: Session, lab_id: int, payload: GatewayMetricIngestRequest
+) -> DeviceGateway:
     gateway = get_gateway(db, lab_id, payload.gateway_ref)
     if gateway is not None and (gateway.status == "revoked" or not gateway.enabled):
         raise ValueError("gateway registration is disabled")
@@ -734,23 +819,36 @@ def _ensure_gateway_from_metrics(db: Session, lab_id: int, payload: GatewayMetri
     gateway.status = payload.gateway_status
     gateway.gateway_version = payload.gateway_version or gateway.gateway_version
     gateway.last_heartbeat_at = payload.captured_at or datetime.now(UTC)
-    gateway.last_error = "reported gateway error" if payload.gateway_status in {"offline", "error"} else None
+    gateway.last_error = (
+        "reported gateway error" if payload.gateway_status in {"offline", "error"} else None
+    )
     gateway.simulation_only = True
     return gateway
 
 
-def record_gateway_heartbeat(db: Session, lab_id: int, payload: GatewayHeartbeatRequest) -> DeviceGatewayMetricSnapshot:
+def record_gateway_heartbeat(
+    db: Session, lab_id: int, payload: GatewayHeartbeatRequest
+) -> DeviceGatewayMetricSnapshot:
     gateway = get_gateway(db, lab_id, payload.gateway_ref)
     if gateway is None:
         raise LookupError("gateway is not registered in this laboratory")
     if not gateway.enabled or gateway.status == "revoked":
         raise ValueError("gateway registration is disabled")
     if not payload.simulation_only:
-        raise ValueError("gateway heartbeat is simulation-only until gateway authentication is deployed")
+        raise ValueError(
+            "gateway heartbeat is simulation-only until gateway authentication is deployed"
+        )
     return ingest_gateway_metrics(db, lab_id, payload)
 
 
-def list_outbox(db: Session, lab_id: int, *, status: str | None = None, gateway_ref: str | None = None, limit: int = 100):
+def list_outbox(
+    db: Session,
+    lab_id: int,
+    *,
+    status: str | None = None,
+    gateway_ref: str | None = None,
+    limit: int = 100,
+):
     return list_outbox_messages(db, lab_id, status=status, gateway_ref=gateway_ref, limit=limit)
 
 
@@ -779,41 +877,174 @@ MONITORING_THRESHOLDS = {
 def _alert_specs(payload: GatewayMetricIngestRequest) -> list[dict]:
     specs: list[dict] = []
 
-    if payload.outbox_oldest_age_seconds >= MONITORING_THRESHOLDS["outbox_oldest_age_critical_seconds"]:
-        specs.append({"key": "outbox_oldest_age", "severity": "critical", "title": "تأخير Outbox حرج", "metric": "outbox_oldest_age_seconds", "value": payload.outbox_oldest_age_seconds, "threshold": MONITORING_THRESHOLDS["outbox_oldest_age_critical_seconds"], "summary": "أقدم رسالة في Outbox تجاوزت حد التأخير الحرج."})
-    elif payload.outbox_oldest_age_seconds >= MONITORING_THRESHOLDS["outbox_oldest_age_warning_seconds"]:
-        specs.append({"key": "outbox_oldest_age", "severity": "warning", "title": "تأخير Outbox مرتفع", "metric": "outbox_oldest_age_seconds", "value": payload.outbox_oldest_age_seconds, "threshold": MONITORING_THRESHOLDS["outbox_oldest_age_warning_seconds"], "summary": "أقدم رسالة في Outbox تجاوزت حد التنبيه."})
+    if (
+        payload.outbox_oldest_age_seconds
+        >= MONITORING_THRESHOLDS["outbox_oldest_age_critical_seconds"]
+    ):
+        specs.append(
+            {
+                "key": "outbox_oldest_age",
+                "severity": "critical",
+                "title": "تأخير Outbox حرج",
+                "metric": "outbox_oldest_age_seconds",
+                "value": payload.outbox_oldest_age_seconds,
+                "threshold": MONITORING_THRESHOLDS["outbox_oldest_age_critical_seconds"],
+                "summary": "أقدم رسالة في Outbox تجاوزت حد التأخير الحرج.",
+            }
+        )
+    elif (
+        payload.outbox_oldest_age_seconds
+        >= MONITORING_THRESHOLDS["outbox_oldest_age_warning_seconds"]
+    ):
+        specs.append(
+            {
+                "key": "outbox_oldest_age",
+                "severity": "warning",
+                "title": "تأخير Outbox مرتفع",
+                "metric": "outbox_oldest_age_seconds",
+                "value": payload.outbox_oldest_age_seconds,
+                "threshold": MONITORING_THRESHOLDS["outbox_oldest_age_warning_seconds"],
+                "summary": "أقدم رسالة في Outbox تجاوزت حد التنبيه.",
+            }
+        )
 
     if payload.disk_used_percent >= MONITORING_THRESHOLDS["disk_used_critical_percent"]:
-        specs.append({"key": "disk_usage", "severity": "critical", "title": "استهلاك القرص حرج", "metric": "disk_used_percent", "value": payload.disk_used_percent, "threshold": MONITORING_THRESHOLDS["disk_used_critical_percent"], "summary": "استهلاك قرص Gateway تجاوز الحد الحرج؛ يجب إيقاف قبول بيانات جديدة وفق runbook."})
+        specs.append(
+            {
+                "key": "disk_usage",
+                "severity": "critical",
+                "title": "استهلاك القرص حرج",
+                "metric": "disk_used_percent",
+                "value": payload.disk_used_percent,
+                "threshold": MONITORING_THRESHOLDS["disk_used_critical_percent"],
+                "summary": "استهلاك قرص Gateway تجاوز الحد الحرج؛ يجب إيقاف قبول بيانات جديدة وفق runbook.",
+            }
+        )
     elif payload.disk_used_percent >= MONITORING_THRESHOLDS["disk_used_warning_percent"]:
-        specs.append({"key": "disk_usage", "severity": "warning", "title": "استهلاك القرص مرتفع", "metric": "disk_used_percent", "value": payload.disk_used_percent, "threshold": MONITORING_THRESHOLDS["disk_used_warning_percent"], "summary": "استهلاك قرص Gateway تجاوز حد التنبيه."})
+        specs.append(
+            {
+                "key": "disk_usage",
+                "severity": "warning",
+                "title": "استهلاك القرص مرتفع",
+                "metric": "disk_used_percent",
+                "value": payload.disk_used_percent,
+                "threshold": MONITORING_THRESHOLDS["disk_used_warning_percent"],
+                "summary": "استهلاك قرص Gateway تجاوز حد التنبيه.",
+            }
+        )
 
     if payload.outbox_dead_letter_count >= MONITORING_THRESHOLDS["dead_letter_critical_count"]:
-        specs.append({"key": "dead_letters", "severity": "critical", "title": "رسائل Dead Letter حرجة", "metric": "outbox_dead_letter_count", "value": float(payload.outbox_dead_letter_count), "threshold": MONITORING_THRESHOLDS["dead_letter_critical_count"], "summary": "تراكمت رسائل Dead Letter وتحتاج مراجعة تشغيلية."})
+        specs.append(
+            {
+                "key": "dead_letters",
+                "severity": "critical",
+                "title": "رسائل Dead Letter حرجة",
+                "metric": "outbox_dead_letter_count",
+                "value": float(payload.outbox_dead_letter_count),
+                "threshold": MONITORING_THRESHOLDS["dead_letter_critical_count"],
+                "summary": "تراكمت رسائل Dead Letter وتحتاج مراجعة تشغيلية.",
+            }
+        )
     elif payload.outbox_dead_letter_count >= MONITORING_THRESHOLDS["dead_letter_warning_count"]:
-        specs.append({"key": "dead_letters", "severity": "warning", "title": "رسائل Dead Letter موجودة", "metric": "outbox_dead_letter_count", "value": float(payload.outbox_dead_letter_count), "threshold": MONITORING_THRESHOLDS["dead_letter_warning_count"], "summary": "توجد رسائل Dead Letter تحتاج مراجعة قبل الحذف أو إعادة المعالجة."})
+        specs.append(
+            {
+                "key": "dead_letters",
+                "severity": "warning",
+                "title": "رسائل Dead Letter موجودة",
+                "metric": "outbox_dead_letter_count",
+                "value": float(payload.outbox_dead_letter_count),
+                "threshold": MONITORING_THRESHOLDS["dead_letter_warning_count"],
+                "summary": "توجد رسائل Dead Letter تحتاج مراجعة قبل الحذف أو إعادة المعالجة.",
+            }
+        )
 
     if payload.worker_lag_seconds >= MONITORING_THRESHOLDS["worker_lag_critical_seconds"]:
-        specs.append({"key": "worker_lag", "severity": "critical", "title": "العامل متأخر حرجًا", "metric": "worker_lag_seconds", "value": payload.worker_lag_seconds, "threshold": MONITORING_THRESHOLDS["worker_lag_critical_seconds"], "summary": "تأخر عامل Gateway عن heartbeat أو المعالجة تجاوز الحد الحرج."})
+        specs.append(
+            {
+                "key": "worker_lag",
+                "severity": "critical",
+                "title": "العامل متأخر حرجًا",
+                "metric": "worker_lag_seconds",
+                "value": payload.worker_lag_seconds,
+                "threshold": MONITORING_THRESHOLDS["worker_lag_critical_seconds"],
+                "summary": "تأخر عامل Gateway عن heartbeat أو المعالجة تجاوز الحد الحرج.",
+            }
+        )
     elif payload.worker_lag_seconds >= MONITORING_THRESHOLDS["worker_lag_warning_seconds"]:
-        specs.append({"key": "worker_lag", "severity": "warning", "title": "العامل متأخر", "metric": "worker_lag_seconds", "value": payload.worker_lag_seconds, "threshold": MONITORING_THRESHOLDS["worker_lag_warning_seconds"], "summary": "تأخر عامل Gateway عن heartbeat أو المعالجة تجاوز حد التنبيه."})
+        specs.append(
+            {
+                "key": "worker_lag",
+                "severity": "warning",
+                "title": "العامل متأخر",
+                "metric": "worker_lag_seconds",
+                "value": payload.worker_lag_seconds,
+                "threshold": MONITORING_THRESHOLDS["worker_lag_warning_seconds"],
+                "summary": "تأخر عامل Gateway عن heartbeat أو المعالجة تجاوز حد التنبيه.",
+            }
+        )
 
     if payload.transport_latency_ms is not None:
         if payload.transport_latency_ms >= MONITORING_THRESHOLDS["transport_latency_critical_ms"]:
-            specs.append({"key": "transport_latency", "severity": "critical", "title": "تأخير النقل حرج", "metric": "transport_latency_ms", "value": payload.transport_latency_ms, "threshold": MONITORING_THRESHOLDS["transport_latency_critical_ms"], "summary": "زمن النقل بين Gateway وGULA تجاوز الحد الحرج."})
+            specs.append(
+                {
+                    "key": "transport_latency",
+                    "severity": "critical",
+                    "title": "تأخير النقل حرج",
+                    "metric": "transport_latency_ms",
+                    "value": payload.transport_latency_ms,
+                    "threshold": MONITORING_THRESHOLDS["transport_latency_critical_ms"],
+                    "summary": "زمن النقل بين Gateway وGULA تجاوز الحد الحرج.",
+                }
+            )
         elif payload.transport_latency_ms >= MONITORING_THRESHOLDS["transport_latency_warning_ms"]:
-            specs.append({"key": "transport_latency", "severity": "warning", "title": "تأخير النقل مرتفع", "metric": "transport_latency_ms", "value": payload.transport_latency_ms, "threshold": MONITORING_THRESHOLDS["transport_latency_warning_ms"], "summary": "زمن النقل بين Gateway وGULA تجاوز حد التنبيه."})
+            specs.append(
+                {
+                    "key": "transport_latency",
+                    "severity": "warning",
+                    "title": "تأخير النقل مرتفع",
+                    "metric": "transport_latency_ms",
+                    "value": payload.transport_latency_ms,
+                    "threshold": MONITORING_THRESHOLDS["transport_latency_warning_ms"],
+                    "summary": "زمن النقل بين Gateway وGULA تجاوز حد التنبيه.",
+                }
+            )
 
     if payload.gateway_status in {"offline", "error"}:
-        specs.append({"key": "gateway_status", "severity": "critical", "title": "Gateway غير متاحة", "metric": "gateway_status", "value": None, "threshold": None, "summary": "حالة Gateway تشير إلى انقطاع أو خطأ حرج."})
+        specs.append(
+            {
+                "key": "gateway_status",
+                "severity": "critical",
+                "title": "Gateway غير متاحة",
+                "metric": "gateway_status",
+                "value": None,
+                "threshold": None,
+                "summary": "حالة Gateway تشير إلى انقطاع أو خطأ حرج.",
+            }
+        )
     elif payload.gateway_status == "degraded":
-        specs.append({"key": "gateway_status", "severity": "warning", "title": "Gateway متدهورة", "metric": "gateway_status", "value": None, "threshold": None, "summary": "Gateway تعمل بحالة متدهورة وتحتاج متابعة."})
+        specs.append(
+            {
+                "key": "gateway_status",
+                "severity": "warning",
+                "title": "Gateway متدهورة",
+                "metric": "gateway_status",
+                "value": None,
+                "threshold": None,
+                "summary": "Gateway تعمل بحالة متدهورة وتحتاج متابعة.",
+            }
+        )
 
     return specs
 
 
-def _upsert_gateway_alert(db: Session, *, lab_id: int, payload: GatewayMetricIngestRequest, spec: dict, captured_at: datetime) -> DeviceGatewayAlert:
+def _upsert_gateway_alert(
+    db: Session,
+    *,
+    lab_id: int,
+    payload: GatewayMetricIngestRequest,
+    spec: dict,
+    captured_at: datetime,
+) -> DeviceGatewayAlert:
     alert = (
         db.query(DeviceGatewayAlert)
         .filter(
@@ -851,7 +1082,14 @@ def _upsert_gateway_alert(db: Session, *, lab_id: int, payload: GatewayMetricIng
     return alert
 
 
-def _resolve_missing_alerts(db: Session, *, lab_id: int, payload: GatewayMetricIngestRequest, active_keys: set[str], captured_at: datetime) -> None:
+def _resolve_missing_alerts(
+    db: Session,
+    *,
+    lab_id: int,
+    payload: GatewayMetricIngestRequest,
+    active_keys: set[str],
+    captured_at: datetime,
+) -> None:
     active_alerts = (
         db.query(DeviceGatewayAlert)
         .filter(
@@ -868,9 +1106,13 @@ def _resolve_missing_alerts(db: Session, *, lab_id: int, payload: GatewayMetricI
             alert.last_seen_at = captured_at
 
 
-def ingest_gateway_metrics(db: Session, lab_id: int, payload: GatewayMetricIngestRequest) -> DeviceGatewayMetricSnapshot:
+def ingest_gateway_metrics(
+    db: Session, lab_id: int, payload: GatewayMetricIngestRequest
+) -> DeviceGatewayMetricSnapshot:
     if not payload.simulation_only:
-        raise ValueError("gateway metrics ingestion is simulation-only until gateway authentication is deployed")
+        raise ValueError(
+            "gateway metrics ingestion is simulation-only until gateway authentication is deployed"
+        )
     captured_at = payload.captured_at or datetime.now(UTC)
     gateway = _ensure_gateway_from_metrics(db, lab_id, payload)
     gateway.last_heartbeat_at = payload.worker_last_heartbeat_at or captured_at
@@ -894,14 +1136,24 @@ def ingest_gateway_metrics(db: Session, lab_id: int, payload: GatewayMetricInges
     )
     db.add(snapshot)
     for spec in _alert_specs(payload):
-        _upsert_gateway_alert(db, lab_id=lab_id, payload=payload, spec=spec, captured_at=captured_at)
-    _resolve_missing_alerts(db, lab_id=lab_id, payload=payload, active_keys={spec["key"] for spec in _alert_specs(payload)}, captured_at=captured_at)
+        _upsert_gateway_alert(
+            db, lab_id=lab_id, payload=payload, spec=spec, captured_at=captured_at
+        )
+    _resolve_missing_alerts(
+        db,
+        lab_id=lab_id,
+        payload=payload,
+        active_keys={spec["key"] for spec in _alert_specs(payload)},
+        captured_at=captured_at,
+    )
     db.commit()
     db.refresh(snapshot)
     return snapshot
 
 
-def _latest_gateway_metrics(db: Session, lab_id: int, limit: int = 100) -> list[DeviceGatewayMetricSnapshot]:
+def _latest_gateway_metrics(
+    db: Session, lab_id: int, limit: int = 100
+) -> list[DeviceGatewayMetricSnapshot]:
     rows = (
         db.query(DeviceGatewayMetricSnapshot)
         .filter(DeviceGatewayMetricSnapshot.lab_id == lab_id)
@@ -921,7 +1173,9 @@ def _latest_gateway_metrics(db: Session, lab_id: int, limit: int = 100) -> list[
     return latest
 
 
-def list_gateway_alerts(db: Session, lab_id: int, *, alert_status: str | None = None, limit: int = 100) -> tuple[int, list[DeviceGatewayAlert]]:
+def list_gateway_alerts(
+    db: Session, lab_id: int, *, alert_status: str | None = None, limit: int = 100
+) -> tuple[int, list[DeviceGatewayAlert]]:
     query = db.query(DeviceGatewayAlert).filter(DeviceGatewayAlert.lab_id == lab_id)
     if alert_status:
         query = query.filter(DeviceGatewayAlert.status == alert_status)
@@ -953,7 +1207,13 @@ def monitoring_snapshot(db: Session, lab_id: int) -> dict:
     }
 
 
-def acknowledge_gateway_alert(db: Session, lab_id: int, alert_id: int, actor_user_id: int, payload: GatewayAlertAcknowledgeRequest) -> DeviceGatewayAlert:
+def acknowledge_gateway_alert(
+    db: Session,
+    lab_id: int,
+    alert_id: int,
+    actor_user_id: int,
+    payload: GatewayAlertAcknowledgeRequest,
+) -> DeviceGatewayAlert:
     alert = (
         db.query(DeviceGatewayAlert)
         .filter(DeviceGatewayAlert.id == alert_id, DeviceGatewayAlert.lab_id == lab_id)
@@ -966,7 +1226,11 @@ def acknowledge_gateway_alert(db: Session, lab_id: int, alert_id: int, actor_use
     alert.status = "acknowledged"
     alert.acknowledged_by = actor_user_id
     alert.acknowledged_at = datetime.now(UTC)
-    alert.safe_metadata = {**(alert.safe_metadata or {}), "ack_note_present": bool(payload.note), "simulation_only": True}
+    alert.safe_metadata = {
+        **(alert.safe_metadata or {}),
+        "ack_note_present": bool(payload.note),
+        "simulation_only": True,
+    }
     db.commit()
     db.refresh(alert)
     return alert
@@ -996,7 +1260,9 @@ def ingest_wearable_measurement(
     function. The API stores only the safe canonical fields and provenance summary.
     """
     if not payload.simulation_only:
-        raise ValueError("live wearable adapters require provider authentication and are not enabled yet")
+        raise ValueError(
+            "live wearable adapters require provider authentication and are not enabled yet"
+        )
     if payload.quality_status == "invalid":
         raise ValueError("invalid wearable measurements are not accepted")
     expected_units = _WEARABLE_EXPECTED_UNITS.get(payload.metric_code, set())
@@ -1004,9 +1270,7 @@ def ingest_wearable_measurement(
         raise ValueError(f"unit {payload.unit!r} is not valid for {payload.metric_code}")
 
     patient = (
-        db.query(Patient)
-        .filter(Patient.id == payload.patient_id, Patient.lab_id == lab_id)
-        .first()
+        db.query(Patient).filter(Patient.id == payload.patient_id, Patient.lab_id == lab_id).first()
     )
     if patient is None:
         raise LookupError("patient is not registered in this laboratory")
@@ -1093,7 +1357,6 @@ def list_wearable_measurements(
     total = query.count()
     rows = query.order_by(WearableMeasurement.measured_at.desc()).limit(limit).all()
     return total, rows
-
 
 
 def clinician_baseline_summary(

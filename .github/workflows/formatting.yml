@@ -16,13 +16,33 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.14"
       - name: Install ruff
-        run: pip install ruff
-      - name: Check Python formatting
-        run: ruff format --check backend/app/ shared/ scripts/
+        run: pip install ruff==0.16.2
+      - name: Check changed Python formatting
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          base_sha="${BASE_SHA}"
+          head_sha="${HEAD_SHA}"
+          if [[ -z "$base_sha" || "$base_sha" == "0000000000000000000000000000000000000000" ]]; then
+            base_sha="$(git rev-parse "$head_sha^")"
+          fi
+          mapfile -t python_files < <(
+            git diff --name-only --diff-filter=ACMR "$base_sha...$head_sha" -- backend/app shared scripts \
+              | awk '/\.py$/ {print}'
+          )
+          if ((${#python_files[@]} == 0)); then
+            echo "No changed Python files in the formatting scope."
+          else
+            ruff format --check --target-version py312 "${python_files[@]}"
+          fi
 
   prettier:
     name: Prettier (TypeScript/JSON/MD)

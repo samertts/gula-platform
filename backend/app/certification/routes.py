@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from .engine import CertificationEngine
@@ -11,8 +11,15 @@ from .enums import CertificationDimension, MetricCategory, ReleaseGate
 from .metrics import MetricsCollector
 from .release_gates import ReleaseGateChecker
 from .report import generate_pdf_report
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/certification", tags=["certification"])
+_require_certification_admin = require_permission("system:admin")
+
+router = APIRouter(
+    prefix="/certification",
+    tags=["certification"],
+    dependencies=[Depends(_require_certification_admin)],
+)
 
 engine = CertificationEngine()
 metrics_collector = MetricsCollector()

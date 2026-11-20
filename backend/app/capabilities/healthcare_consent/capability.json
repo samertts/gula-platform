@@ -1,42 +1,116 @@
 {
-    "capability_id": "4b0a13e8-8da8-4eba-8419-2a8e117ca43b",
-    "name": "healthcare_consent",
-    "version": "1.0.0",
-    "description": "Healthcare-specific consent: patient privacy preferences, access policies, break-glass emergency override, purpose of use enforcement, granular data sharing controls",
-    "owner": "platform-team",
-    "domain": "identity_security",
-    "layer": "application",
-    "status": "active",
-    "dependencies": [        "consent_management",
-        "patient_management",
-    ],
-    "events": [        {"name": "ConsentGranted", "version": 1, "description": "", "type": "domain"},
-        {"name": "ConsentRevoked", "version": 1, "description": "", "type": "domain"},
-        {"name": "BreakGlassActivated", "version": 1, "description": "", "type": "domain"},
-    ],
-    "commands": [        {"name": "grant_consent", "description": ""},
-        {"name": "revoke_consent", "description": ""},
-        {"name": "break_glass", "description": ""},
-    ],
-    "queries": [        {"name": "check_consent", "description": ""},
-        {"name": "get_consent_history", "description": ""},
-        {"name": "get_active_consents", "description": ""},
-    ],
-    "entities": [
-    ],
-    "policies": ['break_glass_audit', 'purpose_limitation', 'minimum_necessary'],
-    "permissions": ['consent.read', 'consent.write', 'consent.break_glass', 'consent.admin'],
-    "api_endpoints": [
-        {"path": "/healthcare-consent/", "method": "GET", "auth_required": true},
-        {"path": "/healthcare-consent/{id}", "method": "GET", "auth_required": true},
-        {"path": "/healthcare-consent/", "method": "POST", "auth_required": true},
-        {"path": "/healthcare-consent/{id}", "method": "PUT", "auth_required": true},
-        {"path": "/healthcare-consent/{id}", "method": "DELETE", "auth_required": true},
-        {"path": "/healthcare-consent/health/", "method": "GET", "auth_required": false}
-    ],
-    "required": false,
-    "enabled": true,
-    "tags": ['consent', 'privacy', 'hipaa', 'gdpr'],
-    "module_path": "backend.app.capabilities.healthcare_consent",
-    "health_endpoint": "/healthcare-consent/health/"
+  "capability_id": "4b0a13e8-8da8-4eba-8419-2a8e117ca43b",
+  "name": "healthcare_consent",
+  "version": "1.0.0",
+  "description": "Healthcare-specific consent: patient privacy preferences, access policies, break-glass emergency override, purpose of use enforcement, granular data sharing controls",
+  "owner": "platform-team",
+  "domain": "identity_security",
+  "layer": "application",
+  "status": "active",
+  "dependencies": [
+    "consent_management",
+    "patient_management"
+  ],
+  "events": [
+    {
+      "name": "ConsentGranted",
+      "version": 1,
+      "description": "",
+      "type": "domain"
+    },
+    {
+      "name": "ConsentRevoked",
+      "version": 1,
+      "description": "",
+      "type": "domain"
+    },
+    {
+      "name": "BreakGlassActivated",
+      "version": 1,
+      "description": "",
+      "type": "domain"
+    }
+  ],
+  "commands": [
+    {
+      "name": "grant_consent",
+      "description": ""
+    },
+    {
+      "name": "revoke_consent",
+      "description": ""
+    },
+    {
+      "name": "break_glass",
+      "description": ""
+    }
+  ],
+  "queries": [
+    {
+      "name": "check_consent",
+      "description": ""
+    },
+    {
+      "name": "get_consent_history",
+      "description": ""
+    },
+    {
+      "name": "get_active_consents",
+      "description": ""
+    }
+  ],
+  "entities": [],
+  "policies": [
+    "break_glass_audit",
+    "purpose_limitation",
+    "minimum_necessary"
+  ],
+  "permissions": [
+    "consent.read",
+    "consent.write",
+    "consent.break_glass",
+    "consent.admin"
+  ],
+  "api_endpoints": [
+    {
+      "path": "/healthcare-consent/",
+      "method": "GET",
+      "auth_required": true
+    },
+    {
+      "path": "/healthcare-consent/{id}",
+      "method": "GET",
+      "auth_required": true
+    },
+    {
+      "path": "/healthcare-consent/",
+      "method": "POST",
+      "auth_required": true
+    },
+    {
+      "path": "/healthcare-consent/{id}",
+      "method": "PUT",
+      "auth_required": true
+    },
+    {
+      "path": "/healthcare-consent/{id}",
+      "method": "DELETE",
+      "auth_required": true
+    },
+    {
+      "path": "/healthcare-consent/health/",
+      "method": "GET",
+      "auth_required": false
+    }
+  ],
+  "required": false,
+  "enabled": true,
+  "tags": [
+    "consent",
+    "privacy",
+    "hipaa",
+    "gdpr"
+  ],
+  "module_path": "backend.app.capabilities.healthcare_consent",
+  "health_endpoint": "/healthcare-consent/health/"
 }

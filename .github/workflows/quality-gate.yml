@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
-          python-version: "3.14"
+          python-version: "3.12"
       - name: Install tools
         run: pip install pyyaml
       - name: Validate YAML
@@ -53,6 +53,71 @@ jobs:
               raise SystemExit(1)
           print('All YAML files valid')
           PYEOF
+      - name: Validate tracked JSON and XML artifacts
+        run: |
+          python - <<'PYEOF'
+          import json
+          import pathlib
+          import subprocess
+          import xml.etree.ElementTree as ET
+
+          tracked = subprocess.check_output(['git', 'ls-files'], text=True).splitlines()
+          errors = []
+          for name in tracked:
+              path = pathlib.Path(name)
+              if path.suffix == '.json':
+                  try:
+                      json.loads(path.read_text())
+                  except Exception as exc:
+                      errors.append(f'{name}: invalid JSON: {exc}')
+              elif path.suffix == '.xml':
+                  try:
+                      ET.parse(path)
+                  except Exception as exc:
+                      errors.append(f'{name}: invalid XML: {exc}')
+          if errors:
+              for error in errors:
+                  print(f'ERROR: {error}')
+              raise SystemExit(1)
+          print('All tracked JSON and XML artifacts valid')
+          PYEOF
+      - name: Validate Kubernetes security contracts
+        run: |
+          python - <<'PYEOF'
+          import pathlib
+          import yaml
+
+          base = yaml.safe_load(pathlib.Path('k8s/base/kustomization.yaml').read_text())
+          resources = set(base.get('resources', []))
+          if 'network-policies.yaml' not in resources:
+              raise SystemExit('k8s/base/kustomization.yaml does not register network-policies.yaml')
+
+          docs = list(yaml.safe_load_all(pathlib.Path('k8s/base/network-policies.yaml').read_text()))
+          if not docs:
+              raise SystemExit('no NetworkPolicy documents found')
+          for policy in docs:
+              if policy.get('kind') != 'NetworkPolicy':
+                  raise SystemExit(f"unexpected policy kind: {policy.get('kind')}")
+              spec = policy.get('spec') or {}
+              if not spec.get('podSelector') or not spec.get('policyTypes'):
+                  raise SystemExit(f"incomplete NetworkPolicy: {policy.get('metadata', {}).get('name')}")
+              if 'Ingress' in spec['policyTypes'] and not spec.get('ingress'):
+                  raise SystemExit(f"Ingress policy has no ingress rules: {policy.get('metadata', {}).get('name')}")
+              for rule in spec.get('ingress', []):
+                  if not rule.get('ports'):
+                      raise SystemExit(f"Ingress rule has no ports: {policy.get('metadata', {}).get('name')}")
+
+          for path in pathlib.Path('k8s').rglob('*.yaml'):
+              if ':latest' in path.read_text():
+                  raise SystemExit(f'mutable image tag found in {path}')
+          print(f'Validated {len(docs)} NetworkPolicies and immutable K8s image references')
+          PYEOF
+      - name: Check Python compilation
+        run: python -m compileall -q backend/app backend/tests scripts shared
+      - name: Check functional Python lint
+        run: |
+          pip install ruff
+          ruff check backend/app scripts/security shared --select=E9,F --ignore=F401,F841
       - name: Check Dockerfiles
         run: |
           errors=0

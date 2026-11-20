@@ -527,6 +527,7 @@ class DemoDataGenerator:
         self.stats["Sections"] = len(sections)
 
     def _create_users(self) -> None:
+        from app.models.lab import Lab
         from app.models.lab_user import LabUser
         from app.security.auth import hash_password
 

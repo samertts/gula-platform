@@ -105,6 +105,11 @@ class RetryInterceptor extends Interceptor {
   }
 
   bool _isRetryable(DioException err) {
+    final method = err.requestOptions.method.toUpperCase();
+    final explicitlyIdempotent = err.requestOptions.extra['idempotent'] == true;
+    final safeMethod = method == 'GET' || method == 'HEAD' || method == 'OPTIONS';
+    if (!explicitlyIdempotent && !safeMethod) return false;
+
     return err.type == DioExceptionType.connectionTimeout ||
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.receiveTimeout ||

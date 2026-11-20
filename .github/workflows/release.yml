@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       dry_run:
-        description: 'Dry run (skip uploads and store submissions)'
+        description: 'Validation only (no commit, tag, build, release, or store submission)'
         required: false
         default: false
         type: boolean
@@ -58,17 +58,19 @@ jobs:
 
       - name: Check changelog exists for version
         run: |
-          if [ ! -f "mobile/CHANGELOG.md" ]; then
+          if [ ! -f "CHANGELOG.md" ]; then
             echo "No CHANGELOG.md found"
             exit 1
           fi
 
   bump-version:
     name: Bump Version
+    if: ${{ github.event.inputs.dry_run != 'true' }}
     needs: [validate-version]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    environment: release
     timeout-minutes: 10
 
     steps:
@@ -144,6 +146,7 @@ jobs:
 
   build-all:
     name: Build All Artifacts
+    if: ${{ github.event.inputs.dry_run != 'true' }}
     needs: [bump-version]
     uses: ./.github/workflows/mobile-android.yml
     with:
@@ -157,6 +160,7 @@ jobs:
 
   build-ios:
     name: Build iOS
+    if: ${{ github.event.inputs.dry_run != 'true' }}
     needs: [bump-version]
     uses: ./.github/workflows/mobile-ios.yml
     with:
@@ -172,6 +176,7 @@ jobs:
 
   build-desktop:
     name: Build Desktop
+    if: ${{ github.event.inputs.dry_run != 'true' }}
     needs: [bump-version]
     uses: ./.github/workflows/mobile-flutter-desktop.yml
     secrets:
@@ -182,6 +187,7 @@ jobs:
 
   generate-changelog:
     name: Generate Changelog
+    if: ${{ github.event.inputs.dry_run != 'true' }}
     needs: [bump-version]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -208,10 +214,12 @@ jobs:
 
   create-github-release:
     name: Create GitHub Release
+    if: ${{ github.event.inputs.dry_run != 'true' }}
     needs: [build-all, build-ios, build-desktop, generate-changelog]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    environment: release
     timeout-minutes: 10
 
     steps:
@@ -250,8 +258,9 @@ jobs:
   deploy-to-stores:
     name: Deploy to Stores
     needs: [create-github-release]
-    if: ${{ !github.event.inputs.skip_stores && !github.event.inputs.dry_run }}
+    if: ${{ github.event.inputs.dry_run != 'true' && github.event.inputs.skip_stores != 'true' }}
     runs-on: ubuntu-latest
+    environment: production-release
     timeout-minutes: 60
 
     steps:
@@ -299,7 +308,7 @@ jobs:
   notify:
     name: Send Release Notification
     needs: [build-all, build-ios, build-desktop, deploy-to-stores, create-github-release]
-    if: always()
+    if: ${{ always() && github.event.inputs.dry_run != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

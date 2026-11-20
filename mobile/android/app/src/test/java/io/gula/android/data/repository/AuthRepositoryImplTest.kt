@@ -4,6 +4,8 @@ import io.gula.android.data.local.dao.UserDao
 import io.gula.android.data.remote.api.AuthApi
 import io.gula.android.data.remote.dto.LoginRequestDto
 import io.gula.android.data.remote.dto.LoginResponseDto
+import io.gula.android.data.remote.dto.RefreshRequestDto
+import io.gula.android.data.remote.dto.RefreshResponseDto
 import io.gula.android.data.remote.dto.UserBriefDto
 import io.gula.android.security.EncryptedPrefs
 import io.gula.android.util.Resource
@@ -91,6 +93,25 @@ class AuthRepositoryImplTest {
 
         assertTrue(result is Resource.Error)
         assertEquals("Invalid email or password", (result as Resource.Error<*>).message)
+    }
+
+    @Test
+    fun `refresh persists the rotated refresh token returned by the server`() = runTest {
+        every { encryptedPrefs.refreshToken } returns "old-refresh-token"
+        coEvery {
+            authApi.refreshToken(RefreshRequestDto("old-refresh-token"))
+        } returns Response.success(
+            RefreshResponseDto(
+                accessToken = "new-access-token",
+                refreshToken = "new-refresh-token",
+                expiresIn = 900,
+            ),
+        )
+
+        val result = repository.refreshToken()
+
+        assertTrue(result is Resource.Success)
+        coVerify { encryptedPrefs.refreshToken = "new-refresh-token" }
     }
 
     @Test

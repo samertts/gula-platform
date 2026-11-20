@@ -229,8 +229,6 @@ class TestRAGWithSecurity:
     """RAG pipeline output is sanitized before returning."""
 
     def test_rag_citation_extraction(self):
-        from app.ai.vector_store import VectorSearchResult
-
         docs = [
             VectorSearchResult(id=1, content_type="knowledge", content_id=1, text="Normal glucose range is 3.9-6.1 mmol/L", score=0.95, source="clinical_guide"),
         ]
@@ -239,8 +237,6 @@ class TestRAGWithSecurity:
         assert citations[0]["source"] == "clinical_guide"
 
     def test_rag_vector_to_cds_flow(self):
-        from app.ai.vector_store import VectorSearchResult
-
         knowledge_graph.initialize(force=True)
         kg_nodes = knowledge_graph.search_nodes("glucose")
         assert len(kg_nodes) >= 1

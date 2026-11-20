@@ -21,24 +21,25 @@ patches:
 
 images:
   - name: ghcr.io/samertts/gula-platform/backend
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
   - name: ghcr.io/samertts/gula-platform/svc-lab
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
   - name: ghcr.io/samertts/gula-platform/svc-order
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
   - name: ghcr.io/samertts/gula-platform/svc-patient
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
   - name: ghcr.io/samertts/gula-platform/svc-result
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
   - name: ghcr.io/samertts/gula-platform/svc-sample
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
   - name: ghcr.io/samertts/gula-platform/svc-notification
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
   - name: ghcr.io/samertts/gula-platform/svc-ai
-    newTag: latest-region-eu
+    newTag: IMAGE_TAG_REQUIRED
 
 configMapGenerator:
   - name: gula-config
+    namespace: gula
     behavior: merge
     literals:
       - ENV=production

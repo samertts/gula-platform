@@ -71,20 +71,21 @@ class AsyncMemoizer:
             key_parts.extend(str(a) for a in args)
             key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
             # Cache key only; it is not a security or integrity primitive.
-            key = hashlib.md5("".join(key_parts).encode(), usedforsecurity=False).hexdigest()
+            key = hashlib.sha3_256("".join(key_parts).encode()).hexdigest()[:32]
             cached = self._cache.get(key)
             if cached is not None:
                 return cached
             result = await func(*args, **kwargs)
             self._cache.set(key, result)
             return result
+
         return wrapper
 
     def invalidate(self, func: Callable | None = None):
         if func:
             prefix = func.__name__
             for key in self._cache:
-                if key.startswith(hashlib.md5(prefix.encode(), usedforsecurity=False).hexdigest()):
+                if key.startswith(hashlib.sha3_256(prefix.encode()).hexdigest()[:32]):
                     self._cache.delete(key)
         else:
             self._cache.clear()

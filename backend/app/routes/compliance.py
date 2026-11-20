@@ -1015,7 +1015,8 @@ def system_status(
             if line.strip().startswith("Offset:"):
                 ntp_offset_str = line.strip().split(":", 1)[1].strip()
                 m = _re.match(
-                    r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)", ntp_offset_str.replace("µs", "us"),
+                    r"([+-]?\d+(?:\.\d+)?)(us|µs|ms|s)",
+                    ntp_offset_str.replace("µs", "us"),
                 )
                 if m:
                     v, u = float(m.group(1)), m.group(2)
@@ -1171,7 +1172,9 @@ def _read_restore_test() -> dict | None:
             # Canonical payload: compact JSON with sorted keys (matches shell output)
             payload = json.dumps(data, separators=(",", ":"), ensure_ascii=False, sort_keys=False)
             expected = _hmac.new(
-                hmac_key.encode("utf-8"), payload.encode("utf-8"), _hashlib.sha256,
+                hmac_key.encode("utf-8"),
+                payload.encode("utf-8"),
+                _hashlib.sha256,
             ).hexdigest()
             data["signature_valid"] = _hmac.compare_digest(expected, stored_sig)
             if not data["signature_valid"]:

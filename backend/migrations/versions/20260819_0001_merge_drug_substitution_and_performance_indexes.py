@@ -3,6 +3,7 @@
 Revision ID: 20260819_0001
 Revises: 20260815_0023, 507ea11c820a
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -15,9 +16,9 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Converge both already-applied branches; neither branch needs new DDL."""
-    return None
+    return
 
 
 def downgrade() -> None:
     """A merge revision owns no schema objects to remove."""
-    return None
+    return

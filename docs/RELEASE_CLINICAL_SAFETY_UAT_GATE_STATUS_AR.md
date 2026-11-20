@@ -1,8 +1,8 @@
 # سجل بوابة إصدار السلامة السريرية وUAT — Q3 2026
 
-**المالك التشغيلي:** فريق الإصدار السريري  
-**فرع الإصدار:** `release/clinical-safety-2026q3`  
-**طلب المراجعة:** [PR #242](https://github.com/samertts/gula-platform/pull/242) إلى `develop`  
+**المالك التشغيلي:** فريق الإصدار السريري
+**فرع الإصدار:** `release/clinical-safety-2026q3`
+**طلب المراجعة:** [PR #242](https://github.com/samertts/gula-platform/pull/242) إلى `develop`
 **رأس الفرع عند آخر تحقق محلي موسع:** `0775cefdef88964d75c2a43d8ad6845f9cfac888`
 **حالة القرار الحالية:** **ممنوع الدمج — GO/NO-GO = NO-GO**
 
@@ -72,6 +72,6 @@
 
 ## المراجع
 
-[1] [مهمة Syntax Gate — GitHub Actions](https://github.com/samertts/gula-platform/actions/runs/32476627178/job/96754212295)  
-[2] [تشغيل CI Pipeline — GitHub Actions](https://github.com/samertts/gula-platform/actions/runs/32476627178)  
+[1] [مهمة Syntax Gate — GitHub Actions](https://github.com/samertts/gula-platform/actions/runs/32476627178/job/96754212295)
+[2] [تشغيل CI Pipeline — GitHub Actions](https://github.com/samertts/gula-platform/actions/runs/32476627178)
 [3] [PR #242 — GitHub](https://github.com/samertts/gula-platform/pull/242)

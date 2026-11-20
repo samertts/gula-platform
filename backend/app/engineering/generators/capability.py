@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -852,61 +853,45 @@ class {qry_cap}Query:
     def _generate_capability_descriptor(
         self, cap: str, cap_cap: str, spec: CapabilitySpec, prefix: str, module_path: str,
     ) -> None:
-        events = "\n".join(
-            f'        {{"name": "{e}", "version": 1, "description": "", "type": "domain"}},'
-            for e in spec.events
-        )
-        commands = "\n".join(
-            f'        {{"name": "{c}", "description": ""}},'
-            for c in spec.commands
-        )
-        queries = "\n".join(
-            f'        {{"name": "{q}", "description": ""}},'
-            for q in spec.queries
-        )
-        entities = "\n".join(
-            f'        {{"name": "{e.name}", "description": "", "fields": []}},'
-            for e in (spec.entities or [])
-        )
-        deps = "\n".join(f'        "{d}",' for d in spec.dependencies)
+        descriptor = {
+            "capability_id": str(uuid.uuid4()),
+            "name": spec.name,
+            "version": spec.version,
+            "description": spec.description,
+            "owner": spec.owner,
+            "domain": spec.domain,
+            "layer": spec.layer,
+            "status": "active",
+            "dependencies": list(spec.dependencies),
+            "events": [
+                {"name": event, "version": 1, "description": "", "type": "domain"}
+                for event in spec.events
+            ],
+            "commands": [{"name": command, "description": ""} for command in spec.commands],
+            "queries": [{"name": query, "description": ""} for query in spec.queries],
+            "entities": [
+                {"name": entity.name, "description": "", "fields": []}
+                for entity in (spec.entities or [])
+            ],
+            "policies": list(spec.policies),
+            "permissions": list(spec.permissions),
+            "api_endpoints": [
+                {"path": f"/{prefix}/", "method": "GET", "auth_required": True},
+                {"path": f"/{prefix}/{{id}}", "method": "GET", "auth_required": True},
+                {"path": f"/{prefix}/", "method": "POST", "auth_required": True},
+                {"path": f"/{prefix}/{{id}}", "method": "PUT", "auth_required": True},
+                {"path": f"/{prefix}/{{id}}", "method": "DELETE", "auth_required": True},
+                {"path": f"/{prefix}/health/", "method": "GET", "auth_required": False},
+            ],
+            "required": False,
+            "enabled": True,
+            "tags": list(spec.tags),
+            "module_path": module_path,
+            "health_endpoint": f"/{prefix}/health/",
+        }
         self._write(
             f"{cap}/capability.json",
-            f"""{{
-    "capability_id": "{uuid.uuid4()!s}",
-    "name": "{spec.name}",
-    "version": "{spec.version}",
-    "description": "{spec.description}",
-    "owner": "{spec.owner}",
-    "domain": "{spec.domain}",
-    "layer": "{spec.layer}",
-    "status": "active",
-    "dependencies": [{deps}
-    ],
-    "events": [{events}
-    ],
-    "commands": [{commands}
-    ],
-    "queries": [{queries}
-    ],
-    "entities": [{entities}
-    ],
-    "policies": {list(spec.policies)!s},
-    "permissions": {list(spec.permissions)!s},
-    "api_endpoints": [
-        {{"path": "/{prefix}/", "method": "GET", "auth_required": true}},
-        {{"path": "/{prefix}/{{id}}", "method": "GET", "auth_required": true}},
-        {{"path": "/{prefix}/", "method": "POST", "auth_required": true}},
-        {{"path": "/{prefix}/{{id}}", "method": "PUT", "auth_required": true}},
-        {{"path": "/{prefix}/{{id}}", "method": "DELETE", "auth_required": true}},
-        {{"path": "/{prefix}/health/", "method": "GET", "auth_required": false}}
-    ],
-    "required": false,
-    "enabled": true,
-    "tags": {spec.tags!s},
-    "module_path": "{module_path}",
-    "health_endpoint": "/{prefix}/health/"
-}}
-""",
+            json.dumps(descriptor, indent=2, ensure_ascii=False) + "\n",
         )
 
 

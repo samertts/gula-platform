@@ -4,15 +4,28 @@ The hub stores connection metadata and safe event summaries only. It never store
 raw clinical payloads or opens a socket from the API process; real adapters belong
 to a separately governed gateway.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 
 from app._compat import UTC
-from ..database import Base
 
+from ..database import Base
 
 DEVICE_CATEGORIES = (
     "medical_measurement",
@@ -131,7 +144,9 @@ class DeviceConnector(Base):
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
     connector_uid = Column(String(96), nullable=False)
     display_name = Column(String(200), nullable=False)
-    device_id = Column(Integer, ForeignKey("integrated_devices.id", ondelete="SET NULL"), nullable=True)
+    device_id = Column(
+        Integer, ForeignKey("integrated_devices.id", ondelete="SET NULL"), nullable=True
+    )
     protocol = Column(String(32), nullable=False)
     transport = Column(String(24), nullable=False)
     mode = Column(String(24), nullable=False, default="simulated")
@@ -188,7 +203,9 @@ class DeviceEvent(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
-    device_id = Column(Integer, ForeignKey("integrated_devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(
+        Integer, ForeignKey("integrated_devices.id", ondelete="CASCADE"), nullable=False
+    )
     event_type = Column(String(64), nullable=False)
     direction = Column(String(16), nullable=False, default="system")
     severity = Column(String(16), nullable=False, default="info")
@@ -236,8 +253,16 @@ class WearableMeasurement(Base):
 
     __tablename__ = "wearable_measurements"
     __table_args__ = (
-        UniqueConstraint("lab_id", "source", "source_event_id", name="uq_wearable_measurements_event"),
-        Index("ix_wearable_measurements_patient_metric_time", "lab_id", "patient_id", "metric_code", "measured_at"),
+        UniqueConstraint(
+            "lab_id", "source", "source_event_id", name="uq_wearable_measurements_event"
+        ),
+        Index(
+            "ix_wearable_measurements_patient_metric_time",
+            "lab_id",
+            "patient_id",
+            "metric_code",
+            "measured_at",
+        ),
         Index("ix_wearable_measurements_device_time", "lab_id", "device_id", "measured_at"),
         Index("ix_wearable_measurements_lab_received", "lab_id", "received_at"),
     )
@@ -245,7 +270,9 @@ class WearableMeasurement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
-    device_id = Column(Integer, ForeignKey("integrated_devices.id", ondelete="SET NULL"), nullable=True)
+    device_id = Column(
+        Integer, ForeignKey("integrated_devices.id", ondelete="SET NULL"), nullable=True
+    )
     source = Column(String(64), nullable=False)
     metric_code = Column(String(64), nullable=False)
     value = Column(Float, nullable=False)
@@ -268,7 +295,9 @@ class DevicePrintJob(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
-    device_id = Column(Integer, ForeignKey("integrated_devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(
+        Integer, ForeignKey("integrated_devices.id", ondelete="CASCADE"), nullable=False
+    )
     document_type = Column(String(32), nullable=False)
     printer_language = Column(String(16), nullable=False, default="PDF")
     label_count = Column(Integer, nullable=False, default=1)
@@ -334,7 +363,9 @@ class DeviceGatewayAlert(Base):
     first_seen_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
     last_seen_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
-    acknowledged_by = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
+    acknowledged_by = Column(
+        Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True
+    )
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     correlation_id = Column(String(96), nullable=False, index=True)
     simulation_only = Column(Boolean, nullable=False, default=True)

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
+import math
 import re
 import time
 import uuid
@@ -87,7 +89,7 @@ class LLMGateway:
         model: str = "gpt-3.5-turbo",
         parameters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        cache_key = hashlib.md5(f"{model}:{prompt}".encode(), usedforsecurity=False).hexdigest()
+        cache_key = hashlib.sha3_256(f"{model}:{prompt}".encode()).hexdigest()
         cached = self._response_cache.get(cache_key)
         if cached and time.time() < cached[1]:
             return cached[0]
@@ -97,7 +99,11 @@ class LLMGateway:
             return {
                 "model": model,
                 "response": f"Simulated response from {model}",
-                "usage": {"prompt_tokens": len(prompt.split()), "completion_tokens": 50, "total_tokens": len(prompt.split()) + 50},
+                "usage": {
+                    "prompt_tokens": len(prompt.split()),
+                    "completion_tokens": 50,
+                    "total_tokens": len(prompt.split()) + 50,
+                },
                 "latency_ms": 0.0,
             }
         start = time.monotonic()
@@ -110,7 +116,11 @@ class LLMGateway:
             result = {
                 "model": model,
                 "response": response,
-                "usage": {"prompt_tokens": len(prompt.split()), "completion_tokens": len(str(response).split()), "total_tokens": len(prompt.split()) + len(str(response).split())},
+                "usage": {
+                    "prompt_tokens": len(prompt.split()),
+                    "completion_tokens": len(str(response).split()),
+                    "total_tokens": len(prompt.split()) + len(str(response).split()),
+                },
                 "latency_ms": round(duration_ms, 1),
             }
             self._response_cache[cache_key] = (result, time.time() + self._cache_ttl)
@@ -128,9 +138,6 @@ class LLMGateway:
 
     def get_model_capabilities(self, model: str) -> list[str]:
         return _MODEL_CAPABILITIES.get(model, ["text_generation"])
-
-
-import asyncio
 
 
 class PromptRegistry:
@@ -172,7 +179,9 @@ class ModelRegistry:
         self._models: dict[str, ModelInfo] = {}
         self._model_versions: dict[str, list[str]] = {}
 
-    def register_model(self, name: str, version: str, endpoint: str, capabilities: list[str] | None = None) -> ModelInfo:
+    def register_model(
+        self, name: str, version: str, endpoint: str, capabilities: list[str] | None = None
+    ) -> ModelInfo:
         model = ModelInfo(
             id=f"{name}:{version}",
             name=name,
@@ -214,7 +223,12 @@ class ModelRouter:
     def register_strategy(self, name: str, strategy: Callable[..., Any]) -> None:
         self._selection_strategies[name] = strategy
 
-    def route_request(self, request: dict[str, Any], models: list[ModelInfo] | None = None, criteria: dict[str, Any] | None = None) -> ModelInfo:
+    def route_request(
+        self,
+        request: dict[str, Any],
+        models: list[ModelInfo] | None = None,
+        criteria: dict[str, Any] | None = None,
+    ) -> ModelInfo:
         available = models or self._models
         if not available:
             raise ValueError("No models available for routing")
@@ -224,9 +238,15 @@ class ModelRouter:
             return strategy(request, available)
         return self.select_best_model(request, available)
 
-    def select_best_model(self, request: dict[str, Any], available_models: list[ModelInfo]) -> ModelInfo:
+    def select_best_model(
+        self, request: dict[str, Any], available_models: list[ModelInfo]
+    ) -> ModelInfo:
         required_capability = request.get("capability", "text_generation")
-        matching = [m for m in available_models if required_capability in m.capabilities and m.status == "active"]
+        matching = [
+            m
+            for m in available_models
+            if required_capability in m.capabilities and m.status == "active"
+        ]
         if not matching:
             matching = [m for m in available_models if m.status == "active"]
         if not matching:
@@ -254,7 +274,11 @@ class InferenceEngine:
         fn = self._models.get(model)
         start = time.monotonic()
         if fn is None:
-            result = {"model": model, "output": f"Simulated inference for {model}", "status": "simulated"}
+            result = {
+                "model": model,
+                "output": f"Simulated inference for {model}",
+                "status": "simulated",
+            }
         else:
             try:
                 if asyncio.iscoroutinefunction(fn):
@@ -281,7 +305,9 @@ class InferenceEngine:
             results.append(result)
         return results
 
-    async def stream_inference(self, model: str, input_stream: AsyncIterator[Any]) -> AsyncIterator[dict[str, Any]]:
+    async def stream_inference(
+        self, model: str, input_stream: AsyncIterator[Any]
+    ) -> AsyncIterator[dict[str, Any]]:
         async for chunk in input_stream:
             result = await self.run_inference(model, chunk)
             yield result
@@ -292,7 +318,9 @@ class VectorStore:
         self._store: dict[str, EmbeddingRecord] = {}
         self._index: dict[str, list[float]] = {}
 
-    def store_embedding(self, entity_id: str, embedding: list[float], metadata: dict[str, Any] | None = None) -> None:
+    def store_embedding(
+        self, entity_id: str, embedding: list[float], metadata: dict[str, Any] | None = None
+    ) -> None:
         record = EmbeddingRecord(
             entity_id=entity_id,
             embedding=embedding,
@@ -323,11 +351,13 @@ class VectorStore:
         for entity_id, score in top_k:
             record = self._store.get(entity_id)
             if record:
-                results.append({
-                    "entity_id": entity_id,
-                    "score": round(score, 4),
-                    "metadata": record.metadata,
-                })
+                results.append(
+                    {
+                        "entity_id": entity_id,
+                        "score": round(score, 4),
+                        "metadata": record.metadata,
+                    }
+                )
         return results
 
     def delete_embedding(self, entity_id: str) -> None:
@@ -336,36 +366,45 @@ class VectorStore:
         logger.info("[VectorStore] deleted embedding entity=%s", entity_id)
 
 
-import math
-
-
 class KnowledgeGraph:
     def __init__(self) -> None:
         self._entities: dict[str, KnowledgeEntity] = {}
         self._relationships: dict[str, list[dict[str, Any]]] = {}
 
-    def add_entity(self, entity_id: str, entity_type: str, properties: dict[str, Any] | None = None) -> KnowledgeEntity:
+    def add_entity(
+        self, entity_id: str, entity_type: str, properties: dict[str, Any] | None = None
+    ) -> KnowledgeEntity:
         entity = KnowledgeEntity(id=entity_id, type=entity_type, properties=properties or {})
         self._entities[entity_id] = entity
         return entity
 
-    def add_relationship(self, source_id: str, target_id: str, relationship_type: str, properties: dict[str, Any] | None = None) -> None:
+    def add_relationship(
+        self,
+        source_id: str,
+        target_id: str,
+        relationship_type: str,
+        properties: dict[str, Any] | None = None,
+    ) -> None:
         if source_id not in self._relationships:
             self._relationships[source_id] = []
-        self._relationships[source_id].append({
-            "target_id": target_id,
-            "type": relationship_type,
-            "properties": properties or {},
-        })
+        self._relationships[source_id].append(
+            {
+                "target_id": target_id,
+                "type": relationship_type,
+                "properties": properties or {},
+            }
+        )
 
     def query_graph(self, sparql_query: str) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         for _entity_id, entity in self._entities.items():
-            results.append({
-                "id": entity.id,
-                "type": entity.type,
-                "properties": entity.properties,
-            })
+            results.append(
+                {
+                    "id": entity.id,
+                    "type": entity.type,
+                    "properties": entity.properties,
+                }
+            )
         return results
 
     def get_entity(self, entity_id: str, entity_type: str | None = None) -> KnowledgeEntity | None:
@@ -374,7 +413,9 @@ class KnowledgeGraph:
             return None
         return entity
 
-    def get_relationships(self, entity_id: str, relationship_type: str | None = None) -> list[dict[str, Any]]:
+    def get_relationships(
+        self, entity_id: str, relationship_type: str | None = None
+    ) -> list[dict[str, Any]]:
         relationships = self._relationships.get(entity_id, [])
         if relationship_type:
             relationships = [r for r in relationships if r["type"] == relationship_type]
@@ -388,10 +429,16 @@ class RAGEngine:
     def register_vector_store(self, name: str, store: VectorStore) -> None:
         self._vector_stores[name] = store
 
-    def retrieve_context(self, query: str, vector_store: VectorStore, k: int = 5) -> list[dict[str, Any]]:
+    def retrieve_context(
+        self, query: str, vector_store: VectorStore, k: int = 5
+    ) -> list[dict[str, Any]]:
         query_tokens = query.lower().split()
         dummy_embedding = [hash(t) % 1000 / 1000.0 for t in query_tokens]
-        dummy_embedding = dummy_embedding[:128] if len(dummy_embedding) > 128 else dummy_embedding + [0.0] * (128 - len(dummy_embedding))
+        dummy_embedding = (
+            dummy_embedding[:128]
+            if len(dummy_embedding) > 128
+            else dummy_embedding + [0.0] * (128 - len(dummy_embedding))
+        )
         return vector_store.search_similar(dummy_embedding, k=k)
 
     def augment_prompt(self, prompt: str, context: list[dict[str, Any]]) -> str:
@@ -404,7 +451,13 @@ class RAGEngine:
         )
         return f"Context:\n{context_str}\n\nQuestion: {prompt}"
 
-    async def generate_with_context(self, query: str, context: list[dict[str, Any]], llm_gateway: LLMGateway, model: str = "gpt-3.5-turbo") -> dict[str, Any]:
+    async def generate_with_context(
+        self,
+        query: str,
+        context: list[dict[str, Any]],
+        llm_gateway: LLMGateway,
+        model: str = "gpt-3.5-turbo",
+    ) -> dict[str, Any]:
         augmented_prompt = self.augment_prompt(query, context)
         return await llm_gateway.query_llm(augmented_prompt, model=model)
 
@@ -426,21 +479,27 @@ class ExplainabilityEngine:
         if isinstance(input_data, dict):
             for i, (key, value) in enumerate(input_data.items()):
                 importance = 1.0 / (i + 1)
-                features.append({
-                    "feature": key,
-                    "value": value,
-                    "importance": round(importance, 4),
-                    "direction": "positive" if i % 2 == 0 else "negative",
-                })
+                features.append(
+                    {
+                        "feature": key,
+                        "value": value,
+                        "importance": round(importance, 4),
+                        "direction": "positive" if i % 2 == 0 else "negative",
+                    }
+                )
         return sorted(features, key=lambda f: -f["importance"])
 
-    def generate_explanation_text(self, features: list[dict[str, Any]], importance: list[dict[str, Any]] | None = None) -> str:
+    def generate_explanation_text(
+        self, features: list[dict[str, Any]], importance: list[dict[str, Any]] | None = None
+    ) -> str:
         top_features = features[:3] if features else (importance or [])
         if not top_features:
             return "No feature importance data available."
         parts = ["Top contributing factors:"]
         for f in top_features:
-            parts.append(f"- {f.get('feature', 'unknown')}: {f.get('importance', 0):.2%} importance ({f.get('direction', 'neutral')})")
+            parts.append(
+                f"- {f.get('feature', 'unknown')}: {f.get('importance', 0):.2%} importance ({f.get('direction', 'neutral')})"
+            )
         return "\n".join(parts)
 
 
@@ -448,7 +507,10 @@ class SafetyFilter:
     def __init__(self) -> None:
         self._blocked_patterns: list[str] = []
         self._blocked_categories: dict[str, list[str]] = {
-            "pii": [r"\b\d{3}-\d{2}-\d{4}\b", r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"],
+            "pii": [
+                r"\b\d{3}-\d{2}-\d{4}\b",
+                r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            ],
             "clinical_diagnosis": ["diagnosis:", "treatment:", "prescribe"],
             "harmful": ["suicide", "self-harm", "violence"],
         }
@@ -493,7 +555,9 @@ class AIHumanApproval:
         self._pending_approvals: dict[str, dict[str, Any]] = {}
         self._approval_history: list[dict[str, Any]] = []
 
-    def request_approval(self, action: str, context: dict[str, Any], risk_level: str = "medium") -> dict[str, Any]:
+    def request_approval(
+        self, action: str, context: dict[str, Any], risk_level: str = "medium"
+    ) -> dict[str, Any]:
         approval_id = str(uuid.uuid4())
         record = {
             "approval_id": approval_id,
@@ -528,7 +592,9 @@ class AIHumanApproval:
         logger.info("[AIHumanApproval] approved id=%s by=%s", approval_id, reviewer)
         return record
 
-    def reject_action(self, approval_id: str, reason: str = "", reviewer: str = "system") -> dict[str, Any]:
+    def reject_action(
+        self, approval_id: str, reason: str = "", reviewer: str = "system"
+    ) -> dict[str, Any]:
         record = self._pending_approvals.get(approval_id)
         if record is None:
             raise ValueError(f"Approval {approval_id!r} not found")
@@ -538,7 +604,9 @@ class AIHumanApproval:
         record["reviewed_at"] = time.time()
         record["reviewed_by"] = reviewer
         record["reason"] = reason
-        logger.info("[AIHumanApproval] rejected id=%s by=%s reason=%s", approval_id, reviewer, reason)
+        logger.info(
+            "[AIHumanApproval] rejected id=%s by=%s reason=%s", approval_id, reviewer, reason
+        )
         return record
 
     def get_pending_approvals(self, user: str | None = None) -> list[dict[str, Any]]:
@@ -552,7 +620,9 @@ class AIAuditEngine:
     def __init__(self) -> None:
         self._audit_log: list[AuditRecord] = []
 
-    def log_interaction(self, model: str, input_data: Any, output: Any, metadata: dict[str, Any] | None = None) -> str:
+    def log_interaction(
+        self, model: str, input_data: Any, output: Any, metadata: dict[str, Any] | None = None
+    ) -> str:
         record_id = str(uuid.uuid4())
         record = AuditRecord(
             id=record_id,

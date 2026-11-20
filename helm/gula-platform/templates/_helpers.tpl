@@ -42,11 +42,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 
+{{- define "gula.validateApplicationImageTag" -}}
+{{- $tag := .Values.global.imageTag | default "" -}}
+{{- if not (regexMatch "^[0-9a-fA-F]{7,64}$" $tag) -}}
+{{- fail "global.imageTag must be a 7-64 character immutable hexadecimal commit SHA" -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "gula.image" -}}
-{{- $registry := .Values.global.imageRegistry | default "ghcr.io/samertts/gula-platform" -}}
+{{- $root := .root | default . -}}
+{{- $registry := $root.Values.global.imageRegistry | default "ghcr.io/samertts/gula-platform" -}}
 {{- $repository := .repository | default "backend" -}}
-{{- $tag := .tag | default .Values.global.imageTag -}}
-{{- $pullPolicy := .pullPolicy | default .Values.global.imagePullPolicy -}}
+{{- $tag := .tag | default $root.Values.global.imageTag -}}
+{{- $pullPolicy := .pullPolicy | default $root.Values.global.imagePullPolicy -}}
 image: "{{ $registry }}/{{ $repository }}:{{ $tag }}"
 imagePullPolicy: "{{ $pullPolicy }}"
 {{- end -}}
@@ -90,8 +98,16 @@ topologySpreadConstraints:
     whenUnsatisfiable: {{ .whenUnsatisfiable | default "DoNotSchedule" }}
     labelSelector:
       matchLabels:
-        {{- range $key, $value := .labelSelector.matchLabels | default (dict "app.kubernetes.io/part-of" "gula-platform") }}
+        {{- with .labelSelector }}
+          {{- with .matchLabels }}
+            {{- range $key, $value := . }}
         {{ $key }}: {{ $value }}
+            {{- end }}
+          {{- else }}
+        app.kubernetes.io/part-of: gula-platform
+          {{- end }}
+        {{- else }}
+        app.kubernetes.io/part-of: gula-platform
         {{- end }}
 {{- end }}
 {{- end }}
@@ -104,20 +120,22 @@ envFrom:
 {{- end -}}
 
 {{- define "gula.envSecretRefs" -}}
-{{- range .secrets }}
-  - name: {{ .name }}
-    valueFrom:
-      secretKeyRef:
-        name: {{ .secretRef }}
-        key: {{ .key }}
+{{- range . }}
+- name: {{ .name }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .secretRef }}
+      key: {{ .key }}
 {{- end -}}
 {{- end -}}
 
 {{- define "gula.imagePullSecrets" -}}
-{{- if .image.pullSecrets }}
+{{- with .image }}
+{{- with .pullSecrets }}
 imagePullSecrets:
-{{- range .image.pullSecrets }}
+{{- range . }}
   - name: {{ .name }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -154,13 +172,14 @@ securityContext:
 
 {{- define "gula.serviceMonitor" -}}
 {{- if .enabled -}}
+{{- $root := .root | default . -}}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ .name }}
-  namespace: {{ $.Values.global.namespace }}
+  namespace: {{ $root.Values.global.namespace }}
   labels:
-    {{- include "gula.labels" $ | nindent 4 }}
+    {{- include "gula.labels" $root | nindent 4 }}
     release: prometheus
     {{- with .labels }}
     {{ toYaml . }}
@@ -172,7 +191,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- include "gula.selectorLabels" $ | nindent 6 }}
+      {{- include "gula.selectorLabels" $root | nindent 6 }}
       app.kubernetes.io/component: {{ .component }}
   endpoints:
     - port: {{ .port | default "http" }}

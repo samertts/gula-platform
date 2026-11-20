@@ -1,18 +1,22 @@
 from datetime import UTC, datetime
+from typing import Any
 
+import pytest
 from app.models.patient import Patient
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from tests.conftest import auth_headers
 
 
-def _patient(db, lab_id: int, name: str = "Wearable Patient") -> Patient:
+def _patient(db: Session, lab_id: int, name: str = "Wearable Patient") -> Patient:
     patient = Patient(lab_id=lab_id, full_name=name, phone="0770000011")
     db.add(patient)
     db.flush()
     return patient
 
 
-def _payload(patient_id: int, event_id: str = "evt-001") -> dict:
+def _payload(patient_id: int, event_id: str = "evt-001") -> dict[str, Any]:
     return {
         "patient_id": patient_id,
         "source": "synthetic-wearable",
@@ -28,7 +32,9 @@ def _payload(patient_id: int, event_id: str = "evt-001") -> dict:
     }
 
 
-def test_wearable_measurement_is_tenant_scoped_and_idempotent(client, db, make_lab, make_lab_user):
+def test_wearable_measurement_is_tenant_scoped_and_idempotent(
+    client: TestClient, db: Session, make_lab: Any, make_lab_user: Any
+) -> None:
     lab = make_lab("Wearable Lab")
     other_lab = make_lab("Other Wearable Lab")
     user = make_lab_user(lab.id, role="admin")
@@ -76,7 +82,9 @@ def test_wearable_measurement_is_tenant_scoped_and_idempotent(client, db, make_l
     assert other_listed.json()["total"] == 0
 
 
-def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client, db, make_lab, make_lab_user):
+def test_wearable_measurement_rejects_invalid_unit_and_live_mode(
+    client: TestClient, db: Session, make_lab: Any, make_lab_user: Any
+) -> None:
     lab = make_lab("Wearable Validation Lab")
     user = make_lab_user(lab.id, role="admin")
     patient = _patient(db, lab.id)
@@ -101,7 +109,9 @@ def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client, db, mak
     assert response.status_code == 400
 
 
-def test_wearable_measurement_rejects_non_finite_values(client, db, make_lab, make_lab_user):
+def test_wearable_measurement_rejects_non_finite_values(
+    client: TestClient, db: Session, make_lab: Any, make_lab_user: Any
+) -> None:
     lab = make_lab("Wearable Finite Value Lab")
     user = make_lab_user(lab.id, role="admin")
     patient = _patient(db, lab.id)
@@ -118,7 +128,9 @@ def test_wearable_measurement_rejects_non_finite_values(client, db, make_lab, ma
         assert response.status_code == 422
 
 
-def test_signed_wearable_webhook_is_verified_and_idempotent(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_is_verified_and_idempotent(
+    client: TestClient, db: Session, make_lab: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import hashlib
     import hmac
     import json
@@ -128,12 +140,15 @@ def test_signed_wearable_webhook_is_verified_and_idempotent(client, db, make_lab
     patient = _patient(db, lab.id, "Webhook Patient")
     secret = "webhook-test-secret"
     monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_SECRET_FITBIT", secret)
+    monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_LABS_FITBIT", str(lab.id))
     measurement = _payload(patient.id, "fitbit-event-001")
     measurement["source"] = "fitbit"
     envelope = {"lab_id": lab.id, "measurement": measurement}
     raw = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
     timestamp = str(int(time.time()))
-    signature = hmac.new(secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256).hexdigest()
+    signature = hmac.new(
+        secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256
+    ).hexdigest()
     headers = {
         "Content-Type": "application/json",
         "X-Webhook-Timestamp": timestamp,
@@ -159,7 +174,35 @@ def test_signed_wearable_webhook_is_verified_and_idempotent(client, db, make_lab
     assert second.json()["measurement_id"] == first.json()["measurement_id"]
 
 
-def test_signed_wearable_webhook_rejects_invalid_signature(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_rejects_unbound_lab(
+    client: TestClient, db: Session, make_lab: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hashlib
+    import hmac
+    import json
+    import time
+
+    lab = make_lab("Unbound Webhook Lab")
+    patient = _patient(db, lab.id, "Unbound Patient")
+    secret = "bound-secret"
+    monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_SECRET_FITBIT", secret)
+    monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_LABS_FITBIT", "999999")
+    envelope = {"lab_id": lab.id, "measurement": {**_payload(patient.id), "source": "fitbit"}}
+    raw = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
+    timestamp = str(int(time.time()))
+    signature = hmac.new(secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256).hexdigest()
+    response = client.post(
+        "/device-integration/wearables/webhook/fitbit",
+        content=raw,
+        headers={"X-Webhook-Timestamp": timestamp, "X-Signature-256": f"sha256={signature}"},
+    )
+    assert response.status_code == 403
+    assert "not bound" in response.text
+
+
+def test_signed_wearable_webhook_rejects_invalid_signature(
+    client: TestClient, db: Session, make_lab: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import json
     import time
 
@@ -177,7 +220,9 @@ def test_signed_wearable_webhook_rejects_invalid_signature(client, db, make_lab,
     assert "Invalid webhook signature" in response.text
 
 
-def test_signed_wearable_webhook_rejects_live_mode(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_rejects_live_mode(
+    client: TestClient, db: Session, make_lab: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import hashlib
     import hmac
     import json
@@ -187,10 +232,19 @@ def test_signed_wearable_webhook_rejects_live_mode(client, db, make_lab, monkeyp
     patient = _patient(db, lab.id, "Live Provider Patient")
     secret = "provider-secret"
     monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_SECRET_FITBIT", secret)
-    envelope = {"lab_id": lab.id, "measurement": {**_payload(patient.id, "live-event"), "source": "fitbit", "simulation_only": False}}
+    envelope = {
+        "lab_id": lab.id,
+        "measurement": {
+            **_payload(patient.id, "live-event"),
+            "source": "fitbit",
+            "simulation_only": False,
+        },
+    }
     raw = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
     timestamp = str(int(time.time()))
-    signature = hmac.new(secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256).hexdigest()
+    signature = hmac.new(
+        secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256
+    ).hexdigest()
     response = client.post(
         "/device-integration/wearables/webhook/fitbit",
         content=raw,
@@ -200,7 +254,9 @@ def test_signed_wearable_webhook_rejects_live_mode(client, db, make_lab, monkeyp
     assert "clinical approval" in response.text
 
 
-def test_signed_wearable_webhook_rejects_expired_timestamp(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_rejects_expired_timestamp(
+    client: TestClient, db: Session, make_lab: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import hashlib
     import hmac
     import json
@@ -210,10 +266,15 @@ def test_signed_wearable_webhook_rejects_expired_timestamp(client, db, make_lab,
     patient = _patient(db, lab.id, "Expired Patient")
     secret = "expired-secret"
     monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_SECRET_FITBIT", secret)
-    envelope = {"lab_id": lab.id, "measurement": {**_payload(patient.id, "expired-event"), "source": "fitbit"}}
+    envelope = {
+        "lab_id": lab.id,
+        "measurement": {**_payload(patient.id, "expired-event"), "source": "fitbit"},
+    }
     raw = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
     timestamp = str(int(time.time()) - 301)
-    signature = hmac.new(secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256).hexdigest()
+    signature = hmac.new(
+        secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256
+    ).hexdigest()
     response = client.post(
         "/device-integration/wearables/webhook/fitbit",
         content=raw,
@@ -223,7 +284,9 @@ def test_signed_wearable_webhook_rejects_expired_timestamp(client, db, make_lab,
     assert "Expired webhook signature" in response.text
 
 
-def test_wearable_baseline_summary_is_advisory_and_tenant_scoped(client, db, make_lab, make_lab_user):
+def test_wearable_baseline_summary_is_advisory_and_tenant_scoped(
+    client: TestClient, db: Session, make_lab: Any, make_lab_user: Any
+) -> None:
     lab = make_lab("Baseline Lab")
     other_lab = make_lab("Other Baseline Lab")
     user = make_lab_user(lab.id, role="admin")
@@ -234,7 +297,9 @@ def test_wearable_baseline_summary_is_advisory_and_tenant_scoped(client, db, mak
         payload = _payload(patient.id, f"baseline-{index}")
         payload["measured_at"] = datetime(2026, 8, 1 + index, tzinfo=UTC).isoformat()
         payload["value"] = 70 + index
-        accepted = client.post("/device-integration/wearables/measurements", json=payload, headers=headers)
+        accepted = client.post(
+            "/device-integration/wearables/measurements", json=payload, headers=headers
+        )
         assert accepted.status_code == 201, accepted.text
 
     response = client.get(

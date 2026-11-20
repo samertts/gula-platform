@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  LockKeyhole,
   FilePlus2,
   HeartPulse,
   ListChecks,
@@ -18,6 +19,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageComponents";
+import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -97,6 +99,7 @@ const statusVariant = (status: PatientStatus | Appointment["status"] | QueueEntr
 const initialForm = { name: "", phone: "", birthDate: "", gender: "أنثى" as Gender, city: "بغداد", carePath: "استشارة عامة" };
 
 export function PatientManagementWorkspacePage() {
+  const { demoMode } = useAuth();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("patients");
   const [patients, setPatients] = useState<PatientRecord[]>(INITIAL_PATIENTS);
   const [appointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
@@ -113,6 +116,8 @@ export function PatientManagementWorkspacePage() {
   }, [patients, search]);
 
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
+
+  if (!demoMode) return <LiveDataBoundary />;
 
   const submitRegistration = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -220,6 +225,26 @@ function AppointmentsBoard({ appointments }: { appointments: Appointment[] }) {
 
 function QueueBoard({ queue }: { queue: QueueEntry[] }) {
   return <Card><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle className="text-base">قائمة الانتظار</CardTitle><Badge variant="outline">تحديث تجريبي</Badge></div></CardHeader><CardContent className="space-y-3">{queue.map((entry, index) => <div key={entry.id} className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{index + 1}</span><div><p className="font-semibold">{entry.patientName}</p><p className="mt-1 text-sm text-muted-foreground">{entry.service} · الوصول {entry.arrival}</p></div></div><div className="flex items-center gap-2"><Badge variant={entry.priority === "أولوية" ? "warning" : "outline"}>{entry.priority}</Badge><Badge variant={statusVariant(entry.state)}>{entry.state}</Badge></div></div>)}</CardContent></Card>;
+}
+
+function LiveDataBoundary() {
+  return (
+    <div className="space-y-6" dir="rtl">
+      <PageHeader title="إدارة المرضى" description="مساحة العمل السريرية لا تُعرض قبل اعتماد عقد القراءة المؤسسية." />
+      <Card className="border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-3" role="status" aria-live="polite">
+            <LockKeyhole className="mt-1 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
+            <div className="space-y-2">
+              <h2 className="font-semibold text-amber-950 dark:text-amber-200">القراءة المؤسسية معلّقة بأمان</h2>
+              <p className="text-sm leading-7 text-amber-900/80 dark:text-amber-100/75">هذه الصفحة تحتوي حالياً على بيانات اصطناعية وتسجيل محلي للعرض التجريبي فقط. لن نعرضها في الجلسة الحية حتى يكتمل عقد الخادم والتفويض والعزل وسجل التدقيق.</p>
+              <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900 underline-offset-4 hover:underline dark:text-amber-200">العودة إلى لوحة العمل الآمنة <ArrowLeft className="h-4 w-4" aria-hidden="true" /></Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default PatientManagementWorkspacePage;

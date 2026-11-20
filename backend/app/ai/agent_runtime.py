@@ -63,44 +63,62 @@ def register_tool(name: str, description: str, requires_approval: bool = False):
 
 @register_tool("lookup_patient", "Find a patient by name, phone, or ID. Returns patient demographics and recent orders.", requires_approval=False)
 async def _lookup_patient(query: str, lab_id: int | None = None, **kwargs) -> dict[str, Any]:
+    if lab_id is None:
+        return {"found": False, "error": "Clinical lab context is required"}
     db = next(get_db())
     try:
         row = db.execute(
-            text("SELECT id, name, phone, gender, birth_date FROM patients WHERE (name ILIKE :q OR phone = :q_exact OR cast(id as text) = :q_exact) AND (lab_id = :lab OR :lab IS NULL) LIMIT 1"),
+            text("SELECT id, name, phone, gender, birth_date FROM patients WHERE (name ILIKE :q OR phone = :q_exact OR cast(id as text) = :q_exact) AND lab_id = :lab LIMIT 1"),
             {"q": f"%{query}%", "q_exact": query, "lab": lab_id},
         ).fetchone()
         if not row:
-            return {"found": False, "message": f"No patient found matching '{query}'"}
+            return {"found": False, "message": "No patient found matching the supplied criteria"}
         return {"found": True, "patient": {"id": row.id, "name": row.name, "phone": row.phone, "gender": row.gender, "birth_date": str(row.birth_date) if row.birth_date else None}}
-    except Exception as exc:
-        return {"found": False, "error": str(exc)}
+    except Exception:
+        logger.exception("Patient lookup failed")
+        return {"found": False, "error": "Patient lookup failed"}
     finally:
         db.close()
 
 
 @register_tool("get_recent_results", "Get recent lab results for a patient", requires_approval=False)
-async def _get_recent_results(patient_id: int, limit: int = 10, **kwargs) -> dict[str, Any]:
+async def _get_recent_results(
+    patient_id: int,
+    limit: int = 10,
+    lab_id: int | None = None,
+    **kwargs,
+) -> dict[str, Any]:
+    if lab_id is None:
+        return {"error": "Clinical lab context is required"}
+    bounded_limit = max(1, min(limit, 50))
     db = next(get_db())
     try:
         rows = db.execute(
-            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high, lr.result_date FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid ORDER BY lr.result_date DESC LIMIT :lim"),
-            {"pid": patient_id, "lim": limit},
+            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high, lr.result_date FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid AND lo.lab_id = :lab ORDER BY lr.result_date DESC LIMIT :lim"),
+            {"pid": patient_id, "lab": lab_id, "lim": bounded_limit},
         ).fetchall()
         results = [{"test_name": r.test_name, "value": r.value, "unit": r.unit, "normal_range_low": r.normal_range_low, "normal_range_high": r.normal_range_high, "result_date": str(r.result_date) if r.result_date else None} for r in rows]
         return {"patient_id": patient_id, "results": results, "count": len(results)}
-    except Exception as exc:
-        return {"error": str(exc)}
+    except Exception:
+        logger.exception("Recent results lookup failed")
+        return {"error": "Recent results lookup failed"}
     finally:
         db.close()
 
 
 @register_tool("analyze_lab_pattern", "Run multi-test pattern analysis on lab results", requires_approval=False)
-async def _analyze_lab_pattern(patient_id: int, **kwargs) -> dict[str, Any]:
+async def _analyze_lab_pattern(
+    patient_id: int,
+    lab_id: int | None = None,
+    **kwargs,
+) -> dict[str, Any]:
+    if lab_id is None:
+        return {"error": "Clinical lab context is required"}
     db = next(get_db())
     try:
         rows = db.execute(
-            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid AND lr.result_date IS NOT NULL ORDER BY lr.result_date DESC LIMIT 50"),
-            {"pid": patient_id},
+            text("SELECT lr.test_name, lr.value, lr.unit, lr.normal_range_low, lr.normal_range_high FROM lab_results lr JOIN lab_orders lo ON lr.order_id = lo.id WHERE lo.patient_id = :pid AND lo.lab_id = :lab AND lr.result_date IS NOT NULL ORDER BY lr.result_date DESC LIMIT 50"),
+            {"pid": patient_id, "lab": lab_id},
         ).fetchall()
         result_list = [{"test_name": r.test_name, "value": r.value, "unit": r.unit, "normal_range_low": r.normal_range_low, "normal_range_high": r.normal_range_high} for r in rows]
         from app.ai.sandbox import AISandbox
@@ -111,8 +129,9 @@ async def _analyze_lab_pattern(patient_id: int, **kwargs) -> dict[str, Any]:
             result = AISandbox.execute(approval)
             return {"patterns": result.output.get("patterns", []), "flag_summary": result.output.get("flag_summary", {}), "interpretations": result.output.get("interpretations", [])}
         return {"message": "Analysis pending approval", "approval_id": approval.id}
-    except Exception as exc:
-        return {"error": str(exc)}
+    except Exception:
+        logger.exception("Lab pattern analysis failed")
+        return {"error": "Lab pattern analysis failed"}
     finally:
         db.close()
 
@@ -130,8 +149,9 @@ async def _get_lab_info(lab_id: int | None = None, **kwargs) -> dict[str, Any]:
         if not row:
             return {"error": "Lab not found"}
         return {"lab": {"id": row.id, "name": row.name, "name_ar": row.name_ar, "phone": row.phone, "city": row.city, "address": row.address}}
-    except Exception as exc:
-        return {"error": str(exc)}
+    except Exception:
+        logger.exception("Lab lookup failed")
+        return {"error": "Lab lookup failed"}
     finally:
         db.close()
 
@@ -190,9 +210,15 @@ class AgentRuntime:
                 return AgentResult(agent_name=tool_name, success=True, output=output, duration_ms=duration, requires_approval=True, approval=approval)
 
             return AgentResult(agent_name=tool_name, success=True, output=output, duration_ms=(time.monotonic() - start) * 1000)
-        except Exception as exc:
-            logger.error("[AgentRuntime] tool %s failed: %s", tool_name, exc)
-            return AgentResult(agent_name=tool_name, success=False, output=None, duration_ms=(time.monotonic() - start) * 1000, error=str(exc))
+        except Exception:
+            logger.exception("[AgentRuntime] tool %s failed", tool_name)
+            return AgentResult(
+                agent_name=tool_name,
+                success=False,
+                output=None,
+                duration_ms=(time.monotonic() - start) * 1000,
+                error="Tool execution failed",
+            )
 
     async def execute_plan(
         self, plan: list[dict[str, Any]], context: AgentContext,
@@ -255,7 +281,24 @@ class AgentRuntime:
                     text = text[4:].strip()
             plan = json.loads(text)
             if isinstance(plan, list):
-                return plan
+                allowed_tools = {item["name"] for item in available}
+                validated_plan = []
+                for item in plan:
+                    if not isinstance(item, dict):
+                        continue
+                    tool_name = item.get("tool")
+                    params = item.get("params", {})
+                    if tool_name not in allowed_tools or not isinstance(params, dict):
+                        continue
+                    validated_plan.append(
+                        {
+                            "tool": tool_name,
+                            "params": params,
+                            "required": bool(item.get("required", True)),
+                        },
+                    )
+                if validated_plan:
+                    return validated_plan
         except Exception as exc:
             logger.warning("[AgentRuntime] LLM planning failed: %s", exc)
         return [{"tool": "search_knowledge_graph", "params": {"query": task}, "required": False}]

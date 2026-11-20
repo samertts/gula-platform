@@ -67,7 +67,6 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun loginWithBiometric(): Resource<AuthTokens> {
-        val accessToken = encryptedPrefs.accessToken ?: return Resource.error("No saved session")
         val refreshToken = encryptedPrefs.refreshToken ?: return Resource.error("No saved session")
         return try {
             val response = authApi.refreshToken(RefreshRequestDto(refreshToken))
@@ -75,7 +74,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val body = response.body()!!
                 val tokens = AuthTokens(
                     accessToken = body.accessToken,
-                    refreshToken = refreshToken,
+                    refreshToken = body.refreshToken ?: refreshToken,
                     expiresIn = body.expiresIn,
                 )
                 saveTokens(tokens)
@@ -163,7 +162,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val body = response.body()!!
                 val tokens = AuthTokens(
                     accessToken = body.accessToken,
-                    refreshToken = rt,
+                    refreshToken = body.refreshToken ?: rt,
                     expiresIn = body.expiresIn,
                 )
                 saveTokens(tokens)

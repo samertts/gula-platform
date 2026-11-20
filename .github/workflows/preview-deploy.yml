@@ -1,4 +1,4 @@
-name: Preview Deploy
+name: Preview Validation
 
 on:
   pull_request:
@@ -8,16 +8,35 @@ permissions:
   contents: read
 
 jobs:
-  preview:
+  preview-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: "24"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-v3/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend-v3
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend-v3
+      - name: Typecheck frontend
+        run: npm run typecheck
+        working-directory: frontend-v3
+      - name: Test frontend
+        run: npm test -- --run
+        working-directory: frontend-v3
       - name: Build frontend
-        run: |
-          cd frontend-v3
-          npm install --ignore-scripts 2>/dev/null || true
-          echo "Frontend install attempted"
+        run: npm run build
+        working-directory: frontend-v3
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: frontend-v3-preview-${{ github.event.pull_request.number }}
+          path: frontend-v3/dist
+          if-no-files-found: error
+          retention-days: 7

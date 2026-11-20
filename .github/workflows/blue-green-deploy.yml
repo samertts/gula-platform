@@ -75,6 +75,10 @@ jobs:
         run: |
           INPUT="$IMAGE_TAG_INPUT"
           if [ -n "$INPUT" ]; then
+            if [[ ! "$INPUT" =~ ^[0-9a-fA-F]{7,64}$ ]]; then
+              echo "image_tag must be an immutable hexadecimal commit value" >&2
+              exit 1
+            fi
             TAG="$INPUT"
           elif [ "$EVENT_NAME" = "workflow_run" ]; then
             # Use the SHA from the triggering workflow run
@@ -151,7 +155,7 @@ jobs:
           kubectl set image deployment/gula-backend \
             gula-backend="$IMAGE" \
             -n ${{ env.NAMESPACE }} \
-            --record=false 2>/dev/null || true
+            --record=false
 
           # Ensure the slot label matches the target
           kubectl patch deployment gula-backend \
@@ -182,7 +186,7 @@ jobs:
 
           PASS=0
           for i in $(seq 1 12); do
-            STATUS=$(curl -sf --max-time 5 http://localhost:18000/health \
+            STATUS=$(curl -sf --max-time 5 http://localhost:18000/health/ready \
               -o /tmp/health.json -w "%{http_code}" 2>/dev/null || echo "000")
             if [ "$STATUS" = "200" ]; then
               echo "Smoke test passed (attempt $i)"
@@ -230,7 +234,7 @@ jobs:
               -p "[
                 {\"op\":\"replace\",\"path\":\"/spec/backends/0/weight\",\"value\":${BLUE_WEIGHT}},
                 {\"op\":\"replace\",\"path\":\"/spec/backends/1/weight\",\"value\":${GREEN_WEIGHT}}
-              ]" 2>/dev/null || echo "TrafficSplit patch skipped (Linkerd SMI not installed)"
+              ]"
           fi
 
           echo "Traffic now served by slot: $TARGET_SLOT"
@@ -243,17 +247,17 @@ jobs:
           PF_PID=$!
           sleep 5
 
-          STATUS=$(curl -sf --max-time 10 http://localhost:18001/health \
+          STATUS=$(curl -sf --max-time 10 http://localhost:18001/health/ready \
             -o /tmp/active-health.json -w "%{http_code}" 2>/dev/null || echo "000")
 
           kill $PF_PID 2>/dev/null || true
 
-          if [ "$STATUS" = "200" ]; then
-            echo "Active slot is healthy!"
-            cat /tmp/active-health.json
-          else
-            echo "WARNING: Active slot health check returned HTTP $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Active slot health check failed with HTTP $STATUS" >&2
+            exit 1
           fi
+          echo "Active slot is healthy!"
+          cat /tmp/active-health.json
 
       # ── Deployment summary ────────────────────────────────────────────────
       - name: Deployment summary
@@ -271,7 +275,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "To roll back: re-run this workflow with \`force_slot=${{ steps.slots.outputs.active }}\`" >> $GITHUB_STEP_SUMMARY
 
-  # ── Rollback job (manual trigger only) ────────────────────────────────────
+  # ── Automatic rollback after any failed deployment step ───────────────────
   rollback:
     runs-on: ubuntu-latest
     if: failure() && needs.blue-green-deploy.result == 'failure'
@@ -290,13 +294,22 @@ jobs:
           echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Determine previous active slot from cluster state
+      - name: Determine previous active slot
         id: prev_slot
+        env:
+          PREVIOUS_SLOT: ${{ needs.blue-green-deploy.outputs.active }}
         run: |
-          PREV=$(kubectl get svc gula-backend-active \
-            -n ${{ env.NAMESPACE }} \
-            -o jsonpath='{.metadata.annotations.blue-green/active-slot}' \
-            2>/dev/null || echo "blue")
+          PREV="$PREVIOUS_SLOT"
+          if [ "$PREV" != "blue" ] && [ "$PREV" != "green" ]; then
+            PREV=$(kubectl get svc gula-backend-active \
+              -n ${{ env.NAMESPACE }} \
+              -o jsonpath='{.metadata.annotations.blue-green/active-slot}' \
+              2>/dev/null || echo "blue")
+          fi
+          if [ "$PREV" != "blue" ] && [ "$PREV" != "green" ]; then
+            echo "Could not determine a valid previous slot" >&2
+            exit 1
+          fi
           echo "previous=$PREV" >> "$GITHUB_OUTPUT"
           echo "Previous active slot: $PREV"
 
@@ -311,6 +324,9 @@ jobs:
             -p "[
               {\"op\":\"replace\",\"path\":\"/spec/selector/slot\",\"value\":\"${PREV}\"},
               {\"op\":\"replace\",\"path\":\"/metadata/annotations/blue-green~1active-slot\",\"value\":\"${PREV}\"}
-            ]" || echo "Rollback patch failed — manual intervention required"
+            ]"
 
+          kubectl rollout status deployment/gula-backend \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=${{ env.HEALTH_TIMEOUT }}s
           echo "Rollback complete. Active slot: $PREV"

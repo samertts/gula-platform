@@ -87,6 +87,19 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+  release-readiness:
+    name: Release readiness
+    if: ${{ inputs.build_type == 'release' && needs.project-availability.outputs.project_exists != 'true' }}
+    needs: [project-availability]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail clearly until the iOS project is committed
+        run: |
+          echo "iOS release is blocked: no .xcodeproj/project.pbxproj exists under mobile/ios." >&2
+          echo "Add and validate the supported Xcode project before enabling store builds." >&2
+          exit 1
+
   lint:
     name: SwiftLint
     runs-on: macos-14
