@@ -1,0 +1,62 @@
+UTC 2026-11-20T10:55:52Z
+--- PROTECTED STATUS ---
+## remediate-security-001...origin/remediate-security-001 [gone]
+--- PROTECTED HEAD ---
+f478676b6fc375338648dde46fbf076c015a3f91
+--- PROTECTED STATUS SHA256 ---
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -
+--- PROTECTED REMOTES ---
+origin	ssh://git@ssh.github.com:443/samertts/gula-platform.git (fetch)
+origin	ssh://git@ssh.github.com:443/samertts/gula-platform.git (push)
+--- PROTECTED WORKTREES ---
+worktree /home/samertts/workspace/projects/gula-platform
+HEAD f478676b6fc375338648dde46fbf076c015a3f91
+branch refs/heads/remediate-security-001
+
+worktree /home/samertts/workspace/projects/gula-demo-preview
+HEAD f6772ee632883c137e723eb951b789b3aa0e74e8
+branch refs/heads/feature/demo-preview-access
+
+worktree /home/samertts/workspace/projects/gula-integration
+HEAD 2206654dc713ea2de8c564a3207dfe05fde23549
+branch refs/heads/integration/gula-unification-v1
+
+worktree /home/samertts/workspace/projects/gula-showcase-security
+HEAD 60988833fbf665d52d3984d3032332273f08c649
+branch refs/heads/feature/showcase-security-control
+
+worktree /home/samertts/workspace/projects/gula-wave-b
+HEAD 77a964d04264567c569fccbe56bf5eeea5c09cb3
+branch refs/heads/wave-b/B1-abac-route-enforcement
+
+worktree /tmp/opencode/wt-pre20
+HEAD 961e1ca64cd255101487ac418652572ca2f955c8
+detached
+prunable gitdir file points to non-existent location
+
+--- PROTECTED STASHES ---
+stash@{0}: On remediate-security-001: unstaged
+stash@{1}: WIP on remediate-security-001: 66ea075d feat(routes): register 4 FHIR sub-pages in router (explorer, patients, observations, reports) feat(security): add security compliance module framework
+--- PROTECTED PROCESSES (filtered) ---
+   1041       1    03:26:56 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+   1514    1416    03:26:25 postgres -c max_connections=200
+   1531    1464    03:26:25 redis-server *:6379
+   1792    1514    03:26:07 postgres: checkpointer 
+   1793    1514    03:26:07 postgres: background writer 
+   1803    1514    03:26:06 postgres: walwriter 
+   1804    1514    03:26:06 postgres: autovacuum launcher 
+   1805    1514    03:26:06 postgres: logical replication launcher 
+   6034     290    03:22:46 opencode
+   6099    6034    03:22:43 /home/samertts/.opencode/bin/opencode serve --service
+  29872    6099    01:53:47 /home/samertts/.cache/opencode/bin/opencode-pty/0.6.0-3a781ac5ff8bc189/opencode-pty daemon --runtime-dir /home/samertts/.local/state/opencode/pty --name f7a7f8f7-729e-48e7-8421-70d4f4f30b23
+  69899   69897       08:08 gh api --paginate repos/samertts/gula-platform/pulls/261/files?per_page=100 --jq .[] | .filename
+  73147   29872       00:00 /bin/bash -c bash /tmp/opencode/gula-national-completion-013/docs/parallel-program/national-completion-013/evidence/p00_collect.sh > /tmp/opencode/gula-national-completion-013/docs/parallel-program/national-completion-013/evidence/p00_preservation_manifest.txt 2>&1; echo exit=$?
+  73151   73147       00:00 bash /tmp/opencode/gula-national-completion-013/docs/parallel-program/national-completion-013/evidence/p00_collect.sh
+--- ISOLATED STATUS ---
+## execution/gula-national-completion-013
+?? docs/parallel-program/
+--- ISOLATED HEAD ---
+2ee9e8bcb9d81e9cac6801f5dea9b86d59beaffa
+--- ISOLATED REMOTES ---
+origin	ssh://git@ssh.github.com:443/samertts/gula-platform.git (fetch)
+origin	ssh://git@ssh.github.com:443/samertts/gula-platform.git (push)
