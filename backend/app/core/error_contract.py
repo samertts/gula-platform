@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
+
+_STABLE_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
 
 
 _STATUS_CODES: dict[int, str] = {
@@ -76,10 +79,35 @@ def build_error_payload(
         "message": safe_message,
         "details": dict(details or {}),
         "request_id": request_id,
-        "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
+        "timestamp": timestamp or datetime.now(UTC).isoformat(),
         "detail": safe_message,
         "detail_ar": safe_detail_ar,
     }
+
+
+def stable_http_detail(detail: Any, *, status_code: int) -> tuple[str, dict[str, Any], str] | None:
+    """Return a caller-supplied stable code/message pair when the detail is exact.
+
+    GULS services place ``{"code", "message"}`` in ``HTTPException.detail``.
+    The factory's generic error handler must preserve those codes instead of
+    replacing them with a status-derived code. Only the exact two-key shape is
+    accepted, so arbitrary handler structures are never promoted to public
+    contract fields.
+    """
+
+    if status_code >= 500 or not isinstance(detail, Mapping):
+        return None
+    if set(detail) != {"code", "message"}:
+        return None
+    code = detail.get("code")
+    message = detail.get("message")
+    if not isinstance(code, str) or not _STABLE_CODE_RE.fullmatch(code):
+        return None
+    if not isinstance(message, str) or not message or len(message) > 200:
+        return None
+    if any(character in message for character in "\r\n\t\x00"):
+        return None
+    return message, {}, code
 
 
 def public_http_detail(detail: Any, *, status_code: int) -> tuple[str, dict[str, Any]]:

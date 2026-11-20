@@ -23,7 +23,9 @@ def api_client(registry, signing_key, pack_manager):
     store = InMemoryPreferenceStore()
     app = FastAPI()
     app.include_router(
-        create_delivery_router(registry=registry, pack_manager=pack_manager, pack_store={"fa": pack_bytes})
+        create_delivery_router(
+            registry=registry, pack_manager=pack_manager, pack_store={"fa": pack_bytes}
+        )
     )
     app.include_router(
         create_preference_router(
@@ -74,7 +76,10 @@ def test_download_status_and_short_lived_content(api_client):
 
     parsed = urlparse(payload["download_url"])
     query = parse_qs(parsed.query)
-    status_response = client.get(f"/api/v1/localization/downloads/{payload['download_id']}")
+    status_response = client.get(
+        f"/api/v1/localization/downloads/{payload['download_id']}",
+        params={"token": query["token"][0]},
+    )
     assert status_response.status_code == 200
     assert status_response.json()["status"] == "AVAILABLE"
 
@@ -88,33 +93,52 @@ def test_download_status_and_short_lived_content(api_client):
     assert invalid.json()["detail"]["code"] == "INVALID_DOWNLOAD_TOKEN"
 
 
-def test_preference_stays_english_until_pack_ready(api_client, pack_manager):
-    client, store, pack_bytes = api_client
+def test_preference_stays_english_until_pack_ready(api_client, pack_manager, registry, signing_key):
+    client, store, _ = api_client
+    catalogs = {
+        f"catalogs/{name}.json": b'{"ui.home": "Synthetic"}'
+        for name in registry.require("ckb").catalogs
+    }
+    ckb_pack = make_pack(registry, signing_key, language_id="ckb", files=catalogs)
     response = client.put(
         "/api/v1/users/me/preferences/language",
-        json={"preferred_language": "fa-IR", "fallback_language": "en", "auto_download": True},
+        json={"preferred_language": "ckb", "fallback_language": "en", "auto_download": True},
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["preferred_language"] == "fa"
+    assert payload["preferred_language"] == "ckb"
     assert payload["effective_language"] == "en"
     assert payload["download_required"] is True
-    assert store.records[(1, 1)]["language"] == "fa"
+    assert store.records[(1, 1)]["language"] == "ckb"
 
-    pack_manager.install("fa", pack_bytes)
+    pack_manager.install("ckb", ckb_pack)
     second = client.put(
         "/api/v1/users/me/preferences/language",
-        json={"preferred_language": "fa", "fallback_language": "en", "auto_download": False},
+        json={"preferred_language": "ckb", "fallback_language": "en", "auto_download": False},
     )
-    assert second.json()["effective_language"] == "fa"
+    assert second.json()["effective_language"] == "ckb"
     assert second.json()["download_required"] is False
+
+
+def test_preference_rejects_blocked_downloadable_language(api_client):
+    client, _, _ = api_client
+    response = client.put(
+        "/api/v1/users/me/preferences/language",
+        json={"preferred_language": "fa", "fallback_language": "en", "auto_download": True},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "LANGUAGE_NOT_ACTIVE"
 
 
 def test_preference_rejects_pending_language(api_client):
     client, _, _ = api_client
     response = client.put(
         "/api/v1/users/me/preferences/language",
-        json={"preferred_language": "PENDING_SYRIAC", "fallback_language": "en", "auto_download": False},
+        json={
+            "preferred_language": "PENDING_SYRIAC",
+            "fallback_language": "en",
+            "auto_download": False,
+        },
     )
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "LANGUAGE_NOT_ACTIVE"
@@ -124,7 +148,7 @@ def test_preference_rejects_non_english_fallback(api_client):
     client, _, _ = api_client
     response = client.put(
         "/api/v1/users/me/preferences/language",
-        json={"preferred_language": "fa", "fallback_language": "ar", "auto_download": False},
+        json={"preferred_language": "ar", "fallback_language": "ar", "auto_download": False},
     )
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "INVALID_FALLBACK_LANGUAGE"
@@ -151,15 +175,19 @@ def test_download_progress_resumes_from_byte_range(api_client):
     partial = client.get(parsed.path, params={"token": token}, headers={"Range": "bytes=0-9"})
     assert partial.status_code == 206
     assert partial.content == pack_bytes[:10]
-    progress = client.get(f"/api/v1/localization/downloads/{payload['download_id']}").json()
+    progress = client.get(
+        f"/api/v1/localization/downloads/{payload['download_id']}", params={"token": token}
+    ).json()
     assert progress["status"] == "DOWNLOADING"
     assert progress["downloaded_bytes"] == 10
     assert progress["resumable"] is True
 
     remainder = client.get(parsed.path, params={"token": token}, headers={"Range": "bytes=10-"})
     assert remainder.content == pack_bytes[10:]
-    complete = client.get(f"/api/v1/localization/downloads/{payload['download_id']}").json()
-    assert complete["status"] == "READY"
+    complete = client.get(
+        f"/api/v1/localization/downloads/{payload['download_id']}", params={"token": token}
+    ).json()
+    assert complete["status"] == "COMPLETE"
     assert complete["progress"] == 1.0
     assert complete["resumable"] is False
 
@@ -171,7 +199,43 @@ def test_download_can_be_cancelled(api_client):
     parsed = urlparse(payload["download_url"])
     token = parse_qs(parsed.query)["token"][0]
 
-    cancelled = client.delete(f"/api/v1/localization/downloads/{payload['download_id']}", params={"token": token})
+    cancelled = client.delete(
+        f"/api/v1/localization/downloads/{payload['download_id']}", params={"token": token}
+    )
     assert cancelled.status_code == 200
     assert cancelled.json()["code"] == "DOWNLOAD_CANCELLED"
-    assert client.get(f"/api/v1/localization/downloads/{payload['download_id']}").status_code == 404
+    assert (
+        client.get(
+            f"/api/v1/localization/downloads/{payload['download_id']}", params={"token": token}
+        ).status_code
+        == 404
+    )
+
+
+def test_tail_only_range_never_marks_download_complete(api_client):
+    client, _, pack_bytes = api_client
+    payload = client.post("/api/v1/localization/language-packs/fa/download", json={}).json()
+    parsed = urlparse(payload["download_url"])
+    token = parse_qs(parsed.query)["token"][0]
+    tail = client.get(
+        parsed.path,
+        params={"token": token},
+        headers={"Range": f"bytes={len(pack_bytes) - 5}-"},
+    )
+    assert tail.status_code == 206
+    progress = client.get(
+        f"/api/v1/localization/downloads/{payload['download_id']}", params={"token": token}
+    ).json()
+    assert progress["status"] == "DOWNLOADING"
+    assert progress["downloaded_bytes"] == 0
+    assert progress["resumable"] is True
+
+
+def test_progress_requires_download_token(api_client):
+    client, _, _ = api_client
+    download_id = client.post("/api/v1/localization/language-packs/fa/download", json={}).json()[
+        "download_id"
+    ]
+    response = client.get(f"/api/v1/localization/downloads/{download_id}")
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "INVALID_DOWNLOAD_TOKEN"

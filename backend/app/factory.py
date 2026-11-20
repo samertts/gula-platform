@@ -25,6 +25,7 @@ from .config import APP_NAME, APP_VERSION, DEMO_MODE, IS_PRODUCTION, RUNTIME_MOD
 from .core.error_contract import (
     build_error_payload,
     public_http_detail,
+    stable_http_detail,
     validation_details,
 )
 from .domain.exceptions import DomainError
@@ -52,6 +53,7 @@ def _should_init_background_tasks() -> bool:
     if _is_openapi_mode() or _is_migration_mode():
         return False
     from .config import background_tasks_enabled as _bg_enabled
+
     return _bg_enabled()
 
 
@@ -63,6 +65,7 @@ def _should_init_financial() -> bool:
     if _is_openapi_mode():
         return False
     from .config import ENABLE_FINANCIAL_ENGINE
+
     return ENABLE_FINANCIAL_ENGINE
 
 
@@ -470,9 +473,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
         raise RuntimeError("Production CORS_ORIGINS must contain HTTPS origins only")
 
     _trusted_hosts = [
-        host.strip()
-        for host in os.getenv("TRUSTED_HOSTS", "").split(",")
-        if host.strip()
+        host.strip() for host in os.getenv("TRUSTED_HOSTS", "").split(",") if host.strip()
     ] or [
         "api.gula-platform.org",
         "gula-platform.org",
@@ -486,9 +487,17 @@ def _build_middleware_stack(app: FastAPI) -> None:
         allow_origins=_allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID",
-                       "X-Device-ID", "X-App-Version", "Idempotency-Key",
-                       "X-GULA-Operation-ID", "X-GULA-Request-Fingerprint", "If-Match"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-Request-ID",
+            "X-Device-ID",
+            "X-App-Version",
+            "Idempotency-Key",
+            "X-GULA-Operation-ID",
+            "X-GULA-Request-Fingerprint",
+            "If-Match",
+        ],
         expose_headers=["X-Request-ID", "X-Response-Time", "X-API-Version"],
     )
 
@@ -500,6 +509,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     from .core.self_healing import DegradedModeMiddleware
+
     app.add_middleware(DegradedModeMiddleware)
 
     if not _is_openapi_mode():
@@ -563,25 +573,51 @@ def _register_routes(app: FastAPI) -> None:
     from .routes import tiers as tiers_routes
 
     core_routes = [
-        login, register, verification, demo, setup, metrics, patients, results,
-        test_results, dashboard, labs, samples, app_updates,
+        login,
+        register,
+        verification,
+        demo,
+        setup,
+        metrics,
+        patients,
+        results,
+        test_results,
+        dashboard,
+        labs,
+        samples,
+        app_updates,
     ]
     feature_routes = [
-        qr, id_scan, identity, notifications, ehr, ehr_fhir, cds_hooks,
-        security, device_results,
+        qr,
+        id_scan,
+        identity,
+        notifications,
+        ehr,
+        ehr_fhir,
+        cds_hooks,
+        security,
+        device_results,
     ]
     advanced_routes = [quality_control, critical_alerts, batch]
     admin_routes = [admin, admin_log_level]
     mobile_routes = [mobile]
     compliance_routes = [compliance]
 
-    for r in core_routes + feature_routes + advanced_routes + admin_routes + mobile_routes + compliance_routes:
+    for r in (
+        core_routes
+        + feature_routes
+        + advanced_routes
+        + admin_routes
+        + mobile_routes
+        + compliance_routes
+    ):
         app.include_router(r.router)
 
     app.include_router(tiers_routes.router)
     app.include_router(billing_routes.router)
 
     from .financial import register_routes as register_financial_routes
+
     register_financial_routes(app)
 
     from .payments.control_routes import router as payments_control_router
@@ -589,6 +625,7 @@ def _register_routes(app: FastAPI) -> None:
     from .payments.orchestration_routes import router as payments_orchestration_router
     from .payments.routes import router as payments_router
     from .payments.subscription_routes import router as payments_subscription_router
+
     app.include_router(payments_router)
     app.include_router(payments_fx_router)
     app.include_router(payments_orchestration_router)
@@ -599,6 +636,7 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(citizen_relationship_admin_routes.router)
 
     from .routes import claims as claims_routes
+
     app.include_router(claims_routes.router)
 
     app.include_router(national_identity.router)
@@ -608,224 +646,293 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(optimizer_routes.router)
 
     from .routes import ai_platform as ai_platform_routes
+
     app.include_router(ai_platform_routes.router)
 
     from .routes import stats as stats_routes
+
     app.include_router(stats_routes.router)
 
     from .services.mpi import router as mpi_router
+
     app.include_router(mpi_router)
 
     from .routes import canonical_patient as canonical_patient_routes
+
     app.include_router(canonical_patient_routes.router)
 
     from .routes import consent as consent_routes
+
     app.include_router(consent_routes.router)
 
     from .routes import user_preferences as user_preferences_routes
+
     app.include_router(user_preferences_routes.router)
 
     from .routes import localization as localization_routes
+
     app.include_router(localization_routes.router)
 
     from .routes import mfa as mfa_routes
+
     app.include_router(mfa_routes.router)
 
     from .routes import password_reset as password_reset_routes
+
     app.include_router(password_reset_routes.router)
 
     from .routes import oauth2 as oauth2_routes
+
     app.include_router(oauth2_routes.router)
 
     from .routes import saml as saml_routes
+
     app.include_router(saml_routes.router)
 
     from .routes import service_accounts as service_accounts_routes
+
     app.include_router(service_accounts_routes.router)
 
     from .routes import integrations as integrations_routes
+
     app.include_router(integrations_routes.router)
 
     from .routes import advanced_integrations as advanced_integrations_routes
+
     app.include_router(advanced_integrations_routes.router)
 
     from .routes import edge as edge_routes
+
     app.include_router(edge_routes.router)
 
     from .devices.routes import router as device_integration_router
+
     app.include_router(device_integration_router)
     from .chronic_care.routes import router as chronic_care_router
+
     app.include_router(chronic_care_router)
     from .capabilities.fhir_interoperability.routes import router as fhir_interoperability_router
 
     app.include_router(fhir_interoperability_router)
 
     from .routes import patient_card as patient_card_routes
+
     app.include_router(patient_card_routes.router)
 
     from .routes import care_continuum as care_continuum_routes
+
     app.include_router(care_continuum_routes.router)
 
     if not _is_openapi_mode():
         from .routes import ai_telemetry as ai_telemetry_routes
+
         app.include_router(ai_telemetry_routes.router)
 
     from .routes import clinical as clinical_routes
     from .routes import clinical_documentation as clinical_documentation_routes
     from .routes import clinical_orders as clinical_orders_routes
     from .routes import clinical_quality as clinical_quality_routes
+
     app.include_router(clinical_routes.router)
     app.include_router(clinical_orders_routes.router)
     app.include_router(clinical_documentation_routes.router)
     app.include_router(clinical_quality_routes.router)
 
     from .kernel import routes as kernel_routes
+
     app.include_router(kernel_routes.router)
 
     from .governance.routes import analytics_router, governance_router
+
     app.include_router(governance_router)
     app.include_router(analytics_router)
 
     from .lims import routes as lims_routes
+
     app.include_router(lims_routes.router)
 
     from .national.rules_engine.api.routes import router as rules_router
+
     app.include_router(rules_router)
 
     from .national.background_platform.api.routes import router as background_router
+
     app.include_router(background_router)
 
     from .national.workflow_runtime.api.routes import router as workflow_router
+
     app.include_router(workflow_router)
 
     from .national.task_engine.api.routes import router as task_router
+
     app.include_router(task_router)
 
     from .national.notification_platform.api.routes import router as notification_platform_router
+
     app.include_router(notification_platform_router)
     from .notifications.telegram_chat import router as telegram_chat_router
+
     app.include_router(telegram_chat_router)
 
     from .national.document_platform.api.routes import router as document_router
+
     app.include_router(document_router)
 
     from .national.scheduling_platform.api.routes import router as scheduling_router
+
     app.include_router(scheduling_router)
 
     from .national.search_platform.api.routes import router as search_router
+
     app.include_router(search_router)
 
     from .national.observability.api.routes import router as observability_router
+
     app.include_router(observability_router)
 
     if not _is_openapi_mode():
         from .routes import national_data as national_data_routes
         from .routes import national_streaming as national_streaming_routes
+
         app.include_router(national_data_routes.router)
         app.include_router(national_streaming_routes.router)
 
     from .platform.routes import router as platform_router
+
     app.include_router(platform_router)
 
     from .contracts.routes import router as contracts_router
+
     app.include_router(contracts_router)
 
     from .routes import hospital as hospital_routes
+
     app.include_router(hospital_routes.router)
 
     from .nhdw.routes import router as nhdw_router
+
     app.include_router(nhdw_router)
 
     from .nursing.routes import router as nursing_router
+
     app.include_router(nursing_router)
 
     from .pharmacy.routes import router as pharmacy_router
+
     app.include_router(pharmacy_router)
 
     from .radiology.routes import router as radiology_router
+
     app.include_router(radiology_router)
 
     from .simulation.routes import router as simulation_router
+
     app.include_router(simulation_router)
 
     from .command_intelligence.routes import router as command_intelligence_router
+
     app.include_router(command_intelligence_router)
 
     from .knowledge_graph.routes import router as knowledge_graph_router
+
     app.include_router(knowledge_graph_router)
 
     from .roadmap.routes import router as roadmap_router
+
     app.include_router(roadmap_router)
 
     from .health_data.routes import router as health_data_router
+
     app.include_router(health_data_router)
 
     from .control_plane.routes import router as control_plane_router
+
     app.include_router(control_plane_router)
 
     from .kernel.runtime_routes import router as runtime_kernel_router
+
     app.include_router(runtime_kernel_router)
 
     from .integration.integration import IntegrationPlatform
+
     IntegrationPlatform().initialize(app)
 
     from .citizen_platform.routes import router as citizen_platform_router
+
     app.include_router(citizen_platform_router)
 
     from .ai_fabric.routes import router as ai_fabric_router
+
     app.include_router(ai_fabric_router)
 
     from .research_platform.routes import router as research_platform_router
+
     app.include_router(research_platform_router)
 
     from .certification.routes import router as certification_router
+
     app.include_router(certification_router)
 
     from .national.ecosystem.gateway.routes import router as ecosystem_gateway_router
     from .national.ecosystem.routes import router as ecosystem_router
+
     app.include_router(ecosystem_router)
     app.include_router(ecosystem_gateway_router)
 
     from .national.intelligence.routes import router as intelligence_router
+
     app.include_router(intelligence_router)
 
     from .ems.api.routes import router as ems_router
+
     app.include_router(ems_router)
 
     from .document_intelligence.api.routes import router as doc_intel_router
+
     app.include_router(doc_intel_router)
 
     from .blood_bank.api.routes import router as blood_bank_router
+
     app.include_router(blood_bank_router)
 
     from .critical_care.api.routes import router as critical_care_router
+
     app.include_router(critical_care_router)
 
     from .biomedical.api.routes import router as biomedical_router
+
     app.include_router(biomedical_router)
 
     from .public_health.api.routes import router as public_health_router
+
     app.include_router(public_health_router)
 
     from .command_center.api.routes import router as command_center_router
+
     app.include_router(command_center_router)
 
     from .pilot_platform.api.routes import router as pilot_platform_router
+
     app.include_router(pilot_platform_router)
 
     from .lifecycle_platform.api.routes import router as lifecycle_router
+
     app.include_router(lifecycle_router)
 
     from .trust.routes import router as trust_router
+
     app.include_router(trust_router)
 
     from .identity import get_router as get_niam_router
+
     app.include_router(get_niam_router())
 
     from .clinical_gateway.routes import router as clinical_gateway_router
+
     app.include_router(clinical_gateway_router)
 
     from .routes.authorization import router as authorization_router
+
     app.include_router(authorization_router)
 
     logger.info("All platform routes registered")
@@ -849,18 +956,21 @@ def _build_lifespan():
             try:
                 if _should_init_db():
                     from .core.startup_guard import run_startup_guard
+
                     await run_startup_guard()
 
                 if not _should_init_background_tasks():
                     logger.info("Runtime mode '%s' — skipping background task init", RUNTIME_MODE)
                 else:
                     from .core.startup import start_background_workers, warmup
+
                     await start_background_workers()
                     await warmup()
 
                 if not _is_openapi_mode():
                     try:
                         from .kernel.integration import warmup_kernel
+
                         await warmup_kernel()
                     except Exception as exc:
                         logger.warning("Kernel warmup skipped: %s", exc)
@@ -872,10 +982,9 @@ def _build_lifespan():
                 # still rejected safely until an operator fixes the dependency.
                 logger.exception("Startup initialization did not complete; service remains unready")
 
-        non_blocking_production_startup = (
-            IS_PRODUCTION
-            and os.getenv("NON_BLOCKING_STARTUP", "true").strip().lower() not in {"0", "false", "no"}
-        )
+        non_blocking_production_startup = IS_PRODUCTION and os.getenv(
+            "NON_BLOCKING_STARTUP", "true"
+        ).strip().lower() not in {"0", "false", "no"}
         startup_task: asyncio.Task[None] | None = None
         if non_blocking_production_startup:
             startup_task = asyncio.create_task(
@@ -893,8 +1002,10 @@ def _build_lifespan():
 
         if _should_init_background_tasks():
             from .core.startup import _bg_tasks
+
             logger.info("Shutting down %d background task(s)...", len(_bg_tasks))
             from .kernel.integration import stop_kernel
+
             try:
                 await stop_kernel()
             except Exception as exc:
@@ -906,6 +1017,7 @@ def _build_lifespan():
 
         if _should_init_db():
             from .database import engine
+
             engine.dispose()
             logger.info("Database connections closed")
 
@@ -970,7 +1082,9 @@ def _domain_exception_handler(request: Request, exc: DomainError) -> JSONRespons
     if _is_fhir_request(request):
         return JSONResponse(
             status_code=status_code,
-            content=_fhir_operation_outcome(status_code, message, details=getattr(exc, "details", None)),
+            content=_fhir_operation_outcome(
+                status_code, message, details=getattr(exc, "details", None)
+            ),
             media_type="application/fhir+json",
         )
     return JSONResponse(
@@ -989,7 +1103,12 @@ def _domain_exception_handler(request: Request, exc: DomainError) -> JSONRespons
 def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Normalize explicit HTTP errors without exposing arbitrary error structures."""
     request_id = getattr(request.state, "request_id", "unknown")
-    message, details = public_http_detail(exc.detail, status_code=exc.status_code)
+    stable = stable_http_detail(exc.detail, status_code=exc.status_code)
+    explicit_code: str | None = None
+    if stable is not None:
+        message, details, explicit_code = stable
+    else:
+        message, details = public_http_detail(exc.detail, status_code=exc.status_code)
     if _is_fhir_request(request):
         return JSONResponse(
             status_code=exc.status_code,
@@ -1002,9 +1121,14 @@ def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JS
         content=build_error_payload(
             status_code=exc.status_code,
             message=message,
-            detail_ar=_ARABIC_HTTP_MESSAGES.get(exc.status_code, message),
+            # Stable service messages are fixed English by contract and are
+            # never translated by the compatibility field.
+            detail_ar=message
+            if explicit_code
+            else _ARABIC_HTTP_MESSAGES.get(exc.status_code, message),
             details=details,
             request_id=request_id,
+            explicit_code=explicit_code,
         ),
         headers=exc.headers,
     )
@@ -1066,7 +1190,10 @@ def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
 
     if IS_PRODUCTION:
         logger.error(
-            "[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path,
+            "[%s] Unhandled exception: %s %s",
+            request_id,
+            request.method,
+            request.url.path,
         )
     else:
         # Log full exception for debugging, but never expose internals to client.
@@ -1075,7 +1202,9 @@ def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
     if _is_fhir_request(request):
         return JSONResponse(
             status_code=500,
-            content=_fhir_operation_outcome(500, "An unexpected error occurred. Please try again later."),
+            content=_fhir_operation_outcome(
+                500, "An unexpected error occurred. Please try again later."
+            ),
             media_type="application/fhir+json",
         )
     return JSONResponse(
@@ -1101,6 +1230,7 @@ def create_app(override_mode: str | None = None) -> FastAPI:
         os.environ["RUNTIME_MODE"] = override_mode
 
     from .core.logging_config import configure_logging
+
     configure_logging(is_production=IS_PRODUCTION, log_level="INFO")
 
     if _should_init_sentry():
@@ -1111,6 +1241,7 @@ def create_app(override_mode: str | None = None) -> FastAPI:
     _docs_url = None
     _redoc_url = None
     from .config import ENABLE_API_DOCS
+
     if not IS_PRODUCTION or ENABLE_API_DOCS:
         _docs_url = "/docs"
         _redoc_url = "/redoc"

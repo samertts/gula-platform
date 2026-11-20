@@ -28,10 +28,27 @@ from .runtime import ENGINE_VERSION
 
 MAX_PACK_FILE_BYTES = 10 * 1024 * 1024
 MAX_PACK_TOTAL_BYTES = 50 * 1024 * 1024
+MAX_PACK_MEMBERS = 256
 ALLOWED_SUFFIXES = {".json", ".md", ".txt", ".woff", ".woff2", ".ttf", ".otf"}
 FORBIDDEN_SUFFIXES = {
-    ".exe", ".dll", ".so", ".dylib", ".js", ".mjs", ".cjs", ".py", ".pyc",
-    ".sh", ".bash", ".bat", ".cmd", ".ps1", ".apk", ".ipa", ".dmg", ".jar",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".py",
+    ".pyc",
+    ".sh",
+    ".bash",
+    ".bat",
+    ".cmd",
+    ".ps1",
+    ".apk",
+    ".ipa",
+    ".dmg",
+    ".jar",
 }
 
 State = str
@@ -46,7 +63,7 @@ _ALLOWED_TRANSITIONS: dict[State, set[State]] = {
     "READY": {"UPDATE_AVAILABLE", "DISABLED", "QUEUED"},
     "UPDATE_AVAILABLE": {"QUEUED", "DISABLED"},
     "FAILED": {"QUEUED", "NOT_INSTALLED", "DISABLED"},
-    "ROLLBACK_REQUIRED": {"READY", "DISABLED"},
+    "ROLLBACK_REQUIRED": {"READY", "DISABLED", "NOT_INSTALLED"},
     "DISABLED": {"AVAILABLE", "NOT_INSTALLED"},
 }
 
@@ -98,7 +115,9 @@ class DownloadSession:
     last_error: str | None = None
 
     def to_dict(self) -> dict[str, object]:
-        progress = 0.0 if not self.total_bytes else min(1.0, self.downloaded_bytes / self.total_bytes)
+        progress = (
+            0.0 if not self.total_bytes else min(1.0, self.downloaded_bytes / self.total_bytes)
+        )
         return {
             "status": self.status,
             "downloaded_bytes": self.downloaded_bytes,
@@ -130,11 +149,15 @@ class PackManager:
         *,
         public_key: bytes | None = None,
         allow_synthetic_packs: bool = False,
+        synthetic_signer_key_id: str = "",
         max_total_bytes: int = MAX_PACK_TOTAL_BYTES,
     ) -> None:
+        if allow_synthetic_packs and not synthetic_signer_key_id:
+            raise ValueError("synthetic packs require a dedicated signer key id")
         self.root = Path(root)
         self.registry = registry
         self.allow_synthetic_packs = allow_synthetic_packs
+        self.synthetic_signer_key_id = synthetic_signer_key_id
         self.max_total_bytes = max_total_bytes
         self._public_key, self._public_key_error = self._load_public_key(public_key)
         self.root.mkdir(parents=True, exist_ok=True)
@@ -173,7 +196,9 @@ class PackManager:
     def transition(self, language_id: str, target: State) -> None:
         current = self.state(language_id)
         if target not in _ALLOWED_TRANSITIONS.get(current, set()):
-            raise InvalidStateTransition(f"{current} -> {target} is not permitted for {language_id}")
+            raise InvalidStateTransition(
+                f"{current} -> {target} is not permitted for {language_id}"
+            )
         self._language_state(language_id)["state"] = target
         self._save_state()
 
@@ -187,7 +212,15 @@ class PackManager:
             return
         if current == "READY" and active != pack_version:
             self.transition(language_id, "UPDATE_AVAILABLE")
-        if current in {"READY", "UPDATE_AVAILABLE", "NOT_INSTALLED", "AVAILABLE", "FAILED", "ROLLBACK_REQUIRED", "DISABLED"}:
+        if current in {
+            "READY",
+            "UPDATE_AVAILABLE",
+            "NOT_INSTALLED",
+            "AVAILABLE",
+            "FAILED",
+            "ROLLBACK_REQUIRED",
+            "DISABLED",
+        }:
             if current not in {"READY", "UPDATE_AVAILABLE"}:
                 if current != "NOT_INSTALLED":
                     self.transition(language_id, "NOT_INSTALLED")
@@ -215,7 +248,9 @@ class PackManager:
             return None, "configured language-pack public key file is missing"
         return None, None
 
-    def verify(self, pack_bytes: bytes, language_id: str, *, expected_hash: str | None = None) -> VerificationResult:
+    def verify(
+        self, pack_bytes: bytes, language_id: str, *, expected_hash: str | None = None
+    ) -> VerificationResult:
         definition = self.registry.require(language_id)
         files = self._safe_extract(pack_bytes)
         manifest_bytes = files.get("manifest.json")
@@ -228,6 +263,11 @@ class PackManager:
 
         if manifest.language_id != language_id:
             raise IntegrityError("manifest language_id does not match requested language")
+        if manifest.approval_status == "synthetic_test_only":
+            if not self.allow_synthetic_packs:
+                raise ApprovalError("synthetic test packs are disabled in this environment")
+            if manifest.signer_key_id != self.synthetic_signer_key_id:
+                raise ApprovalError("synthetic test pack was not signed by the designated test key")
         if manifest.locale_tag != definition.locale_tag:
             raise IntegrityError("manifest locale_tag is not approved for this language")
         if manifest.direction != definition.direction:
@@ -255,6 +295,11 @@ class PackManager:
             digest = hashlib.sha256(files[path]).hexdigest()
             if digest != entry.sha256 or len(files[path]) != entry.size:
                 raise IntegrityError(f"content mismatch for {path}")
+        actual_content_size = sum(
+            len(content) for path, content in files.items() if path != "manifest.json"
+        )
+        if actual_content_size != manifest.content_size:
+            raise IntegrityError("content size mismatch")
         computed_hash = self._content_hash(files)
         if computed_hash != manifest.content_hash:
             raise IntegrityError("content hash mismatch")
@@ -281,7 +326,9 @@ class PackManager:
             raise SignatureVerificationError("no trusted language-pack public key configured")
         try:
             ed25519_key = Ed25519PublicKey.from_public_bytes(self._public_key)
-            ed25519_key.verify(base64.b64decode(manifest.signature, validate=True), manifest.signing_payload())
+            ed25519_key.verify(
+                base64.b64decode(manifest.signature, validate=True), manifest.signing_payload()
+            )
         except (InvalidSignature, ValueError, TypeError) as exc:
             raise SignatureVerificationError("invalid language-pack signature") from exc
 
@@ -290,6 +337,8 @@ class PackManager:
         total = 0
         try:
             with zipfile.ZipFile(io.BytesIO(pack_bytes)) as archive:
+                if len(archive.infolist()) > MAX_PACK_MEMBERS:
+                    raise UnsafeArchiveError("archive contains too many members")
                 for info in archive.infolist():
                     if info.is_dir():
                         continue
@@ -302,7 +351,9 @@ class PackManager:
                     suffix = path.suffix.lower()
                     name = path.name
                     if suffix in FORBIDDEN_SUFFIXES:
-                        raise UnsafeArchiveError(f"executable content is forbidden: {info.filename}")
+                        raise UnsafeArchiveError(
+                            f"executable content is forbidden: {info.filename}"
+                        )
                     if name != "manifest.json" and suffix not in ALLOWED_SUFFIXES:
                         raise UnsafeArchiveError(f"disallowed pack file type: {info.filename}")
                     if info.file_size > MAX_PACK_FILE_BYTES:
@@ -359,7 +410,9 @@ class PackManager:
             return session, chunk
         return session, chunk
 
-    def install(self, language_id: str, pack_bytes: bytes, *, expected_hash: str | None = None) -> LanguagePackManifest:
+    def install(
+        self, language_id: str, pack_bytes: bytes, *, expected_hash: str | None = None
+    ) -> LanguagePackManifest:
         """Verify then atomically install a pack, preserving the previous version.
 
         The active version is changed only after all files are written and
@@ -468,7 +521,9 @@ class PackManager:
     def compute_content_hash(files: Mapping[str, bytes]) -> str:
         return PackManager._content_hash(files)
 
-    def _write_pack(self, language_id: str, manifest: LanguagePackManifest, files: Mapping[str, bytes]) -> None:
+    def _write_pack(
+        self, language_id: str, manifest: LanguagePackManifest, files: Mapping[str, bytes]
+    ) -> None:
         """Write to a staging directory, then swap it into place atomically.
 
         Stale staging directories from an interrupted write are removed. If a

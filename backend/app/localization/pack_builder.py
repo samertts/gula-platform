@@ -23,6 +23,7 @@ from .pack_manager import (
     ALLOWED_SUFFIXES,
     FORBIDDEN_SUFFIXES,
     MAX_PACK_FILE_BYTES,
+    MAX_PACK_MEMBERS,
     MAX_PACK_TOTAL_BYTES,
     PackManager,
     UnsafeArchiveError,
@@ -32,6 +33,8 @@ from .pack_schema import LanguagePackManifest
 
 def _validate_pack_files(files: Mapping[str, bytes]) -> None:
     """Reject unsafe pack inputs before any signing or archive creation."""
+    if len(files) > MAX_PACK_MEMBERS:
+        raise UnsafeArchiveError("pack contains too many files")
     total = 0
     for raw_path, content in files.items():
         if raw_path == "manifest.json":

@@ -149,12 +149,30 @@ def test_duplicate_install_does_not_reinstall(registry, signing_key, pack_manage
 
 def test_resumable_download_and_concurrent_guard(registry, signing_key, pack_manager):
     pack = make_pack(registry, signing_key)
-    session, chunk = pack_manager.download("fa", expected_size=len(pack), transport=lambda _id, _off: pack[:10], resume_from=0, download_id="d1")
+    session, chunk = pack_manager.download(
+        "fa",
+        expected_size=len(pack),
+        transport=lambda _id, _off: pack[:10],
+        resume_from=0,
+        download_id="d1",
+    )
     assert session.status == "DOWNLOADING"
     assert session.last_error == "partial_download_resumable"
     with pytest.raises(PackError):
-        pack_manager.download("fa", expected_size=len(pack), transport=lambda _id, _off: b"", resume_from=0, download_id="d2")
-    resumed, remainder = pack_manager.download("fa", expected_size=len(pack), transport=lambda _id, _off: pack[10:], resume_from=10, download_id="d1")
+        pack_manager.download(
+            "fa",
+            expected_size=len(pack),
+            transport=lambda _id, _off: b"",
+            resume_from=0,
+            download_id="d2",
+        )
+    resumed, remainder = pack_manager.download(
+        "fa",
+        expected_size=len(pack),
+        transport=lambda _id, _off: pack[10:],
+        resume_from=10,
+        download_id="d1",
+    )
     assert resumed.downloaded_bytes == len(pack)
     assert chunk + remainder == pack
 
@@ -177,7 +195,13 @@ def test_explicit_state_transition_is_validated(pack_manager):
 
 def test_pending_language_cannot_be_downloaded(pack_manager):
     with pytest.raises(ApprovalError):
-        pack_manager.download("PENDING_SYRIAC", expected_size=1, transport=lambda *_: b"x", resume_from=0, download_id="x")
+        pack_manager.download(
+            "PENDING_SYRIAC",
+            expected_size=1,
+            transport=lambda *_: b"x",
+            resume_from=0,
+            download_id="x",
+        )
 
 
 def test_l4_approval_requires_clinical_reviewer():
@@ -197,7 +221,11 @@ def test_l4_approval_requires_clinical_reviewer():
 
 
 def test_approved_pack_for_blocked_language_is_rejected(registry, signing_key, pack_manager):
-    pack = resign_pack(make_pack(registry, signing_key), signing_key, lambda payload: payload.update(approval_status="approved"))
+    pack = resign_pack(
+        make_pack(registry, signing_key),
+        signing_key,
+        lambda payload: payload.update(approval_status="approved"),
+    )
     with pytest.raises(ApprovalError):
         pack_manager.install("fa", pack)
 
@@ -233,10 +261,32 @@ def test_install_recovers_from_stale_target_directory(registry, signing_key, pac
     assert pack_manager.active_catalog("fa", "common")["ui.home"] == "Synthetic home"
 
 
+def test_install_can_retry_from_rollback_required(registry, signing_key, pack_manager):
+    entry = pack_manager._language_state("fa")
+    entry["state"] = "ROLLBACK_REQUIRED"
+    manifest = pack_manager.install("fa", make_pack(registry, signing_key))
+    assert manifest.language_id == "fa"
+    assert pack_manager.state("fa") == "READY"
+
+
+def test_archive_member_count_is_limited(registry, signing_key, pack_manager):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for index in range(300):
+            archive.writestr(f"catalogs/item_{index}.json", b"{}")
+    with pytest.raises(UnsafeArchiveError, match="too many members"):
+        pack_manager.verify(buffer.getvalue(), "fa")
+
+
 def test_malformed_public_key_does_not_break_startup(registry, signing_key, tmp_path, monkeypatch):
     from app.localization.pack_manager import PackManager
 
     monkeypatch.setenv("GULS_PACK_PUBLIC_KEY_B64", "!!!not-base64!!!")
-    manager = PackManager(tmp_path / "bad-key-state", registry, allow_synthetic_packs=True)
+    manager = PackManager(
+        tmp_path / "bad-key-state",
+        registry,
+        allow_synthetic_packs=True,
+        synthetic_signer_key_id="test-signer-01",
+    )
     with pytest.raises(SignatureVerificationError, match="invalid"):
         manager.verify(make_pack(registry, signing_key), "fa")

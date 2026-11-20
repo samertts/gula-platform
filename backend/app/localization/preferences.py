@@ -151,10 +151,14 @@ def _pack_manager() -> PackManager:
     import os
     from pathlib import Path
 
+    synthetic_enabled = os.getenv("GULS_ALLOW_SYNTHETIC_PACKS", "0") == "1"
     return PackManager(
-        Path(os.getenv("GULS_LOCAL_PACK_ROOT", "/tmp/gula-language-packs")),
+        Path(os.getenv("GULS_LOCAL_PACK_ROOT", str(Path.home() / ".gula" / "language-packs"))),
         LanguageRegistry.load(),
-        allow_synthetic_packs=os.getenv("GULS_ALLOW_SYNTHETIC_PACKS", "0") == "1",
+        allow_synthetic_packs=synthetic_enabled,
+        synthetic_signer_key_id=os.getenv("GULS_SYNTHETIC_SIGNER_KEY_ID", "")
+        if synthetic_enabled
+        else "",
     )
 
 
@@ -167,18 +171,33 @@ def validate_preference(
     if definition is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "LANGUAGE_NOT_FOUND", "message": "The requested language is not registered."},
+            detail={
+                "code": "LANGUAGE_NOT_FOUND",
+                "message": "The requested language is not registered.",
+            },
         )
-    if not definition.is_active or definition.locale_tag is None:
+    if (
+        not definition.is_active
+        or definition.locale_tag is None
+        or not definition.is_publishable
+        or definition.approval_status != "approved"
+        or definition.linguistic_approval_status != "approved"
+    ):
         raise HTTPException(
             status_code=409,
-            detail={"code": "LANGUAGE_NOT_ACTIVE", "message": "The requested language standard is not approved."},
+            detail={
+                "code": "LANGUAGE_NOT_ACTIVE",
+                "message": "The requested language standard is not approved.",
+            },
         )
     fallback = registry.resolve(payload.fallback_language)
     if fallback is None or fallback.language_id != registry.fallback_language:
         raise HTTPException(
             status_code=422,
-            detail={"code": "INVALID_FALLBACK_LANGUAGE", "message": "English is the only permitted fallback."},
+            detail={
+                "code": "INVALID_FALLBACK_LANGUAGE",
+                "message": "English is the only permitted fallback.",
+            },
         )
     state = pack_manager.state(definition.language_id)
     ready = state == "READY" and definition.is_active
@@ -201,7 +220,9 @@ def create_router(
     preference_store_provider: Any,
     current_user_provider: Any,
 ) -> APIRouter:
-    local_router = APIRouter(prefix="/api/v1/users/me/preferences", tags=["localization-preferences"])
+    local_router = APIRouter(
+        prefix="/api/v1/users/me/preferences", tags=["localization-preferences"]
+    )
 
     @local_router.put("/language", response_model=LanguagePreferenceResponse)
     def set_language(

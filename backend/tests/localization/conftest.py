@@ -24,12 +24,15 @@ def signing_key() -> Ed25519PrivateKey:
 
 
 @pytest.fixture()
-def pack_manager(tmp_path: Path, registry: LanguageRegistry, signing_key: Ed25519PrivateKey) -> PackManager:
+def pack_manager(
+    tmp_path: Path, registry: LanguageRegistry, signing_key: Ed25519PrivateKey
+) -> PackManager:
     return PackManager(
         tmp_path / "pack-state",
         registry,
         public_key=public_key_bytes(signing_key),
         allow_synthetic_packs=True,
+        synthetic_signer_key_id="test-signer-01",
     )
 
 
@@ -71,7 +74,10 @@ def resign_pack(pack: bytes, key: Ed25519PrivateKey, mutate: object) -> bytes:
     from app.localization.pack_schema import LanguagePackManifest
 
     buffer = io.BytesIO()
-    with zipfile.ZipFile(io.BytesIO(pack)) as source, zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as target:
+    with (
+        zipfile.ZipFile(io.BytesIO(pack)) as source,
+        zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as target,
+    ):
         for info in source.infolist():
             data = source.read(info.filename)
             if info.filename == "manifest.json":
@@ -80,8 +86,12 @@ def resign_pack(pack: bytes, key: Ed25519PrivateKey, mutate: object) -> bytes:
                 manifest = LanguagePackManifest.model_validate(payload)
                 manifest.signature = "AA=="
                 payload = json.loads(manifest.model_dump_json())
-                payload["signature"] = base64.b64encode(key.sign(manifest.signing_payload())).decode("ascii")
-                data = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+                payload["signature"] = base64.b64encode(
+                    key.sign(manifest.signing_payload())
+                ).decode("ascii")
+                data = json.dumps(
+                    payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+                ).encode("utf-8")
             target.writestr(info.filename, data)
     return buffer.getvalue()
 
@@ -89,7 +99,10 @@ def resign_pack(pack: bytes, key: Ed25519PrivateKey, mutate: object) -> bytes:
 def replace_zip_member(pack: bytes, member_name: str, replacement: bytes) -> bytes:
     """Rewrite one archive member while preserving all other bytes verbatim."""
     buffer = io.BytesIO()
-    with zipfile.ZipFile(io.BytesIO(pack)) as source, zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as target:
+    with (
+        zipfile.ZipFile(io.BytesIO(pack)) as source,
+        zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as target,
+    ):
         for info in source.infolist():
             data = replacement if info.filename == member_name else source.read(info.filename)
             target.writestr(info.filename, data)

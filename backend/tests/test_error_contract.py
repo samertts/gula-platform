@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.core.error_contract import (
     build_error_payload,
     public_http_detail,
+    stable_http_detail,
     validation_details,
 )
 
@@ -65,7 +66,6 @@ def test_validation_details_omits_submitted_input_values() -> None:
     assert "do-not-echo" not in str(details)
 
 
-
 def test_starlette_http_errors_use_canonical_payload() -> None:
     import json
 
@@ -92,4 +92,54 @@ def test_starlette_http_errors_use_canonical_payload() -> None:
     assert body["code"] == "NOT_FOUND"
     assert body["message"] == "missing"
     assert body["detail_ar"] == "المورد المطلوب غير موجود."
-    assert set(("request_id", "timestamp", "details")).issubset(body)
+    assert {"request_id", "timestamp", "details"}.issubset(body)
+
+
+def test_stable_http_detail_is_preserved_only_for_exact_shape() -> None:
+    detail = {
+        "code": "DOWNLOAD_BLOCKED_BY_DATA_SAVER",
+        "message": "Data saver restrictions prevent this download.",
+    }
+    assert stable_http_detail(detail, status_code=409) == (
+        "Data saver restrictions prevent this download.",
+        {},
+        "DOWNLOAD_BLOCKED_BY_DATA_SAVER",
+    )
+    assert stable_http_detail({"code": "OK", "message": "x", "extra": 1}, status_code=409) is None
+    assert stable_http_detail({"code": "lowercase", "message": "x"}, status_code=409) is None
+    assert stable_http_detail(detail, status_code=500) is None
+
+
+def test_factory_handler_preserves_guls_stable_code_without_arabic_override() -> None:
+    import json
+
+    from app.factory import _http_exception_handler
+    from starlette.exceptions import HTTPException
+    from starlette.requests import Request
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/localization/language-packs/fa/download",
+            "headers": [],
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("testserver", 80),
+            "client": ("testclient", 50000),
+        }
+    )
+    response = _http_exception_handler(
+        request,
+        HTTPException(
+            status_code=409,
+            detail={
+                "code": "DOWNLOAD_BLOCKED_BY_DATA_SAVER",
+                "message": "Data saver restrictions prevent this download.",
+            },
+        ),
+    )
+    body = json.loads(response.body)
+    assert body["code"] == "DOWNLOAD_BLOCKED_BY_DATA_SAVER"
+    assert body["message"] == "Data saver restrictions prevent this download."
+    assert body["detail_ar"] == body["message"]
