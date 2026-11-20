@@ -194,7 +194,9 @@ The single failure is `tests/test_icu_lab_workflow_p0.py::test_transfusion_requi
 
 ## 10. Delivery state at time of logging
 
-- Docs commit `5079d67d` exists locally only; no program-013 commit has been pushed.
-- No program-013 branch/PR/merge/deployment has been created outside the isolated clone.
-- First independent pass: 5 claims VERIFIED, 4 claims PARTIALLY VERIFIED, 0 FALSIFIED. Four critical-result gaps from that pass are now closed locally; the second independent pass is in progress.
+- Commit `05c8fd870745a06fea41230cfe98d2b90501d957` was pushed to `execution/gula-national-completion-013` (exit 0); ancestor `5079d67d`.
+- Draft PR #307 created: https://github.com/samertts/gula-platform/pull/307 (`isDraft=true`, OPEN).
+- No merge, release promotion, or deployment.
+- Two independent adversarial passes complete; all discovered code gaps closed and re-validated.
+- Full suite: 2,754 passed, 27 skipped, 1 pre-existing failure (NC013-C05), reproduced on untouched baseline.
 - Release posture remains `NOT ACCEPTED FOR PRODUCTION — HOLD`; `production_ready=0`; OD-001…OD-025 remain `BLOCKED`.

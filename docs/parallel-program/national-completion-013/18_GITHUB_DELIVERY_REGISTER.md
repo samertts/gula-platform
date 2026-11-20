@@ -28,10 +28,30 @@ git -C /tmp/opencode/gula-national-completion-013 rev-parse HEAD
 
 ## Findings
 
-- DEL-01 — INFO — No push or PR has been created yet.
+- DEL-01 — RESOLVED — Branch pushed and draft PR created (see delivery record below).
 - DEL-02 — HIGH — `main` is unprotected; delivery must not rely on CI status inherited from baseline.
 - DEL-03 — INFO — Two independent adversarial passes completed; all discovered code gaps closed and re-validated.
-- DEL-04 — HIGH — Governance approvals remain `BLOCKED`; any PR must be a **draft** and no merge/deployment is authorized.
+- DEL-04 — HIGH — Governance approvals remain `BLOCKED`; PR #307 is a **draft** and no merge/deployment is authorized.
+- DEL-05 — HIGH — NC013-C05 (pre-existing transfusion transition failure) remains open and requires a clinical workflow owner decision.
+- DEL-06 — INFO — GitHub reported 384 pre-existing Dependabot vulnerabilities on the default branch at push time (20 critical, 194 high, 142 moderate, 28 low); not introduced by this program.
+
+## Delivery record
+
+| Item | Value |
+|---|---|
+| Branch | `execution/gula-national-completion-013` |
+| Base | `main` @ `2ee9e8bcb9d81e9cac6801f5dea9b86d59beaffa` |
+| Commit | `05c8fd870745a06fea41230cfe98d2b90501d957` |
+| Commit subject | `feat(program-013): remediate critical clinical and identity defects` |
+| Ancestor commit | `5079d67d` — `docs(program-013): establish protected baseline and unified findings register` |
+| Pre-push fetch | exit 0; `origin/main` unchanged; ahead 2 / behind 0; remote branch absent |
+| Push | `git push -u origin execution/gula-national-completion-013`, exit 0, new branch |
+| Remote HEAD | `05c8fd870745a06fea41230cfe98d2b90501d957` |
+| Pull request | #307 — OPEN, `isDraft=true` |
+| PR URL | https://github.com/samertts/gula-platform/pull/307 |
+| Merge / deployment | **None. Not authorized.** |
+
+Commands and raw outputs: `evidence/test_logs/prepush_fetch.log`, `push_nc013.log`, `pr_create_nc013.log`.
 
 ## Verification state
 
@@ -46,8 +66,8 @@ git -C /tmp/opencode/gula-national-completion-013 rev-parse HEAD
 | Docs updated | all 22 phase docs + evidence log + register updated | PASS |
 | No unresolved critical regression | two independent passes; all code gaps closed and re-validated | PASS |
 | Base/dependencies understood | base `2ee9e8bc…`, single commit ahead, lock upgraded and re-audited | PASS |
-| No concurrent-work overwrite | `git fetch origin main` + compare immediately before push | PENDING |
-| Exact commit/evidence recorded | commit SHA and PR number to be appended below | PENDING |
+| No concurrent-work overwrite | `git fetch origin main` exit 0; ahead 2 / behind 0; remote branch absent | PASS |
+| Exact commit/evidence recorded | commit `05c8fd87…`, PR #307 draft, raw logs preserved | PASS |
 
 A draft PR is the maximum authorized delivery. No merge, release promotion, or deployment.
 
