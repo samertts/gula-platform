@@ -2,7 +2,7 @@
 
 ## Scope
 
-Static analysis, secret scanning, dependency/vulnerability scanning, container/config scanning, and SBOM evidence.
+Static analysis, secret scanning, dependency and vulnerability scanning, container/configuration scanning, and SBOM evidence.
 
 ## Methodology
 

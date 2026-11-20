@@ -34,6 +34,9 @@ git -C /tmp/opencode/gula-national-completion-013 rev-parse HEAD
 - DEL-04 — HIGH — Governance approvals remain `BLOCKED`; PR #307 is a **draft** and no merge/deployment is authorized.
 - DEL-05 — HIGH — NC013-C05 (pre-existing transfusion transition failure) remains open and requires a clinical workflow owner decision.
 - DEL-06 — INFO — GitHub reported 384 pre-existing Dependabot vulnerabilities on the default branch at push time (20 critical, 194 high, 142 moderate, 28 low); not introduced by this program.
+- DEL-07 — HIGH — CI `Secret Scan` failed on a gitleaks `generic-api-key` **false positive** in `14_SECURITY_SCAN_AND_SBOM.md` line 5 of docs commit `5079d67d` (matched the phrase "dependency/vulnerability", no credential material). A targeted stopword was added to `.gitleaks.toml` and the sentence rephrased; re-run pending.
+- DEL-08 — MEDIUM — CI `Ruff Format (Python)` fails repo-wide: `ruff format --check backend/app/ shared/ scripts/` reports 1,012 files needing reformat locally. This is pre-existing and unrelated to the PR; whole-repository reformatting is out of scope. `ruff check --no-cache <changed .py files>` passes.
+- DEL-09 — INFO — Other PR checks were pending at first observation; the draft remains under human review and no merge is authorized.
 
 ## Delivery record
 

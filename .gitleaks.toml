@@ -16,3 +16,9 @@ paths = [
 regexes = [
   '''6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw='''
 ]
+stopwords = [
+  # False positive in a documentation scope sentence from commit 5079d67d:
+  # gitleaks generic-api-key treated "dependency/vulnerability" as a secret.
+  # No credential material is present; the sentence was rephrased in HEAD.
+  '''dependency/vulnerability'''
+]
