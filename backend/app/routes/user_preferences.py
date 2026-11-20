@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -27,7 +27,11 @@ from ..services.audit_service import log_action
 router = APIRouter(prefix="/user-preferences", tags=["user-preferences"])
 
 
-AccessibilityLanguage = Literal["ar", "en", "ku", "tk", "syr"]
+# Active registry identifiers only. Pending standards are never selectable.
+AccessibilityLanguage = Literal[
+    "ar", "en", "ckb", "fa", "ur", "tr", "fr", "de", "ru", "zh", "hi", "bn"
+]
+_LEGACY_LANGUAGE_MAP = {"ku": "ckb", "tk": "en", "syr": "en"}
 FontSize = Literal["small", "medium", "large", "x-large"]
 ColorBlindMode = Literal["none", "protanopia", "deuteranopia", "tritanopia", "monochrome"]
 
@@ -35,7 +39,15 @@ ColorBlindMode = Literal["none", "protanopia", "deuteranopia", "tritanopia", "mo
 class AccessibilityPreferences(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    language: AccessibilityLanguage = "ar"
+    language: AccessibilityLanguage = "en"
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def normalize_legacy_language(cls, value: object) -> object:
+        """Map retired identifiers to active ones instead of returning HTTP 500."""
+        if isinstance(value, str):
+            return _LEGACY_LANGUAGE_MAP.get(value, value)
+        return value
     font_size: FontSize = "medium"
     text_scale: float = Field(default=1.0, ge=0.85, le=2.0)
     high_contrast: bool = False
@@ -68,6 +80,10 @@ class AccessibilityUpdateRequest(AccessibilityPreferences):
 
 
 class AccessibilityResponse(AccessibilityPreferences):
+    # GULS adds language-related keys to the same preferences JSON. They are
+    # ignored by this legacy response instead of causing a validation failure.
+    model_config = ConfigDict(extra="ignore")
+
     version: int
     status: Literal["saved", "default"] = "saved"
 
@@ -188,7 +204,9 @@ def update_accessibility(
     before_version = profile.version if profile else 0
     if profile is not None:
         _check_version(profile.version, data.version)
-        profile.preferences = data.model_dump(exclude={"version"})
+        existing = dict(profile.preferences or {})
+        guls_keys = {key: existing[key] for key in ("fallback_language", "auto_download") if key in existing}
+        profile.preferences = {**guls_keys, **data.model_dump(exclude={"version"})}
         profile.version += 1
         profile.updated_at = datetime.now(UTC)
     else:

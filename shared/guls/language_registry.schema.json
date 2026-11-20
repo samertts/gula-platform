@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gula.local/schemas/language_registry.schema.json",
+  "title": "GULA Language Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry_version", "engine_compatibility", "fallback_language", "languages"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "registry_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "engine_compatibility": { "type": "string", "minLength": 1 },
+    "fallback_language": { "type": "string", "const": "en" },
+    "languages": {
+      "type": "array",
+      "minItems": 5,
+      "items": { "$ref": "#/$defs/language" }
+    }
+  },
+  "$defs": {
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language_id", "locale_tag", "native_name", "english_name", "language", "dialect",
+        "region", "script", "direction", "classification", "is_active", "is_publishable",
+        "approval_status", "linguistic_approval_status", "clinical_approval_status",
+        "pack_version", "minimum_engine_version", "translation_coverage",
+        "terminology_version", "catalogs", "notes"
+      ],
+      "properties": {
+        "language_id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$" },
+        "locale_tag": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?(-[A-Za-z0-9]{5,8})*$" }
+          ]
+        },
+        "native_name": { "type": ["string", "null"] },
+        "english_name": { "type": "string", "minLength": 1 },
+        "language": { "type": "string", "minLength": 1 },
+        "dialect": { "type": ["string", "null"] },
+        "region": { "type": ["string", "null"], "pattern": "^([A-Z]{2}|[0-9]{3})?$" },
+        "script": { "type": ["string", "null"], "pattern": "^[A-Z][a-z]{3}$|^$" },
+        "direction": { "type": ["string", "null"], "enum": ["rtl", "ltr", null] },
+        "classification": { "type": "string", "enum": ["core", "downloadable"] },
+        "is_active": { "type": "boolean" },
+        "is_publishable": { "type": "boolean" },
+        "approval_status": { "type": "string", "enum": ["approved", "blocked", "synthetic_test_only"] },
+        "linguistic_approval_status": { "type": "string", "enum": ["approved", "blocked"] },
+        "clinical_approval_status": { "type": "string", "enum": ["approved", "approved_source", "blocked"] },
+        "pack_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "minimum_engine_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "translation_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "terminology_version": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+          ]
+        },
+        "catalogs": { "type": "array", "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" } },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

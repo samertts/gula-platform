@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gula.local/schemas/language_pack.schema.json",
+  "title": "GULA Signed Language Pack Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "language_id", "locale_tag", "native_name", "fallback_locale",
+    "pack_version", "minimum_engine_version", "direction", "script", "catalogs",
+    "terminology_version", "content_hash", "content_size", "publisher", "signer_key_id",
+    "approval_status", "created_at", "files", "signature"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "language_id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$" },
+    "locale_tag": { "type": "string", "pattern": "^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?(-[A-Za-z0-9]{5,8})*$" },
+    "native_name": { "type": "string", "minLength": 1 },
+    "fallback_locale": { "const": "en" },
+    "pack_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "minimum_engine_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "direction": { "type": "string", "enum": ["rtl", "ltr"] },
+    "script": { "type": "string", "pattern": "^[A-Z][a-z]{3}$" },
+    "catalogs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" } },
+    "terminology_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "content_size": { "type": "integer", "minimum": 0 },
+    "publisher": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "signer_key_id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,120}$" },
+    "approval_status": { "type": "string", "enum": ["approved", "synthetic_test_only"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^(catalogs|terminology|formatting|metadata|fonts)/[A-Za-z0-9._/-]+$" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "size": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "signature": { "type": "string", "pattern": "^[A-Za-z0-9+/]+={0,2}$" }
+  }
+}
