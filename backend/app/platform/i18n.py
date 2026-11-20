@@ -1,4 +1,4 @@
-"""Standardized localization/internationalization module — Arabic-first with English fallback."""
+"""Standardized localization/internationalization module — English-first fallback."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from . import PlatformRegistry
 
 logger = logging.getLogger("gula.platform.i18n")
 
-_SUPPORTED_LOCALES = {"ar", "en", "ku", "ckb"}
+_SUPPORTED_LOCALES = {"ar", "en", "ckb"}
 
 _TRANSLATIONS: dict[str, dict[str, str]] = {
     "ar": {
@@ -39,15 +39,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "back": "Back",
         "next": "Next",
     },
-    "ku": {
-        "welcome": "بەخێربێی",
-        "error": "هەڵە",
-        "success": "سەرکەوتن",
-        "save": "پاشەکەوت",
-        "cancel": "ڕەتکردن",
-        "delete": "سڕینەوە",
-        "search": "گەڕان",
-    },
     "ckb": {
         "welcome": "بەخێربێی",
         "error": "هەڵە",
@@ -62,12 +53,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
 
 class TranslationService:
     def __init__(self) -> None:
-        self._locale = "ar"
+        self._locale = "en"
 
     def translate(self, key: str, locale: str | None = None, **kwargs) -> str:
         locale = locale or self._locale
-        translations = _TRANSLATIONS.get(locale, _TRANSLATIONS.get("ar", {}))
-        template = translations.get(key, key)
+        # English is the mandatory fallback for every locale. Raw keys are never
+        # returned to callers because the UI owns user-facing presentation.
+        translations = _TRANSLATIONS.get(locale, {})
+        template = translations.get(key, _TRANSLATIONS.get("en", {}).get(key, ""))
         if kwargs:
             try:
                 return template.format(**kwargs)

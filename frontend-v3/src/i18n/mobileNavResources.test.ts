@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import ar from "./ar";
 import en from "./en";
 import ku from "./ku";
-import syr from "./syr";
-import tk from "./tk";
 import { getLocaleDirection, localeOptions } from "./locales";
 
-const resources = { ar, en, ku, tk, syr } as const;
+const resources = { ar, en, ckb: ku } as const;
 
 const requiredMobileNavKeys = [
   "quickNavigation",
@@ -57,16 +55,13 @@ describe("Mobile Bottom Nav i18n resources", () => {
   });
 
   it("keeps the local navigation resources aligned with their declared directions", () => {
-    expect(Object.keys(resources).sort()).toEqual(["ar", "en", "ku", "syr", "tk"]);
+    expect(Object.keys(resources).sort()).toEqual(["ar", "ckb", "en"]);
     expect(getLocaleDirection("ar")).toBe("rtl");
     expect(getLocaleDirection("en")).toBe("ltr");
-    expect(getLocaleDirection("ku")).toBe("rtl");
-    expect(getLocaleDirection("tk")).toBe("ltr");
-    expect(getLocaleDirection("syr")).toBe("rtl");
-
+    expect(getLocaleDirection("ckb")).toBe("rtl");
 
     const supported = localeOptions.map((option) => option.code);
-    expect(supported).toEqual(["ar", "en", "ku", "tk", "syr"]);
+    expect(supported).toEqual(["ar", "en", "ckb"]);
   });
 
 });
