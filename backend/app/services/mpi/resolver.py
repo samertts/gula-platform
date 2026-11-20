@@ -5,12 +5,12 @@ endpoint whenever a lab registers or updates a patient.
 
 Algorithm:
   1. Normalize inputs (name, phone, NID hash, family hash).
-  2. Fast path: if NID is present, look up citizen by nid_hash directly.
+  2. Fast path: only for an explicitly verified NID from a trusted caller.
   3. Otherwise compute blocking_key + birth_year band + gender, fetch ≤50
      candidates.
   4. Score each candidate via matcher.score().
   5. Best score ≥ 0.90  → auto-claim to that citizen.
-     Best score 0.70–0.90 → create claim with method='pending_review'.
+     Best score 0.70-0.90 → create claim with method='pending_review'.
      Best score < 0.70   → mint a new citizen.
   6. Write IdentityClaim row (one per lab/patient).
   7. On merge decisions, append an immutable MergeAudit entry.
@@ -171,12 +171,16 @@ def resolve_identity(
     birth_month: int | None = None,
     birth_day: int | None = None,
     gender: str | None = None,
-    national_id: str | None = None,  # RAW — hashed here, never persisted
+    national_id: str | None = None,  # RAW — hashed here only when verified
     family_id: str | None = None,  # RAW — hashed here, never persisted
     claimed_by_user_id: int | None = None,
+    nid_verified: bool = False,
 ) -> ResolveOutcome:
     """Resolve (or create) the canonical citizen for a LIMS patient.
 
+    ``nid_verified`` must only be true when a trusted upstream identity
+    authority has verified the NID. The HTTP MPI endpoint does not provide
+    that proof, so it defaults to false and NID-based matching is disabled.
     Idempotent: re-calling with the same (lab_id, local_patient_id)
     returns the existing claim without re-scoring.
     """
@@ -202,7 +206,7 @@ def resolve_identity(
     # ── Normalize inputs ─────────────────────────────────────────────────────
     name_canonical = normalize_name(name)
     phone_norm = phone_last10(phone)
-    nid_hash = hash_national_id(national_id) if national_id else None
+    nid_hash = hash_national_id(national_id) if national_id and nid_verified else None
     family_hash = hash_family_id(family_id) if family_id else None
     bkey = blocking_key(name)
 
@@ -226,7 +230,11 @@ def resolve_identity(
     if nid_hash:
         hit = (
             db.query(Citizen)
-            .filter(Citizen.nid_hash == nid_hash, Citizen.status.in_(("active", "review")))
+            .filter(
+                Citizen.nid_hash == nid_hash,
+                Citizen.nid_verified.is_(True),
+                Citizen.status.in_(("active", "review")),
+            )
             .first()
         )
         if hit is not None:

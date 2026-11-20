@@ -1,0 +1,41 @@
+## execution/gula-national-completion-013
+ M backend/app/_compat.py
+ M backend/app/blood_bank/domain/state_machine.py
+ M backend/app/chronic_care/care_plans.py
+ M backend/app/clinical_gateway/contracts.py
+ M backend/app/clinical_gateway/rollout.py
+ M backend/app/identity/api/persons.py
+ M backend/app/identity/api/router.py
+ M backend/app/identity/models/administrative_structure.py
+ M backend/app/identity/models/authorization.py
+ M backend/app/identity/models/consent.py
+ M backend/app/identity/models/legacy_account_link.py
+ M backend/app/identity/models/membership.py
+ M backend/app/identity/models/security.py
+ M backend/app/identity/models/workspace.py
+ M backend/app/identity/services/authorization_decision.py
+ M backend/app/identity/services/canonical_audit.py
+ M backend/app/identity/services/organization_service.py
+ M backend/app/identity/services/verification_service.py
+ M backend/app/integration/connectors/__init__.py
+ M backend/app/integration/gateway/grpc_gateway.py
+ M backend/app/lims/routes.py
+ M backend/app/lims/workflows.py
+ M backend/app/models/clinical_scope.py
+ M backend/app/routes/register.py
+ M backend/app/routes/test_results.py
+ M backend/app/services/mpi/resolver.py
+ M backend/app/services/order_service.py
+ M backend/migrations/versions/20260814_0005_role_permission_engine.py
+ M backend/migrations/versions/20260814_0006_security_audit_governance.py
+ M backend/migrations/versions/20260814_0007_clinical_gateway_scope.py
+ M backend/migrations/versions/20260815_0023_drug_substitution.py
+ M backend/migrations/versions/20260820_0004_surgical_safety_checklists.py
+?? backend/app/services/critical_result_contract.py
+?? backend/migrations/versions/20261120_0001_nc013_hospital_core.py
+?? backend/tests/identity/test_niam_persons_auth_hardening_nc013.py
+?? backend/tests/test_critical_result_contract_nc013.py
+?? backend/tests/test_grpc_gateway_fail_closed_nc013.py
+?? backend/tests/test_nid_fail_closed_nc013.py
+?? backend/tests/test_python310_compatibility_nc013.py
+?? docs/parallel-program/national-completion-013/evidence/test_logs/

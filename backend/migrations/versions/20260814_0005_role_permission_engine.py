@@ -6,10 +6,12 @@ Revises: 20260814_0004
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from alembic import op
 import sqlalchemy as sa
+
+UTC = timezone.utc  # noqa: UP017 — Python 3.10 compatible
 
 
 revision = "20260814_0005"

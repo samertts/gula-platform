@@ -157,14 +157,22 @@ EVENT_REGISTRY = {
     },
     "ResultPublished": {
         "description": "A single lab result is published",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "summary": "Emitted when a test result is entered or updated",
         "tags": ["result", "lifecycle"],
         "payload": {
             "type": "object",
-            "required": ["result_id", "order_id", "test_name", "lab_id"],
+            "required": ["result_store", "order_id", "test_name", "lab_id"],
+            "not": {
+                "anyOf": [
+                    {"required": ["result_id"]},
+                    {"required": ["lab_result_id", "lims_result_id"]},
+                ]
+            },
             "properties": {
-                "result_id": {"type": "integer"},
+                "result_store": {"type": "string", "enum": ["lab_results", "lims_results"]},
+                "lab_result_id": {"type": "integer"},
+                "lims_result_id": {"type": "integer"},
                 "order_id": {"type": "integer"},
                 "patient_id": {"type": "integer"},
                 "lab_id": {"type": "integer"},
@@ -178,19 +186,41 @@ EVENT_REGISTRY = {
                 "flag": {"type": "string", "enum": ["H", "L", "normal", "critical"]},
                 "published_at": {"type": "string", "format": "date-time"},
             },
+            "allOf": [
+                {
+                    "oneOf": [
+                        {
+                            "properties": {"result_store": {"const": "lab_results"}},
+                            "required": ["lab_result_id"],
+                        },
+                        {
+                            "properties": {"result_store": {"const": "lims_results"}},
+                            "required": ["lims_result_id"],
+                        },
+                    ],
+                },
+            ],
         },
-        "correlation_id": "result_id",
+        "correlation_id": "result_store",
     },
     "ResultAmended": {
         "description": "A previously published result is amended",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "summary": "Emitted when a lab result is corrected",
         "tags": ["result", "lifecycle"],
         "payload": {
             "type": "object",
-            "required": ["result_id", "order_id", "lab_id"],
+            "required": ["result_store", "order_id", "lab_id"],
+            "not": {
+                "anyOf": [
+                    {"required": ["result_id"]},
+                    {"required": ["lab_result_id", "lims_result_id"]},
+                ]
+            },
             "properties": {
-                "result_id": {"type": "integer"},
+                "result_store": {"type": "string", "enum": ["lab_results", "lims_results"]},
+                "lab_result_id": {"type": "integer"},
+                "lims_result_id": {"type": "integer"},
                 "order_id": {"type": "integer"},
                 "lab_id": {"type": "integer"},
                 "previous_value": {"type": "number"},
@@ -200,20 +230,42 @@ EVENT_REGISTRY = {
                 "amended_by": {"type": "integer"},
                 "amended_at": {"type": "string", "format": "date-time"},
             },
+            "allOf": [
+                {
+                    "oneOf": [
+                        {
+                            "properties": {"result_store": {"const": "lab_results"}},
+                            "required": ["lab_result_id"],
+                        },
+                        {
+                            "properties": {"result_store": {"const": "lims_results"}},
+                            "required": ["lims_result_id"],
+                        },
+                    ],
+                },
+            ],
         },
-        "correlation_id": "result_id",
+        "correlation_id": "result_store",
     },
     "CriticalAlertTriggered": {
         "description": "A critical/pathological result is detected",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "summary": "Emitted when a result flag is critical — requires immediate action",
         "tags": ["result", "alert", "critical"],
         "payload": {
             "type": "object",
-            "required": ["alert_id", "result_id", "order_id", "lab_id"],
+            "required": ["alert_id", "result_store", "order_id", "lab_id"],
+            "not": {
+                "anyOf": [
+                    {"required": ["result_id"]},
+                    {"required": ["lab_result_id", "lims_result_id"]},
+                ]
+            },
             "properties": {
                 "alert_id": {"type": "string"},
-                "result_id": {"type": "integer"},
+                "result_store": {"type": "string", "enum": ["lab_results", "lims_results"]},
+                "lab_result_id": {"type": "integer"},
+                "lims_result_id": {"type": "integer"},
                 "order_id": {"type": "integer"},
                 "patient_id": {"type": "integer"},
                 "lab_id": {"type": "integer"},
@@ -224,6 +276,20 @@ EVENT_REGISTRY = {
                 "message": {"type": "string"},
                 "notified_at": {"type": "string", "format": "date-time"},
             },
+            "allOf": [
+                {
+                    "oneOf": [
+                        {
+                            "properties": {"result_store": {"const": "lab_results"}},
+                            "required": ["lab_result_id"],
+                        },
+                        {
+                            "properties": {"result_store": {"const": "lims_results"}},
+                            "required": ["lims_result_id"],
+                        },
+                    ],
+                },
+            ],
         },
         "correlation_id": "alert_id",
     },

@@ -4,12 +4,12 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app._compat import StrEnum
 from app.identity.models.audit import IdentityAuditEntry
 
 

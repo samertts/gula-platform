@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from enum import StrEnum
+
+from app._compat import StrEnum
 
 
 class ClinicalGatewayMode(StrEnum):

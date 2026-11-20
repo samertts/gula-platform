@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from enum import StrEnum
-
 from sqlalchemy import (
     Boolean,
     Column,
@@ -13,6 +11,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 
+from app._compat import StrEnum
 from app.identity.base import IdentityBaseEntity
 
 

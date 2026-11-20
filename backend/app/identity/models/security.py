@@ -1,9 +1,8 @@
 from datetime import datetime
-from enum import StrEnum
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
 
-from app._compat import UTC
+from app._compat import UTC, StrEnum
 from app.identity.base import IdentityBaseEntity
 
 
