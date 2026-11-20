@@ -1,4 +1,11 @@
-"""Institution-scoped drug substitution rules and approval requests."""
+"""Institution-scoped drug substitution rules and approval requests.
+
+Repair note (NC013-H01): the two catalog foreign keys were declared
+String(26) while ``pharmacy_drug_catalog.id`` is Integer. This is corrected
+in place so fresh PostgreSQL deployments can reach Alembic head. Existing
+deployments require a separate, owner-approved ALTER migration and must not
+assume this historical revision can be re-run.
+"""
 
 from __future__ import annotations
 
@@ -24,8 +31,11 @@ def upgrade() -> None:
             "pharmacy_drug_substitution_rules",
             sa.Column("id", sa.String(26), nullable=False),
             sa.Column("lab_id", sa.Integer(), sa.ForeignKey("labs.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("original_drug_catalog_id", sa.String(26), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("alternative_drug_catalog_id", sa.String(26), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            # pharmacy_drug_catalog.id is Integer (20260716_0003). Using
+            # String(26) here produced DatatypeMismatch on PostgreSQL and
+            # blocked every later revision.
+            sa.Column("original_drug_catalog_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("alternative_drug_catalog_id", sa.Integer(), sa.ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False),
             sa.Column("equivalence_type", sa.String(32), nullable=False, server_default="generic"),
             sa.Column("approval_level", sa.String(32), nullable=False, server_default="pharmacist"),
             sa.Column("requires_patient_consent", sa.Boolean(), nullable=False, server_default=sa.true()),

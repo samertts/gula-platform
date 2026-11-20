@@ -47,3 +47,22 @@ Baseline inspection commands are recorded in `evidence/critical_defect_research.
 1. Namespace result IDs by source table and refuse ambiguous consumers.
 2. Keep critical-result delivery disabled until policy is approved.
 3. Route thresholds and mappings to the human approval register.
+
+## Execution update — 2026-11-20
+
+Implemented the critical-result identity contract only:
+
+- Namespaced references carry `result_store` (`lab_results` or `lims_results`) plus the source-table `result_id`.
+- Producers emit the namespace; LIMS consumer requires it and fails closed on bare/legacy IDs.
+- `lims/routes.py` accepts the store as an explicit query parameter.
+
+Evidence:
+
+- `evidence/test_logs/focused_nc013_py312_driftclosed.log` — 9 critical-result tests passed on Python 3.12 (22 focused tests total).
+- `evidence/test_logs/focused_nc013_py310_driftclosed.log` — 9 critical-result tests passed on Python 3.10 (17 focused tests total).
+- Event registry schemas `ResultPublished`, `ResultAmended`, `CriticalAlertTriggered` now forbid bare `result_id` and require `result_store` with a conditional namespaced ID; the critical-alert API and order-time `RESULT_CRITICAL` event also carry the namespaced reference.
+- `evidence/implementation_log.md` — exact commands and change inventory.
+
+No live event subscriber is wired while `AUD-CLIN-001` is `BLOCKED`; the tested consumer path fails closed on ambiguous payloads.
+
+Verification state: **ENGINEERING FIX LOCALLY TESTED; INDEPENDENT VERIFICATION IN PROGRESS**. Critical-result notification delivery remains disabled and clinical policy, recipient, escalation, and acknowledgement rules remain human-owned and `BLOCKED`.

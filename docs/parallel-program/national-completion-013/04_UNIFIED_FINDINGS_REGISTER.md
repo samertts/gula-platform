@@ -35,12 +35,14 @@ jq -e . docs/parallel-program/national-completion-013/evidence/unified_findings_
 
 | ID | Severity | Module | State | Disposition |
 |---|---|---|---|---|
-| NC013-C01 | CRITICAL | Critical-result ID contract | NOT FIXED | OPEN |
-| NC013-C02 | CRITICAL | NIAM persons endpoints | PARTIALLY FIXED | OPEN |
-| NC013-C03 | CRITICAL | gRPC gateway | NOT FIXED | OPEN |
-| NC013-C04 | CRITICAL | NID self-registration / MPI | NOT FIXED | OPEN |
-| NC013-H01 | HIGH | Drug substitution migration FK | PARTIALLY FIXED | OPEN |
-| NC013-H02 | HIGH | Python 3.10 UTC compatibility | NOT FIXED | OPEN |
+| NC013-C01 | CRITICAL | Critical-result ID contract | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
+| NC013-C02 | CRITICAL | NIAM persons endpoints | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
+| NC013-C03 | CRITICAL | gRPC gateway | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
+| NC013-C04 | CRITICAL | NID self-registration / MPI | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
+| NC013-C05 | CRITICAL | Transfusion verification → in-progress transition | NOT FIXED — PRE-EXISTING | HUMAN APPROVAL REQUIRED — OUT OF NC013 SCOPE |
+| NC013-H01 | HIGH | Drug substitution migration FK | FIXED — LOCAL TESTS PASS | REMEDIATED — AWAITING INDEPENDENT VERIFICATION |
+| NC013-H02 | HIGH | Python 3.10 UTC compatibility | FIXED — LOCAL TESTS PASS | REMEDIATED — AWAITING INDEPENDENT VERIFICATION |
+| NC013-H14 | HIGH | Missing hospital core migration | FIXED — LOCAL TESTS PASS | REMEDIATED — AWAITING INDEPENDENT VERIFICATION |
 | NC013-H03 | HIGH | GitHub protection / CI | NOT FIXED | OPEN |
 | NC013-H04 | HIGH | Provenance / untracked evidence | NOT FIXED | OPEN |
 | NC013-H05 | HIGH | Patient route authorization | NOT VERIFIED | OPEN |
@@ -57,7 +59,7 @@ jq -e . docs/parallel-program/national-completion-013/evidence/unified_findings_
 
 ## Verification state
 
-`HUMAN APPROVAL REQUIRED` for release; individual states are per-finding in the JSON register.
+`HUMAN APPROVAL REQUIRED` for release; individual states are per-finding in the JSON register. C01–C04, H01, and H14 are `INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE` after two adversarial passes. H02 remains `PARTIALLY VERIFIED — SCOPE LIMITATIONS DOCUMENTED` (three Python 3.12-only syntax sites and 13 further direct `UTC` imports are outside the claim). See `17_INDEPENDENT_VERIFICATION.md`.
 
 ## Limitations
 
@@ -67,8 +69,12 @@ jq -e . docs/parallel-program/national-completion-013/evidence/unified_findings_
 
 ## Residual risks
 
-- Four CRITICAL findings remain capable of wrong-patient or unauthorized access until fixed and independently verified.
-- Historical HIGH findings remain open despite documented engineering attempts in untracked work.
+- Four CRITICAL findings have engineering fixes, local regression evidence, and two independent verification passes; they are still not release-accepted because all human approvals are `BLOCKED`.
+- Historical HIGH findings remain open despite documented engineering attempts in untracked work; dependency vulnerabilities in the Python lock file were remediated and re-audited clean.
+- Pre-existing infrastructure misconfigurations found by Trivy remain outside this code change and unresolved.
+- No live `RESULT_CRITICAL` subscriber is wired: `process_critical_result_from_event()` is tested and fails closed, but notification activation is intentionally withheld while `AUD-CLIN-001` is `BLOCKED`.
+- Three Python 3.12-only syntax sites and 13 further app modules importing `UTC` directly remain outside the Python 3.10 compatibility claim.
+- NC013-C05 is a newly discovered, pre-existing safety-critical transfusion transition failure reproduced on the untouched baseline; it is deliberately not changed without a clinical workflow owner decision.
 
 ## Required actions
 

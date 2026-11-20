@@ -14,7 +14,6 @@ from ..security.auth import hash_password
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..services.audit_service import log_action
-from ..services.identity import hash_national_id as mpi_hash_nid
 from ..services.identity import normalize_name as mpi_normalize_name
 from ..services.mpi.blocking import blocking_key, phone_last10
 from ..services.mpi.models import Citizen
@@ -56,15 +55,12 @@ def _mint_citizen_from_self_registration(
     import time
 
     try:
-        nid_h = mpi_hash_nid(national_id) if national_id else None
-        if nid_h:
-            existing = (
-                db.query(Citizen)
-                .filter(Citizen.nid_hash == nid_h, Citizen.status.in_(("active", "review")))
-                .first()
-            )
-            if existing is not None:
-                return existing.canonical().citizen_ulid
+        # FAIL CLOSED: an untrusted, self-asserted NID must never disclose an
+        # existing canonical identity. The previous lookup returned a victim's
+        # citizen_ulid to anyone who supplied the victim's NID. NID values from
+        # self-registration are not authoritative and are not stored in the
+        # MPI's verified nid_hash column.
+        nid_h = None
 
         by = bm = bd = None
         if birth_date:
@@ -301,7 +297,7 @@ class CitizenRegisterRequest(BaseModel):
     def validate_nid(cls, v):
         v = v.strip()
         if v and not re.match(r"^[0-9]{10,14}$", v):
-            raise ValueError("National ID must be 10–14 digits")
+            raise ValueError("National ID must be 10-14 digits")
         return v
 
 

@@ -23,6 +23,7 @@ from ..security.redis_client import cache as _cache
 from ..services.audit_service import log_action
 from ..services.clinical_legacy_read_scope import ClinicalLegacyReadScope
 from ..services.critical_alerts import check_critical
+from ..services.critical_result_contract import critical_result_ref
 from ..services.interpretation import get_flag, interpret_result
 from ..services.pdf_report import generate_result_pdf
 
@@ -279,6 +280,7 @@ def _check_critical_alerts(results: list) -> list:
                     {
                         "test_name": item["test_name"],
                         "value": item["value"],
+                        "lab_result_id": item["lab_result_id"],
                         **alert,
                     },
                 )
@@ -309,13 +311,17 @@ def _emit_order_events(
         events.emit(
             RESULT_CRITICAL,
             {
+                **critical_result_ref(lab_result_id=alert["lab_result_id"]),
+                "alert_id": f"order-{order.id}-result-{alert['lab_result_id']}",
                 "order_id": order.id,
                 "patient_id": order.patient_id,
                 "patient_name": patient_name,
                 "patient_phone": patient_phone,
+                "lab_id": order.lab_id,
                 "test_name": alert["test_name"],
                 "value": alert["value"],
-                "lab_id": order.lab_id,
+                "flag": "critical",
+                "message": alert.get("message"),
             },
         )
 
@@ -401,6 +407,7 @@ def create_order(
 
     # Create results
     result_links = []
+    created_results = []
     for item in results_data:
         flag = "unknown"
         if (
@@ -430,6 +437,7 @@ def create_order(
             token_hash=token_h,
         )
         db.add(result)
+        created_results.append(result)
         result_links.append({"test": item["test_name"], "link": f"/r/{token}"})
 
     # Audit log
@@ -450,8 +458,13 @@ def create_order(
     # Build sharing links
     sharing = _build_sharing_links(patient.phone, patient.full_name, result_links)
 
-    # Check critical alerts
-    critical_alerts = _check_critical_alerts(results_data)
+    # Check critical alerts using committed result IDs, not ambiguous bare IDs.
+    critical_alerts = _check_critical_alerts(
+        [
+            {"test_name": result.test_name, "value": result.value, "lab_result_id": result.id}
+            for result in created_results
+        ],
+    )
 
     response_body = {
         "message": "Order created with results",

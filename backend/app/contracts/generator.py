@@ -3,9 +3,11 @@ import logging
 import os
 import re
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from app._compat import UTC
 
 logger = logging.getLogger("gula.contracts")
 

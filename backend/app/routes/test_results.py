@@ -37,6 +37,7 @@ from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
 from ..services.critical_alerts import check_critical
+from ..services.critical_result_contract import critical_result_ref
 from ..services.interpretation import get_flag, interpret_result
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])
@@ -191,7 +192,7 @@ def _validate_payload(
                     "message": "Numeric lab value should not be negative.",
                 },
             )
-        # If we know the canonical range, flag extreme outliers (10× high / 0.1× low)
+        # If we know the canonical range, flag extreme outliers (10x high / 0.1x low)
         ref_low = normal_low if normal_low is not None else (tt.normal_range_low if tt else None)
         ref_high = (
             normal_high if normal_high is not None else (tt.normal_range_high if tt else None)
@@ -200,7 +201,7 @@ def _validate_payload(
             warnings.append(
                 {
                     "code": "implausibly_high",
-                    "message": f"Value {value} is more than 10× the upper reference limit ({ref_high}).",
+                    "message": f"Value {value} is more than 10x the upper reference limit ({ref_high}).",
                 },
             )
         if ref_low is not None and ref_low > 0 and value < ref_low * 0.1:
@@ -389,12 +390,14 @@ def create_test_result(
     db.refresh(order)
 
     # Fire critical-value event for downstream notifications.
+    # The emitted result ID MUST be namespaced: lab_results.id and
+    # lims_results.Result.id are unrelated integer sequences.
     if flag == "critical" and data.value is not None:
         events.emit(
             RESULT_CRITICAL,
             {
                 "order_id": order.id,
-                "result_id": result.id,
+                **critical_result_ref(lab_result_id=result.id),
                 "patient_id": patient.id,
                 "patient_name": patient.full_name,
                 "patient_phone": patient.phone,

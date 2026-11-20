@@ -9,6 +9,7 @@ from app._compat import UTC
 
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
+from .critical_result_contract import LAB_RESULT_STORE
 
 # Critical value thresholds (life-threatening ranges requiring immediate action)
 # Sources: AACC critical value guidelines, ISLAB recommendations
@@ -26,8 +27,9 @@ CRITICAL_THRESHOLDS = {
     "ammonia": {"critical_low": None, "critical_high": 150, "unit": "µmol/L"},
     # --- Haematology ---
     "hemoglobin": {"critical_low": 5.0, "critical_high": 20.0, "unit": "g/dL"},
-    "wbc": {"critical_low": 1.0, "critical_high": 30.0, "unit": "×10³/µL"},
-    "platelets": {"critical_low": 20, "critical_high": 1000, "unit": "×10³/µL"},
+    # Medical unit notation uses the multiplication sign intentionally.
+    "wbc": {"critical_low": 1.0, "critical_high": 30.0, "unit": "×10³/µL"},  # noqa: RUF001
+    "platelets": {"critical_low": 20, "critical_high": 1000, "unit": "×10³/µL"},  # noqa: RUF001
     # --- Coagulation ---
     "pt": {"critical_low": None, "critical_high": 30.0, "unit": "seconds"},
     "inr": {"critical_low": None, "critical_high": 4.0, "unit": ""},
@@ -119,7 +121,8 @@ def get_critical_alerts(
 
         alerts.append(
             {
-                "result_id": r.id,
+                "result_store": LAB_RESULT_STORE,
+                "lab_result_id": r.id,
                 "patient_name": patient.full_name if patient else "Unknown",
                 "patient_phone": patient.phone if patient else None,
                 "patient_id": patient.id if patient else None,

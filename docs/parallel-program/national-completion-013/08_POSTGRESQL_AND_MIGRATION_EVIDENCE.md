@@ -55,3 +55,19 @@ Migration execution will be appended to `evidence/implementation_log.md`.
 2. Run fresh PostgreSQL upgrade.
 3. Record failures beyond the first blocker rather than stopping at one defect.
 4. Preserve rollback/recovery plan and owner approval requirement.
+
+## Execution update — 2026-11-20
+
+A disposable PostgreSQL 16 container (`gula-nc013-pg`, port 55432, synthetic credentials only) was created from scratch; no existing PostgreSQL container or volume was reused.
+
+- Initial `alembic upgrade head` exposed an inherited missing-hospital-core-table blocker at revision `20260820_0004`.
+- Added self-contained revision `20261120_0001_nc013_hospital_core.py` and repointed `20260820_0004.down_revision`; no conflicting PR #261/#257 revision was imported.
+- Final `alembic upgrade head` exited 0 and reached `20260908_0001`.
+- Migration graph test exited 0 (3 passed); `alembic heads` reported exactly one head.
+- Schema check found 5/5 expected hospital tables.
+- Application import with the disposable database exited 0 (`app_import_ok GULA Platform 130`).
+- Disposable container was removed after evidence capture.
+
+Evidence: `evidence/test_logs/pg_upgrade_nc013.log`, `pg_schema_check_nc013.log`, `alembic_heads_nc013.log`, `alembic_current_nc013_final.log`, `migration_graph_nc013.log`, `app_startup_nc013_final.log`, `pg_container_cleanup.log`, and `evidence/implementation_log.md`.
+
+Verification state: **FRESH-DATABASE UPGRADE PASSED; INDEPENDENT VERIFICATION IN PROGRESS**. This does not prove upgrade compatibility from an arbitrary deployed database or satisfy database-owner approval.

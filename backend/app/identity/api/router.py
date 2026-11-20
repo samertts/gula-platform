@@ -29,19 +29,24 @@ from .workspaces import get_current_niam_actor
 
 router = APIRouter(prefix="/niam", tags=["NIAM"])
 
-router.include_router(persons.router)
+# Every NIAM sub-router that exposes person, session or device state must be
+# authenticated at the mount point. Previously these three were mounted before
+# this guard existed, leaving person creation/read, session listing/termination
+# and device registration/trust/revoke callable without credentials.
+_AUTH_REQUIRED = [Depends(get_current_niam_actor)]
+
+router.include_router(persons.router, dependencies=_AUTH_REQUIRED)
 router.include_router(account_requests.router)
 router.include_router(accounts.router)
 router.include_router(auth.router)
-router.include_router(sessions.router)
+router.include_router(sessions.router, dependencies=_AUTH_REQUIRED)
 router.include_router(workspaces.router)
 router.include_router(memberships.router)
 router.include_router(roles.router)
 router.include_router(audit.router)
 router.include_router(consents.router)
 router.include_router(security.router)
-router.include_router(devices.router)
-_AUTH_REQUIRED = [Depends(get_current_niam_actor)]
+router.include_router(devices.router, dependencies=_AUTH_REQUIRED)
 
 router.include_router(governance_routes.router, dependencies=_AUTH_REQUIRED)
 router.include_router(trust_routes.router, dependencies=_AUTH_REQUIRED)

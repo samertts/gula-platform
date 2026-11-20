@@ -11,13 +11,15 @@
       "root_cause": "Critical-result events emit lab_results.id as result_id or omit it; LIMS consumer queries lims_results.Result.id. No cross-store identity bridge exists.",
       "reproduction": "Create LabResult and LIMS Result with different IDs; pass emitted result_id to process_critical_result; wrong row or not found.",
       "attempted_fixes": "PR #261 changes flag computation only; contract remains broken.",
-      "state": "NOT FIXED",
-      "regression_test": "Pending NC013 critical-result ID contract tests",
-      "verification_evidence": "evidence/critical_defect_research.md section 1",
-      "remaining_risk": "Wrong-patient critical alert or silent miss once a subscriber is enabled.",
+      "state": "FIXED — LOCAL TESTS PASS",
+      "regression_test": "tests/test_critical_result_contract_nc013.py (9 tests incl. event-registry, alert-API and order-event namespacing)",
+      "verification_evidence": "evidence/test_logs/focused_nc013_py312_driftclosed.log; evidence/test_logs/focused_nc013_py310_driftclosed.log; evidence/test_logs/regression_identity_lims_mpi_py312_driftclosed.log; evidence/implementation_log.md; evidence/unified_findings_register.json; evidence/test_logs/event_schema_jsonschema_final.log; docs/parallel-program/national-completion-013/17_INDEPENDENT_VERIFICATION.md",
+      "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "Clinical policy for recipient/escalation remains required; ID fix itself is engineering.",
-      "github_refs": ["PR #261 (partial, not this fix)"],
-      "final_disposition": "OPEN"
+      "github_refs": [
+        "PR #261 (partial, not this fix)"
+      ],
+      "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
       "id": "NC013-C02",
@@ -27,13 +29,15 @@
       "root_cause": "persons, sessions and devices routers are mounted before _AUTH_REQUIRED is applied; handlers have no auth dependency. GET miss returns HTTP 200 error body.",
       "reproduction": "POST /niam/persons/ and GET /niam/persons/{uuid} without credentials.",
       "attempted_fixes": "PR #261 applies mount-level guard and 404 on miss.",
-      "state": "PARTIALLY FIXED",
-      "regression_test": "Pending NC013 NIAM auth tests",
-      "verification_evidence": "evidence/critical_defect_research.md section 2",
-      "remaining_risk": "Handler-level defense in depth and authenticated happy path not yet verified locally.",
+      "state": "FIXED — LOCAL TESTS PASS",
+      "regression_test": "tests/identity/test_niam_persons_auth_hardening_nc013.py",
+      "verification_evidence": "evidence/test_logs/focused_nc013_py312_locked_final.log; evidence/implementation_log.md",
+      "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "None for engineering fix; PII authorization policy remains human-owned.",
-      "github_refs": ["PR #261"],
-      "final_disposition": "OPEN"
+      "github_refs": [
+        "PR #261"
+      ],
+      "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
       "id": "NC013-C03",
@@ -43,13 +47,13 @@
       "root_cause": "ImportError sets _connected=True; _invoke_unary echoes the request payload; send() reports success.",
       "reproduction": "Import gateway without grpc installed; send a message; observe success=True and payload echoed.",
       "attempted_fixes": "None on main; PR #261 file byte-identical.",
-      "state": "NOT FIXED",
-      "regression_test": "Pending NC013 gRPC fail-closed tests",
-      "verification_evidence": "evidence/critical_defect_research.md section 3",
-      "remaining_risk": "Clinical/integration data reported delivered when no RPC occurred.",
+      "state": "FIXED — LOCAL TESTS PASS",
+      "regression_test": "tests/test_grpc_gateway_fail_closed_nc013.py",
+      "verification_evidence": "evidence/test_logs/focused_nc013_py312_locked_final.log; evidence/test_logs/focused_nc013_py310_final.log; evidence/implementation_log.md",
+      "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "None",
       "github_refs": [],
-      "final_disposition": "OPEN"
+      "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
       "id": "NC013-C04",
@@ -59,13 +63,13 @@
       "root_cause": "Unverified caller-supplied NID hash returns an existing canonical ULID and is trusted by nid_exact without nid_verified check.",
       "reproduction": "Register with victim NID; receive victim citizen_ulid; resolve with unverified hash; auto-match to victim.",
       "attempted_fixes": "PUBLIC_SELF_REGISTRATION_ENABLED=false default only; not a fix for authenticated MPI route.",
-      "state": "NOT FIXED",
-      "regression_test": "Pending NC013 NID fail-closed tests",
-      "verification_evidence": "evidence/critical_defect_research.md section 4",
-      "remaining_risk": "Identity theft, wrong-patient record linkage, unauthorized merge.",
+      "state": "FIXED — LOCAL TESTS PASS",
+      "regression_test": "tests/test_nid_fail_closed_nc013.py",
+      "verification_evidence": "evidence/test_logs/focused_nc013_py312_locked_final.log; evidence/test_logs/focused_nc013_py310_final.log; evidence/implementation_log.md",
+      "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "National identity authority integration and merge policy require human approval.",
       "github_refs": [],
-      "final_disposition": "OPEN"
+      "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
       "id": "NC013-H01",
@@ -75,29 +79,33 @@
       "root_cause": "Two FK columns declared String(26) referencing Integer pharmacy_drug_catalog.id.",
       "reproduction": "alembic upgrade head on fresh PostgreSQL 16 → DatatypeMismatch.",
       "attempted_fixes": "PR #261 changes both to Integer with in-place justification.",
-      "state": "PARTIALLY FIXED",
-      "regression_test": "Pending fresh-database migration drill",
-      "verification_evidence": "evidence/critical_defect_research.md section 5",
-      "remaining_risk": "Migration history modification justification must be preserved; later blockers may remain.",
+      "state": "FIXED — LOCAL TESTS PASS",
+      "regression_test": "tests/migrations/test_migration_graph_integrity.py; evidence/test_logs/pg_upgrade_nc013.log",
+      "verification_evidence": "evidence/test_logs/pg_upgrade_nc013.log; evidence/test_logs/alembic_current_nc013_final.log; evidence/implementation_log.md",
+      "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "Database owner approval for modifying published migration.",
-      "github_refs": ["PR #261"],
-      "final_disposition": "OPEN"
+      "github_refs": [
+        "PR #261"
+      ],
+      "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
       "id": "NC013-H02",
       "source": "critical defect research",
       "severity": "HIGH",
-      "module": "backend/app/_compat.py, backend/migrations/versions/20260814_0005*,0006*,0007*",
+      "module": "backend/app/_compat.py; 17 dependent modules; three 20260814_* migrations; backend/app/contracts/generator.py",
       "root_cause": "UTC = UTC NameError on Python <3.11; three migrations import datetime.UTC directly.",
       "reproduction": "python3.10 -c 'import app._compat' → NameError; import migration module → ImportError.",
       "attempted_fixes": "PR #261 fixes device_bridge shim only.",
-      "state": "NOT FIXED",
-      "regression_test": "Pending Python 3.10 compatibility tests",
-      "verification_evidence": "evidence/critical_defect_research.md section 5",
-      "remaining_risk": "Declared 3.10 device bridge support and local validation fail.",
+      "state": "FIXED — LOCAL TESTS PASS",
+      "regression_test": "tests/test_python310_compatibility_nc013.py",
+      "verification_evidence": "evidence/test_logs/focused_nc013_py310_driftclosed.log; evidence/test_logs/compileall_nc013.log; evidence/implementation_log.md",
+      "remaining_risk": "3 Python 3.12-only syntax sites and 13 further direct UTC imports remain outside the claim; no production compatibility guarantee.",
       "external_approval": "None",
-      "github_refs": ["PR #261 (partial)"],
-      "final_disposition": "OPEN"
+      "github_refs": [
+        "PR #261 (partial)"
+      ],
+      "final_disposition": "PARTIALLY VERIFIED — SCOPE LIMITATIONS DOCUMENTED"
     },
     {
       "id": "NC013-H03",
@@ -240,7 +248,10 @@
       "verification_evidence": "historical evidence inventory report",
       "remaining_risk": "Supply-chain reproducibility and vulnerability.",
       "external_approval": "Security owner.",
-      "github_refs": ["PR #241", "PR #279-306"],
+      "github_refs": [
+        "PR #241",
+        "PR #279-306"
+      ],
       "final_disposition": "OPEN"
     },
     {
@@ -256,7 +267,10 @@
       "verification_evidence": "conversation checkpoint; evidence/critical_defect_research.md PR notes",
       "remaining_risk": "Invalid clinical codes in national exchange.",
       "external_approval": "Terminology governance authority.",
-      "github_refs": ["PR #261", "PR #252"],
+      "github_refs": [
+        "PR #261",
+        "PR #252"
+      ],
       "final_disposition": "OPEN"
     },
     {
@@ -306,6 +320,42 @@
       "external_approval": "None",
       "github_refs": [],
       "final_disposition": "ACCEPTED WITH LIMITATION"
+    },
+    {
+      "id": "NC013-H14",
+      "source": "fresh PostgreSQL 16 migration drill",
+      "severity": "HIGH",
+      "module": "backend/migrations/versions/20260820_0004_surgical_safety_checklists.py",
+      "root_cause": "Revision 20260820_0004 requires hospital_operation_theaters, but no migration reachable from main created hospital core tables.",
+      "reproduction": "Run alembic upgrade head on an empty PostgreSQL 16 database; revision 20260820_0004 fails on missing hospital_operation_theaters.",
+      "attempted_fixes": "PR #261/#257 both define conflicting 20260820_0003 revisions and are not self-contained; neither was imported wholesale.",
+      "state": "FIXED — LOCAL TESTS PASS",
+      "regression_test": "tests/migrations/test_migration_graph_integrity.py; evidence/test_logs/pg_upgrade_nc013.log",
+      "verification_evidence": "evidence/test_logs/pg_upgrade_nc013.log; evidence/test_logs/pg_schema_check_nc013.log; evidence/test_logs/alembic_current_nc013_final.log; evidence/implementation_log.md",
+      "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
+      "external_approval": "Database-owner approval required for any deployment affecting existing databases.",
+      "github_refs": [
+        "PR #261 (conflicting revision, not imported)",
+        "PR #257 (conflicting revision, not imported)"
+      ],
+      "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
+    },
+    {
+      "id": "NC013-C05",
+      "source": "full 2,782-test suite on isolated clone",
+      "severity": "CRITICAL",
+      "module": "backend/app/blood_bank/application/service.py; backend/app/blood_bank/domain/state_machine.py",
+      "root_cause": "verify_transfusion_safely() sets status \"verified\", but the state machine only permits verification -> started / in_progress; start_transfusion_safely() therefore rejects verified -> in_progress.",
+      "reproduction": "pytest -q tests/test_icu_lab_workflow_p0.py::test_transfusion_requires_independent_crossmatch_and_bedside_verification",
+      "attempted_fixes": "None. Re-produced on untouched baseline commit 2ee9e8bcb9d81e9cac6801f5dea9b86d59beaffa in a temporary detached worktree; identical failure, so this is pre-existing and not a NC013 regression.",
+      "state": "NOT FIXED — PRE-EXISTING",
+      "regression_test": "tests/test_icu_lab_workflow_p0.py::test_transfusion_requires_independent_crossmatch_and_bedside_verification",
+      "verification_evidence": "evidence/test_logs/full_suite_nc013_driftclosed.log; evidence/test_logs/baseline_icu_transfusion_check.log",
+      "remaining_risk": "Safety-critical transfusion workflow cannot proceed after verification. Requires clinical workflow owner decision; no unauthorized change was made.",
+      "external_approval": "Clinical/blood-bank workflow owner approval required.",
+      "github_refs": [],
+      "final_disposition": "HUMAN APPROVAL REQUIRED — PRE-EXISTING DEFECT, OUT OF NC013 SCOPE"
     }
-  ]
+  ],
+  "updated_at": "2026-11-20T15:45:00Z"
 }

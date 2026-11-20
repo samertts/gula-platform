@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Self
+from typing import Any
+
+from app._compat import Self
 
 logger = logging.getLogger("gula.integration.connectors")
 

@@ -49,3 +49,21 @@ Implementation commands and exact pytest invocations will be appended to `eviden
 2. Make gRPC unavailable state explicit and remove payload echo.
 3. Stop NID-based identity disclosure and auto-matching when `nid_verified` is false.
 4. Add independent review before accepting any fix.
+
+## Execution update — 2026-11-20
+
+Implemented locally on the isolated branch:
+
+- NIAM mount guard and handler-level guard with HTTP 404 on person lookup miss (`backend/app/identity/api/router.py`, `persons.py`).
+- gRPC gateway fail-closed behavior with no payload echo (`backend/app/integration/gateway/grpc_gateway.py`).
+- Self-registration NID fail-closed and MPI `nid_verified` requirement (`backend/app/routes/register.py`, `backend/app/services/mpi/resolver.py`).
+- Python 3.10 shims for `UTC`, `StrEnum`, and `Self` (`backend/app/_compat.py`) applied to 17 dependent modules and three migrations.
+
+Evidence:
+
+- `evidence/test_logs/focused_nc013_py312_locked_final.log` — exit 0, 19 passed.
+- `evidence/test_logs/focused_nc013_py310_final.log` — exit 0, 14 passed.
+- `evidence/test_logs/regression_identity_lims_mpi_py312_locked_final.log` — exit 0, 471 passed, 4 skipped.
+- `evidence/implementation_log.md` — exact commands and change inventory.
+
+Verification state: **LOCAL TESTS PASS; INDEPENDENT VERIFICATION IN PROGRESS**. No authorization policy, production identity, or deployment approval is implied.

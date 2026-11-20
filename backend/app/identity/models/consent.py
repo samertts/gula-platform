@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import StrEnum
 
 from sqlalchemy import (
     JSON,
@@ -13,7 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 
-from app._compat import UTC
+from app._compat import UTC, StrEnum
 from app.identity.base import IdentityBaseEntity
 
 

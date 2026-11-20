@@ -7,8 +7,8 @@ transition map.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 
+from app._compat import StrEnum
 from app.blood_bank.exceptions import BloodBankWorkflowError
 
 
@@ -113,6 +113,6 @@ class Transition:
     before: str
     after: str
 
-    def validate(self) -> "Transition":
+    def validate(self) -> Transition:
         transition(self.before, self.after, entity=self.entity)
         return self

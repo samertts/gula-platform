@@ -26,6 +26,22 @@ Commands are preserved verbatim in `evidence/p00_collect.sh`; output in `evidenc
 | Stashes | 2 | unchanged |
 | Running processes | Docker/PostgreSQL/Redis/Ollama/OpenCode were observed, not touched | unchanged |
 
+A fresh check was executed after all product edits and before any commit:
+
+```text
+git -C /home/samertts/workspace/projects/gula-platform rev-parse --abbrev-ref HEAD
+git -C /home/samertts/workspace/projects/gula-platform rev-parse HEAD
+git -C /home/samertts/workspace/projects/gula-platform status --porcelain=v1 -uall | sha256sum
+git -C /home/samertts/workspace/projects/gula-platform remote get-url origin
+git -C /home/samertts/workspace/projects/gula-platform worktree list | wc -l
+git -C /home/samertts/workspace/projects/gula-platform stash list | wc -l
+# exit 0; outputs: remediate-security-001; f478676b6fc375338648dde46fbf076c015a3f91;
+# e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -;
+# ssh://git@ssh.github.com:443/samertts/gula-platform.git; 6; 2
+```
+
+The independent verifier repeated the same checks and confirmed the same values.
+
 ## Evidence paths
 
 - `evidence/p00_collect.sh`
