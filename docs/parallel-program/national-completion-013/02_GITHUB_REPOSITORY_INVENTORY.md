@@ -14,18 +14,18 @@ GitHub REST API, authenticated as `samertts` with `repo`, `workflow`, `gist`, `r
 
 ## Commands and exit codes
 
-| Command pattern | Exit | Key result |
-|---|---:|---|
-| `gh api repos/samertts/gula-platform` | 0 | Apache-2.0, public, not archived, size 69083 KB |
-| `gh api repos/samertts/gula-platform/git/ref/heads/main` | 0 | `2ee9e8bcb9d81e9cac6801f5dea9b86d59beaffa` |
-| `gh api --paginate '.../branches?per_page=100'` | 0 | 148 branches; all `protected=false` |
-| `gh api --paginate '.../pulls?state=open&per_page=100'` | 0 | 49 open PRs |
-| `gh api --paginate '.../issues?state=open&per_page=100'` | 0 | 0 open non-PR issues |
-| `gh api --paginate '.../actions/workflows?per_page=100'` | 0 | 35 active workflow entries |
-| `gh api '.../actions/runs?per_page=50'` | 0 | Repeated Nightly Build `startup_failure`; Security Hardening failure |
-| `gh api repos/samertts/gula-platform/branches/main/protection` | 1 | HTTP 404 — not protected |
-| `gh api --paginate '.../releases?per_page=100'` | 0 | One draft release `v1.0.0-RC2` |
-| `gh api --paginate '.../tags?per_page=100'` | 0 | `v2.1.0-engineering-factory`, `v1.0.0-RC2`, `v1.0.0-RC1` |
+| Command pattern                                                | Exit | Key result                                                           |
+| -------------------------------------------------------------- | ---: | -------------------------------------------------------------------- |
+| `gh api repos/samertts/gula-platform`                          |    0 | Apache-2.0, public, not archived, size 69083 KB                      |
+| `gh api repos/samertts/gula-platform/git/ref/heads/main`       |    0 | `2ee9e8bcb9d81e9cac6801f5dea9b86d59beaffa`                           |
+| `gh api --paginate '.../branches?per_page=100'`                |    0 | 148 branches; all `protected=false`                                  |
+| `gh api --paginate '.../pulls?state=open&per_page=100'`        |    0 | 49 open PRs                                                          |
+| `gh api --paginate '.../issues?state=open&per_page=100'`       |    0 | 0 open non-PR issues                                                 |
+| `gh api --paginate '.../actions/workflows?per_page=100'`       |    0 | 35 active workflow entries                                           |
+| `gh api '.../actions/runs?per_page=50'`                        |    0 | Repeated Nightly Build `startup_failure`; Security Hardening failure |
+| `gh api repos/samertts/gula-platform/branches/main/protection` |    1 | HTTP 404 — not protected                                             |
+| `gh api --paginate '.../releases?per_page=100'`                |    0 | One draft release `v1.0.0-RC2`                                       |
+| `gh api --paginate '.../tags?per_page=100'`                    |    0 | `v2.1.0-engineering-factory`, `v1.0.0-RC2`, `v1.0.0-RC1`             |
 
 ## Evidence paths
 

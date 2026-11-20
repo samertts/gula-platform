@@ -5,11 +5,11 @@ All data used was synthetic. Existing PostgreSQL/Redis containers were never reu
 
 ## 1. Baseline and isolation
 
-| Check | Command | Result |
-|---|---|---|
-| Isolated branch/HEAD | `git -C /tmp/opencode/gula-national-completion-013 status --short --branch` | `## execution/gula-national-completion-013`; docs commit `5079d67d` |
+| Check                                  | Command                                                                                                                                            | Result                                                                                                                                      |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Isolated branch/HEAD                   | `git -C /tmp/opencode/gula-national-completion-013 status --short --branch`                                                                        | `## execution/gula-national-completion-013`; docs commit `5079d67d`                                                                         |
 | Protected workspace branch/HEAD/status | `git -C /home/samertts/workspace/projects/gula-platform rev-parse --abbrev-ref HEAD`; `rev-parse HEAD`; `status --porcelain=v1 -uall \| sha256sum` | `remediate-security-001`; `f478676b6fc375338648dde46fbf076c015a3f91`; `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -` |
-| Protected worktrees/stashes | `git -C ... worktree list \| wc -l`; `git -C ... stash list \| wc -l` | 6 worktrees, 2 stashes |
+| Protected worktrees/stashes            | `git -C ... worktree list \| wc -l`; `git -C ... stash list \| wc -l`                                                                              | 6 worktrees, 2 stashes                                                                                                                      |
 
 ## 2. Implemented fixes
 
@@ -200,3 +200,38 @@ The single failure is `tests/test_icu_lab_workflow_p0.py::test_transfusion_requi
 - Two independent adversarial passes complete; all discovered code gaps closed and re-validated.
 - Full suite: 2,754 passed, 27 skipped, 1 pre-existing failure (NC013-C05), reproduced on untouched baseline.
 - Release posture remains `NOT ACCEPTED FOR PRODUCTION — HOLD`; `production_ready=0`; OD-001…OD-025 remain `BLOCKED`.
+
+## 11. Post-delivery CI triage, dependency closure, and environment restart
+
+```text
+gh pr checks 307
+# observed: Secret Scan fail, then PASS after fix; Ruff Format fail; identity/security/backend-test fail on missing greenlet;
+# Migration Check fail on `alembic downgrade -1` Ambiguous walk; Prettier fail; Constitution fail; Frontend v3 fail.
+# evidence/test_logs/ci_failure_triage.md
+
+gh run view 44739493676 --job 136299229802 --log
+# ModuleNotFoundError: No module named 'greenlet'
+# evidence/test_logs/ci_iam_failed_full.log
+
+gh run view 44739493781 --job 136299486148 --log
+# 25+ fixture setup errors: SQLAlchemy asyncio requires greenlet
+# evidence/test_logs/ci_backend_tests_job.log
+
+gh run view 44739493781 --job 136299486210 --log
+# alembic upgrade head OK; alembic downgrade -1 -> ERROR [alembic.util.messaging] Ambiguous walk
+# evidence/test_logs/ci_migration_check_job.log
+
+gh run view 44739494034 --log-failed
+# Python 3.14: AttributeError: module 'ast' has no attribute 'Str'
+# evidence/test_logs/ci_constitution_failed.log
+```
+
+Actions:
+
+- `backend/requirements.txt` now declares `greenlet>=3.5.5`. Greenlet is MIT-licensed, free/open source and was already pinned at `3.5.5` in `backend/requirements-lock.txt`; no commercial alternative was introduced. This is NC013-C06.
+- The gitleaks false positive was fixed with a single exact stopword and a rephrased sentence; the CI re-run reports `no leaks detected`, exit 0 (`ci_secret_scan_initial_fail.log`, `ci_secret_scan_failed.log`).
+- All 18 NC013 markdown/JSON evidence files were formatted with offline-installed Prettier 3.10.1: `prettier_check_nc013_before.log` exit 1; `prettier_write_nc013.log` exit 0; `prettier_check_nc013_after.log` exit 0.
+- A local diff-mode constitution audit against `origin/main` scanned 79 changed files: score 68, four rule failures (duplicate-code heuristic, quality-gate/py_compile on already-documented Python 3.12-only syntax plus tool timeout, aggregate rule, dead-code heuristic). No hardcoded-secret, vendor-lock-in, paid-dependency or SaaS violation was introduced. Evidence: `constitution_diff_nc013_final.log`.
+- Remaining CI failures are pre-existing or outside NC013 scope and are recorded as NC013-H15; CI green is not claimed.
+
+The environment restarted during this work and removed the first isolated clone. It was recreated from the pushed branch at `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684` via SSH (`gula013_reclone.log`, exit 0). The protected workspace was rechecked: branch `remediate-security-001`, HEAD `f478676b6fc375338648dde46fbf076c015a3f91`, status SHA `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`, 6 worktrees, 2 stashes. No mutation occurred.

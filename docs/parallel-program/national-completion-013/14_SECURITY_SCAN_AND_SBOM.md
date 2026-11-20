@@ -55,17 +55,19 @@ Run and preserve exact commands, exit codes and raw outputs; never label a faile
 
 ## Execution update — 2026-11-20
 
-| Scan | Command scope | Exit | Result |
-|---|---|---:|---|
-| Ruff | changed `.py` files | 0 | All checks passed |
-| Bandit (`-ll`) | changed backend app/migration files | 0 | No medium/high findings |
-| Semgrep (`p/python`) | changed backend app/migration files | 0 | 0 results, 34 paths scanned, 1 WARN timeout on `backend/app/lims/routes.py` — partial coverage |
-| pip-audit (initial) | `backend/requirements-lock.txt` | 1 | 55 vulnerabilities in 6 packages |
-| pip-audit (final) | upgraded lock file | 0 | No known vulnerabilities |
-| Trivy vuln+secret+misconfig | repository filesystem | 1 | Vulnerability DB download timed out — **not completed** |
-| Trivy secret+misconfig | repository filesystem | 0 | 0 secrets; 490 pre-existing misconfigurations (34 CRITICAL, 85 HIGH, 91 MEDIUM, 280 LOW) |
+| Scan                        | Command scope                                      | Exit | Result                                                                                          |
+| --------------------------- | -------------------------------------------------- | ---: | ----------------------------------------------------------------------------------------------- |
+| Ruff                        | changed `.py` files                                |    0 | All checks passed                                                                               |
+| Bandit (`-ll`)              | changed backend app/migration files                |    0 | No medium/high findings                                                                         |
+| Semgrep (`p/python`)        | changed backend app/migration files                |    0 | 0 results, 34 paths scanned, 1 WARN timeout on `backend/app/lims/routes.py` — partial coverage  |
+| pip-audit (initial)         | `backend/requirements-lock.txt`                    |    1 | 55 vulnerabilities in 6 packages                                                                |
+| pip-audit (final)           | upgraded lock file                                 |    0 | No known vulnerabilities                                                                        |
+| Trivy vuln+secret+misconfig | repository filesystem                              |    1 | Vulnerability DB download timed out — **not completed**                                         |
+| Trivy secret+misconfig      | repository filesystem                              |    0 | 0 secrets; 490 pre-existing misconfigurations (34 CRITICAL, 85 HIGH, 91 MEDIUM, 280 LOW)        |
+| CI Secret Scan (initial)    | PR #307 docs commit `5079d67d`                     |    2 | Gitleaks `generic-api-key` false positive on "dependency/vulnerability"; no credential material |
+| CI Secret Scan (re-run)     | PR #307 after targeted stopword + sentence rewrite |    0 | `no leaks detected`                                                                             |
 
-Lock-file upgrades: `certifi 2026.10.18`, `dnspython 2.9.2`, `pillow 13.0.0`, `pyasn1 0.6.5`, `joserfc 1.7.6`, `urllib3 2.8.0`.
+Lock-file upgrades: `certifi 2026.10.18`, `dnspython 2.9.2`, `pillow 13.0.0`, `pyasn1 0.6.5`, `joserfc 1.7.6`, `urllib3 2.8.0`. A separate runtime dependency gap was closed by declaring `greenlet>=3.5.5` in `backend/requirements.txt`; greenlet is MIT-licensed, free/open source and was already pinned in the lock file. No commercial alternative was introduced.
 
 Raw outputs: `evidence/test_logs/ruff_changed_nc013_driftclosed.log`, `bandit_changed_nc013_driftclosed.log`, `semgrep_changed_nc013_driftclosed.log`, `pip_audit_nc013.log`, `pip_audit_nc013_final.log`, `trivy_fs_nc013.log`, `trivy_secret_misconfig_nc013.log`. Earlier passes are preserved as `*_final.log` and `bandit_changed_nc013.log` / `semgrep_changed_nc013.log`. The final Ruff pass required targeted `# noqa: RUF001` annotations on two pre-existing medical unit strings (`×10³/µL`) to avoid changing clinical notation.
 

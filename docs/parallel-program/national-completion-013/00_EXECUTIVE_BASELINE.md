@@ -29,13 +29,13 @@ This document records the authoritative starting point for the program. It cover
 
 ## Commands and exit codes
 
-| Command | Exit | Result |
-|---|---:|---|
-| `git -C /home/samertts/workspace/projects/gula-platform status --porcelain=v1 -uall \| sha256sum` | 0 | `e3b0c442…b855` (clean) |
-| `git ls-remote --symref ssh://git@ssh.github.com:443/samertts/gula-platform.git HEAD refs/heads/main` | 0 | `main` = `2ee9e8bc…` |
-| `git clone ssh://git@ssh.github.com:443/samertts/gula-platform.git /tmp/opencode/gula-national-completion-013` | 0 | Full clone, 150 branch refs including remotes |
-| `gh api repos/samertts/gula-platform/branches/main/protection` | 1 | HTTP 404 — branch not protected |
-| `gh api --paginate '.../branches?per_page=100'` | 0 | 148 branches, none protected |
+| Command                                                                                                        | Exit | Result                                        |
+| -------------------------------------------------------------------------------------------------------------- | ---: | --------------------------------------------- |
+| `git -C /home/samertts/workspace/projects/gula-platform status --porcelain=v1 -uall \| sha256sum`              |    0 | `e3b0c442…b855` (clean)                       |
+| `git ls-remote --symref ssh://git@ssh.github.com:443/samertts/gula-platform.git HEAD refs/heads/main`          |    0 | `main` = `2ee9e8bc…`                          |
+| `git clone ssh://git@ssh.github.com:443/samertts/gula-platform.git /tmp/opencode/gula-national-completion-013` |    0 | Full clone, 150 branch refs including remotes |
+| `gh api repos/samertts/gula-platform/branches/main/protection`                                                 |    1 | HTTP 404 — branch not protected               |
+| `gh api --paginate '.../branches?per_page=100'`                                                                |    0 | 148 branches, none protected                  |
 
 Full raw preservation output: `evidence/p00_preservation_manifest.txt`.
 

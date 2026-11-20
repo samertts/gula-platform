@@ -16,15 +16,15 @@ See `00_EXECUTIVE_BASELINE.md`. Protected workspace is one of six worktrees of t
 
 Commands are preserved verbatim in `evidence/p00_collect.sh`; output in `evidence/p00_preservation_manifest.txt`. All exit codes were 0.
 
-| Measurement | Before engineering | After clone/branch creation |
-|---|---|---|
-| Branch | `remediate-security-001` | `remediate-security-001` |
-| HEAD | `f478676b6fc375338648dde46fbf076c015a3f91` | unchanged |
-| `status --porcelain -uall` SHA-256 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | unchanged |
-| Remote | `ssh://git@ssh.github.com:443/samertts/gula-platform.git` | unchanged |
-| Worktrees | 6 (one prunable) | unchanged |
-| Stashes | 2 | unchanged |
-| Running processes | Docker/PostgreSQL/Redis/Ollama/OpenCode were observed, not touched | unchanged |
+| Measurement                        | Before engineering                                                 | After clone/branch creation |
+| ---------------------------------- | ------------------------------------------------------------------ | --------------------------- |
+| Branch                             | `remediate-security-001`                                           | `remediate-security-001`    |
+| HEAD                               | `f478676b6fc375338648dde46fbf076c015a3f91`                         | unchanged                   |
+| `status --porcelain -uall` SHA-256 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | unchanged                   |
+| Remote                             | `ssh://git@ssh.github.com:443/samertts/gula-platform.git`          | unchanged                   |
+| Worktrees                          | 6 (one prunable)                                                   | unchanged                   |
+| Stashes                            | 2                                                                  | unchanged                   |
+| Running processes                  | Docker/PostgreSQL/Redis/Ollama/OpenCode were observed, not touched | unchanged                   |
 
 A fresh check was executed after all product edits and before any commit:
 

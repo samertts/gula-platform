@@ -18,17 +18,17 @@ Independent adversarial verification of the locally implemented fixes. The verif
 
 ## First pass — classifications
 
-| # | Claim | Classification |
-|---|---|---|
-| 1 | Critical-result identity contract | **PARTIALLY VERIFIED** |
-| 2 | NIAM mount/handler guard + HTTP 404 | **VERIFIED** |
-| 3 | gRPC gateway fail-closed | **VERIFIED** |
-| 4 | Self-registration / MPI NID fail-closed | **VERIFIED** |
-| 5 | Python 3.10 shims + migration repairs | **PARTIALLY VERIFIED** |
-| 6 | Fresh PostgreSQL 16 migration chain | **VERIFIED** |
-| 7 | Test counts | **VERIFIED** |
-| 8 | Static/security scans | **VERIFIED** |
-| 9 | Delivery gates / posture | **VERIFIED** |
+| #   | Claim                                   | Classification         |
+| --- | --------------------------------------- | ---------------------- |
+| 1   | Critical-result identity contract       | **PARTIALLY VERIFIED** |
+| 2   | NIAM mount/handler guard + HTTP 404     | **VERIFIED**           |
+| 3   | gRPC gateway fail-closed                | **VERIFIED**           |
+| 4   | Self-registration / MPI NID fail-closed | **VERIFIED**           |
+| 5   | Python 3.10 shims + migration repairs   | **PARTIALLY VERIFIED** |
+| 6   | Fresh PostgreSQL 16 migration chain     | **VERIFIED**           |
+| 7   | Test counts                             | **VERIFIED**           |
+| 8   | Static/security scans                   | **VERIFIED**           |
+| 9   | Delivery gates / posture                | **VERIFIED**           |
 
 No hidden secret, PHI, unsafe Git action, or protected-workspace mutation was found.
 
@@ -79,12 +79,12 @@ Evidence: `evidence/test_logs/focused_nc013_py312_driftclosed.log` (exit 0, **22
 
 The same verifier re-reviewed only the closure edits, read-only:
 
-| Prior gap | Classification |
-|---|---|
+| Prior gap                                                 | Classification                                                                                                                                                                                              |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Event registry bare `result_id` / namespaced schema drift | **PARTIALLY VERIFIED** — bare `result_id` removed; schema valid; but `oneOf` did not reject payloads carrying both `lab_result_id` and `lims_result_id`, and `correlation_id: "result_store"` is non-unique |
-| Alert API bare `result_id` | **VERIFIED** |
-| Order-time critical event restored/namespaced | **VERIFIED** |
-| Python 3.10 collection via `generator.py` | **VERIFIED** |
+| Alert API bare `result_id`                                | **VERIFIED**                                                                                                                                                                                                |
+| Order-time critical event restored/namespaced             | **VERIFIED**                                                                                                                                                                                                |
+| Python 3.10 collection via `generator.py`                 | **VERIFIED**                                                                                                                                                                                                |
 
 The verifier also reproduced: focused suites `22 passed` / `17 passed`, `tests/test_lims_tenant_isolation.py` `5 passed`, tenant-alert isolation `1 passed`, `test_contract_generator.py` `1 passed`, Ruff exit 0, protected-workspace invariants unchanged. It confirmed no live `RESULT_CRITICAL` subscriber and classified that as a deliberate safety non-activation, not a code-fix blocker.
 
@@ -103,6 +103,12 @@ Evidence: `evidence/test_logs/focused_nc013_py312_schema_final.log`, `focused_nc
 ### Full-suite check (new pre-existing finding)
 
 The complete backend suite was executed: `1 failed, 2,754 passed, 27 skipped`, exit 1 (`full_suite_nc013_driftclosed.log`). The failure is a safety-critical transfusion transition (`verified -> in_progress` rejected). It was reproduced identically on an untouched baseline worktree (`baseline_icu_transfusion_check.log`, exit 1), so it is pre-existing and **not** a NC013 regression. Recorded as NC013-C05 with `HUMAN APPROVAL REQUIRED`; not changed in this program.
+
+### Post-delivery CI triage and environment restart
+
+After the draft PR was published, GitHub Actions checks were inspected. `Secret Scan` initially failed on a gitleaks false positive and was fixed; the re-run reports `no leaks found`. Three jobs failed because `backend/requirements.txt` omitted `greenlet`, which is required by `sqlalchemy.ext.asyncio`; the dependency was declared with a free MIT-licensed package already pinned in the lock file. Remaining failures (repo-wide Ruff formatting, Prettier syntax error in a pre-existing JSON file, frontend-v3 test, ambiguous `alembic downgrade -1` at the pre-existing three-parent head, and the constitution checker crashing on Python 3.14 `ast.Str`) were triaged as pre-existing or outside NC013 scope. A local diff-mode constitution audit found no hardcoded-secret, vendor-lock-in, paid-dependency or SaaS violation introduced by this change; its failures are duplicate-code/dead-code heuristics and the already-documented Python 3.12-only syntax sites. Details: `evidence/test_logs/ci_failure_triage.md`.
+
+The environment restarted during this work and removed the first isolated clone. It was recreated from the pushed branch at `a5c2a0de7bdf73a2aad4801a64c2df5aef49a684`; no approved work was lost, and the protected workspace invariants remained unchanged (`e3b0c44…`, branch `remediate-security-001`, HEAD `f478676b…`, 6 worktrees, 2 stashes).
 
 ## Verification state
 

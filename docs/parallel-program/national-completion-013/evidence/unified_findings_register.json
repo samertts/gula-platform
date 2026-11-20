@@ -16,9 +16,7 @@
       "verification_evidence": "evidence/test_logs/focused_nc013_py312_driftclosed.log; evidence/test_logs/focused_nc013_py310_driftclosed.log; evidence/test_logs/regression_identity_lims_mpi_py312_driftclosed.log; evidence/implementation_log.md; evidence/unified_findings_register.json; evidence/test_logs/event_schema_jsonschema_final.log; docs/parallel-program/national-completion-013/17_INDEPENDENT_VERIFICATION.md",
       "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "Clinical policy for recipient/escalation remains required; ID fix itself is engineering.",
-      "github_refs": [
-        "PR #261 (partial, not this fix)"
-      ],
+      "github_refs": ["PR #261 (partial, not this fix)"],
       "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
@@ -34,9 +32,7 @@
       "verification_evidence": "evidence/test_logs/focused_nc013_py312_locked_final.log; evidence/implementation_log.md",
       "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "None for engineering fix; PII authorization policy remains human-owned.",
-      "github_refs": [
-        "PR #261"
-      ],
+      "github_refs": ["PR #261"],
       "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
@@ -84,9 +80,7 @@
       "verification_evidence": "evidence/test_logs/pg_upgrade_nc013.log; evidence/test_logs/alembic_current_nc013_final.log; evidence/implementation_log.md",
       "remaining_risk": "Independent verification is not release acceptance. Human approvals and clinical/policy gates remain BLOCKED.",
       "external_approval": "Database owner approval for modifying published migration.",
-      "github_refs": [
-        "PR #261"
-      ],
+      "github_refs": ["PR #261"],
       "final_disposition": "INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE"
     },
     {
@@ -102,9 +96,7 @@
       "verification_evidence": "evidence/test_logs/focused_nc013_py310_driftclosed.log; evidence/test_logs/compileall_nc013.log; evidence/implementation_log.md",
       "remaining_risk": "3 Python 3.12-only syntax sites and 13 further direct UTC imports remain outside the claim; no production compatibility guarantee.",
       "external_approval": "None",
-      "github_refs": [
-        "PR #261 (partial)"
-      ],
+      "github_refs": ["PR #261 (partial)"],
       "final_disposition": "PARTIALLY VERIFIED — SCOPE LIMITATIONS DOCUMENTED"
     },
     {
@@ -248,10 +240,7 @@
       "verification_evidence": "historical evidence inventory report",
       "remaining_risk": "Supply-chain reproducibility and vulnerability.",
       "external_approval": "Security owner.",
-      "github_refs": [
-        "PR #241",
-        "PR #279-306"
-      ],
+      "github_refs": ["PR #241", "PR #279-306"],
       "final_disposition": "OPEN"
     },
     {
@@ -267,10 +256,7 @@
       "verification_evidence": "conversation checkpoint; evidence/critical_defect_research.md PR notes",
       "remaining_risk": "Invalid clinical codes in national exchange.",
       "external_approval": "Terminology governance authority.",
-      "github_refs": [
-        "PR #261",
-        "PR #252"
-      ],
+      "github_refs": ["PR #261", "PR #252"],
       "final_disposition": "OPEN"
     },
     {
@@ -355,7 +341,40 @@
       "external_approval": "Clinical/blood-bank workflow owner approval required.",
       "github_refs": [],
       "final_disposition": "HUMAN APPROVAL REQUIRED — PRE-EXISTING DEFECT, OUT OF NC013 SCOPE"
+    },
+    {
+      "id": "NC013-C06",
+      "source": "GitHub Actions PR #307 check failures",
+      "severity": "HIGH",
+      "module": "backend/requirements.txt; backend/app/identity/api/workspaces.py",
+      "root_cause": "backend/requirements.txt declared sqlalchemy but omitted greenlet, which sqlalchemy.ext.asyncio requires at import time; CI identity, security and backend-test jobs failed with ModuleNotFoundError.",
+      "reproduction": "gh run view 44739493676 --job 136299229802 --log; pytest import error: No module named 'greenlet'",
+      "attempted_fixes": "Declared greenlet>=3.5.5 in backend/requirements.txt. greenlet is MIT-licensed, free, open source and already pinned at 3.5.5 in backend/requirements-lock.txt; no commercial alternative exists or was considered necessary.",
+      "state": "FIXED — DECLARED IN REQUIREMENTS",
+      "regression_test": "CI checks: Backend identity unit and compile gates; Security and tenant isolation regression; Backend Tests",
+      "verification_evidence": "evidence/test_logs/ci_iam_failed_full.log; evidence/test_logs/ci_backend_tests_job.log; evidence/test_logs/ci_failure_triage.md",
+      "remaining_risk": "Final CI re-run result must be read from gh pr checks 307; no release approval is implied.",
+      "external_approval": "None for the dependency itself; normal PR review applies.",
+      "github_refs": ["https://github.com/samertts/gula-platform/pull/307"],
+      "final_disposition": "FIXED — FREE/OSS DEPENDENCY — CI RE-RUN PENDING",
+      "free_alternatives_considered": "greenlet is the standard MIT-licensed asyncio bridge for SQLAlchemy; no paid or SaaS alternative was evaluated or introduced."
+    },
+    {
+      "id": "NC013-H15",
+      "source": "GitHub Actions PR #307 check triage",
+      "severity": "MEDIUM",
+      "module": ".github/workflows; configuration files; frontend-v3 tests; migration head",
+      "root_cause": "Multiple repository-wide failures predate NC013: ruff format 1,012 files, Prettier syntax error in seccomp-profile.json, frontend-v3 \"Open all sections\" test, alembic downgrade -1 ambiguous walk at a three-parent head, and constitution checker crashing on Python 3.14 ast.Str.",
+      "reproduction": "gh pr checks 307; evidence/test_logs/ci_failure_triage.md",
+      "attempted_fixes": "NC013 documentation files were Prettier-formatted; all other items are out of scope and recorded for the repository owner.",
+      "state": "NOT FIXED — PRE-EXISTING",
+      "regression_test": "Not applicable; no NC013 code caused these failures.",
+      "verification_evidence": "evidence/test_logs/ci_failure_triage.md; evidence/test_logs/ci_migration_check_job.log; evidence/test_logs/ci_constitution_failed.log; evidence/test_logs/ci_prettier_job.log; evidence/test_logs/constitution_diff_nc013_final.log",
+      "remaining_risk": "CI will remain red until the repository owner addresses these issues; future regressions may be masked.",
+      "external_approval": "Repository owner / CI maintainer.",
+      "github_refs": ["https://github.com/samertts/gula-platform/pull/307"],
+      "final_disposition": "HUMAN APPROVAL REQUIRED — PRE-EXISTING, OUT OF NC013 SCOPE"
     }
   ],
-  "updated_at": "2026-11-20T15:45:00Z"
+  "updated_at": "2026-11-20T19:10:00Z"
 }

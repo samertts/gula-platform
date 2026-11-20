@@ -26,26 +26,124 @@
       "published_at": null
     }
   ],
-  "tags": [
-    "v2.1.0-engineering-factory",
-    "v1.0.0-RC2",
-    "v1.0.0-RC1"
-  ],
+  "tags": ["v2.1.0-engineering-factory", "v1.0.0-RC2", "v1.0.0-RC1"],
   "requested_prs": [
-    {"number": 261, "draft": true, "base": "main", "head": "claude/independent-audit-1", "changed_files": 394, "checks": {"success": 14, "failure": 16, "skipped": 3}},
-    {"number": 260, "draft": true, "base": "claude/http-idempotency-phase-14b-6g7fna", "head": "claude/gula-design-reference", "changed_files": 44, "checks": {"success": 1, "failure": 4, "skipped": 0}},
-    {"number": 259, "draft": false, "base": "main", "head": "claude/mustafa-parallel-engineering", "changed_files": 261, "checks": {"success": 1, "failure": 21, "skipped": 5}},
-    {"number": 258, "draft": true, "base": "claude/p0-1-hospital-migrations", "head": "claude/p0-2-pharmacy-reconciliation", "changed_files": 529, "checks": {"success": 1, "failure": 5, "skipped": 0}},
-    {"number": 257, "draft": true, "base": "claude/nr-003-canonical-drug-identity", "head": "claude/p0-1-hospital-migrations", "changed_files": 3, "checks": {"success": 1, "failure": 4, "skipped": 0}},
-    {"number": 256, "draft": true, "base": "main", "head": "claude/nr-003-canonical-drug-identity", "changed_files": 8, "checks": {"success": 10, "failure": 17, "skipped": 0}},
-    {"number": 252, "draft": true, "base": "main", "head": "claude/medical-ontology-governance-Z0KCh", "changed_files": 18, "checks": {"success": 6, "failure": 16, "skipped": 5}},
-    {"number": 251, "draft": true, "base": "main", "head": "claude/http-idempotency-phase-14b-6g7fna", "changed_files": 21, "checks": {"success": 1, "failure": 21, "skipped": 5}},
-    {"number": 249, "draft": true, "base": "fix/main-migration-graph-20260822", "head": "fix/migration-sqlite-compatibility-20260826", "changed_files": 19, "checks": {"success": 1, "failure": 4, "skipped": 0}},
-    {"number": 247, "draft": true, "base": "fix/mobile-expo-dependency-audit", "head": "fix/external-ingestion-dmz-er-20260825", "changed_files": 127, "mergeable": false, "mergeable_state": "dirty", "checks": {"success": 1, "failure": 0, "skipped": 0}},
-    {"number": 245, "draft": true, "base": "main", "head": "fix/main-migration-graph-20260822", "changed_files": 152, "checks": {"success": 1, "failure": 24, "skipped": 9}},
-    {"number": 242, "draft": true, "base": "develop", "head": "release/clinical-safety-2026q3", "changed_files": 296, "checks": {"success": 1, "failure": 17, "skipped": 6}},
-    {"number": 241, "draft": true, "base": "main", "head": "fix/mobile-expo-dependency-audit", "changed_files": 149, "checks": {"success": 1, "failure": 28, "skipped": 17}},
-    {"number": 240, "draft": true, "base": "main", "head": "chore/security-ddos-hardening-clean", "changed_files": 398, "mergeable": false, "mergeable_state": "dirty", "checks": {"success": 1, "failure": 30, "skipped": 23}}
+    {
+      "number": 261,
+      "draft": true,
+      "base": "main",
+      "head": "claude/independent-audit-1",
+      "changed_files": 394,
+      "checks": { "success": 14, "failure": 16, "skipped": 3 }
+    },
+    {
+      "number": 260,
+      "draft": true,
+      "base": "claude/http-idempotency-phase-14b-6g7fna",
+      "head": "claude/gula-design-reference",
+      "changed_files": 44,
+      "checks": { "success": 1, "failure": 4, "skipped": 0 }
+    },
+    {
+      "number": 259,
+      "draft": false,
+      "base": "main",
+      "head": "claude/mustafa-parallel-engineering",
+      "changed_files": 261,
+      "checks": { "success": 1, "failure": 21, "skipped": 5 }
+    },
+    {
+      "number": 258,
+      "draft": true,
+      "base": "claude/p0-1-hospital-migrations",
+      "head": "claude/p0-2-pharmacy-reconciliation",
+      "changed_files": 529,
+      "checks": { "success": 1, "failure": 5, "skipped": 0 }
+    },
+    {
+      "number": 257,
+      "draft": true,
+      "base": "claude/nr-003-canonical-drug-identity",
+      "head": "claude/p0-1-hospital-migrations",
+      "changed_files": 3,
+      "checks": { "success": 1, "failure": 4, "skipped": 0 }
+    },
+    {
+      "number": 256,
+      "draft": true,
+      "base": "main",
+      "head": "claude/nr-003-canonical-drug-identity",
+      "changed_files": 8,
+      "checks": { "success": 10, "failure": 17, "skipped": 0 }
+    },
+    {
+      "number": 252,
+      "draft": true,
+      "base": "main",
+      "head": "claude/medical-ontology-governance-Z0KCh",
+      "changed_files": 18,
+      "checks": { "success": 6, "failure": 16, "skipped": 5 }
+    },
+    {
+      "number": 251,
+      "draft": true,
+      "base": "main",
+      "head": "claude/http-idempotency-phase-14b-6g7fna",
+      "changed_files": 21,
+      "checks": { "success": 1, "failure": 21, "skipped": 5 }
+    },
+    {
+      "number": 249,
+      "draft": true,
+      "base": "fix/main-migration-graph-20260822",
+      "head": "fix/migration-sqlite-compatibility-20260826",
+      "changed_files": 19,
+      "checks": { "success": 1, "failure": 4, "skipped": 0 }
+    },
+    {
+      "number": 247,
+      "draft": true,
+      "base": "fix/mobile-expo-dependency-audit",
+      "head": "fix/external-ingestion-dmz-er-20260825",
+      "changed_files": 127,
+      "mergeable": false,
+      "mergeable_state": "dirty",
+      "checks": { "success": 1, "failure": 0, "skipped": 0 }
+    },
+    {
+      "number": 245,
+      "draft": true,
+      "base": "main",
+      "head": "fix/main-migration-graph-20260822",
+      "changed_files": 152,
+      "checks": { "success": 1, "failure": 24, "skipped": 9 }
+    },
+    {
+      "number": 242,
+      "draft": true,
+      "base": "develop",
+      "head": "release/clinical-safety-2026q3",
+      "changed_files": 296,
+      "checks": { "success": 1, "failure": 17, "skipped": 6 }
+    },
+    {
+      "number": 241,
+      "draft": true,
+      "base": "main",
+      "head": "fix/mobile-expo-dependency-audit",
+      "changed_files": 149,
+      "checks": { "success": 1, "failure": 28, "skipped": 17 }
+    },
+    {
+      "number": 240,
+      "draft": true,
+      "base": "main",
+      "head": "chore/security-ddos-hardening-clean",
+      "changed_files": 398,
+      "mergeable": false,
+      "mergeable_state": "dirty",
+      "checks": { "success": 1, "failure": 30, "skipped": 23 }
+    }
   ],
   "migration_revision_collision": {
     "revision": "20260820_0003",

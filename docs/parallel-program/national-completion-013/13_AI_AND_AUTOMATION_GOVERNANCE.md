@@ -11,6 +11,7 @@ Tool discovery only. No source code, secrets, PHI, identifiers, or private repos
 ## Environment
 
 Ollama service running with local models:
+
 - `llama3:latest` (`365c0bd3c000`, 4.7 GB)
 - `nomic-embed-text:latest` (`0a109f422b47`, 274 MB)
 

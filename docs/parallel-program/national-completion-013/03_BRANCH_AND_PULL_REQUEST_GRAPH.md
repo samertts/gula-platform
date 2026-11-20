@@ -34,24 +34,25 @@ done
 
 ## Findings
 
-| PR | Draft | Base ← Head | Changed files | Checks (S/F/K) | Assessment |
-|---:|:---:|---|---:|---|---|
-| 261 | yes | main ← `claude/independent-audit-1` | 394 | 14/16/3 | Valuable patch source; unsafe wholesale |
-| 260 | yes | #251 head ← design ref | 44 | 1/4/0 | Design reference only |
-| 259 | no | main ← `claude/mustafa-parallel-engineering` | 261 | 1/21/5 | Substantial but failing; X-Role not a trust boundary |
-| 258 | yes | #257 head ← pharmacy reconciliation | 529 | 1/5/0 | Slice only |
-| 257 | yes | #256 head ← hospital migrations | 3 | 1/4/0 | Targeted; conflicts with #261 revision |
-| 256 | yes | main ← NR-003 drug identity | 8 | 10/17/0 | Targeted; modifies historical migration |
-| 252 | yes | main ← ontology governance | 18 | 6/16/5 | Feature-flagged; not completion proof |
-| 251 | yes | main ← idempotency branch | 21 | 1/21/5 | Tenant-isolation defect source |
-| 249 | yes | #245 head ← SQLite safety | 19 | 1/4/0 | Depends on #245 |
-| 247 | yes | #241 head ← external ingestion | 127 | 1/0/0 | Dirty/conflicted |
-| 245 | yes | main ← migration graph | 152 | 1/24/9 | Failing migration gate |
-| 242 | yes | develop ← clinical safety | 296 | 1/17/6 | Wrong base for main delivery |
-| 241 | yes | main ← mobile dependency audit | 149 | 1/28/17 | Failing |
-| 240 | yes | main ← DDoS hardening clean | 398 | 1/30/23 | Dirty/conflicted |
+|  PR | Draft | Base ← Head                                  | Changed files | Checks (S/F/K) | Assessment                                           |
+| --: | :---: | -------------------------------------------- | ------------: | -------------- | ---------------------------------------------------- |
+| 261 |  yes  | main ← `claude/independent-audit-1`          |           394 | 14/16/3        | Valuable patch source; unsafe wholesale              |
+| 260 |  yes  | #251 head ← design ref                       |            44 | 1/4/0          | Design reference only                                |
+| 259 |  no   | main ← `claude/mustafa-parallel-engineering` |           261 | 1/21/5         | Substantial but failing; X-Role not a trust boundary |
+| 258 |  yes  | #257 head ← pharmacy reconciliation          |           529 | 1/5/0          | Slice only                                           |
+| 257 |  yes  | #256 head ← hospital migrations              |             3 | 1/4/0          | Targeted; conflicts with #261 revision               |
+| 256 |  yes  | main ← NR-003 drug identity                  |             8 | 10/17/0        | Targeted; modifies historical migration              |
+| 252 |  yes  | main ← ontology governance                   |            18 | 6/16/5         | Feature-flagged; not completion proof                |
+| 251 |  yes  | main ← idempotency branch                    |            21 | 1/21/5         | Tenant-isolation defect source                       |
+| 249 |  yes  | #245 head ← SQLite safety                    |            19 | 1/4/0          | Depends on #245                                      |
+| 247 |  yes  | #241 head ← external ingestion               |           127 | 1/0/0          | Dirty/conflicted                                     |
+| 245 |  yes  | main ← migration graph                       |           152 | 1/24/9         | Failing migration gate                               |
+| 242 |  yes  | develop ← clinical safety                    |           296 | 1/17/6         | Wrong base for main delivery                         |
+| 241 |  yes  | main ← mobile dependency audit               |           149 | 1/28/17        | Failing                                              |
+| 240 |  yes  | main ← DDoS hardening clean                  |           398 | 1/30/23        | Dirty/conflicted                                     |
 
 **Stacked chains:**
+
 - `#251 → #260`
 - `#255 → #256 → #257 → #258`
 - `#245 → #249`

@@ -33,33 +33,35 @@ jq -e . docs/parallel-program/national-completion-013/evidence/unified_findings_
 
 ## Findings summary
 
-| ID | Severity | Module | State | Disposition |
-|---|---|---|---|---|
-| NC013-C01 | CRITICAL | Critical-result ID contract | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
-| NC013-C02 | CRITICAL | NIAM persons endpoints | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
-| NC013-C03 | CRITICAL | gRPC gateway | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
-| NC013-C04 | CRITICAL | NID self-registration / MPI | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE |
-| NC013-C05 | CRITICAL | Transfusion verification → in-progress transition | NOT FIXED — PRE-EXISTING | HUMAN APPROVAL REQUIRED — OUT OF NC013 SCOPE |
-| NC013-H01 | HIGH | Drug substitution migration FK | FIXED — LOCAL TESTS PASS | REMEDIATED — AWAITING INDEPENDENT VERIFICATION |
-| NC013-H02 | HIGH | Python 3.10 UTC compatibility | FIXED — LOCAL TESTS PASS | REMEDIATED — AWAITING INDEPENDENT VERIFICATION |
-| NC013-H14 | HIGH | Missing hospital core migration | FIXED — LOCAL TESTS PASS | REMEDIATED — AWAITING INDEPENDENT VERIFICATION |
-| NC013-H03 | HIGH | GitHub protection / CI | NOT FIXED | OPEN |
-| NC013-H04 | HIGH | Provenance / untracked evidence | NOT FIXED | OPEN |
-| NC013-H05 | HIGH | Patient route authorization | NOT VERIFIED | OPEN |
-| NC013-H06 | HIGH | health_core guard not wired | NOT VERIFIED | OPEN |
-| NC013-H07 | HIGH | Break-glass header | NOT FIXED | OPEN |
-| NC013-H08 | HIGH | Offline LAST_WRITE_WINS | NOT VERIFIED | OPEN |
-| NC013-H09 | HIGH | Restore script swallows failure | NOT FIXED | OPEN |
-| NC013-H10 | HIGH | No restore/PITR/RPO/RTO drill | NOT VERIFIED | OPEN |
-| NC013-H11 | HIGH | Unpinned container dependencies | NOT FIXED | OPEN |
-| NC013-H12 | HIGH | FHIR terminology validation | NOT VERIFIED | OPEN |
-| NC013-H13 | HIGH | PHI in audit/duplicate responses | NOT VERIFIED | OPEN |
-| NC013-M01 | MEDIUM | Missing numbered predecessor artifacts | RECONCILED | ACCEPTED WITH LIMITATION |
-| NC013-M02 | MEDIUM | Missing previous isolated workspace | RECONCILED | ACCEPTED WITH LIMITATION |
+| ID        | Severity | Module                                            | State                                | Disposition                                         |
+| --------- | -------- | ------------------------------------------------- | ------------------------------------ | --------------------------------------------------- |
+| NC013-C01 | CRITICAL | Critical-result ID contract                       | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE                       |
+| NC013-C02 | CRITICAL | NIAM persons endpoints                            | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE                       |
+| NC013-C03 | CRITICAL | gRPC gateway                                      | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE                       |
+| NC013-C04 | CRITICAL | NID self-registration / MPI                       | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE                       |
+| NC013-C05 | CRITICAL | Transfusion verification → in-progress transition | NOT FIXED — PRE-EXISTING             | HUMAN APPROVAL REQUIRED — OUT OF NC013 SCOPE        |
+| NC013-C06 | HIGH     | Missing `greenlet` runtime/CI dependency          | FIXED — DECLARED IN REQUIREMENTS     | VERIFIED BY CI RE-RUN PENDING — FREE/OSS DEPENDENCY |
+| NC013-H01 | HIGH     | Drug substitution migration FK                    | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE                       |
+| NC013-H02 | HIGH     | Python 3.10 UTC compatibility                     | PARTIALLY VERIFIED                   | SCOPE LIMITATIONS DOCUMENTED                        |
+| NC013-H14 | HIGH     | Missing hospital core migration                   | INDEPENDENTLY VERIFIED AT CODE LEVEL | RELEASE BLOCKED BY GOVERNANCE                       |
+| NC013-H15 | MEDIUM   | Repository-wide CI failures unrelated to NC013    | NOT FIXED — PRE-EXISTING             | HUMAN APPROVAL REQUIRED — OUT OF NC013 SCOPE        |
+| NC013-H03 | HIGH     | GitHub protection / CI                            | NOT FIXED                            | OPEN                                                |
+| NC013-H04 | HIGH     | Provenance / untracked evidence                   | NOT FIXED                            | OPEN                                                |
+| NC013-H05 | HIGH     | Patient route authorization                       | NOT VERIFIED                         | OPEN                                                |
+| NC013-H06 | HIGH     | health_core guard not wired                       | NOT VERIFIED                         | OPEN                                                |
+| NC013-H07 | HIGH     | Break-glass header                                | NOT FIXED                            | OPEN                                                |
+| NC013-H08 | HIGH     | Offline LAST_WRITE_WINS                           | NOT VERIFIED                         | OPEN                                                |
+| NC013-H09 | HIGH     | Restore script swallows failure                   | NOT FIXED                            | OPEN                                                |
+| NC013-H10 | HIGH     | No restore/PITR/RPO/RTO drill                     | NOT VERIFIED                         | OPEN                                                |
+| NC013-H11 | HIGH     | Unpinned container dependencies                   | NOT FIXED                            | OPEN                                                |
+| NC013-H12 | HIGH     | FHIR terminology validation                       | NOT VERIFIED                         | OPEN                                                |
+| NC013-H13 | HIGH     | PHI in audit/duplicate responses                  | NOT VERIFIED                         | OPEN                                                |
+| NC013-M01 | MEDIUM   | Missing numbered predecessor artifacts            | RECONCILED                           | ACCEPTED WITH LIMITATION                            |
+| NC013-M02 | MEDIUM   | Missing previous isolated workspace               | RECONCILED                           | ACCEPTED WITH LIMITATION                            |
 
 ## Verification state
 
-`HUMAN APPROVAL REQUIRED` for release; individual states are per-finding in the JSON register. C01–C04, H01, and H14 are `INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE` after two adversarial passes. H02 remains `PARTIALLY VERIFIED — SCOPE LIMITATIONS DOCUMENTED` (three Python 3.12-only syntax sites and 13 further direct `UTC` imports are outside the claim). See `17_INDEPENDENT_VERIFICATION.md`.
+`HUMAN APPROVAL REQUIRED` for release; individual states are per-finding in the JSON register. C01–C04, H01 and H14 are `INDEPENDENTLY VERIFIED AT CODE LEVEL — RELEASE BLOCKED BY GOVERNANCE` after two adversarial passes. H02 remains `PARTIALLY VERIFIED — SCOPE LIMITATIONS DOCUMENTED`. C06 closes the `greenlet` dependency gap; H15 records repository-wide CI failures that are pre-existing or outside NC013 scope. See `17_INDEPENDENT_VERIFICATION.md` and `evidence/test_logs/ci_failure_triage.md`.
 
 ## Limitations
 
@@ -75,6 +77,8 @@ jq -e . docs/parallel-program/national-completion-013/evidence/unified_findings_
 - No live `RESULT_CRITICAL` subscriber is wired: `process_critical_result_from_event()` is tested and fails closed, but notification activation is intentionally withheld while `AUD-CLIN-001` is `BLOCKED`.
 - Three Python 3.12-only syntax sites and 13 further app modules importing `UTC` directly remain outside the Python 3.10 compatibility claim.
 - NC013-C05 is a newly discovered, pre-existing safety-critical transfusion transition failure reproduced on the untouched baseline; it is deliberately not changed without a clinical workflow owner decision.
+- NC013-H15 records CI failures that are pre-existing (formatting, migration downgrade, frontend test, constitution tool) or outside the reachable scope; CI green is not claimed.
+- NC013-C06 closes a real dependency omission with a free/open-source MIT package; the CI re-run is the final confirmation.
 
 ## Required actions
 

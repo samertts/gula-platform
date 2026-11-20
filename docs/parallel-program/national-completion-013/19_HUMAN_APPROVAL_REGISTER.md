@@ -23,20 +23,20 @@ Read-only file inspection; exit 0.
 
 ## Findings
 
-| Area | Required decision | Evidence package | Status |
-|---|---|---|---|
+| Area                                | Required decision                                               | Evidence package                           | Status                                   |
+| ----------------------------------- | --------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------- |
 | Clinical critical-result thresholds | Approve recipient, escalation, acknowledgement, response window | Clinical safety evidence + delivery design | BLOCKED — no qualified reviewer assigned |
-| Laboratory reference intervals | Approve intervals, units, population applicability | Clinical/lab evidence | BLOCKED |
-| Clinical state/FHIR mappings | Approve valid state-to-status mappings | FHIR evidence | BLOCKED |
-| Terminology governance | Approve LOINC/ICD-10/UCUM code sets and authority | Terminology evidence | BLOCKED |
-| National identity integration | Authorize any government registry adapter | Identity architecture + legal review | BLOCKED — no invented access |
-| Patient-record merging | Approve merge policy and review workflow | MPI evidence | BLOCKED |
-| Retention/deletion | Approve health-data retention and deletion policy | Data governance evidence | BLOCKED |
-| Legal/regulatory | Confirm Iraqi legal compliance | Legal opinion | BLOCKED — not fabricated |
-| Institutional authorization | Approve institution for controlled pilot | Governance packet | BLOCKED |
-| Production deployment | Authorize deployment | Release readiness + operations plan | BLOCKED |
-| RPO/RTO | Approve measurable objectives | Restore drill results | BLOCKED |
-| National-scale acceptance | Accept national readiness | Full evidence set | BLOCKED |
+| Laboratory reference intervals      | Approve intervals, units, population applicability              | Clinical/lab evidence                      | BLOCKED                                  |
+| Clinical state/FHIR mappings        | Approve valid state-to-status mappings                          | FHIR evidence                              | BLOCKED                                  |
+| Terminology governance              | Approve LOINC/ICD-10/UCUM code sets and authority               | Terminology evidence                       | BLOCKED                                  |
+| National identity integration       | Authorize any government registry adapter                       | Identity architecture + legal review       | BLOCKED — no invented access             |
+| Patient-record merging              | Approve merge policy and review workflow                        | MPI evidence                               | BLOCKED                                  |
+| Retention/deletion                  | Approve health-data retention and deletion policy               | Data governance evidence                   | BLOCKED                                  |
+| Legal/regulatory                    | Confirm Iraqi legal compliance                                  | Legal opinion                              | BLOCKED — not fabricated                 |
+| Institutional authorization         | Approve institution for controlled pilot                        | Governance packet                          | BLOCKED                                  |
+| Production deployment               | Authorize deployment                                            | Release readiness + operations plan        | BLOCKED                                  |
+| RPO/RTO                             | Approve measurable objectives                                   | Restore drill results                      | BLOCKED                                  |
+| National-scale acceptance           | Accept national readiness                                       | Full evidence set                          | BLOCKED                                  |
 
 Historical owner decisions `OD-001` through `OD-025` are all recorded as `BLOCKED`. No signature, legal opinion, medical authorization, or institutional endorsement is fabricated by this program.
 

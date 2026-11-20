@@ -4,14 +4,14 @@ Source: independent read-only research agent, 2026-11-20. All file contents were
 
 ## PR #261 coverage matrix
 
-| Defect | Fixed in PR #261? |
-|---|---|
-| `result.critical` ID contract (`lab_results.id` vs `lims_results.Result.id`) | No |
-| Unauthenticated `/niam/persons/` POST + GET | Yes (mount-level guard) |
-| gRPC gateway false success (`ImportError` → connected, echo payload) | No — byte-identical to main |
-| Self-registration/MPI unverified NID → victim canonical ULID | No — byte-identical to main |
-| Migration FK `String(26)` → `Integer` | Yes |
-| `datetime.UTC` on Python 3.10 | Partially — device bridge only; backend shim and 3 migrations not |
+| Defect                                                                       | Fixed in PR #261?                                                 |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `result.critical` ID contract (`lab_results.id` vs `lims_results.Result.id`) | No                                                                |
+| Unauthenticated `/niam/persons/` POST + GET                                  | Yes (mount-level guard)                                           |
+| gRPC gateway false success (`ImportError` → connected, echo payload)         | No — byte-identical to main                                       |
+| Self-registration/MPI unverified NID → victim canonical ULID                 | No — byte-identical to main                                       |
+| Migration FK `String(26)` → `Integer`                                        | Yes                                                               |
+| `datetime.UTC` on Python 3.10                                                | Partially — device bridge only; backend shim and 3 migrations not |
 
 ## 1. Critical-result ID contract
 
