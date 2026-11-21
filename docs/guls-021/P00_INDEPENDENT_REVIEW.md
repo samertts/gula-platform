@@ -31,14 +31,14 @@ The protected workspace result is byte-identical to the value recorded before ex
 
 Earlier baseline runs on `main` reproduced the same failures (main run `43702721641`, formatting `43702721605`, constitution `43702721533`, IAM hardening `43702721450`, security hardening `43856373523`, PR-head security run `44816092797`). Therefore these failures are **not evidence of a GULS-021 regression**, but they do prevent any claim of a green merge gate.
 
-The full frontend suite was also reproduced at both revisions:
+The full frontend suite was reproduced at baseline and then re-run after correcting the pre-existing `MobileBottomNav` accessible-label mismatch:
 
-| Revision        | Command    | Exit | Files                        | Tests                        |
-| --------------- | ---------- | ---: | ---------------------------- | ---------------------------- |
-| GULS-021 branch | `npm test` |    1 | `1 failed \| 17 passed (18)` | `2 failed \| 76 passed (78)` |
-| Baseline `main` | `npm test` |    1 | `1 failed \| 15 passed (16)` | `2 failed \| 54 passed (56)` |
+| Revision                     | Command    | Exit | Files                        | Tests                        |
+| ---------------------------- | ---------- | ---: | ---------------------------- | ---------------------------- |
+| GULS-021 branch, corrected   | `npm test` |    0 | `18 passed (18)`             | `78 passed (78)`             |
+| Baseline `main`, uncorrected | `npm test` |    1 | `1 failed \| 15 passed (16)` | `2 failed \| 54 passed (56)` |
 
-The failures are confined to `src/components/navigation/MobileBottomNav.test.tsx`; the component and test hashes are identical at both revisions. This is pre-existing and unrelated to GULS localization, but it keeps the aggregate gate red.
+The baseline failures are confined to `src/components/navigation/MobileBottomNav.test.tsx` and are unrelated to GULS localization. The GULS-021 branch now passes its full frontend suite, but PR #308 CI remains red and no merge-readiness claim follows from this local correction.
 
 ## 4. Controls verified as already correct
 
@@ -97,10 +97,10 @@ Non-blocking review notes retained for follow-up: documentation claimed client o
 | Touched-file Python compile, 3.11 |                                                                                                                      `python3.11 -m py_compile ...` |    0 | all touched Python files compile    |
 | Ruff lint                         |                                                                                               `/tmp/opencode/gula-guls-020-venv/bin/ruff check ...` |    0 | All checks passed                   |
 | Registry schema                   |                                                                              `python3.11 -c 'import json,jsonschema; ... jsonschema.validate(...)'` |    0 | `registry_schema=PASS languages=14` |
-| Focused frontend                  |    `npx vitest run --passWithNoTests --exclude 'e2e/**' src/guls/guls.test.ts src/guls/offline/offline.test.ts src/i18n/mobileNavResources.test.ts` |    0 | 3 files, 21 tests passed            |
+| Focused frontend                  |    `npx vitest run --passWithNoTests --exclude 'e2e/**' src/guls/guls.test.ts src/guls/offline/offline.test.ts src/i18n/mobileNavResources.test.ts` |    0 | 3 files, 24 tests passed            |
 | Typecheck / lint / Prettier       | `npx tsc --noEmit -p tsconfig.json --pretty false`, `npm run lint -- --max-warnings=0`, `npx prettier --check src/guls/offline/*.ts vite.config.ts` |    0 | all clean                           |
 
-`ruff format --check` on the touched Python set exits 1 for one pre-existing toolchain conflict: Ruff 0.16.10 configured with `target-version=py314` rewrites `except (ValueError, TypeError):` into Python 3.14 syntax that is invalid on Python 3.11/3.12. The parenthesized form was intentionally retained for runtime compatibility. This is recorded as a residual CI/toolchain blocker, not hidden.
+`ruff format --check` on the touched Python set now exits 0 (`13 files already formatted`). The original parenthesized `except (ValueError, TypeError):` was split into separate `except ValueError:` and `except TypeError:` handlers, preserving Python 3.11/3.12 compatibility while satisfying Ruff 0.16.10 with `target-version=py314`. PR #308 CI still reports Ruff Format as failing independently.
 
 ## 7. Review conclusion
 

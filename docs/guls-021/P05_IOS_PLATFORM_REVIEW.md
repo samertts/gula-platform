@@ -83,7 +83,7 @@ None of these steps has been completed in this pass.
 | Project file discovery        | Read-only glob over `mobile/ios/**/*.{xcodeproj,xcworkspace,pbxproj}`                                                                                                                                      |  n/a | No project/workspace files found                                | This review                                        |
 | PR #308 checks (context only) | `gh pr checks 308`                                                                                                                                                                                         |    1 | 10 failing checks; `mergeStateStatus=UNSTABLE`                  | `pr308_checks.log`, `P00_INDEPENDENT_REVIEW.md` §3 |
 
-No iOS-specific test command was run; there is no iOS pass/fail count to report. Focused backend (`81 passed`, exit 0) and frontend (`3 files, 21 tests`, exit 0) results cover other surfaces only.
+No iOS-specific test command was run; there is no iOS pass/fail count to report. Focused backend (`81 passed`, exit 0) and frontend (`3 files, 24 tests`, exit 0) results cover other surfaces only.
 
 ## 9. Residual risks and blockers
 

@@ -12,6 +12,8 @@ Status: **NOT READY — BLOCKED**
 
 The final decision is **NOT READY — BLOCKED**. No Draft PR was opened because the coherent gates did not pass. No merge, deployment, production access, production key use, or human approval is claimed.
 
+A final branch-local verification pass corrected the Ruff exception-handler formatting conflict and the pre-existing `MobileBottomNav` accessible-label mismatch, so the touched Python formatting check and the full GULS-021 frontend suite now pass locally. PR #308 CI remains red/UNSTABLE, and the native, human-approval, integration, state, and key-management gates remain open.
+
 ## Phase documents P00–P11
 
 | Phase | Document                                                                                 | Subject                                                                                                            |

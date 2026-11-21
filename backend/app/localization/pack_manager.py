@@ -236,10 +236,13 @@ class PackManager:
         if encoded:
             try:
                 return base64.b64decode(encoded, validate=True), None
-            except (ValueError, TypeError):
-                # Never fail application import because of malformed deployment
-                # configuration. Verification fails with a stable error instead.
-                return None, "configured language-pack public key is invalid"
+            except ValueError:
+                pass
+            except TypeError:
+                pass
+            # Never fail application import because of malformed deployment
+            # configuration. Verification fails with a stable error instead.
+            return None, "configured language-pack public key is invalid"
         path = os.getenv("GULS_PACK_PUBLIC_KEY_PATH")
         if path:
             key_path = Path(path)

@@ -80,7 +80,7 @@ None of these steps has been completed in this pass.
 | Local toolchain inventory     | `for tool in java gradle swift xcodebuild flutter dotnet; do if command -v "$tool" >/dev/null 2>&1; then printf "%s=%s\n" "$tool" "$(command -v "$tool")"; else printf "%s=NOT_FOUND\n" "$tool"; fi; done` |    0 | `flutter=NOT_FOUND`, `dotnet=NOT_FOUND`; `java=/usr/bin/java` | `local_toolchain.log`                              |
 | PR #308 checks (context only) | `gh pr checks 308`                                                                                                                                                                                         |    1 | 10 failing checks; `mergeStateStatus=UNSTABLE`                | `pr308_checks.log`, `P00_INDEPENDENT_REVIEW.md` §3 |
 
-No Flutter/Dart test command was run; there is no desktop pass/fail count to report. Focused backend (`81 passed`, exit 0) and frontend (`3 files, 21 tests`, exit 0) results cover other surfaces only.
+No Flutter/Dart test command was run; there is no desktop pass/fail count to report. Focused backend (`81 passed`, exit 0) and frontend (`3 files, 24 tests`, exit 0) results cover other surfaces only.
 
 ## 9. Residual risks and blockers
 

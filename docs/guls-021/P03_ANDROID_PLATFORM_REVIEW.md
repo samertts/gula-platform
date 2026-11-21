@@ -89,7 +89,7 @@ None of these steps has been completed in this pass.
 | Local toolchain inventory     | `for tool in java gradle swift xcodebuild flutter dotnet; do if command -v "$tool" >/dev/null 2>&1; then printf "%s=%s\n" "$tool" "$(command -v "$tool")"; else printf "%s=NOT_FOUND\n" "$tool"; fi; done` |    0 | `java=/usr/bin/java`; `gradle`, `swift`, `xcodebuild`, `flutter`, `dotnet` = `NOT_FOUND`   | `local_toolchain.log`                              |
 | PR #308 checks (context only) | `gh pr checks 308`                                                                                                                                                                                         |    1 | 10 failing checks; `mergeStateStatus=UNSTABLE`; same failures reproduce on baseline `main` | `pr308_checks.log`, `P00_INDEPENDENT_REVIEW.md` §3 |
 
-No Android-specific test command was run; there is no Android pass/fail count to report. The focused backend suite (`81 passed`, exit 0) and focused frontend suite (`3 files, 21 tests`, exit 0) validate other surfaces only.
+No Android-specific test command was run; there is no Android pass/fail count to report. The focused backend suite (`81 passed`, exit 0) and focused frontend suite (`3 files, 24 tests`, exit 0) validate other surfaces only.
 
 ## 9. Residual risks and blockers
 

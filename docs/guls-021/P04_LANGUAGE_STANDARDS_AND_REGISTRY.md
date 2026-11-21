@@ -94,7 +94,7 @@ No approval of any of these items occurred during GULS-021.
 
 Evidence note: the first automated invocation exited 1 because `jsonschema` is absent from the GULS virtual environment. `registry_schema_rerun.log` records the corrected system-Python-3.11 invocation at exit 0 with `registry_schema=PASS languages=14`. Both the original and corrected exit codes are retained in `summary.txt`; the corrected rerun is the authoritative schema-validation result.
 
-`ruff format --check` on the touched Python set exits 1 for a pre-existing toolchain conflict (Ruff 0.16.10 with `target-version=py314` rewrites a parenthesized `except (ValueError, TypeError):` into syntax invalid on Python 3.11/3.12). The parenthesized form was intentionally retained; see `P00_INDEPENDENT_REVIEW.md` §6.
+`ruff format --check` on the touched Python set exits 0 after splitting the parenthesized `except (ValueError, TypeError):` into separate handlers, preserving Python 3.11/3.12 compatibility. PR #308 CI still reports Ruff Format as failing independently; see `P00_INDEPENDENT_REVIEW.md` §6.
 
 ## 6. Residual risks and blockers
 
