@@ -1,0 +1,82 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/samertts/workspace/projects/gula-integration-v4-execution/backend
+configfile: pytest.ini
+plugins: asyncio-1.5.0, anyio-4.16.0, timeout-2.4.0, Faker-40.63.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 4 items
+
+tests/test_event_authority_postgres.py .F..                              [100%]
+
+=================================== FAILURES ===================================
+________________ test_publish_is_durable_ordered_and_idempotent ________________
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1977: in _exec_single_context
+    self.dialect.do_execute(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/default.py:1192: in do_execute
+    cursor.execute(statement, parameters)
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/psycopg/cursor.py:117: in execute
+    raise ex.with_traceback(None)
+E   psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_outbox_events_event_id"
+E   DETAIL:  Key (event_id)=(pg-evt-1) already exists.
+
+The above exception was the direct cause of the following exception:
+tests/test_event_authority_postgres.py:123: in test_publish_is_durable_ordered_and_idempotent
+    NationalEventAuthority.publish(db, envelope("pg-evt-1", 1))
+app/eventing/authority.py:90: in publish
+    db.flush()
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4626: in flush
+    self._flush(objects)
+<sqlalchemy generated warned() wrapper for sqlalchemy.orm.session.Session._flush>:2: in _flush
+    return target(fn, self, objects=objects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/util/deprecations.py:281: in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4769: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:166: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4730: in _flush
+    flush_context.execute()
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:467: in execute
+    rec.execute(self)
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:643: in execute
+    util.preloaded.orm_persistence._save_obj(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:92: in _save_obj
+    _emit_insert_statements(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1250: in _emit_insert_statements
+    result = connection.execute(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1494: in execute
+    return meth(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:534: in _execute_on_connection
+    return connection._execute_clauseelement(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1714: in _execute_clauseelement
+    ret = self._execute_context(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1868: in _execute_context
+    return self._exec_single_context(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1996: in _exec_single_context
+    self._handle_dbapi_exception(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2351: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1977: in _exec_single_context
+    self.dialect.do_execute(
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/sqlalchemy/engine/default.py:1192: in do_execute
+    cursor.execute(statement, parameters)
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/psycopg/cursor.py:117: in execute
+    raise ex.with_traceback(None)
+E   sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_outbox_events_event_id"
+E   DETAIL:  Key (event_id)=(pg-evt-1) already exists.
+E   [SQL: INSERT INTO outbox_events (event_id, event_type, schema_version, source_service, tenant_id, actor_id, entity_id, correlation_id, idempotency_key, sequence, aggregate_type, aggregate_id, payload, status, attempts, last_error, created_at, processed_at) VALUES (%(event_id)s::VARCHAR, %(event_type)s::VARCHAR, %(schema_version)s::INTEGER, %(source_service)s::VARCHAR, %(tenant_id)s::VARCHAR, %(actor_id)s::VARCHAR, %(entity_id)s::VARCHAR, %(correlation_id)s::VARCHAR, %(idempotency_key)s::VARCHAR, %(sequence)s::INTEGER, %(aggregate_type)s::VARCHAR, %(aggregate_id)s::INTEGER, %(payload)s::VARCHAR, %(status)s::VARCHAR, %(attempts)s::INTEGER, %(last_error)s::VARCHAR, %(created_at)s::TIMESTAMP WITH TIME ZONE, %(processed_at)s::TIMESTAMP WITH TIME ZONE) RETURNING outbox_events.id]
+E   [parameters: {'event_id': 'pg-evt-1', 'event_type': 'pg.order.created', 'schema_version': 1, 'source_service': 'pg-contract-test', 'tenant_id': 'lab-pg', 'actor_id': 'user-pg', 'entity_id': 'entity-1', 'correlation_id': 'corr-1', 'idempotency_key': 'idem-1', 'sequence': 1, 'aggregate_type': 'order', 'aggregate_id': None, 'payload': '{"sequence": 1}', 'status': 'pending', 'attempts': 0, 'last_error': None, 'created_at': datetime.datetime(2026, 11, 24, 10, 12, 30, 890057, tzinfo=datetime.timezone.utc), 'processed_at': None}]
+E   (Background on this error at: https://sqlalche.me/e/21/gkpj)
+=============================== warnings summary ===============================
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/samertts/.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_event_authority_postgres.py::test_publish_is_durable_ordered_and_idempotent
+==================== 1 failed, 3 passed, 1 warning in 1.74s ====================
+EXIT=1

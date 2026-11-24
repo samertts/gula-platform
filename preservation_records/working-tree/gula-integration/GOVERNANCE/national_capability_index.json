@@ -1,0 +1,445 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "reference_only_static_index",
+  "title": "National Capability Registry — reference-only capability index",
+  "executing": false,
+  "authority": "none — advisory only; the application must work if this file is absent",
+  "generated": "2026-11-17",
+  "source_documents": [
+    "GOVERNANCE/AUTONOMOUS_ENGINES_INVENTORY.md §3–§6",
+    "GOVERNANCE/AUTONOMOUS_ENGINES_VERIFICATION.md §3/§7",
+    "GOVERNANCE/STABILIZATION_PHASE_H_I_ASSESSMENT.md §1 (GO-FOR-DESIGN, reference-only)"
+  ],
+  "status_taxonomy": [
+    "INTEGRATION_VERIFIED",
+    "UNIT_VERIFIED",
+    "PARTIAL_VERIFIED",
+    "SOURCE_PRESENT",
+    "DORMANT",
+    "UNVERIFIABLE",
+    "RUNTIME_VERIFIED",
+    "PRODUCTION_VERIFIED"
+  ],
+  "status_counts": {
+    "PARTIAL_VERIFIED": 2,
+    "UNIT_VERIFIED": 15,
+    "SOURCE_PRESENT": 11,
+    "DORMANT": 1,
+    "INTEGRATION_VERIFIED": 9,
+    "UNVERIFIABLE": 1,
+    "RUNTIME_VERIFIED": 0,
+    "PRODUCTION_VERIFIED": 0
+  },
+  "special_states": {
+    "ENG-A12": "DORMANT — stays dormant (F-071); never activate",
+    "ENG-B09": "UNVERIFIABLE — national CDS route UNMOUNTED (F-068, D-021 PENDING); do not enable"
+  },
+  "engines": [
+    {
+      "id": "ENG-A01",
+      "category": "A",
+      "name": "Canonical workflow engine",
+      "source": "app/workflows/engine.py",
+      "loc": "237",
+      "entry_point": "app/identity/api/router.py:59",
+      "status": "PARTIAL_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A02",
+      "category": "A",
+      "name": "Background scheduler + retry + cron + worker pool",
+      "source": "app/kernel/background/scheduler.py",
+      "loc": "36/32/29/23",
+      "entry_point": "Bootloader._phase_initialize_background",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A03",
+      "category": "A",
+      "name": "Priority + task queues",
+      "source": "app/kernel/background/priority_queue.py",
+      "loc": "53/49",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A04",
+      "category": "A",
+      "name": "Distributed locks",
+      "source": "app/kernel/background/distributed_locks.py",
+      "loc": "47",
+      "entry_point": "Scheduler.__init__",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A05",
+      "category": "A",
+      "name": "Event bus family",
+      "source": "app/kernel/event_bus/bus.py",
+      "loc": "52/57/41/40/27/23",
+      "entry_point": "Bootloader",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A06",
+      "category": "A",
+      "name": "Event recovery",
+      "source": "app/kernel/event_bus/recovery.py",
+      "loc": "214",
+      "entry_point": "RecoveryEngine",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A07",
+      "category": "A",
+      "name": "Rules runtime",
+      "source": "app/kernel/rules_runtime.py",
+      "loc": "299",
+      "entry_point": "app/kernel/runtime_routes.py",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": [
+        "F-066"
+      ]
+    },
+    {
+      "id": "ENG-A08",
+      "category": "A",
+      "name": "Policy runtime",
+      "source": "app/kernel/policy_runtime.py",
+      "loc": "220",
+      "entry_point": "app/kernel/runtime_routes.py",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": [
+        "F-066"
+      ]
+    },
+    {
+      "id": "ENG-A09",
+      "category": "A",
+      "name": "Control-layer policy + risk",
+      "source": "app/core/policy_engine.py",
+      "loc": "275/145",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A10",
+      "category": "A",
+      "name": "National rules expression engine",
+      "source": "app/national/rules_engine/domain/expression_engine.py",
+      "loc": "200",
+      "entry_point": "app/factory.py:692",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": [
+        "F-066"
+      ]
+    },
+    {
+      "id": "ENG-A11",
+      "category": "A",
+      "name": "Task queue / worker",
+      "source": "app/tasks/queue.py",
+      "loc": "168/157",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-A12",
+      "category": "A",
+      "name": "Generated capability scaffold  (service 24, routes 51, capability 51, repository 48, entities 15)",
+      "source": "app/capabilities/workflow_engine/",
+      "loc": "189 total",
+      "entry_point": "app/**/*.py",
+      "status": "DORMANT",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B01",
+      "category": "B",
+      "name": "RAG pipeline + vector store",
+      "source": "app/ai/rag_pipeline.py",
+      "loc": "184/231",
+      "entry_point": "app/routes/ai.py",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B02",
+      "category": "B",
+      "name": "Healthcare CDS",
+      "source": "app/ai/healthcare_cds.py",
+      "loc": "143",
+      "entry_point": "app/routes/ai.py",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B03",
+      "category": "B",
+      "name": "AI orchestrator + guardrails",
+      "source": "app/ai/orchestrator.py",
+      "loc": "164/180",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B04",
+      "category": "B",
+      "name": "AI-fabric RAG",
+      "source": "app/ai_fabric/rag.py",
+      "loc": "436",
+      "entry_point": "ai_platform_routes",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B05",
+      "category": "B",
+      "name": "HL7 ORU→FHIR",
+      "source": "app/capabilities/fhir_interoperability/hl7.py",
+      "loc": "157",
+      "entry_point": "/fhir-interoperability/hl7/convert",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B06",
+      "category": "B",
+      "name": "FHIR resource service + search ,",
+      "source": "app/capabilities/fhir_interoperability/service.py",
+      "loc": "122/56",
+      "entry_point": "",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B07",
+      "category": "B",
+      "name": "MDM service + matching",
+      "source": "app/health_data/mdm/service.py",
+      "loc": "132/318",
+      "entry_point": "",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": [
+        "F-067"
+      ]
+    },
+    {
+      "id": "ENG-B08",
+      "category": "B",
+      "name": "Health-data streaming",
+      "source": "app/health_data/streaming/pipeline.py",
+      "loc": "150",
+      "entry_point": "national_streaming_routes",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B09",
+      "category": "B",
+      "name": "National CDS engine",
+      "source": "app/national/services/cds_engine.py",
+      "loc": "983",
+      "entry_point": "app/national/api/routes/cds.py",
+      "status": "UNVERIFIABLE",
+      "linked_findings": [
+        "F-068"
+      ]
+    },
+    {
+      "id": "ENG-B10",
+      "category": "B",
+      "name": "Outbox worker",
+      "source": "app/services/outbox_service.py",
+      "loc": "249",
+      "entry_point": "app/core/startup.py:270-272",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B11",
+      "category": "B",
+      "name": "Search service  + national search routes",
+      "source": "app/capabilities/search_service/search.py",
+      "loc": "60 + routes",
+      "entry_point": "app/factory.py:712",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-B12",
+      "category": "B",
+      "name": "Document-intelligence wiring",
+      "source": "app/document_intelligence/application/wiring.py",
+      "loc": "1054",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-C01",
+      "category": "C",
+      "name": "Rate limiter",
+      "source": "app/security/rate_limit.py",
+      "loc": "249",
+      "entry_point": "",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-C02",
+      "category": "C",
+      "name": "Tenant/collection policy helpers",
+      "source": "app/security/policy.py",
+      "loc": "50",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-C03",
+      "category": "C",
+      "name": "Self-healing + circuit breakers ,",
+      "source": "app/core/self_healing.py",
+      "loc": "459/71/32",
+      "entry_point": "DegradedModeMiddleware",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-C04",
+      "category": "C",
+      "name": "Offline sync engine",
+      "source": "app/core/sync_engine.py",
+      "loc": "102",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-C05",
+      "category": "C",
+      "name": "Offline sync service / conflict resolution",
+      "source": "app/services/offline_sync_service.py",
+      "loc": "~260",
+      "entry_point": "",
+      "status": "PARTIAL_VERIFIED",
+      "linked_findings": [
+        "F-069"
+      ]
+    },
+    {
+      "id": "ENG-C06",
+      "category": "C",
+      "name": "ABAC / identity policy",
+      "source": "app/identity/policy_engine.py",
+      "loc": "129",
+      "entry_point": "",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-C07",
+      "category": "C",
+      "name": "Canonical audit",
+      "source": "app/identity/services/canonical_audit.py",
+      "loc": "260",
+      "entry_point": "",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-C08",
+      "category": "C",
+      "name": "Lab device gateway",
+      "source": "app/gateways/lab_device_gateway.py",
+      "loc": "219",
+      "entry_point": "",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": [
+        "F-070"
+      ]
+    },
+    {
+      "id": "ENG-C09",
+      "category": "C",
+      "name": "National security rules",
+      "source": "app/national/security/guardian_rules.py",
+      "loc": "40/32",
+      "entry_point": "",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-D01",
+      "category": "D",
+      "name": "Westgard QC engine",
+      "source": "app/services/quality_control_service.py",
+      "loc": "292",
+      "entry_point": "app/factory.py",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-D02",
+      "category": "D",
+      "name": "LIMS workflow automation",
+      "source": "app/lims/workflows.py",
+      "loc": "349",
+      "entry_point": "",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-D03",
+      "category": "D",
+      "name": "Test-result engine",
+      "source": "app/services/test_result_service.py",
+      "loc": "437",
+      "entry_point": "app/routes/test_results.py",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-D04",
+      "category": "D",
+      "name": "Metrics engine  +",
+      "source": "app/services/metrics_service.py",
+      "loc": "544/343",
+      "entry_point": "core_routes",
+      "status": "UNIT_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-D05",
+      "category": "D",
+      "name": "Runtime observability",
+      "source": "app/kernel/runtime_observability.py",
+      "loc": "274",
+      "entry_point": "",
+      "status": "INTEGRATION_VERIFIED",
+      "linked_findings": []
+    },
+    {
+      "id": "ENG-D06",
+      "category": "D",
+      "name": "Certification engine  +",
+      "source": "app/certification/engine.py",
+      "loc": "117/204",
+      "entry_point": "",
+      "status": "SOURCE_PRESENT",
+      "linked_findings": [
+        "F-072"
+      ]
+    }
+  ]
+}

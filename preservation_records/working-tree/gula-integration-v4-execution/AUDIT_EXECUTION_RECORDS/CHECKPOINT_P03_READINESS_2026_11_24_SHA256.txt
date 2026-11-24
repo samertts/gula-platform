@@ -1,0 +1,9 @@
+# Additive P-03 readiness manifest — 2026-11-24 UTC
+# Does not replace or modify any prior manifest:
+#   CHECKPOINT_REBUILD_2026_11_21_SHA256.txt
+#   CHECKPOINT_REV3_2026_11_21_SHA256.txt
+#   CHECKPOINT_P02_CLOSURE_2026_11_24_SHA256.txt
+# P-03 remains PREPARED ONLY / NOT IMPLEMENTED. T9 concurrency evidence is
+# diagnostic only and explicitly deferred to P-03-CONCURRENCY by REV3 §2/§6/§7.
+d2c46631d04edb68b8dbca5029cd62893af2a417dfd67b21eec1e9dab1d5d52e  backend/tests/test_p03_concurrency_diagnostic_postgres.py
+7ce3b01cf1b328d99741cbe9c5a1c5f986466d8114867e81cbbdaa42cef36a4b  AUDIT_EXECUTION_RECORDS/P-03_READINESS_2026_11_24.md

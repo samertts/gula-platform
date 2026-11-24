@@ -1,0 +1,480 @@
+{
+  "program": "GLOSI",
+  "phase": "PHASE_3",
+  "batch": "B1",
+  "retrieved_at": "2026-11-15T09:48:36Z",
+  "generated_at": "2026-11-15",
+  "method": "GitHub REST API v3 repository/release metadata, raw LICENSE files, and official vendor release pages where GitHub had no releases.",
+  "rate_limit_remaining_at_start": 45,
+  "summary": {
+    "projects": 16,
+    "repository_metadata_verified": 16,
+    "archived_projects": 0,
+    "no_tagged_release": 1
+  },
+  "projects": [
+    {
+      "registry_id": "GLOSI-0001",
+      "name": "OpenELIS Global",
+      "repository": "DIGI-UW/OpenELIS-Global-2",
+      "official_url": "https://github.com/DIGI-UW/OpenELIS-Global-2",
+      "archived": false,
+      "pushed_at": "2026-11-15T01:53:26Z",
+      "license_registry": "MPL-2.0",
+      "license_api": "MPL-2.0",
+      "latest_version_registry": "3.3.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_openelis.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0002",
+      "name": "SENAITE",
+      "repository": "senaite/senaite.core",
+      "official_url": "https://github.com/senaite/senaite.core",
+      "archived": false,
+      "pushed_at": "2026-11-14T15:22:00Z",
+      "license_registry": "GPL-2.0",
+      "license_api": "GPL-2.0",
+      "latest_version_registry": "v2.6.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_senaite_senaite.core.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0003",
+      "name": "OpenMRS",
+      "repository": "openmrs/openmrs-core",
+      "official_url": "https://github.com/openmrs/openmrs-core",
+      "archived": false,
+      "pushed_at": "2026-11-14T21:19:41Z",
+      "license_registry": "MPL-2.0",
+      "license_api": "NOASSERTION",
+      "latest_version_registry": "2.8.10",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_openmrs_openmrs-core.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0004",
+      "name": "Bahmni",
+      "repository": "Bahmni/bahmni-core",
+      "official_url": "https://github.com/Bahmni/bahmni-core",
+      "archived": false,
+      "pushed_at": "2026-11-12T12:09:35Z",
+      "license_registry": "MPL-2.0",
+      "license_api": "NOASSERTION",
+      "latest_version_registry": "1.3.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_Bahmni_bahmni-core.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0005",
+      "name": "DHIS2",
+      "repository": "dhis2/dhis2-core",
+      "official_url": "https://github.com/dhis2/dhis2-core",
+      "archived": false,
+      "pushed_at": "2026-11-15T06:24:21Z",
+      "license_registry": "BSD-3-Clause",
+      "license_api": "BSD-3-Clause",
+      "latest_version_registry": "43.2.1 (security hotfix)",
+      "release_source": "official DHIS2 release pages (GitHub releases API returned no releases)",
+      "repo_evidence_file": "repo_dhis2_dhis2-core.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0006",
+      "name": "SORMAS",
+      "repository": "SORMAS-Foundation/SORMAS-Project",
+      "official_url": "https://github.com/SORMAS-Foundation/SORMAS-Project",
+      "archived": false,
+      "pushed_at": "2026-11-13T19:32:44Z",
+      "license_registry": "GPL-3.0",
+      "license_api": "GPL-3.0",
+      "latest_version_registry": "v1.104.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_SORMAS-Foundation_SORMAS-Project.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0007",
+      "name": "OpenHIE",
+      "repository": "openhie/openhie-specification",
+      "official_url": "https://ohie.org/",
+      "archived": false,
+      "pushed_at": "2025-05-12T15:01:57Z",
+      "license_registry": "MPL-2.0",
+      "license_api": "MPL-2.0",
+      "latest_version_registry": "UNKNOWN (no tagged release verified)",
+      "release_source": "no release verified (specification repository)",
+      "repo_evidence_file": "repo_openhie_spec.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0008",
+      "name": "OpenHIM",
+      "repository": "jembi/openhim-core-js",
+      "official_url": "https://github.com/jembi/openhim-core-js",
+      "archived": false,
+      "pushed_at": "2026-09-25T15:20:55Z",
+      "license_registry": "MPL-2.0",
+      "license_api": "MPL-2.0",
+      "latest_version_registry": "v8.5.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_openhim.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0009",
+      "name": "HAPI FHIR",
+      "repository": "hapifhir/hapi-fhir",
+      "official_url": "https://github.com/hapifhir/hapi-fhir",
+      "archived": false,
+      "pushed_at": "2026-11-15T02:08:33Z",
+      "license_registry": "Apache-2.0",
+      "license_api": "Apache-2.0",
+      "latest_version_registry": "v8.10.3",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_hapifhir_hapi-fhir.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0010",
+      "name": "Open Concept Lab (OCL)",
+      "repository": "OpenConceptLab/oclapi2",
+      "official_url": "https://github.com/OpenConceptLab/oclapi2",
+      "archived": false,
+      "pushed_at": "2026-11-13T23:10:26Z",
+      "license_registry": "MPL-2.0",
+      "license_api": "MPL-2.0",
+      "latest_version_registry": "2.3.252",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_oclapi2.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0011",
+      "name": "Keycloak",
+      "repository": "keycloak/keycloak",
+      "official_url": "https://github.com/keycloak/keycloak",
+      "archived": false,
+      "pushed_at": "2026-11-15T03:06:47Z",
+      "license_registry": "Apache-2.0",
+      "license_api": "Apache-2.0",
+      "latest_version_registry": "26.8.2",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_keycloak_keycloak.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0012",
+      "name": "OpenBao",
+      "repository": "openbao/openbao",
+      "official_url": "https://github.com/openbao/openbao",
+      "archived": false,
+      "pushed_at": "2026-11-12T10:12:51Z",
+      "license_registry": "MPL-2.0",
+      "license_api": "MPL-2.0",
+      "latest_version_registry": "v2.7.2",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_openbao_openbao.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0013",
+      "name": "OpenTelemetry Collector",
+      "repository": "open-telemetry/opentelemetry-collector",
+      "official_url": "https://github.com/open-telemetry/opentelemetry-collector",
+      "archived": false,
+      "pushed_at": "2026-11-14T21:33:35Z",
+      "license_registry": "Apache-2.0",
+      "license_api": "Apache-2.0",
+      "latest_version_registry": "v0.165.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_open-telemetry_opentelemetry-collector.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0014",
+      "name": "Prometheus",
+      "repository": "prometheus/prometheus",
+      "official_url": "https://github.com/prometheus/prometheus",
+      "archived": false,
+      "pushed_at": "2026-11-15T07:43:39Z",
+      "license_registry": "Apache-2.0",
+      "license_api": "Apache-2.0",
+      "latest_version_registry": "v3.16.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_prometheus_prometheus.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0015",
+      "name": "Apache CouchDB",
+      "repository": "apache/couchdb",
+      "official_url": "https://github.com/apache/couchdb",
+      "archived": false,
+      "pushed_at": "2026-11-15T05:21:43Z",
+      "license_registry": "Apache-2.0",
+      "license_api": "Apache-2.0",
+      "latest_version_registry": "3.5.3",
+      "release_source": "official couchdb.apache.org download page (GitHub releases API returned no releases)",
+      "repo_evidence_file": "repo_apache_couchdb.json",
+      "verification_result": "PASS"
+    },
+    {
+      "registry_id": "GLOSI-0016",
+      "name": "Automerge",
+      "repository": "automerge/automerge",
+      "official_url": "https://github.com/automerge/automerge",
+      "archived": false,
+      "pushed_at": "2026-11-13T14:03:57Z",
+      "license_registry": "MIT",
+      "license_api": "MIT",
+      "latest_version_registry": "js/automerge-3.5.0",
+      "release_source": "github_releases_api",
+      "repo_evidence_file": "repo_automerge_automerge.json",
+      "verification_result": "PASS"
+    }
+  ],
+  "evidence_inventory": [
+    {
+      "file": "license_Bahmni_bahmni-core.txt",
+      "bytes": 18072,
+      "sha256": "446e7062034853d7ec7bb1de335b8a1b39050ce19b935a1549e74cabd37f6de4"
+    },
+    {
+      "file": "license_DIGI-UW_OpenELIS-Global-2.txt",
+      "bytes": 16727,
+      "sha256": "d8d2562a7cb68ffdfe91fc66af1ed4a8a4e272aa4ab59bea7451ba34b9aba3d4"
+    },
+    {
+      "file": "license_SORMAS-Foundation_SORMAS-Project.txt",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "file": "license_jembi_openhim-core-js.txt",
+      "bytes": 16726,
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+    },
+    {
+      "file": "license_openmrs_openmrs-core.txt",
+      "bytes": 18199,
+      "sha256": "cdac49b80fabf2400d1861f39bd3458e484507dd7d1e636097ac3d66ee1b608d"
+    },
+    {
+      "file": "license_senaite_senaite.core.txt",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    {
+      "file": "release_Bahmni_bahmni-core.json",
+      "bytes": 3828,
+      "sha256": "898ac6c70a3bd2a02288cb3efbbf29cbf4e9a5056b6ba8228402f7662398b6a8"
+    },
+    {
+      "file": "release_DIGI-UW_OpenELIS-Global-2.json",
+      "bytes": 42279,
+      "sha256": "29e8fc8c5eecc03b05afc49481d72af088a8d53c822368c52aafa1a157d37d31"
+    },
+    {
+      "file": "release_OpenConceptLab_oclapi.json",
+      "bytes": 2053,
+      "sha256": "0d38c0eca4359228fce9f55c682aca86deeed35e5246b0e3ab8636ddd5fae431"
+    },
+    {
+      "file": "release_SORMAS-Foundation_SORMAS-Project.json",
+      "bytes": 31800,
+      "sha256": "2d8e2eb758fd277802955f152f00d8804f52d50f0a267015a63d9c33378c61cf"
+    },
+    {
+      "file": "release_apache_couchdb.json",
+      "bytes": 144,
+      "sha256": "3be3b9547eef51cc49a1de5d482554e118735d9b860dd24f5cf1b6eccc3ab69e"
+    },
+    {
+      "file": "release_automerge_automerge.json",
+      "bytes": 4266,
+      "sha256": "3f205e947b770cd1deec91ae32378f0b301b1743218084130803fdcf7d6668fa"
+    },
+    {
+      "file": "release_dhis2_dhis2-core.json",
+      "bytes": 144,
+      "sha256": "3be3b9547eef51cc49a1de5d482554e118735d9b860dd24f5cf1b6eccc3ab69e"
+    },
+    {
+      "file": "release_hapifhir_hapi-fhir.json",
+      "bytes": 9510,
+      "sha256": "6d42c94c8360a5ca7a4e3f70c3ff5d1062d1e6ebb222939f8964c76605aa1313"
+    },
+    {
+      "file": "release_jembi_openhim-core-js.json",
+      "bytes": 2417,
+      "sha256": "49627cac92fdf816e0d58bfb5083d1cf59b8057afd6f8102d0d208990e3635d6"
+    },
+    {
+      "file": "release_keycloak_keycloak.json",
+      "bytes": 52867,
+      "sha256": "f55772e03f5455bfad304e3b9f030ec6f993f5b3c2e00b1effad825973f1a070"
+    },
+    {
+      "file": "release_oclapi2.json",
+      "bytes": 2278,
+      "sha256": "8584cbc70c2623c7ce2693df91a3ff9a29d479f2525fab494a3a83521dd05ee5"
+    },
+    {
+      "file": "release_open-telemetry_opentelemetry-collector.json",
+      "bytes": 9122,
+      "sha256": "be4ce55a9e49acacaead581ea472d490a83afe36ecd6542456fb6c85104dc072"
+    },
+    {
+      "file": "release_openbao_openbao.json",
+      "bytes": 413386,
+      "sha256": "80b19accd867885d50b03e102068c211aa2c774ddb9b302022d71857ee17ca2a"
+    },
+    {
+      "file": "release_openmrs_openmrs-core.json",
+      "bytes": 2440,
+      "sha256": "9e47dfa2ea5491087ddab6e34ccc318c3c560c1efd38af97094cd22c5741df33"
+    },
+    {
+      "file": "release_prometheus_prometheus.json",
+      "bytes": 88536,
+      "sha256": "3017f947ed28479317b8c3ec80004cdff668b6cf4490a2dc4aa2d5ef9ccecef0"
+    },
+    {
+      "file": "release_senaite_senaite.core.json",
+      "bytes": 32183,
+      "sha256": "2d5aaf193ea82a202e2290f0b350edd7f8510acdce02d5ec09c5b1e4858ee418"
+    },
+    {
+      "file": "releases_apache_couchdb.json",
+      "bytes": 5,
+      "sha256": "2ba33ca0557f1bb5b7ba88d67f9d0093c7185a36ec51fe2b7bd9372d3e001d6d"
+    },
+    {
+      "file": "releases_dhis2_dhis2-core.json",
+      "bytes": 5,
+      "sha256": "2ba33ca0557f1bb5b7ba88d67f9d0093c7185a36ec51fe2b7bd9372d3e001d6d"
+    },
+    {
+      "file": "repo_Bahmni_bahmni-core.json",
+      "bytes": 17847,
+      "sha256": "658448c1f770afd37e8c8b3fe7b708efe87f4fbb95e84cc863db093930e5af7b"
+    },
+    {
+      "file": "repo_OpenConceptLab_oclapi.json",
+      "bytes": 7236,
+      "sha256": "5393189b47cf0b9cb530fced625d1c33b3e38154f1ff454e7af04a3a7ec1fd7b"
+    },
+    {
+      "file": "repo_SORMAS-Foundation_SORMAS-Project.json",
+      "bytes": 8014,
+      "sha256": "12d464ada92d7a62987fdb3fe3e089982449088959d27459a02d665541756883"
+    },
+    {
+      "file": "repo_apache_couchdb.json",
+      "bytes": 6873,
+      "sha256": "6f30f8300a22c4594cbbeb9735caf9dcd1b9c0e8e175f3608ef05fd0a3dfc140"
+    },
+    {
+      "file": "repo_automerge_automerge.json",
+      "bytes": 7018,
+      "sha256": "81789d92117a3b8b1d42e276b30efee5ac641f83e4769b4e4d066ec2d3d854a6"
+    },
+    {
+      "file": "repo_dhis2_dhis2-core.json",
+      "bytes": 6863,
+      "sha256": "40cde91a948ea659df85fe4921ee37bef0aa577a806dbbe482559d8bb30ffa8a"
+    },
+    {
+      "file": "repo_hapifhir_hapi-fhir.json",
+      "bytes": 7025,
+      "sha256": "c7c42871d5a24fc0fd4a97a6895f204380a5596ca834f56fbfef7ff1c23aac25"
+    },
+    {
+      "file": "repo_keycloak_keycloak.json",
+      "bytes": 6932,
+      "sha256": "53ad04b5784f476af6f1e718a13f7fbbd001320b681c3a5e89848453c2a2440e"
+    },
+    {
+      "file": "repo_oclapi2.json",
+      "bytes": 7203,
+      "sha256": "7221542f22109fea541a33809c9d34b30e991bfa822822f675e8f27ca2468217"
+    },
+    {
+      "file": "repo_open-telemetry_opentelemetry-collector.json",
+      "bytes": 8007,
+      "sha256": "35ab53d9a9a89e3321106387a22d955ad74a226b7958ff1b15fc93a096cb1d83"
+    },
+    {
+      "file": "repo_openbao_openbao.json",
+      "bytes": 6806,
+      "sha256": "42891fe29aefc165ea3a04c801ed9d95b0ae5c36a0568775caa47791962268b2"
+    },
+    {
+      "file": "repo_openelis.json",
+      "bytes": 7572,
+      "sha256": "c1cb30db635c144ebfdcb1ff725dc675a7d9f0a28f54604d02afcb45294f07ce"
+    },
+    {
+      "file": "repo_openhie_spec.json",
+      "bytes": 7286,
+      "sha256": "a5d1bc6a6fe106ab4dbdf61a351fbc96151eba454c2625cd5e83c0eb94de1839"
+    },
+    {
+      "file": "repo_openhim.json",
+      "bytes": 7060,
+      "sha256": "bf17e918934beb5151301bb2d550fbf02e91a71141d6636f07c64d916ad28703"
+    },
+    {
+      "file": "repo_openmrs_openmrs-core.json",
+      "bytes": 7031,
+      "sha256": "4368afb73618f7daadb913173be278ca7ad4116bf066828e5e4fd57c01940348"
+    },
+    {
+      "file": "repo_prometheus_prometheus.json",
+      "bytes": 7210,
+      "sha256": "ff0cddd0a24bd4e4f3bb6ca55edd981e58e096d7f67096e123c3abf778188848"
+    },
+    {
+      "file": "repo_senaite_senaite.core.json",
+      "bytes": 7030,
+      "sha256": "74dffb3548abb7eef955c131277ceb77ce2ce03d9cd9898ab3cde55c21733682"
+    },
+    {
+      "file": "tags_apache_couchdb.json",
+      "bytes": 1484,
+      "sha256": "60e2bedee7c687708c4e4adfb3fc2238aa5d0bbe04e4feb5f480b369d5e07454"
+    },
+    {
+      "file": "tags_dhis2_dhis2-core.json",
+      "bytes": 1646,
+      "sha256": "273d45b832f140797a8d0e90e2bd4f3b6f41aade8a09b966f65c11245ea39122"
+    },
+    {
+      "file": "web_couchdb_apache_org_.html",
+      "bytes": 28941,
+      "sha256": "42c80c42fab71bcc36f47e870b6dfc78a19570c0d68d25a63a6de2cd17e72c40"
+    },
+    {
+      "file": "web_dhis2_org_downloads_.html",
+      "bytes": 627532,
+      "sha256": "5e9999e5a6ce1574d40bc248b0b4362246d62c3fa57f3dea22e2169196feb69d"
+    },
+    {
+      "file": "web_ohie_org_.html",
+      "bytes": 97598,
+      "sha256": "1e44e865696e689d904384bd9885826625e3d12d1f29add537b673001c54994d"
+    }
+  ],
+  "known_limitations": [
+    "Evaluation dimensions remain unpopulated (PARTIAL only); no security, legal, or production-usage review has been performed.",
+    "DHIS2 43.2.1 is sourced from the official dhis2.org downloads page; GitHub releases are not used for this project.",
+    "CouchDB 3.5.3 is sourced from the official couchdb.apache.org download page; GitHub releases API returned no releases.",
+    "OpenHIE is a specification/community architecture, not deployable software; no tagged release was verified.",
+    "Amazon OpenSearch: not in batch B1; excluded from this snapshot."
+  ]
+}

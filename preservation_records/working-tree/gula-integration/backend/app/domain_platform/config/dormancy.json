@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "description": "Canonical Dormancy Registry (ADR-026). One record per module path; longest-prefix matching. Dormant/archived/retired modules are protected strategic assets and must never be removed.",
+  "records": [
+    {
+      "module": "ai",
+      "state": "archived",
+      "rationale": "C1.4 archive set — strategic asset preserved, not actively developed (ADR-026)",
+      "effective_since": "2026-08-06"
+    },
+    {
+      "module": "nhop-platform",
+      "state": "archived",
+      "rationale": "C1.4 archive set — strategic asset preserved, not actively developed (ADR-026)",
+      "effective_since": "2026-08-06"
+    },
+    {
+      "module": "edge_agent",
+      "state": "archived",
+      "rationale": "C1.4 archive set — strategic asset preserved, not actively developed (ADR-026)",
+      "effective_since": "2026-08-06"
+    },
+    {
+      "module": "platform",
+      "state": "active_development",
+      "rationale": "active development — deferred but never archived (ADR-026)",
+      "effective_since": "2026-08-06"
+    },
+    {
+      "module": "backend/app/national_data",
+      "state": "dormant",
+      "rationale": "dormant enterprise module — strategic asset, never removed (GULA Constitution)",
+      "effective_since": "2026-08-06"
+    }
+  ]
+}

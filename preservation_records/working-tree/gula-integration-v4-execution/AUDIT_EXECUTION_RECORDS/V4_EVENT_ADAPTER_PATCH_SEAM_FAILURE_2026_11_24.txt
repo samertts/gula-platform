@@ -1,0 +1,101 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/samertts/workspace/projects/gula-integration-v4-execution/backend
+configfile: pytest.ini
+plugins: asyncio-1.5.0, anyio-4.16.0, timeout-2.4.0, Faker-40.63.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 120.0s
+timeout method: signal
+timeout func_only: False
+collected 26 items
+
+tests/test_event_authority_consolidation.py ......                       [ 23%]
+tests/test_outbox_service.py ......FFFFFFF.......                        [100%]
+
+=================================== FAILURES ===================================
+_____ TestOutboxWorkerRunOnce.test_dispatches_pending_event_and_marks_done _____
+tests/test_outbox_service.py:130: in test_dispatches_pending_event_and_marks_done
+    with patch("app.services.outbox_service.events", bus):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1437: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'app.services.outbox_service' from '/home/samertts/workspace/projects/gula-integration-v4-execution/backend/app/services/outbox_service.py'> does not have the attribute 'events'
+_______ TestOutboxWorkerRunOnce.test_failed_dispatch_increments_attempts _______
+tests/test_outbox_service.py:147: in test_failed_dispatch_increments_attempts
+    with patch("app.services.outbox_service.events") as mock_events:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1437: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'app.services.outbox_service' from '/home/samertts/workspace/projects/gula-integration-v4-execution/backend/app/services/outbox_service.py'> does not have the attribute 'events'
+___ TestOutboxWorkerRunOnce.test_event_permanently_fails_after_max_attempts ____
+tests/test_outbox_service.py:167: in test_event_permanently_fails_after_max_attempts
+    with patch("app.services.outbox_service.events") as mock_events:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1437: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'app.services.outbox_service' from '/home/samertts/workspace/projects/gula-integration-v4-execution/backend/app/services/outbox_service.py'> does not have the attribute 'events'
+_________ TestOutboxWorkerRunOnce.test_done_events_are_not_reprocessed _________
+tests/test_outbox_service.py:192: in test_done_events_are_not_reprocessed
+    with patch("app.services.outbox_service.events", bus):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1437: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'app.services.outbox_service' from '/home/samertts/workspace/projects/gula-integration-v4-execution/backend/app/services/outbox_service.py'> does not have the attribute 'events'
+_____ TestOutboxWorkerRunOnce.test_exhausted_failed_events_are_not_retried _____
+tests/test_outbox_service.py:213: in test_exhausted_failed_events_are_not_retried
+    with patch("app.services.outbox_service.events", bus):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1437: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'app.services.outbox_service' from '/home/samertts/workspace/projects/gula-integration-v4-execution/backend/app/services/outbox_service.py'> does not have the attribute 'events'
+___ TestOutboxWorkerRunOnce.test_summary_counts_are_accurate_for_mixed_batch ___
+tests/test_outbox_service.py:235: in test_summary_counts_are_accurate_for_mixed_batch
+    with patch("app.services.outbox_service.events", good_bus):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1437: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'app.services.outbox_service' from '/home/samertts/workspace/projects/gula-integration-v4-execution/backend/app/services/outbox_service.py'> does not have the attribute 'events'
+____________ TestOutboxWorkerRunOnce.test_no_op_when_queue_is_empty ____________
+tests/test_outbox_service.py:247: in test_no_op_when_queue_is_empty
+    with patch("app.services.outbox_service.events", bus):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1437: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'app.services.outbox_service' from '/home/samertts/workspace/projects/gula-integration-v4-execution/backend/app/services/outbox_service.py'> does not have the attribute 'events'
+=============================== warnings summary ===============================
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/samertts/.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_outbox_service.py::TestOutboxWorkerRunOnce::test_dispatches_pending_event_and_marks_done
+FAILED tests/test_outbox_service.py::TestOutboxWorkerRunOnce::test_failed_dispatch_increments_attempts
+FAILED tests/test_outbox_service.py::TestOutboxWorkerRunOnce::test_event_permanently_fails_after_max_attempts
+FAILED tests/test_outbox_service.py::TestOutboxWorkerRunOnce::test_done_events_are_not_reprocessed
+FAILED tests/test_outbox_service.py::TestOutboxWorkerRunOnce::test_exhausted_failed_events_are_not_retried
+FAILED tests/test_outbox_service.py::TestOutboxWorkerRunOnce::test_summary_counts_are_accurate_for_mixed_batch
+FAILED tests/test_outbox_service.py::TestOutboxWorkerRunOnce::test_no_op_when_queue_is_empty
+=================== 7 failed, 19 passed, 1 warning in 4.85s ====================
+EXIT=1

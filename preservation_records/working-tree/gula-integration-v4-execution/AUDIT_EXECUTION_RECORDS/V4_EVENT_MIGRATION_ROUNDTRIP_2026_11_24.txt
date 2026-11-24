@@ -1,0 +1,19 @@
+REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production.
+AUDIT_ANCHOR_KEY not set. Set in .env for production.
+REDIS_URL not set — using an explicitly acknowledged in-memory store (not shared across workers). Set REDIS_URL for full rate-limiting and cross-process session invalidation.
+REDIS_URL not set — using an explicitly acknowledged in-memory store (not shared across workers)
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 20261124_0003 -> 20261124_0002, Add canonical C09 fields to the durable outbox.
+DOWNGRADE_VERSION=20261124_0002
+DOWNGRADE_CANONICAL_COLUMNS=0
+REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production.
+AUDIT_ANCHOR_KEY not set. Set in .env for production.
+REDIS_URL not set — using an explicitly acknowledged in-memory store (not shared across workers). Set REDIS_URL for full rate-limiting and cross-process session invalidation.
+REDIS_URL not set — using an explicitly acknowledged in-memory store (not shared across workers)
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 20261124_0002 -> 20261124_0003, Add canonical C09 fields to the durable outbox.
+UPGRADE_VERSION=20261124_0003
+UPGRADE_CANONICAL_COLUMNS=9
+EXIT=0

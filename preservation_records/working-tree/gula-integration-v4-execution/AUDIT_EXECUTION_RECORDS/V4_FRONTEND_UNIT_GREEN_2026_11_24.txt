@@ -1,0 +1,10 @@
+
+ RUN  v4.1.10 /home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3
+
+
+ Test Files  18 passed (18)
+      Tests  62 passed (62)
+   Start at  13:26:03
+   Duration  22.91s (transform 878ms, setup 3.24s, import 3.46s, tests 1.45s, environment 10.94s)
+
+EXIT=0

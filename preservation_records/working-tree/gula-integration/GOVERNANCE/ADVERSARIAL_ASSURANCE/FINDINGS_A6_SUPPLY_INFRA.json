@@ -1,0 +1,520 @@
+{
+  "audit_id": "A6",
+  "audit_name": "GULA Extreme Adversarial Audit - Team A: Dependency & Supply Chain + Infrastructure / Disaster Recovery",
+  "team": "Team A (independent adversarial auditor)",
+  "generated_utc": "2026-11-18",
+  "repository": {
+    "path": "/home/samertts/workspace/projects/gula-integration",
+    "branch": "integration/gula-unification-v1",
+    "head": "2206654dc713ea2de8c564a3207dfe05fde23549",
+    "sibling_read_only": {
+      "path": "/home/samertts/workspace/projects/gula-platform",
+      "head": "f478676b6fc375338648dde46fbf076c015a3f91",
+      "modified_by_this_audit": false
+    }
+  },
+  "hard_constraints_observed": {
+    "source_git_config_db_writes": "NONE - only the three artifacts under GOVERNANCE/ADVERSARIAL_ASSURANCE/ were created",
+    "git_add_commit_push": "NONE",
+    "operational_db_access": "NONE",
+    "network_access": "NONE",
+    "package_installs": "NONE",
+    "live_vulnerability_lookups": "NONE - local lockfiles/advisory files only",
+    "secrets_read_or_reproduced": "NONE - .env existence/ignore status checked only, contents never read",
+    "owner_decisions_unchanged": [
+      "HOLD", "MPI REJECT", "MP-001", "ODR-001", "ODR-002", "ODR-003", "ODR-004",
+      "D-020", "D-021", "ADR-A", "ADR-B", "ADR-C", "ADR-D", "ADR-E", "ADR-F",
+      "ADR-G", "ADR-H", "ADR-I", "ADR-J", "AUD-02", "AUD-07", "AUD-16"
+    ]
+  },
+  "status_vocabulary_used": [
+    "IMPLEMENTED", "TESTED", "INTEGRATED", "INDEPENDENTLY VERIFIED",
+    "PRODUCTION READY", "BLOCKED", "NOT IMPLEMENTED"
+  ],
+  "audited_work_awarded_independent_verification": false,
+  "audited_work_awarded_production_ready": false,
+  "coverage": {
+    "surfaces_reviewed": [
+      "Python manifests and lockfiles (backend/pyproject.toml, backend/uv.lock, backend/requirements*.txt, root pyproject.toml/requirements.txt, shared/pyproject.toml, edge_agent/nhop-platform/platform/hospital_desktop requirements, services/device_bridge/pyproject.toml)",
+      "JS/TS manifests and lockfiles (19 package.json, 9 lockfiles incl. conflicting root pnpm-lock.yaml + package-lock.json)",
+      "Container builds (15 Dockerfiles)",
+      "Compose topologies (12 compose files incl. docker-compose.full.yml)",
+      "CI/CD security gates (33 workflows: dependency-review, codeql x2, security-hardening, ci, nightly/trivy, deploy, canary, blue-green, rollback, auto-rollback, frontend-pwa, preview-deploy)",
+      "Dependabot configuration (459 lines) and license/dependency-check configs",
+      "SBOM artifacts and generators/validators",
+      "Local advisory artifacts (.audit/*, security-audit/*, GOVERNANCE/DEPENDENCY_VULNERABILITY_REPORT.md)",
+      "Kubernetes (37 YAML) and Helm (37 YAML) manifests",
+      "Terraform (5 environments, 12 modules), Cloudflare, DigitalOcean, nginx/TLS configs",
+      "Backup/DR scripts and GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md",
+      "Observability/health surfaces (backend/app/main.py, routes/metrics.py, services/metrics_service.py, health_core/*)"
+    ],
+    "manifests_python": 13,
+    "manifests_javascript": 19,
+    "javascript_manifests_with_adjacent_lockfile": 8,
+    "javascript_manifests_without_adjacent_lockfile": 11,
+    "lockfiles_javascript": 9,
+    "dockerfiles": 15,
+    "compose_files": 12,
+    "github_workflows": 33,
+    "kubernetes_yaml_files": 37,
+    "helm_yaml_files": 37,
+    "tracked_files_at_head": 6514,
+    "files_on_disk_excluding_git_and_node_modules": 9679,
+    "untracked_entries_in_porcelain": 209,
+    "untracked_individual_files": 472,
+    "modified_tracked_files": 109,
+    "staged_or_working_diff_files": 130,
+    "diff_insertions": 3779,
+    "diff_deletions": 2292,
+    "ignored_files": 319,
+    "untracked_governance_files": 144,
+    "not_scanned_no_network": [
+      "Live PyPI/npm/OSV/GHSA advisory lookup for current manifest versions",
+      "Container registry image digest/tag resolution and runtime SBOM of built images",
+      "Dependabot alert state (requires GitHub API)",
+      "Branch-protection / required-check configuration (requires GitHub API)",
+      "Live endpoint TLS posture, deployed K8s cluster state, and actual backup job execution"
+    ],
+    "verified_vs_not_scanned_note": "Findings below are derived exclusively from on-disk files and local git metadata. Where a version could not be checked against a live advisory feed the report says NOT SCANNED (no network); it is never reported as clean."
+  },
+  "findings": [
+    {
+      "id": "AUD-SUP-001",
+      "title": "Stale backend/uv.lock pins the pre-remediation vulnerable dependency set while the advisory report certifies only requirements-lock.txt",
+      "severity": "CRITICAL",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "backend/uv.lock:131 certifi == 2026.7.22 (remediation floor 2026.10.18 at backend/requirements.txt:38)",
+        "backend/uv.lock:436 dnspython == 2.8.0 (floor 2.9.2 at backend/requirements.txt:39)",
+        "backend/uv.lock:710 idna == 3.18 (floor 3.20 at backend/requirements.txt:40)",
+        "backend/uv.lock:728 joserfc == 1.7.4 (floor 1.7.6 at backend/requirements.txt:15)",
+        "backend/uv.lock:838 pillow == 12.3.0 (floor 13.0.0 at backend/requirements.txt:19)",
+        "backend/uv.lock:959 pyasn1 == 0.6.4 (floor 0.6.5 at backend/requirements.txt:41)",
+        "backend/uv.lock:1414 urllib3 == 2.7.0 (floor 2.8.0 at backend/requirements.txt:42)",
+        "backend/uv.lock:602 metadata still records joserfc specifier >=1.7.3; backend/uv.lock:604 pillow >=12.3.0; backend/pyproject.toml:19,25 now require >=1.7.6 / >=13.0.0",
+        "GOVERNANCE/DEPENDENCY_VULNERABILITY_REPORT.md:9,20-25,51 limits scope to requirements.txt / requirements-lock.txt / pyproject.toml and explicitly names only requirements-lock.txt as scanned",
+        ".github/workflows/security-hardening.yml:46-49 pip-audit matrix = backend/requirements-lock.txt, edge_agent/requirements.txt, nhop-platform/requirements.txt (uv.lock absent)"
+      ],
+      "reproduction_falsification": "Static differential: compare each package version in backend/uv.lock against backend/requirements-lock.txt:1-70 and against the floors in backend/pyproject.toml:11-33 and backend/requirements.txt:1-43. Seven versions are below the recorded fix floors and the lock metadata itself records superseded specifiers, proving the lock was generated before remediation. Falsified only if uv.lock is regenerated and re-scanned; no network command was run in this audit.",
+      "root_cause": "Three concurrent dependency representations (pyproject.toml, requirements-lock.txt, uv.lock) with no lock-consistency gate; .github/dependabot.yml contains no 'uv' ecosystem entry; the CI pip-audit matrix omits uv.lock.",
+      "impact": "Any uv-based sync/export path reinstalls the exact versions the local advisory report rates as 55 findings / 6 packages, including four CVSS 9.8 Pillow advisories. The 'VERIFIED - static scan clean' claim at GOVERNANCE/DEPENDENCY_VULNERABILITY_REPORT.md:6 is scope-limited and does not cover this tracked file.",
+      "recommended_remediation": "Regenerate backend/uv.lock from the current backend/pyproject.toml; add `uv lock --check` (or equivalent lock-vs-manifest equality assertion) as a HARD CI gate; add backend/uv.lock to the pip-audit matrix; add a uv ecosystem entry to dependabot.yml; reconcile all backend dependency files through one canonical resolver.",
+      "alternatives": [
+        "Delete uv.lock if no supported workflow consumes it, after evidence-based confirmation (ADR-028 archive-first preference).",
+        "Generate requirements-lock.txt and uv.lock from a single source in one scripted step; currently they are maintained by hand."
+      ]
+    },
+    {
+      "id": "AUD-SUP-002",
+      "title": "Eight production microservice images install completely unpinned Python packages at every build with no lockfile and no advisory gate",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "services/ai/Dockerfile:5 RUN pip install --no-cache-dir fastapi uvicorn[standard] requests pika prometheus-client pydantic",
+        "services/autonomous_manager/Dockerfile:5 identical unpinned install",
+        "services/lab/Dockerfile:5 unpinned fastapi/uvicorn/asyncpg/pika/prometheus-client/pydantic/passlib/bcrypt (only joserfc>=1.7.6 is floored)",
+        "services/notification/Dockerfile:5, services/order/Dockerfile:5, services/patient/Dockerfile:5, services/result/Dockerfile:5, services/sample/Dockerfile:5 all unpinned",
+        "services/device_bridge/Dockerfile:8 uses lower bounds only (fastapi>=0.115.0, uvicorn>=0.30.0, pydantic>=2.8.0, httpx>=0.27.0)",
+        ".github/workflows/security-hardening.yml:46-49 audits none of these service dependency sets"
+      ],
+      "reproduction_falsification": "Inspect the cited lines: no version specifier, no hash file, no adjacent requirements/lock file in those service directories, and no CI job that resolves or scans them. Two builds at different dates can therefore install different code. Falsified if each image is shown to resolve from a pinned, scanned manifest.",
+      "root_cause": "Microservice Dockerfiles were authored as standalone examples and were never folded into the dependency governance applied to backend/ and frontend-v3.",
+      "impact": "Non-reproducible images, unreviewed upstream code entering the trust boundary on every rebuild, and an unbounded advisory surface that no local or CI scan covers.",
+      "recommended_remediation": "Introduce one pinned, hash-verified requirements lock per service (or a shared service requirements lock), change installs to `pip install --require-hashes -r <lock>`, and add each lock to the pip-audit matrix.",
+      "alternatives": ["Consolidate the eight services onto the backend base image so they inherit one governed dependency set.", "Use a single distroless multi-service image if service separation permits."]
+    },
+    {
+      "id": "AUD-SUP-003",
+      "title": "Material provenance gap: the audited HEAD has a large uncommitted surface and the dependency/DR evidence reports are untracked",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "git status --porcelain at HEAD 2206654d: 209 untracked entries, 109 modified tracked files, plus staged renames",
+        "git ls-files --others --exclude-standard | wc -l = 472 individual untracked files",
+        "git status --porcelain --ignored | grep -c '^!!' = 319 ignored files",
+        "git diff --stat HEAD: 130 files changed, 3779 insertions(+), 2292 deletions(-)",
+        "git ls-files | wc -l = 6514 tracked files vs 9679 files on disk (excluding .git and node_modules)",
+        "GOVERNANCE files untracked: 144; specifically GOVERNANCE/DEPENDENCY_VULNERABILITY_REPORT.md and GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md are NOT tracked by git",
+        "GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md:5 names HEAD `2827c1ff`, which is not the audited HEAD `2206654d`"
+      ],
+      "reproduction_falsification": "Run the read-only git commands above on the audited worktree. Falsified only if the surface is committed and the evidence reports are tracked at the audited HEAD.",
+      "root_cause": "Unification work was performed on a long-lived integration branch without per-change commits; evidence artifacts are written as loose files rather than versioned, content-addressed records.",
+      "impact": "The audit target is a moving tree. No commit-level provenance or attestation binds the source, the lockfiles, or the rehearsal evidence to a reviewable state; the DR evidence cannot be tied to the audited HEAD.",
+      "recommended_remediation": "Freeze the integration surface into atomic, conventional commits; commit the dependency and DR evidence reports or move them to a content-addressed evidence store referenced by commit hash; re-run and re-date the DR rehearsal at the new HEAD.",
+      "alternatives": ["Generate a signed manifest (file paths + SHA-256 + HEAD) covering the untracked surface as an interim provenance record.", "Adopt git notes or an append-only evidence registry instead of loose markdown reports."]
+    },
+    {
+      "id": "AUD-SUP-004",
+      "title": "SBOM is stale relative to declared floors, generator ignores lockfiles, and the default validator path does not exist",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "docs/sbom/latest.sbom.json creationInfo.created = 2026-07-18T11:46:21Z; SPDX packages include fastapi 0.110.0, fastapi 0.115.0, Pillow 10.4.0, cryptography 42.0.0",
+        "backend/pyproject.toml:12,24 require fastapi>=0.139.2 and cryptography>=49.0.0; backend/requirements.txt:19 requires Pillow>=13.0.0",
+        "scripts/generate_sbom.py:3-4,316,321-322 scans backend/requirements.txt and package.json files, not uv.lock / requirements-lock.txt / lockfiles",
+        "scripts/validate-sbom.sh:29 SBOM_DIR defaults to ${REPO_ROOT}/reports/sbom; that directory does not exist on disk and /reports/ is gitignored at .gitignore",
+        "config/security/license-config.yml reporting.generate_notices = true and notice_output THIRD-PARTY-NOTICES.md; that file is MISSING at repo root",
+        "assessment/brain/sbom-backend.xml describes 'requirements line 15: Pillow>=10.4.0' - superseded"
+      ],
+      "reproduction_falsification": "Parse docs/sbom/latest.sbom.json and compare component versionInfo values to current manifest floors; check existence of reports/sbom and THIRD-PARTY-NOTICES.md. Falsified if the SBOM is regenerated from resolved locks and the validator's default directory is populated.",
+      "root_cause": "SBOM is generated from declared ranges rather than resolved locks and is not regenerated or validated as part of the release/dependency remediation flow.",
+      "impact": "The SBOM cannot support accurate vulnerability response, license attestation or incident scoping; the validator fails closed only by accident (missing directory), not by design.",
+      "recommended_remediation": "Regenerate the SBOM from resolved lockfiles (uv.lock / requirements-lock.txt / package-lock.json), wire generation + `validate-sbom.sh --all` into CI with an existing SBOM_DIR, and produce the required THIRD-PARTY-NOTICES.md.",
+      "alternatives": ["Adopt an SPDX/CycloneDX tool that consumes installed environments or lockfiles directly.", "Store the SBOM as a CI artifact tied to each image digest."]
+    },
+    {
+      "id": "AUD-SUP-005",
+      "title": "Contradictory license policy: licenses allowed by config/security/license-config.yml are denied by dependency review and SBOM validator",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "config/security/license-config.yml:26-29 allowed list includes LGPL-2.1-only, LGPL-2.1+, LGPL-3.0-only, LGPL-3.0+",
+        "config/security/license-config.yml allowed list includes BSL-1.0",
+        ".github/workflows/dependency-review.yml:24-28 deny-licenses includes LGPL-2.1-only, LGPL-3.0-only, BSL-1.0, BSL-1.0, RPL-1.1, RPL-1.5",
+        "scripts/validate-sbom.sh:42-47 BLOCKED_LICENSES includes BSL-1.0 while ALLOWED_LICENSES at :36-40 includes LGPL-2.1-only / LGPL-3.0-only",
+        ".github/workflows/security-hardening.yml:74 deny-licenses = GPL-3.0,AGPL-3.0 only (a third, different list)"
+      ],
+      "reproduction_falsification": "Diff the four license lists. A package licensed LGPL-3.0-only passes config/security/license-config.yml but fails .github/workflows/dependency-review.yml:27. Falsified if a single authoritative list is referenced by all gates.",
+      "root_cause": "License policy duplicated in four places with no single source of truth or test asserting equivalence.",
+      "impact": "Non-deterministic compliance verdicts; a dependency can be merged through one path and blocked in another; copyleft obligations may be accepted without the intended review.",
+      "recommended_remediation": "Make config/security/license-config.yml the single source of truth; have dependency-review.yml, security-hardening.yml and validate-sbom.sh consume it; add a unit test that fails on drift.",
+      "alternatives": ["Adopt a single allowlist at the organisation level and remove local overrides.", "Introduce an explicit, documented exception register rather than duplicating allowlists."]
+    },
+    {
+      "id": "AUD-SUP-006",
+      "title": "Images are built from mutable base tags with range-resolved, hash-free installs and a Python version that differs from the tested version",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "backend/Dockerfile:7 FROM python:3.14-slim AS builder; backend/Dockerfile:18 FROM python:3.14-slim; backend/Dockerfile:14 pip install ... -r requirements.txt (no --require-hashes)",
+        "Dockerfile:5,10,13 same pattern; docker/Dockerfile:1,12 same pattern; all 15 Dockerfiles use python:3.14-slim without digest",
+        "frontend-v3/Dockerfile:3 node:22.13-alpine, :13 nginx:1.28-alpine (no digest pin)",
+        ".github/workflows/ci.yml:18 PYTHON_VERSION: \"3.12\"; .github/workflows/nightly.yml:20 PYTHON_VERSION: '3.12'; .github/workflows/security-hardening.yml:54 python-version: '3.12'",
+        "backend/pyproject.toml:9 requires-python = \">=3.12\"; root pyproject.toml:24 ruff target-version = \"py314\" and :50 mypy python_version = \"3.14\""
+      ],
+      "reproduction_falsification": "Inspect the FROM lines and install commands: no @sha256 digest and no --require-hashes anywhere. Compare Python 3.14 image tag to the 3.12 CI matrix. Falsified if images are digest-pinned, hash-verified and built/tested on the same interpreter.",
+      "root_cause": "Base image and interpreter drift accumulated across the merged repositories; the build path uses requirements.txt ranges rather than a pinned manifest.",
+      "impact": "Two builds of the same commit can produce different runtime code; production executes Python 3.14 while the full test suite and security audit run on 3.12; no integrity verification of downloaded artifacts.",
+      "recommended_remediation": "Pin all base images by digest, build production images from requirements-lock.txt (or uv.lock) with --require-hashes, and align the image interpreter with the CI/tested interpreter (3.12 per current CI).",
+      "alternatives": ["Standardise on Python 3.14 across CI, mypy, ruff and tests if owner approves the toolchain change.", "Use a minimal distroless base with a digest-pinned build stage."]
+    },
+    {
+      "id": "AUD-SUP-007",
+      "title": "Deploy/build workflows fetch unpinned tooling and swallow install failures",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        ".github/workflows/frontend-pwa.yml:156 npm install -g vercel@latest",
+        ".github/workflows/frontend-pwa.yml:205 npm install -g vercel@latest",
+        ".github/workflows/formatting.yml:37 npm install --no-save --no-package-lock prettier",
+        ".github/workflows/preview-deploy.yml:22 npm install --ignore-scripts 2>/dev/null || true",
+        ".github/workflows/security-hardening.yml:56 python -m pip install ... pip-audit (unpinned scanner)"
+      ],
+      "reproduction_falsification": "Read the cited workflow lines. `vercel@latest` is a mutable tag executed in a deploy workflow; `|| true` converts a failed install into a successful step. Falsified if tools are pinned by version/digest and failures propagate.",
+      "root_cause": "Convenience installs were added without applying the repository's own pinning rule for third-party actions (most actions are SHA-pinned).",
+      "impact": "Deploy-time arbitrary code execution risk from a mutable upstream package; failed dependency installation can be silently ignored, producing an unverifiable build.",
+      "recommended_remediation": "Pin vercel/prettier/pip-audit to exact versions (and verify integrity where possible), replace `npm install` with `npm ci`, remove `|| true`, and use a dedicated pinned setup action.",
+      "alternatives": ["Run deploy tooling in a digest-pinned container image.", "Vendor the CLI version used by the release into the repository."]
+    },
+    {
+      "id": "AUD-SUP-008",
+      "title": "Dependency-update and scanning automation has large blind spots; frontend declares pnpm scripts but ships only an npm lockfile",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        ".github/dependabot.yml (459 lines) has no 'uv' ecosystem entry and no entries for /shared/, /services/device_bridge/ (pip), /mobile-expo/, /contracts/sdk/typescript/, /platform/ npm apps or the root npm workspace",
+        "11 of 19 package.json manifests have no adjacent lockfile, e.g. packages/uap/package.json, platform/ai/package.json, platform/apps/citizen|doctor|hospital|laboratory|ministry|nurse|radiology/package.json, platform/update/package.json, mobile-expo/vendor/image-size/package.json",
+        "Both pnpm-lock.yaml and package-lock.json exist at repository root for the same package.json",
+        "frontend-v3/package.json:21-31 check/test scripts call pnpm; frontend-v3 contains only package-lock.json and no pnpm-lock.yaml",
+        ".github/workflows/ci.yml:198 and frontend-v3/Dockerfile:8 use npm ci",
+        ".github/workflows/mobile-expo.yml:56 is the only workflow with npm audit; frontend-v3 has no npm audit gate"
+      ],
+      "reproduction_falsification": "Grep dependabot.yml for 'uv' (zero hits), enumerate package.json vs adjacent lockfiles, and compare frontend-v3 scripts to its lockfile. Falsified if all manifests are covered by update and scan automation with a single package manager each.",
+      "root_cause": "Partial unification: multiple package managers and inherited app trees were merged without harmonising update automation.",
+      "impact": "Dependency drift is structurally guaranteed (see AUD-SUP-001); unmanaged manifests receive no automated fixes or advisory checks; mixed npm/pnpm instructions make local and CI resolution differ.",
+      "recommended_remediation": "Choose one package manager per workspace, generate/commit the missing lockfiles, extend dependabot to every manifest including uv, and run npm/pnpm audit plus pip-audit across all managed manifests in CI.",
+      "alternatives": ["Adopt a monorepo-wide lockfile if the workspace tooling supports it.", "Generate lockfiles in CI and fail if the committed copy differs."]
+    },
+    {
+      "id": "AUD-SUP-009",
+      "title": "Local advisory artifacts are stale or internally inconsistent and cannot clear the current manifests",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        ".audit/pip-audit.json records joserfc 1.7.4, pillow 12.3.0, urllib3 2.7.0, certifi 2026.7.22, pyasn1 0.6.4 each with \"vulns\": []",
+        "GOVERNANCE/DEPENDENCY_VULNERABILITY_REPORT.md:67-73 rates those exact versions as 42 pillow advisories (4 CRITICAL), 2 joserfc, 3 urllib3, 1 certifi, 4 pyasn1, 2 dnspython",
+        "security-audit/trivy.json records react-router@6.30.4 / react-router-dom@6.30.4 with CVE-2026-53666, CVE-2026-53669, CVE-2026-53668 (all MEDIUM)",
+        "frontend-v3/package.json:38 declares react-router-dom ^7.18.2, which is not covered by that local artifact",
+        ".audit/npm-audit-production.json metadata.vulnerabilities.total = 2 HIGH; .audit/npm-audit-production-after.json total = 0; neither artifact identifies the manifest scanned"
+      ],
+      "reproduction_falsification": "Parse the cited local JSON artifacts and compare their installed versions to current manifest declarations. Falsified if each artifact is shown to cover the exact current lockfile with a dated, reproducible command.",
+      "root_cause": "Advisory outputs are stored as undated snapshots with no manifest hash or command provenance, and are reused as evidence after dependencies change.",
+      "impact": "A reader can wrongly treat `vulns: []` as a clean result for vulnerable versions. Current manifest versions are NOT SCANNED (no network in this audit), so no clean claim is permitted.",
+      "recommended_remediation": "Require every advisory artifact to record timestamp, manifest path + SHA-256, tool version and full command; re-scan current locks in CI; treat mismatched artifacts as invalid evidence.",
+      "alternatives": ["Delete superseded artifacts after archiving them with provenance headers (ADR-028 archive-first).", "Store scan results as GitHub Actions artifacts attached to a specific run."]
+    },
+    {
+      "id": "AUD-SUP-010",
+      "title": "Unexplained transitive package 'annotated-doc 0.0.5' present in the resolved dependency graph with no declaration or local advisory evidence",
+      "severity": "LOW",
+      "likelihood": "LOW",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "backend/uv.lock:20-21 name = \"annotated-doc\", version = \"0.0.5\"",
+        "backend/uv.lock:485 { name = \"annotated-doc\" } listed as a dependency of a resolved package",
+        ".audit/pip-audit.json and .audit/pip_audit_backend.json both list annotated-doc 0.0.5 with \"vulns\": []",
+        "No manifest declares annotated-doc; backend/requirements-lock.txt:2 declares annotated-types==0.7.0 instead"
+      ],
+      "reproduction_falsification": "Search all manifests for 'annotated-doc' (zero declarations) and inspect its lock entry. The name is not among declared direct requirements and is absent from the pinned requirements lock. Falsified if a declared, reviewed upstream dependency legitimately requires it and its provenance is documented.",
+      "root_cause": "Resolved graph was accepted without reviewing newly introduced transitive packages against an allowlist; no package-name/provenance verification step exists.",
+      "impact": "Potential typo-confusion/provenance risk. This audit has NO local advisory evidence that the package is malicious and NO network access to verify it; the finding is a provenance question, not a compromise claim.",
+      "recommended_remediation": "Identify the requiring package, verify publisher/provenance and source distribution, add a package-provenance allowlist to dependency review, and remove/replace if not justifiable.",
+      "alternatives": ["Enforce a dependency-approval policy requiring review of every new transitive package (docs/architecture/DEPENDENCY_APPROVAL_POLICY.md already exists).", "Pin transitive packages by hash from a vetted internal mirror."]
+    },
+    {
+      "id": "AUD-INF-001",
+      "title": "scripts/validate-restore.sh can return PASS and exit 0 even when pg_restore fails",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "scripts/validate-restore.sh:2 set -euo pipefail",
+        "scripts/validate-restore.sh:27 pg_restore -d \"$DB_NAME\" /tmp/restore.dump 2>&1 | tee -a \"$LOG_FILE\" || true",
+        "scripts/validate-restore.sh:31-35,59-68,71-73 psql ... 2>/dev/null discards all query errors",
+        "scripts/validate-restore.sh:76 VALIDATION_RESULT=\"PASS\"",
+        "scripts/validate-restore.sh:77-84 only greps for \"CHAIN BROKEN\" and uppercase \"ERROR\"; pg_restore reports failures in lowercase 'error:' form",
+        "scripts/validate-restore.sh:91 exit $([ \"$VALIDATION_RESULT\" = \"PASS\" ] && echo 0 || echo 1)"
+      ],
+      "reproduction_falsification": "Static control-flow falsification: supply a corrupt or truncated dump. pg_restore exits non-zero, but the pipeline's `|| true` forces step success; subsequent psql queries fail with stderr discarded; the summary grep never sees uppercase ERROR; VALIDATION_RESULT stays PASS and the script exits 0. No database was touched in this audit. Falsified if pg_restore failure is propagated and structural checks require non-empty expected data.",
+      "root_cause": "Error suppression (`|| true`, `2>/dev/null`) combined with a substring-based verdict instead of verifying restore exit status and expected state.",
+      "impact": "A backup that cannot be restored can be labelled validated. This is false assurance in the control intended to prove recoverability, and it directly undermines any DR claim.",
+      "recommended_remediation": "Remove `|| true` from pg_restore; use `set -o pipefail` with explicit status capture; compare expected table counts/checksums rather than grepping text; ensure any query failure fails the script; add a negative test with a corrupt dump.",
+      "alternatives": ["Use `pg_restore --exit-on-error` plus a dedicated disposable database and schema/data fingerprint comparison.", "Replace the script with a tested restore harness that emits structured pass/fail JSON."]
+    },
+    {
+      "id": "AUD-INF-002",
+      "title": "No restore/PITR drill and no measured RPO/RTO; the only rehearsal report is untracked and pinned to a different HEAD",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md:5 Date 2026-11-17 and HEAD `2827c1ff` (audited HEAD is 2206654d); file is untracked",
+        "GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md:288 release criterion MIG-EXISTING = NOT MET",
+        "GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md:398 strict-schema suite 753 passed / 119 failed / 0 skipped (exit 1)",
+        "GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md:441-443 strict suite not passing; T1-T4 conclusions scoped to disposable clones",
+        "GOVERNANCE/STABILIZATION_PHASE_L_M_N_ASSESSMENT.md:94-98 RPO/RTO UNMEASURED / NOT VERIFIED; prior 'RPO 1hr / RTO 4hr' quoted only as an unadopted claim",
+        "GOVERNANCE/STABILIZATION_PHASE_L_M_N_ASSESSMENT.md:110 W-062 BLOCKED / NOT VERIFIED; no drill, no script executed, no number published",
+        "GOVERNANCE/GECS/WORK_REGISTRY.md:62 W-034 rollback/restore drill + RPO/RTO measurement = NOT_STARTED",
+        "GOVERNANCE/GECS/BLOCKER_REGISTRY.md:41 B-016 OPEN - RPO/RTO unmeasured",
+        "GOVERNANCE/NATIONAL_TESTING_STRATEGY.md:35 'No restore/PITR drill; RPO/RTO UNMEASURED'"
+      ],
+      "reproduction_falsification": "No dated drill artifact with end-to-end restore timing or WAL-age measurement exists in the audited tree; the available report is a migration rehearsal on disposable clones, not a backup/restore drill. Falsified by a dated, reproducible drill record at the audited HEAD with measured RPO and RTO.",
+      "root_cause": "Recovery work stopped at policy and script existence (D-004 approved, scripts present); the operational drill requires separate authorisation (W-034) that has not been granted.",
+      "impact": "Recovery objective is unknown. No availability or data-loss guarantee can be made. Any RTO/RPO number would be fabricated and is explicitly prohibited by owner decision.",
+      "recommended_remediation": "Execute the owner-gated W-034 drill on disposable clones only: restore the latest backup, verify schema/data fingerprints, measure wall-clock restore time and WAL age, record date/HEAD/tool versions, and publish measured values or retain the literal string UNMEASURED.",
+      "alternatives": ["Retain UNMEASURED and keep release status HOLD (immutable owner decision).", "Use a cloud-native snapshot restore test in an isolated account if authorised, with cost analysis under the free/self-hosted-first constitution."]
+    },
+    {
+      "id": "AUD-INF-003",
+      "title": "Rollback is manual-only despite the 'auto-rollback' name; canary has no error-rate/latency gate and ignores its declared traffic input",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        ".github/workflows/auto-rollback.yml:2-13 trigger is `workflow_dispatch` only; no workflow_run, repository_dispatch or Alertmanager webhook trigger exists",
+        ".github/workflows/auto-rollback.yml:19 default reason string 'Auto-rollback triggered by monitoring alert' despite manual-only trigger",
+        ".github/workflows/canary-deploy.yml:9-11 declares input `canary_percent` (10-50) but the value is never referenced in any step",
+        ".github/workflows/canary-deploy.yml:49-66 hardcodes 10%/90% and uses `|| true` / `|| echo \"TrafficSplit not available\"`",
+        ".github/workflows/canary-deploy.yml:76-78,100-102 promotion decision is `curl -sf /health` only; no error-rate, latency or business-metric threshold",
+        ".github/workflows/canary-deploy.yml:57 kubectl set image ... || true swallows deployment failure"
+      ],
+      "reproduction_falsification": "Grep the workflow triggers and inputs: no automated alert trigger; canary_percent has exactly one occurrence (its declaration); the only health signal is an HTTP 200 from /health; several failures are swallowed. Falsified if an alert-driven trigger and SLO-based analysis gate are present and inputs are honoured.",
+      "root_cause": "Workflows were authored as manual operator runbooks and named as if they were automated safety mechanisms.",
+      "impact": "There is no automatic rollback on production signal degradation, and canary promotion can proceed while error rates are elevated. Recovery claims based on these workflows are false assurance.",
+      "recommended_remediation": "Add an Alertmanager/webhook or workflow_run trigger with explicit authorisation, implement SLO-based canary analysis (error rate + latency) with automatic abort, honour `canary_percent`, and remove failure-swallowing `|| true` on traffic-changing steps.",
+      "alternatives": ["Rename the workflow to `manual-rollback.yml` to make the control honest if automation is not authorised.", "Use a digest-pinned Argo Rollouts/Kraken analysis template rather than bespoke shell loops."]
+    },
+    {
+      "id": "AUD-INF-004",
+      "title": "Compose configuration allows empty signing secrets and ships a development-mode Vault bound to all interfaces",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "docker-compose.yml:114 comment 'No hardcoded fallback - SECRET_KEY must be set in .env' followed by :115 `SECRET_KEY: ${SECRET_KEY:-}` (empty default)",
+        "docker-compose.yml:214-216 same empty default for REFRESH_TOKEN_SECRET and ENCRYPTION_KEY in the worker service",
+        "docker-compose.yml:217-220 additional empty defaults for NID_HMAC_KEY, AUDIT_ANCHOR_KEY, DEVICE_HMAC_KEY",
+        "docker-compose.full.yml:414-421 Vault `command: vault server -dev -dev-root-token-id=${VAULT_TOKEN:?...}` with comment 'Dev mode is INSECURE - data is in-memory only'",
+        "docker-compose.full.yml:424-428 VAULT_DEV_LISTEN_ADDRESS 0.0.0.0:8200 and ports '8200:8200'",
+        "docker-compose.full.yml:719 uses the stricter `${SECRET_KEY:?SECRET_KEY must be set in .env}` form, proving the safer pattern is known"
+      ],
+      "reproduction_falsification": "Start a configuration resolution with the named variables unset: `${VAR:-}` expands to empty rather than failing. The full compose file explicitly declares the Vault mode insecure. Falsified if all secret variables use `:?` and the Vault service runs in server mode with auto-unseal.",
+      "root_cause": "Two generations of compose configuration coexist; the base/worker files use permissive expansion while the full file uses fail-fast expansion.",
+      "impact": "Services may boot with empty cryptographic keys, weakening token signing/encryption/audit anchoring. The dev Vault stores secrets only in memory, is rooted by a token from .env, and is reachable on every host interface on port 8200.",
+      "recommended_remediation": "Replace all `${VAR:-}` secret expansions with `${VAR:?...}`; remove dev-mode Vault from production compose and use server mode with auto-unseal and loopback-bound port; validate the resolved configuration in CI without printing values.",
+      "alternatives": ["Use External Secrets Operator with k8s Secrets (k8s/base/secrets.yaml already declares this intent).", "Use a self-hosted Vault with file/KMS auto-unseal per the free/self-hosted-first policy."]
+    },
+    {
+      "id": "AUD-INF-005",
+      "title": "Production compose template binds admin, monitoring and data-plane services to all host interfaces",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "docker-compose.full.yml:174 26379:26379 (Redis Sentinel); :191-192 8123 and 9001:9000 (ClickHouse/MinIO console)",
+        "docker-compose.full.yml:283-284 9092:9092 and 9101:9101 (Kafka); :305 11434:11434 (Ollama)",
+        "docker-compose.full.yml:329 9000:9000 (MinIO); :355-356 9003:9000 and 9002:9002",
+        "docker-compose.full.yml:382 9100:9100 (node exporter); :405 8081:8080 (Keycloak); :428 8200:8200 (Vault)",
+        "docker-compose.full.yml:455 9090:9090 (Prometheus); :471 3000:3000 (Grafana); :487 3100:3100 (Loki); :513-516 16686/14268/4317/4318 (Jaeger/OTLP)",
+        "docker-compose.full.yml:564-588 service ports 8001-8006 and 8010 published on all interfaces",
+        "By contrast docker-compose.full.yml:529-530 and docker-compose.demo.yml:86 correctly use 127.0.0.1 bindings for nginx/demo"
+      ],
+      "reproduction_falsification": "Read the port mappings: two-component forms bind 0.0.0.0; the repository itself demonstrates the loopback form elsewhere. Falsified if all non-edge services are loopback-bound or placed on an internal-only network.",
+      "root_cause": "Local-development port publishing was carried into a file named 'full' without a network-boundary review.",
+      "impact": "Monitoring consoles, admin UIs, model inference, message brokers and stores are directly reachable from the host network, bypassing the nginx/TLS boundary and any application authentication not enforced by those services.",
+      "recommended_remediation": "Bind every non-edge port to 127.0.0.1 or remove host publication in favour of an internal compose network; expose only the TLS-terminating gateway; publish a network-boundary matrix and verify with a port scan in an isolated environment.",
+      "alternatives": ["Place internal services in a compose network with `internal: true` and reach them via a bastion.", "Keep the current file explicitly labelled development-only and create a separate hardened production compose."]
+    },
+    {
+      "id": "AUD-INF-006",
+      "title": "Container and workload hardening is inconsistent: frontend image runs as root, Helm Postgres pod sets runAsNonRoot=false, Redis uses ephemeral storage",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "frontend-v3/Dockerfile:13-23 runtime stage has no USER directive; :15 comment claims 'unprivileged nginx user where supported'",
+        "k8s/base/frontend/deployment.yaml:21-22 and helm/gula-platform/templates/frontend/deployment.yaml:34-35 do set runAsNonRoot: true / runAsUser: 101",
+        "helm/gula-platform/templates/postgres/statefulset.yaml:125 securityContext runAsNonRoot: false",
+        "helm/gula-platform/values.yaml:49 readOnlyRootFilesystem: false",
+        "k8s/base/redis/deployment.yaml:63-68 volumeMount /data backed by `emptyDir: {}`",
+        "nhop-platform/Dockerfile:23, platform/Dockerfile:12, services/device_bridge/Dockerfile:12 set USER but have no HEALTHCHECK"
+      ],
+      "reproduction_falsification": "Compare the Dockerfile instruction set (no USER) with the comment; inspect the Helm securityContext at line 125 and the Redis volume source. Falsified if the frontend image declares USER, the Helm pod runs non-root, and Redis data uses a persistent volume.",
+      "root_cause": "Hardening was applied per-file without a repo-wide image/workload baseline or lint rule.",
+      "impact": "The frontend container process may run as root if the image is used outside K8s; one database workload explicitly opts out of non-root; Redis data is lost on pod restart even though the platform uses Redis for queues/caching.",
+      "recommended_remediation": "Add `USER 101` to the frontend runtime stage, justify or remove `runAsNonRoot: false` with an owner decision, set readOnlyRootFilesystem where feasible, replace Redis emptyDir with a PVC unless explicitly cache-only, and add a Hadolint/checkov gate for all images and manifests.",
+      "alternatives": ["Run nginx as an unprivileged user on a high port behind a loopback proxy.", "Use a managed Redis-compatible service (cost/licence assessment required) or Redis with an append-only PVC."]
+    },
+    {
+      "id": "AUD-INF-007",
+      "title": "Availability coverage is partial: no PodDisruptionBudget in k8s/base and only backend has one in Helm",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "grep across 37 k8s YAML files: PodDisruptionBudget definitions = 0",
+        "grep across 37 Helm YAML files: PodDisruptionBudget definitions = 1 (helm/gula-platform/templates/backend/pdb.yaml)",
+        "HPA definitions: k8s = 4 (k8s/base/backend/hpa.yaml, k8s/base/microservices/hpa.yaml and overlays), Helm = 3",
+        "Liveness/readiness probes present in 7 k8s workload files and 8 Helm workload files; stateful data services are covered but frontend/gateway/microservices coverage is not uniform in Helm"
+      ],
+      "reproduction_falsification": "Enumerate `kind: PodDisruptionBudget` across both trees. Falsified if every replicated workload has a PDB and HPA/probe coverage is complete.",
+      "root_cause": "Availability primitives were added to selected Helm templates first; the parallel k8s/base tree was not updated.",
+      "impact": "Voluntary disruptions (node drains, cluster upgrades) can take down all replicas of unprotected workloads; no owner-approved availability target exists to size those PDBs against.",
+      "recommended_remediation": "Add PDBs for every replicated workload in both trees, align minAvailable/maxUnavailable with an owner-approved availability target, and add a manifest lint gate asserting probe/limit/PDB/HPA presence.",
+      "alternatives": ["Declare availability BLOCKED/NOT VERIFIED until the target is approved rather than choosing arbitrary values.", "Consolidate on Helm and delete the duplicate k8s/base tree after evidence-based verification (ADR-028)."]
+    },
+    {
+      "id": "AUD-INF-008",
+      "title": "Deployment in this repository is verification-only; duplicate CodeQL workflows and no automated production deployment gate",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        ".github/workflows/deploy.yml:1 name 'Verify Railway Deployment'; :3-4 workflow_dispatch only; steps perform HTTP verification only",
+        ".github/workflows/codeql.yml:14-20 and .github/workflows/codeql-analysis.yml:3-9 both scan python + javascript-typescript on main push/PR with different schedules and different query sets (:79 default vs :42 +security-and-quality)",
+        ".github/workflows/blue-green-deploy.yml:164-201 smoke test checks HTTP status only before traffic switch",
+        ".github/workflows/canary-deploy.yml and auto-rollback.yml also require workflow_dispatch"
+      ],
+      "reproduction_falsification": "Inspect workflow names/triggers and the two CodeQL matrices. Falsified if a single canonical deploy workflow with an approval gate and a single CodeQL configuration exist.",
+      "root_cause": "Repository merge left duplicate security workflows and split deploy verification from actual deployment.",
+      "impact": "Duplicate analysis uploads and inconsistent query coverage; no repository-controlled production deploy approval or post-deploy verification gate; readiness claims based on 'deploy workflow present' are unsupported.",
+      "recommended_remediation": "Keep one CodeQL workflow with the stronger query set, convert deploy.yml into a gated deployment with environment approval and post-deploy assertions, and document which workflow is authoritative.",
+      "alternatives": ["Keep deployment external (Railway/Render) and state deployment as MANUAL / NOT VERIFIED in readiness documentation.", "Merge the two CodeQL workflows into a reusable workflow."]
+    },
+    {
+      "id": "AUD-INF-009",
+      "title": "TLS certificate handling could not be verified: divergent cert paths and no renewal automation; monitoring/logging claims not independently confirmed",
+      "severity": "LOW",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "nginx.conf:45-46 references /etc/letsencrypt/live/gula-platform.org/fullchain.pem and privkey.pem",
+        "config/nginx/system/gula-platform-ssl.conf:60-61 references /etc/letsencrypt/live/gula-platform.org-0001/fullchain.pem and privkey.pem",
+        "config/nginx/nginx-performance.conf:117-118 references /etc/nginx/ssl/fullchain.pem and privkey.pem",
+        "grep for certbot in .github/workflows/ returns no matches",
+        "backend/app/main.py:35-54,63-92,144 exposes /health, /health/ready, /health/live, /health/status, /health/deep; backend/app/routes/metrics.py:129 exposes /metrics/prom; no alerting rule/receiver definition was found in the reviewed workflow/config set"
+      ],
+      "reproduction_falsification": "Diff the certificate paths and search workflows for renewal. Falsified if a single canonical cert path, automated renewal and a tested alerting rule set are present. Live TLS state is NOT SCANNED (no network).",
+      "root_cause": "Multiple inherited nginx configurations reference different certificate layouts; observability exposes metrics/health but the alerting half is not present in-repo.",
+      "impact": "Renewal or rotation may update one configuration while another points at a stale suffix (-0001), causing TLS failure. Absence of in-repo alert rules means 'monitoring/alerting' cannot be claimed beyond endpoint exposure.",
+      "recommended_remediation": "Define one canonical certificate location (preferably a mounted secret), add automated renewal/reload with a dry-run test, and commit versioned alert rules with a tested notification receiver; verify live TLS only with owner authorisation.",
+      "alternatives": ["Use cert-manager with Let's Encrypt in K8s (free, self-hosted) instead of host certbot.", "Record the current state explicitly as NOT VERIFIED rather than asserting TLS readiness."]
+    },
+    {
+      "id": "AUD-INF-010",
+      "title": "Backup scripts exist but are not scheduled, attested or wired into any CI/operations workflow",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "owner_gated": true,
+      "evidence": [
+        "scripts/backup.sh:15 RETENTION_DAYS default 30; :28 timestamped logging; :53,86-87 gzip dumps and retention deletion",
+        "scripts/continuous-backup.sh:18-22 pg_dump -Fc daily; :29 WAL sync to S3; :36,43 weekly/monthly uploads; :57-58 metrics push with `|| true`",
+        "scripts/dr_recovery.sh:52-66 creates a disposable DB, restores and compares counts; :73-99 manual failover path requires typed CONFIRM FAILOVER",
+        "config/postgres-ha/backup-config.sh:41-43 retention defaults 30/7/60 days with pgBackRest-style repository configuration",
+        "grep across .github/workflows/ for backup.sh, validate-restore, restore-test, dr_recovery, continuous-backup or backup-verification returns ZERO matches",
+        "GOVERNANCE/NATIONAL_TESTING_STRATEGY.md:35 'No restore/PITR drill; RPO/RTO UNMEASURED'"
+      ],
+      "reproduction_falsification": "Search all 33 workflows for the backup/restore scripts (zero hits); inspect scripts for execution evidence. Falsified if scheduled jobs with run logs, retention assertions and a dated restore drill are produced at the audited HEAD.",
+      "root_cause": "Backup capability was delivered as shell tooling without operational scheduling, monitoring of job success, or evidence retention.",
+      "impact": "Existence of scripts is not evidence that a backup has ever run. Combined with AUD-INF-001 and AUD-INF-002, backup posture is IMPLEMENTED (scripts) but NOT VERIFIED (execution and recovery).",
+      "recommended_remediation": "Schedule backups through an owner-authorised mechanism, emit success/failure metrics without `|| true`, alert on age/failure, retain run attestations, and pair the first scheduled cycle with a restore drill that measures RPO/RTO.",
+      "alternatives": ["Use the repository's self-hosted pgBackRest configuration (config/postgres-ha/backup-config.sh) with a tested cron/Kubernetes CronJob in an isolated environment.", "Keep backups manual and state recovery as BLOCKED / NOT VERIFIED in release documentation."]
+    }
+  ],
+  "summary": {
+    "total_findings": 20,
+    "by_severity": {
+      "CRITICAL": 1,
+      "HIGH": 10,
+      "MEDIUM": 7,
+      "LOW": 2
+    },
+    "top_three_material_findings": [
+      "AUD-SUP-001 - stale uv.lock reintroduces the vulnerable dependency set and invalidates the clean-scan claim",
+      "AUD-INF-002 - no restore/PITR drill and no measured RPO/RTO; only untracked, stale-HEAD rehearsal evidence",
+      "AUD-SUP-003 - 472 untracked files and untracked governance evidence mean no commit-bound provenance at the audited HEAD"
+    ],
+    "independent_verification_awarded": 0,
+    "production_ready_awarded": 0,
+    "release_recommendation": "Maintain HOLD. Remediate AUD-SUP-001 and AUD-INF-001 first; neither dependency security nor disaster recovery is independently verified."
+  }
+}

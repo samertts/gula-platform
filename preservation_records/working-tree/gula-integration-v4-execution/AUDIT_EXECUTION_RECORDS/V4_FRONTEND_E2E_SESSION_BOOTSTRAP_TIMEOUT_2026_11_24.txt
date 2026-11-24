@@ -1,0 +1,48 @@
+
+Running 3 tests using 1 worker
+
+  ✘  1 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 320px (30.1s)
+[WebServer] 1:27:19 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:27:19 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  2 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 390px (1.8s)
+[WebServer] 1:27:20 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:27:20 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  3 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at desktop (1.5s)
+
+
+  1) [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 320px 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'فتح العرض التجريبي الآمن' })
+
+
+      29 |       await expectNoHorizontalOverflow(page);
+      30 |
+    > 31 |       await page.getByRole("button", { name: "فتح العرض التجريبي الآمن" }).click();
+         |                                                                            ^
+      32 |       await expect(page).toHaveURL(/\/dashboard/);
+      33 |       await expect(page.locator("#main-content")).toBeVisible();
+      34 |       await expectNoHorizontalOverflow(page);
+        at /home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3/e2e/session-authorization.spec.ts:31:76
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/session-authorization-Sess-3c0f0-ithout-authz-reads-at-320px-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/session-authorization-Sess-3c0f0-ithout-authz-reads-at-320px-chromium/error-context.md
+
+  1 failed
+    [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 320px 
+  2 passed (38.5s)
+EXIT=1

@@ -1,0 +1,14 @@
+# Additive P-03 design manifest — 2026-11-24 UTC
+# Verifies only the three new design/governance documents. This file does not
+# verify itself, replace any prior manifest, or modify any protected record:
+#   CHECKPOINT_REBUILD_2026_11_21_SHA256.txt
+#   CHECKPOINT_REV3_2026_11_21_SHA256.txt
+#   CHECKPOINT_P02_CLOSURE_2026_11_24_SHA256.txt
+#   CHECKPOINT_P03_READINESS_2026_11_24_SHA256.txt
+# P-03 remains PREPARED ONLY / NOT IMPLEMENTED; D1-D5 are not decided.
+# P-03-CONCURRENCY remains PREPARED ONLY / NOT APPROVED / NOT IMPLEMENTED.
+# T9 diagnostic evidence is defect evidence only, not P-03 GREEN or fix proof.
+# HOLD TRUE / production_ready_items = 0 / PRODUCTION READY NOT AUTHORIZED.
+2efbbb5aafff31df7fa98b38dee32f8ce843cbeb48da438898a91555fc47b729  AUDIT_EXECUTION_RECORDS/P-03_OWNER_DECISIONS_REQUIRED.md
+009eefe8945a9ddd1461ed63a680caf193deed6f635c2cf9e0ec4e36c9f6ed96  AUDIT_EXECUTION_RECORDS/P-03_CONCURRENCY_DESIGN.md
+5471b051f468673ea344bbba8a403b87a7045eb796445b7b20d952ac00d62133  AUDIT_EXECUTION_RECORDS/P-03_SCOPE_AND_DEPENDENCY_REVIEW.md

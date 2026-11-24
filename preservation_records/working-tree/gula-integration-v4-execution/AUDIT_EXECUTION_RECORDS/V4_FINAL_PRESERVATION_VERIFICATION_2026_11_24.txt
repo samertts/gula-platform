@@ -1,0 +1,41 @@
+V4 final preservation verification — 2026-11-24
+
+== V2 additive manifest ==
+OK=18 FAILED=0
+
+== V4 immutable source snapshot ==
+OK=23 FAILED=0
+
+== Final post-change manifest ==
+OK=120 FAILED=0
+MANIFEST_SHA=f48a4374956a9ad4d06b31fa5de966340caabb8b6aeba9531ebc126cb085cdc7
+
+== Protected MD5s ==
+effdfeaf10234678d83b2668c4489552  /home/samertts/workspace/projects/gula-integration/GOVERNANCE/FINAL_DECISION.md
+1a02c01563c93b07a7cdb92c0462bf36  /home/samertts/workspace/projects/gula-integration/GOVERNANCE/IDENTITY_REMEDIATION/MPI_FINAL_INDEPENDENT_AUDIT.md
+ea3969d09aaf7b0b28a065838b44a594  /home/samertts/workspace/projects/gula-integration/GOVERNANCE/IDENTITY_REMEDIATION/MPI_INDEPENDENT_AUDIT_FINDINGS.md
+
+== Original repository ==
+BRANCH=integration/gula-unification-v1
+HEAD=2206654dc713ea2de8c564a3207dfe05fde23549
+STATUS_COUNTS_ALL_FILES=
+ M 162
+?? 705
+R  20
+STAGED_NAME_STATUS_MD5=56c524d6ffe9872c3a3ac6eff8c8f203
+
+== Protected gula-platform repository ==
+HEAD=f478676b6fc375338648dde46fbf076c015a3f91
+STATUS_ENTRIES=0
+
+== Execution repository ==
+BRANCH=execution/gula-national-v4
+HEAD=2206654dc713ea2de8c564a3207dfe05fde23549
+STATUS_COUNTS_ALL_FILES=
+ M 204
+?? 793
+R  20
+STAGED_NAME_STATUS_MD5=56c524d6ffe9872c3a3ac6eff8c8f203
+
+== Registry ==
+production_ready_items= 0

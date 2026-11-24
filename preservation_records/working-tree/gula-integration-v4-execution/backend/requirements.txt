@@ -1,0 +1,50 @@
+fastapi>=0.139.2
+uvicorn[standard]>=0.51.0
+gunicorn>=26.0.0
+sqlalchemy>=2.0.51
+alembic>=1.18.5
+psycopg2-binary>=2.9.12
+psycopg[binary]>=3.3.4,<4.0.0
+python-multipart>=0.0.32
+pydantic>=2.13.4
+pydantic-settings>=2.14.2
+email-validator>=2.0.0
+defusedxml>=0.7.1
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.1.3,<4.2.0  # passlib 1.7.4 incompatible with bcrypt>=4.2 (detect_wrap_bug fails)
+joserfc>=1.7.6  # SEC: >=1.7.6 fixes CVE-2026-119283 (1.7.5) + CVE-2026-119284 (1.7.6)
+cryptography>=43.0.0
+signxml>=4.2.0
+qrcode>=8.2
+Pillow>=13.0.0  # SEC: 13.0.0 fixes all 42 advisories on 12.3.0 (min safe; drops py3.10 only)
+reportlab>=5.0.0
+Jinja2>=3.1.6
+chevron>=0.14.0
+arabic-reshaper>=3.0.1
+python-bidi>=0.6.11
+httpx>=0.28.1
+requests>=2.34.2,<3.0.0
+redis>=8.0.1
+sentry-sdk[fastapi]>=2.66.0
+webauthn>=3.0.0
+pyotp>=2.10.0
+
+# --- Transitive security floors (DEP-AUDIT-BACKEND) -------------------------
+# These packages are not imported directly; they arrive via requests/httpx/
+# email-validator/webauthn. The floors below pin the minimum version that
+# carries the fix for the advisory found by `pip-audit` (55 findings, 6 pkgs),
+# so a fresh range-resolve in CI/Docker can never select a vulnerable build.
+# Keep them aligned with requirements-lock.txt.
+certifi>=2026.10.18   # PYSEC-2026-4320: compromised emSign intermediate CA roots
+dnspython>=2.9.2      # CVE-2026-114605, CVE-2026-128089 (DoS) via email-validator
+idna>=3.20            # required by dnspython>=2.9.2 (Requires-Dist idna>=3.20)
+pyasn1>=0.6.5         # CVE-2026-119194..119197 (quadratic-time DoS) via webauthn
+urllib3>=2.8.0        # CVE-2026-97687 (TLS proxy config), 97688, 97689
+# ---------------------------------------------------------------------------
+
+# Google AI Studio — official Gemini SDK (OPTIONAL — not installed by default)
+# The platform works without this: raw HTTPS fallback is used automatically.
+# Install manually to unlock proper system_instruction + structured safety settings:
+#   pip install 'google-generativeai>=0.8.0'
+# Get a free API key at https://aistudio.google.com/apikey
+# google-generativeai>=0.8.0

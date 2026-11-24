@@ -1,0 +1,472 @@
+{
+  "artifact": "REMEDIATION_REGISTER",
+  "version": "1.0",
+  "repository": "gula-integration",
+  "branch": "integration/gula-unification-v1",
+  "audited_head": "2206654dc713ea2de8c564a3207dfe05fde23549",
+  "sibling_repository_read_only": {
+    "path": "gula-platform",
+    "head": "f478676b6fc375338648dde46fbf076c015a3f91"
+  },
+  "purpose": "Machine-readable record of engineering remediations applied locally, their evidence, and their assurance status. Complements FINDINGS_REGISTER.json.",
+  "status_vocabulary_used": [
+    "IMPLEMENTED",
+    "TESTED",
+    "INTEGRATED",
+    "INDEPENDENTLY VERIFIED",
+    "PRODUCTION READY",
+    "BLOCKED",
+    "NOT IMPLEMENTED"
+  ],
+  "assurance_rule": "IMPLEMENTED/TESTED are self-reported by the integrator. INDEPENDENTLY VERIFIED requires fresh-context Team C re-execution and is recorded separately in INDEPENDENT_VERIFICATION_TEAM_C.md. PRODUCTION READY is never self-awarded and requires owner authority.",
+  "remediations": [
+    {
+      "id": "REM-FK-001",
+      "linked_finding": "NR-011 (integration verification defect; not a Team A AUD-* finding)",
+      "title": "Repair dangling FK target and register missing ORM mirror",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "niam_adaptive_mfa_sessions.session_id referenced non-existent table niam_user_sessions, causing NoReferencedTableError at test co-collection; niam_identity_authorities had no ORM mirror, so the Alembic-created table was invisible to the ORM metadata.",
+      "change": [
+        "backend/app/identity/adaptive_auth/models.py — session_id FK retargeted to niam_sessions.id",
+        "backend/app/identity/models/identity_authority.py — new IdentityAuthorityRecord ORM mirror",
+        "backend/app/identity/models/__init__.py — mirror export/registry registration",
+        "backend/tests/unit/test_fk_target_integrity.py — new FK-target integrity regression tests"
+      ],
+      "evidence": {
+        "targeted_tests": "5 passed (Team C re-run; collect-only confirmed 5 tests)",
+        "broad_regression_prior": "1416 passed, 4 skipped, 0 failed (run after FK fix, before CLIN/MPI/uv changes)",
+        "ruff": "clean on changed files",
+        "mypy": "clean on changed files"
+      },
+      "residual": "Operational PostgreSQL migration verification remains out of scope (no reachable DB). Broad regression must be re-run against the final tree; prior number is superseded.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only — static inspection + 5/5 targeted tests + original co-collection reproduction (185 passed/4 pre-existing skips) + 1174 FKs force-resolved on merged Alembic metadata; no PostgreSQL/DDL/live-DB validation.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C.md §1",
+      "residual_after_verification": "Stale docs/niam/SESSION_GOVERNANCE.md:114 still lists niam_user_sessions (documentation drift, not a functional defect); pre-existing cross-metadata FKs resolve only via NR-011 merge layer; no live PG/DDL.",
+      "evidence_correction": "Targeted test file contains 5 tests (collect-only confirmed). An earlier note of 6 passed was inaccurate; corrected to 5."
+    },
+    {
+      "id": "REM-CLIN-001",
+      "linked_finding": "AUD-CLIN-001",
+      "title": "Critical-result alert: durable outbox and honest status",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "process_critical_result() returned status='alerted' and action='notify_ordering_physician' while emitting no notification, event, outbox row or audit record — a false-success patient-safety hazard.",
+      "change": [
+        "backend/app/lims/workflows.py — emits CriticalResultDetected (lims.result.critical) via canonical emit_to_outbox in the caller's transaction; returns notification_pending with clinician_notified=False, delivery_status=pending_dispatch, acknowledgement_status=NOT_CONFIGURED",
+        "backend/app/lims/routes.py — commits on notification_pending so the durable row survives the request; business errors/non-critical results return without a write",
+        "backend/tests/unit/test_lims_critical_result_outbox.py — 4 regression tests"
+      ],
+      "evidence": {
+        "targeted_tests": "4 passed",
+        "ruff": "clean on changed files"
+      },
+      "residual": "No clinician is contacted. Recipient, escalation pathway and acknowledgement policy require a clinical-owner decision and a configured delivery worker; delivery remains BLOCKED. No runtime HTTP/DB integration exercised.",
+      "owner_gated": true,
+      "owner_gate": "Clinical owner must define recipient/escalation/acknowledgement policy before delivery can be claimed.",
+      "verification_scope": "Engineering scope only — static inspection + 4/4 targeted tests + event/subscriber census; not runtime/DB/external/clinical validation.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C.md §2",
+      "residual_after_verification": "No clinician is contacted. Recipient/escalation/acknowledgement remain owner-gated (BLOCKED); no PostgreSQL, worker run or dispatch flow exercised."
+    },
+    {
+      "id": "REM-MPI-001",
+      "linked_finding": "AUD-MPI-001",
+      "title": "Unverified NID must not auto-claim identity",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "Any nid_hash equality hit set best_score=1.0/best_method=nid_exact and auto-claimed the citizen, even though every MPI write path stores nid_verified=False — a wrong or stale lab-supplied NID could bind a patient to another person's record.",
+      "change": [
+        "backend/app/services/mpi/resolver.py — nid_exact allowed only when stored citizen nid_verified=True; unverified hash hits excluded from the scoring profile (no 1.0 back door); lock-reconciliation path gates on nid_verified and uses pending_review for unverified hits",
+        "backend/tests/unit/test_mpi_unverified_nid_gate.py — 4 regression tests",
+        "backend/tests/test_mpi_audit0416_integrity.py — AUD-04 duplicate-NID test now explicitly marks the synthetic NID verified to preserve its original intent"
+      ],
+      "evidence": {
+        "targeted_tests": "13 passed (4 new + 9 existing integrity regressions)",
+        "ruff": "clean on changed files"
+      },
+      "residual": "NID provenance/verification authority policy is owner-gated; this fix is fail-closed (pending_review) but does not decide who may mark an NID verified. No operational DB validation.",
+      "owner_gated": true,
+      "owner_gate": "Identity/data owner decision required for NID provenance and verification authority policy (unchanged).",
+      "verification_scope": "Engineering scope only — static inspection + 13/13 targeted tests + custom synthetic bypass probes; not runtime/PostgreSQL/concurrency/external validation.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C.md §3",
+      "residual_after_verification": "Matcher 1.0 short-circuit persists in matcher.py but is unreachable from the resolver; fully concordant demographics can still score 1.0 as 'probabilistic'; no PG concurrency or external NID authority validation."
+    },
+    {
+      "id": "REM-SUP-001",
+      "linked_finding": "AUD-SUP-001",
+      "title": "Align pyproject floors with requirements and regenerate uv.lock; add CI/dependabot guards",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "backend/requirements.txt carried transitive security floors, but uv resolved from pyproject.toml, leaving uv.lock pinned to vulnerable pre-remediation transitive versions; no CI gate enforced lock/manifest consistency.",
+      "change": [
+        "backend/pyproject.toml — added floors certifi>=2026.10.18, dnspython>=2.9.2, idna>=3.20, pyasn1>=0.6.5, urllib3>=2.8.0 (joserfc>=1.8.0 and Pillow>=13.0.0 already present)",
+        "backend/uv.lock — regenerated with uv 0.11.26; all 7 pins raised above floors",
+        ".github/workflows/security-hardening.yml — new python-uv-lock-consistency job: pinned uv install, uv lock --check hard gate, uv export + pip-audit on the resolved set",
+        ".github/dependabot.yml — new uv ecosystem entry for /backend/"
+      ],
+      "evidence": {
+        "pin_versions": {
+          "certifi": "2026.10.23",
+          "dnspython": "2.9.2",
+          "idna": "3.20",
+          "joserfc": "1.8.0",
+          "pillow": "13.0.0",
+          "pyasn1": "0.6.5",
+          "urllib3": "2.8.0"
+        },
+        "uv_lock_check": "PASS (Resolved 66 packages)",
+        "uv_export": "PASS (144-line requirements export with the 7 corrected pins)",
+        "yaml_parse": "PASS (both files parsed; new job and uv ecosystem entry present)"
+      },
+      "residual": "Adding both pip and uv dependabot ecosystems on /backend/ may yield duplicate PRs — residual risk, monitor. CI job has not run on GitHub. No package installation performed locally.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only — read-only uv lock --check/uv export + YAML parse + cross-file pin inspection; no package install, no pip-audit, no network.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C.md §4",
+      "residual_after_verification": "pip-audit not executed locally; CI job not run on GitHub; pip+uv dependabot on /backend/ may produce duplicate PRs; requirements-lock.txt exact pins differ from uv export (both satisfy floors)."
+    },
+    {
+      "id": "REM-SEC-001",
+      "linked_finding": "AUD-SEC-001",
+      "title": "NIAM control planes require elevated NIAM role authority (deny by default)",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "governance/trust/lifecycle/federation/certificates/notifications/adaptive-auth control planes were mounted with only get_current_niam_actor (any authenticated actor); professional_registry had no router-level guard at all.",
+      "change": [
+        "backend/app/identity/api/access.py — require_niam_control_plane_authority() resolves canonical NIAM RBAC catalog; requires active elevated governance role; deny by default",
+        "backend/app/identity/api/router.py — dependency wired to all eight affected planes",
+        "backend/tests/unit/test_aud_sec_001_control_plane_authorization.py — 14 adversarial tests"
+      ],
+      "evidence": {
+        "targeted_tests": "14 passed",
+        "neighbor_regression": "83 passed (NIAM/security neighbor suites)",
+        "authoritative_gate": "phase_b_gate.py 6/6 PASS; national_integration_verify.py PASS",
+        "full_regression": "4913 passed, 27 skipped, 0 failed, EXIT=0 (576.09s) — FINAL corrected tree; prior 4851 + 62 tests (58 Phase 1 + 4 legacy-domain follow-up). Earlier 4909 run superseded (pre-falsification-fix)."
+      },
+      "residual": "Caller-supplied *_by attribution fields remain in some NIAM control-plane routes; authentication/authorization is enforced, but attribution spoofing by an already-authorized actor is not remediated. No operational DB or runtime HTTP validation.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only — targeted adversarial tests + neighbor regression + authoritative gates. Team C fresh-context verification COMPLETE (INDEPENDENTLY VERIFIED at engineering scope). No runtime/operational DB/external validation.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE1.md"
+    },
+    {
+      "id": "REM-SEC-002",
+      "linked_finding": "AUD-SEC-002",
+      "title": "Signed account-kind discriminator with strict, collision-safe token resolution",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "Token identity was a bare integer resolved LabUser-before-User despite independent primary-key spaces; an ID collision could bind a citizen token to a lab-user account (or vice versa).",
+      "change": [
+        "backend/app/security/auth.py — ACCOUNT_KIND_LAB/USER/NIAM, account_kind_for_principal(), resolve_token_account_kind(); build_token_payload() signs account_kind",
+        "backend/app/security/dependencies.py — get_current_user() resolves domain strictly; legacy tokens derive domain from signed lab_id (no collision)",
+        "backend/tests/unit/test_aud_sec_002_account_domain.py — 18 adversarial tests"
+      ],
+      "evidence": {
+        "targeted_tests": "18 passed",
+        "neighbor_regression": "95 passed (auth/security neighbor suites)",
+        "full_regression": "4913 passed, 27 skipped, 0 failed, EXIT=0 (576.09s) — FINAL corrected tree; prior 4851 + 62 tests (58 Phase 1 + 4 legacy-domain follow-up). Earlier 4909 run superseded (pre-falsification-fix)."
+      },
+      "residual": "Legacy tokens without account_kind still rely on the signed lab_id derivation; this is documented and collision-safe but requires re-login to gain an explicit domain. No operational DB validation.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only — targeted adversarial tests + neighbor regression. Team C fresh-context verification COMPLETE (INDEPENDENTLY VERIFIED at engineering scope).",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE1.md"
+    },
+    {
+      "id": "REM-SEC-003",
+      "linked_finding": "AUD-SEC-003",
+      "title": "Staged privileged login — no full tokens without a real MFA challenge",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "Privileged login checked only mfa.has_mfa_enabled(user.id) (enrollment) then issued full access/refresh tokens — password alone could mint a privileged session.",
+      "change": [
+        "backend/app/security/auth.py — short-lived scoped mfa_pending token primitives",
+        "backend/app/routes/login.py — staged /login, /login/mfa/verify, /login/mfa/webauthn/begin; single-use pending JTI blacklisting",
+        "backend/tests/unit/test_aud_sec_003_staged_privileged_login.py — 13 adversarial tests"
+      ],
+      "evidence": {
+        "targeted_tests": "13 passed (after correction; first pass 11 passed / 2 FAILED)",
+        "neighbor_regression": "44 passed (login/mfa neighbor suites)",
+        "full_regression": "4913 passed, 27 skipped, 0 failed, EXIT=0 (576.09s) — FINAL corrected tree; prior 4851 + 62 tests (58 Phase 1 + 4 legacy-domain follow-up). Earlier 4909 run superseded (pre-falsification-fix)."
+      },
+      "residual": "Delivery of the second factor to a real authenticator/webauthn device is not exercised; no runtime/operational validation. WebAuthn begin endpoint uses existing infrastructure. Team C first pass FALSIFIED the completion path (datetime.UTC AttributeError); corrected and locally re-tested, fresh-context re-verification pending.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only — targeted adversarial tests + neighbor regression. Team C fresh-context verification COMPLETE (INDEPENDENTLY VERIFIED at engineering scope).",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE1_REVERIFY.md (survived renewed falsification)"
+    },
+    {
+      "id": "REM-API-002",
+      "linked_finding": "AUD-API-002",
+      "title": "OAuth2-issued access tokens are usable by the canonical protected-route chain",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "create_access_token_oauth2() set type='oauth2_access' which canonical decode_token() rejects; the only accepting decoder had zero call sites — every OAuth2 token returned 401 on every protected route.",
+      "change": [
+        "backend/app/security/oauth2_provider.py — canonical type='access' + user claims; decode accepts canonical type and requires client_id",
+        "backend/app/routes/oauth2.py — account-domain resolution + persistence at authorize/grant/refresh; _as_aware_utc() fixes latent SQLite/Postgres timestamp comparison bug",
+        "backend/app/models/oauth2_token.py + backend/migrations/versions/20261118_0001_oauth2_account_kind.py — nullable account_kind column (backwards compatible)",
+        "backend/tests/unit/test_aud_api_002_oauth2_token_usable.py — 6 adversarial tests"
+      ],
+      "evidence": {
+        "targeted_tests": "10 passed (6 original + 4 new legacy-domain fail-closed adversarial tests)",
+        "neighbor_regression": "103 passed (auth/dependency/security neighbor suites)",
+        "full_regression": "4913 passed, 27 skipped, 0 failed, EXIT=0 (576.09s) — FINAL corrected tree; prior 4851 + 62 tests (58 Phase 1 + 4 legacy-domain follow-up). Earlier 4909 run superseded (pre-falsification-fix)."
+      },
+      "residual": "owner_gated: true — engineering fix only; owner ratification required for any production claim about the OAuth2 token contract. Legacy oauth2_access tokens are intentionally rejected by the canonical chain (fail closed). No operational DB validation. Team C found a legacy NULL-account_kind domain-guess residual; corrected at the mint point (_has_resolvable_account_domain); re-verification pending.",
+      "owner_gated": true,
+      "owner_gate": "Owner must ratify the OAuth2 token-type contract for any production claim; no claim is made here.",
+      "verification_scope": "Engineering scope only — mint-to-protected-route falsification tests + neighbor regression. Team C fresh-context verification COMPLETE (INDEPENDENTLY VERIFIED at engineering scope).",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE1_REVERIFY.md (survived renewed falsification)"
+    },
+    {
+      "id": "REM-ARCH-003",
+      "linked_finding": "AUD-ARCH-003",
+      "title": "One canonical authorization authority; synthetic Health Core engine re-scoped",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "defect": "Two independent permission engines both claimed exclusivity; independent role/permission maps could render divergent ALLOW/DENY decisions for the same principal.",
+      "change": [
+        "backend/app/health_core/authorization/engine.py — docstring re-scoped SYNTHETIC ONLY, names canonical authority",
+        "backend/app/domain_platform/shared_core.py — catalog names THE single canonical authority and marks health_core synthetic-only",
+        "backend/tests/health_core/test_authorization_synthetic_scope.py — 7 differential-equivalence tests over a 5-situation corpus",
+        "GOVERNANCE/ADVERSARIAL_ASSURANCE/ADR_AUD_ARCH_003_SINGLE_AUTHORIZATION_AUTHORITY.md — ADR (ratification pending)"
+      ],
+      "evidence": {
+        "targeted_tests": "7 passed",
+        "neighbor_regression": "870 passed (health_core + domain_platform + authorization phase8)",
+        "authoritative_gate": "phase_b_gate.py regression baseline raised 773->780 (7 new tests), gate 6/6 PASS",
+        "full_regression": "4913 passed, 27 skipped, 0 failed, EXIT=0 (576.09s) — FINAL corrected tree; prior 4851 + 62 tests (58 Phase 1 + 4 legacy-domain follow-up). Earlier 4909 run superseded (pre-falsification-fix)."
+      },
+      "residual": "owner_gated: true — owner ratification required for any production claim. Differential corpus pins the decision contract but cannot prove full semantic equivalence for all inputs. No runtime/operational DB validation.",
+      "owner_gated": true,
+      "owner_gate": "Identity/security owner ratification required to convert the engineering remediation into a production assurance claim.",
+      "verification_scope": "Engineering scope only — differential real-evaluation corpus + neighbor regression + authoritative gates. Team C fresh-context verification COMPLETE (INDEPENDENTLY VERIFIED at engineering scope).",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE1.md"
+    },
+    {
+      "id": "REM-SEC-007",
+      "linked_finding": "AUD-SEC-007",
+      "title": "Async NIAM actor resolver omitted the account-locked filter",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "change": [
+        "backend/app/identity/api/workspaces.py (_active_niam_actor_predicates shared by sync + async)",
+        "backend/tests/unit/test_aud_sec_007_async_actor_lock.py (4 passed)"
+      ],
+      "evidence": {
+        "targeted_tests": "passed (see per-finding test file; combined 87 passed)",
+        "combined_targeted_and_neighbor": "87 passed (32 new Phase 2 + 55 neighbor)",
+        "final_tree_full_regression": "4945 passed, 27 skipped, 203 warnings in 469.50s (0:07:49), EXIT=0, 0 failed",
+        "ruff": "clean on all Phase 2 source/test files (exit 0)",
+        "gates": "phase_b_gate.py 6/6 PASS; national_integration_verify.py PASS"
+      },
+      "note": "Factored one strict predicate (Account.is_locked.is_(False)) shared by the sync and async actor dependencies so they cannot drift; locked accounts are rejected by both paths.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only (fresh-context Team C); no runtime/operational DB/external/clinical/regulatory validation; no PRODUCTION READY.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE2.md"
+    },
+    {
+      "id": "REM-API-001",
+      "linked_finding": "AUD-API-001",
+      "title": "Active GET /integration/standards raised AttributeError (HTTP 500)",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "change": [
+        "backend/app/integration/routes.py (standards_conformance calls real accessors only)",
+        "backend/tests/unit/test_aud_api_001_standards_conformance.py (5 passed)"
+      ],
+      "evidence": {
+        "targeted_tests": "passed (see per-finding test file; combined 87 passed)",
+        "combined_targeted_and_neighbor": "87 passed (32 new Phase 2 + 55 neighbor)",
+        "final_tree_full_regression": "4945 passed, 27 skipped, 203 warnings in 469.50s (0:07:49), EXIT=0, 0 failed",
+        "ruff": "clean on all Phase 2 source/test files (exit 0)",
+        "gates": "phase_b_gate.py 6/6 PASS; national_integration_verify.py PASS"
+      },
+      "note": "standards_conformance() no longer fabricates conformance data; it calls only real accessors and returns a well-formed 200 body.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only (fresh-context Team C); no runtime/operational DB/external/clinical/regulatory validation; no PRODUCTION READY.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE2.md"
+    },
+    {
+      "id": "REM-PRV-001",
+      "linked_finding": "AUD-PRV-001",
+      "title": "National-ID duplicate lookup leaked cross-facility patient PHI",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "change": [
+        "backend/app/services/patient_service.py (_check_duplicates: lab-scoped, selects Patient.id only)",
+        "backend/tests/unit/test_aud_prv_001_nid_duplicate_phi.py (6 passed)"
+      ],
+      "evidence": {
+        "targeted_tests": "passed (see per-finding test file; combined 87 passed)",
+        "combined_targeted_and_neighbor": "87 passed (32 new Phase 2 + 55 neighbor)",
+        "final_tree_full_regression": "4945 passed, 27 skipped, 203 warnings in 469.50s (0:07:49), EXIT=0, 0 failed",
+        "ruff": "clean on all Phase 2 source/test files (exit 0)",
+        "gates": "phase_b_gate.py 6/6 PASS; national_integration_verify.py PASS"
+      },
+      "note": "NID lookup is partitioned by caller lab_id and returns only a non-identifying conflict marker; no existing_patient/PHI/internal id/facility is returned. lab_id=None fails closed. Same-facility phone/name duplicate detection preserved.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only (fresh-context Team C); no runtime/operational DB/external/clinical/regulatory validation; no PRODUCTION READY.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE2.md"
+    },
+    {
+      "id": "REM-SEC-004",
+      "linked_finding": "AUD-SEC-004",
+      "title": "Logout revoked only cookie tokens; Bearer clients retained usable sessions",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "change": [
+        "backend/app/routes/login.py (logout uses shared _extract_token; Bearer-or-cookie; JTI blacklist + perm_version bump)",
+        "backend/app/security/dependencies.py (_extract_token reused, unchanged)",
+        "backend/tests/unit/test_aud_sec_004_bearer_logout.py (4 passed, incl. e2e Bearer 401 after logout)"
+      ],
+      "evidence": {
+        "targeted_tests": "passed (see per-finding test file; combined 87 passed)",
+        "combined_targeted_and_neighbor": "87 passed (32 new Phase 2 + 55 neighbor)",
+        "final_tree_full_regression": "4945 passed, 27 skipped, 203 warnings in 469.50s (0:07:49), EXIT=0, 0 failed",
+        "ruff": "clean on all Phase 2 source/test files (exit 0)",
+        "gates": "phase_b_gate.py 6/6 PASS; national_integration_verify.py PASS"
+      },
+      "note": "logout() now accepts HTTPBearer credentials and resolves the token with the same _extract_token helper used by protected routes. Bearer JTI is blacklisted, user_id derived, perm_version bumped; cookie flow and refresh-token handling preserved.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only (fresh-context Team C); no runtime/operational DB/external/clinical/regulatory validation; no PRODUCTION READY.",
+      "residual": "R-SEC-004-A (medium) fixed after Team C: invalid Bearer + valid access cookie produced 200 without revocation. All presented credentials are now revoked independently; regression test added (5 tests in file).",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE2.md"
+    },
+    {
+      "id": "REM-PRV-003",
+      "linked_finding": "AUD-PRV-003",
+      "title": "Client-controlled force_create bypassed duplicate detection without authorization",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "change": [
+        "backend/app/routes/patients.py (force_reason field; patients:delete gate; denial audit)",
+        "backend/app/services/patient_service.py (reason validation, patient_duplicate_override audit, same-lab NID 409)",
+        "backend/tests/unit/test_aud_prv_003_force_create_override.py (10 passed)"
+      ],
+      "evidence": {
+        "targeted_tests": "passed (see per-finding test file; combined 87 passed)",
+        "combined_targeted_and_neighbor": "87 passed (32 new Phase 2 + 55 neighbor)",
+        "final_tree_full_regression": "4945 passed, 27 skipped, 203 warnings in 469.50s (0:07:49), EXIT=0, 0 failed",
+        "ruff": "clean on all Phase 2 source/test files (exit 0)",
+        "gates": "phase_b_gate.py 6/6 PASS; national_integration_verify.py PASS"
+      },
+      "note": "force_create now requires the existing patients:delete permission plus a documented reason (min 10 chars); denials and successful overrides are audited. Service adds defense-in-depth reason check and refuses an exact same-lab NID collision (MPI merge path). No new shared permission could be added (sibling read-only).",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only (fresh-context Team C); no runtime/operational DB/external/clinical/regulatory validation; no PRODUCTION READY.",
+      "residual": "Exact same-lab NID collision returns 409 (MPI merge path); no DB-level unique constraint added (no operational DB / migration policy). Pre-existing broken call at backend/app/nhdw/services.py:40 is untouched and out of scope.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE2.md"
+    },
+    {
+      "id": "REM-CLIN-003",
+      "linked_finding": "AUD-CLIN-003",
+      "title": "Manual auto-validate did not persist critical/abnormal flags",
+      "engineering_status": "IMPLEMENTED",
+      "test_status": "TESTED",
+      "integration_status": "NOT IMPLEMENTED",
+      "independent_verification": "INDEPENDENTLY VERIFIED",
+      "production_ready": false,
+      "change": [
+        "backend/app/lims/routes.py (run_auto_validation persists validation_status/is_critical/is_abnormal/flag)",
+        "backend/tests/unit/test_aud_clin_003_critical_flag_persistence.py (3 passed)"
+      ],
+      "evidence": {
+        "targeted_tests": "passed (see per-finding test file; combined 87 passed)",
+        "combined_targeted_and_neighbor": "87 passed (32 new Phase 2 + 55 neighbor)",
+        "final_tree_full_regression": "4945 passed, 27 skipped, 203 warnings in 469.50s (0:07:49), EXIT=0, 0 failed",
+        "ruff": "clean on all Phase 2 source/test files (exit 0)",
+        "gates": "phase_b_gate.py 6/6 PASS; national_integration_verify.py PASS"
+      },
+      "note": "The route now mirrors the create path: flags are persisted regardless of auto_validated, with commit on change. A critical result now reaches process_critical_result as notification_pending instead of skipped; normal results unaffected.",
+      "owner_gated": false,
+      "verification_scope": "Engineering scope only (fresh-context Team C); no runtime/operational DB/external/clinical/regulatory validation; no PRODUCTION READY.",
+      "verification_record": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE2.md",
+      "residual": "R-CLIN-003-A (low) fixed after Team C: re-validation with empty recomputed flags now clears stale critical/abnormal/flag; regression test added (4 tests in file). R-CLIN-003-B (low, pre-existing): flag uses first emitted flag, so ['high','critical_high'] persists 'high' (FHIR 'H'); identical in the create path — clinical-owner awareness only, not introduced by this fix."
+    }
+  ],
+  "summary": {
+    "total_remediations": 15,
+    "implemented": 15,
+    "tested": 15,
+    "integrated": 0,
+    "independent_verification_pending": 0,
+    "production_ready": 0,
+    "linked_critical_findings_addressed": [
+      "AUD-CLIN-001",
+      "AUD-SUP-001",
+      "AUD-SEC-001",
+      "AUD-SEC-002",
+      "AUD-SEC-003"
+    ],
+    "linked_high_findings_addressed": [
+      "AUD-MPI-001",
+      "AUD-API-002",
+      "AUD-ARCH-003",
+      "AUD-SEC-007",
+      "AUD-API-001",
+      "AUD-PRV-001",
+      "AUD-SEC-004",
+      "AUD-PRV-003",
+      "AUD-CLIN-003"
+    ],
+    "notes": "Phase 1: five remediations INDEPENDENTLY VERIFIED at engineering scope. Phase 2 Tier A: six remediations INDEPENDENTLY VERIFIED by fresh-context Team C at engineering scope after successful adversarial falsification attempts. Two residuals (R-SEC-004-A, R-CLIN-003-A) were corrected after the award with regression tests; focused re-verification requested. R-GOV-001 (integrator registry-status vocabulary defect) corrected. No PRODUCTION READY; owner-gated items unchanged; 20 staged R100 renames preserved.",
+    "independent_verification_awarded": 15,
+    "independent_verification_scope": "Engineering/static/targeted-test only (Team C). No runtime, operational DB, external, clinical or regulatory validation. No PRODUCTION READY.",
+    "falsifications_succeeded": 2,
+    "falsification_record": "PHASE1_FALSIFICATION_AND_FOLLOWUP.md",
+    "reverification_report": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE1_REVERIFY.md",
+    "new_defect_found_in_reverification": false
+  },
+  "phase2_reverification": {
+    "report": "INDEPENDENT_VERIFICATION_TEAM_C_PHASE2_REVERIFY.md",
+    "verdicts": {
+      "R-GOV-001": "VERIFIED CORRECTED",
+      "R-SEC-004-A": "VERIFIED CORRECTED",
+      "R-CLIN-003-A": "VERIFIED CORRECTED",
+      "R-CLIN-003-B": "VERIFIED CORRECTED (documentation confirmed; no fix intended or made)"
+    },
+    "falsifications_succeeded": 0,
+    "production_ready_awarded": 0,
+    "note": "Focused Team C re-verification confirmed all three corrections (R-GOV-001, R-SEC-004-A, R-CLIN-003-A) and the documentation-only disposition of R-CLIN-003-B. No new status awards; counts unchanged (IV awarded 15, pending 0, production_ready 0)."
+  }
+}

@@ -1,0 +1,128 @@
+REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production.
+AUDIT_ANCHOR_KEY not set. Set in .env for production.
+REDIS_URL not set — using an explicitly acknowledged in-memory store (not shared across workers). Set REDIS_URL for full rate-limiting and cross-process session invalidation.
+REDIS_URL not set — using an explicitly acknowledged in-memory store (not shared across workers)
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 20250322_0000, Create base schema — all core tables.
+INFO  [alembic.runtime.migration] Running upgrade 20250322_0000 -> 20250322_0001, Add role hierarchy columns to lab_users.
+INFO  [alembic.runtime.migration] Running upgrade 20250322_0001 -> 20250322_0002, Performance indexes + audit_logs append-only protection.
+INFO  [alembic.runtime.migration] Running upgrade 20250322_0002 -> 20250322_0003, Order validation state machine columns.
+INFO  [alembic.runtime.migration] Running upgrade 20250322_0003 -> 20250323_0004, Core DB-level enforcement: optimistic locking + state machine trigger
++ idempotency table + outbox events table.
+INFO  [alembic.runtime.migration] Running upgrade 20250323_0004 -> 20250323_0005, Make users.email nullable for citizens who register without email.
+INFO  [alembic.runtime.migration] Running upgrade 20250323_0005 -> 20260324_0006, Add family_id_hash and guardian_id to patients table.
+INFO  [alembic.runtime.migration] Running upgrade 20260324_0006 -> 20260324_0007, Add lab_type, director_name, website to labs; doctors handled via users table.
+INFO  [alembic.runtime.migration] Running upgrade 20260324_0007 -> 20260324_0008, Fix lab_results.test_type_id FK to use ON DELETE SET NULL.
+INFO  [alembic.runtime.migration] Running upgrade 20260324_0008 -> 20260324_0009, Add chain_hash to audit_logs; add clinical_engine_version to lab_results.
+INFO  [alembic.runtime.migration] Running upgrade 20260324_0009 -> 20260324_0010, Production performance indexes for hot query paths.
+INFO  [alembic.runtime.migration] Running upgrade 20260324_0010 -> 20260329_0011, Add subscription tiers, upgrade requests, demand scores, and feature flags.
+INFO  [alembic.runtime.migration] Running upgrade 20260329_0011 -> 20260329_0012, lab_result version column + citizen lookup indexes
+INFO  [alembic.runtime.migration] Running upgrade 20260329_0012 -> 20260407_0001, Add claims and claim_items tables for insurance/billing integration.
+INFO  [alembic.runtime.migration] Running upgrade 20260407_0001 -> 20260413_0001, MPI: canonical citizen registry + identity claims + hash-chained merge audit.
+INFO  [alembic.runtime.migration] Running upgrade 20260413_0001 -> 20260417_0001, Consent: minimal production consent layer.
+INFO  [alembic.runtime.migration] Running upgrade 20260417_0001 -> 20260428_0001, Edge AI Platform: device registry, tasks, telemetry, models, policies.
+INFO  [alembic.runtime.migration] Running upgrade 20260428_0001 -> 20260503_0001, stats/trends performance indexes
+INFO  [alembic.runtime.migration] Running upgrade 20260503_0001 -> 20260505_0001, SNDHS-lite Phase 1 — Step A: extend patients (NON-BLOCKING).
+INFO  [alembic.runtime.migration] Running upgrade 20260505_0001 -> 20260505_0002, SNDHS-lite Phase 1 — Step B: index patients.national_id (NON-BLOCKING).
+INFO  [alembic.runtime.migration] Running upgrade 20260505_0002 -> 20260505_0003, SNDHS-lite Phase 1 — Step C: create ``visits`` table.
+INFO  [alembic.runtime.migration] Running upgrade 20260505_0003 -> 20260505_0004, SNDHS-lite Phase 1 — Step D: add ``lab_orders.visit_id`` (NULLable, no FK).
+INFO  [alembic.runtime.migration] Running upgrade 20260505_0004 -> 20260505_0005, SNDHS-lite Phase 1 — Step E: append-only ``sndhs_audit_logs``.
+INFO  [alembic.runtime.migration] Running upgrade 20260505_0005 -> 20260505_0006, SNDHS-lite Phase 1 — Step F: roll-out constraints AFTER backfill.
+INFO  [alembic.runtime.migration] Running upgrade 20260505_0006 -> 20260506_0001, Financial Engine — Phase A: data-model bootstrap (safe, additive).
+INFO  [alembic.runtime.migration] Running upgrade 20260506_0001 -> 20260511_0001, AI Interaction Dataset — operational medical-intelligence collection pipeline.
+INFO  [alembic.runtime.migration] Running upgrade 20260511_0001 -> 20260511_0002, AI Safety + Hallucination Telemetry — additive columns on ai_interactions.
+INFO  [alembic.runtime.migration] Running upgrade 20260511_0002 -> 20260714_0001, Create National LIMS domain tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260714_0001 -> 20260715_0001, Create National Ecosystem partner tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260715_0001 -> 20260716_0001, Create NHDW (National Health Data Warehouse) platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0001 -> 20260716_0002, Create Nursing Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0002 -> 20260716_0003, Create Pharmacy Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0003 -> 20260716_0004, Create Radiology Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0004 -> 20260716_0005, Create National EMS & Disaster Response Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0005 -> 20260716_0006, Create National Blood Bank & Transfusion Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0006 -> 20260716_0007, Create National Critical Care Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0007 -> 20260716_0008, Create National Biomedical Engineering Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0008 -> 20260716_0009, Create National Public Health & Disease Surveillance Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0009 -> 20260716_0010, Create National Health Command Center tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0010 -> 20260716_0011, Create National Pilot Deployment & Readiness Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0011 -> 20260716_0012, Create National Platform Lifecycle & Governance tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0012 -> 20260716_0013, Create National Trust Platform tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0013 -> 20260716_0014, Create governance identity persistence tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0014 -> 20260716_0015, Add MFA, OAuth2, SAML, Service Account, Password Reset tables
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0015 -> 20260716_0016, Create canonical_patients, patient_links, citizen_links tables
+INFO  [alembic.runtime.migration] Running upgrade 20260716_0016 -> 20260719_0001, AI Platform: vector store, conversations, agents, knowledge graph, governance
+INFO  [alembic.runtime.migration] Running upgrade 20260719_0001 -> 20260720_0001, Enterprise gap closure: add composite indexes for query performance
+INFO  [alembic.runtime.migration] Running upgrade 20260720_0001 -> 20260722_0001, Add national authorization expansion tables: tenants, permissions, roles, role_assignments, abac_policies, field_security, delegations, break_glass_sessions, authorization_audit
+INFO  [alembic.runtime.migration] Running upgrade 20260722_0001 -> 20260723_0001, NIAM Identity & Access Management platform tables
+INFO  [alembic.runtime.migration] Running upgrade 20260723_0001 -> 20260723_0002, NIAM governance, trust, lifecycle, federation, certificates, workflows,
+notifications, adaptive auth, admin & compliance tables (Program NIAM-002)
+INFO  [alembic.runtime.migration] Running upgrade 20260723_0002 -> 20260811_0001, Wave 3: reversible mapping from legacy accounts to NIAM accounts.
+INFO  [alembic.runtime.migration] Running upgrade 20260811_0001 -> 20260811_0002, Citizen relationship foundation.
+INFO  [alembic.runtime.migration] Running upgrade 20260811_0002 -> 20260812_0001, Add idempotency fields for audited citizen relationship workflow.
+INFO  [alembic.runtime.migration] Running upgrade 20260812_0001 -> 20260812_0002, GULA Health Payments Foundation (P0).
+INFO  [alembic.runtime.migration] Running upgrade 20260812_0002 -> 20260812_0003, Currency and FX quote engine (non-production reference quotes).
+INFO  [alembic.runtime.migration] Running upgrade 20260812_0003 -> 20260812_0004, Multi-rail payment orchestration foundation (advisory only).
+INFO  [alembic.runtime.migration] Running upgrade 20260812_0004 -> 20260812_0005, Institutional subscriptions, recurring billing cycles, and usage limits.
+INFO  [alembic.runtime.migration] Running upgrade 20260812_0005 -> 20260813_0001, Add tenant context to the tamper-evident audit log.
+INFO  [alembic.runtime.migration] Running upgrade 20260813_0001 -> 20260813_0002, Add a reviewed, explicit legacy laboratory to facility scope bridge.
+INFO  [alembic.runtime.migration] Running upgrade 20260813_0002 -> 20260813_0003, Add explicit operational scope references to NIAM assignments.
+INFO  [alembic.runtime.migration] Running upgrade 20260813_0003 -> 20260813_0004, Add the reviewed national-EHR-facility to NIAM-facility bridge.
+INFO  [alembic.runtime.migration] Running upgrade 20260813_0004 -> 20260813_0005, Create the durable cross-repository integration inbox.
+INFO  [alembic.runtime.migration] Running upgrade 20260813_0005 -> 20260814_0001, Add canonical identity verification records.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0001 -> 20260814_0002, Add organization units, representatives and ownership records.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0002 -> 20260814_0003, Add canonical workspace architecture and server-authoritative contexts.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0003 -> 20260814_0004, Add canonical membership, invitation and application relationships.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0004 -> 20260814_0005, Add role, permission and scoped role assignment engine.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0005 -> 20260814_0006, IAM Phase 9 security, canonical audit, consent and incidents.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0006 -> 20260814_0007, Phase 10-B reviewed NIAM scope mapping and clinical read permissions.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0007 -> 20260814_0008, Add review-gated account request intake.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0008 -> 20260814_0009, Add demo-safe billing and insurance projection tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0009 -> 20260814_0010, Financial control plane for maker-checker approvals.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0010 -> 20260815_0001, Bind machine identities to a laboratory for cross-facility interop.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0001 -> 20260815_0002, Scope integration inbox idempotency keys by tenant.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0002 -> 20260814_0011, Device integration catalog, safe event log, and simulated print jobs.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0011 -> 20260815_0012, Add secret-free adapter registry and protocol profiles.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0012 -> 20260815_0013, Finalize the linear device adapter migration chain.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0013 -> 20260815_0014, Add device gateway monitoring metrics and alert state.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0011, 20260815_0002 -> 20260815_0003, Merge the device-integration and interop migration branches.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0003, 20260815_0014 -> 20260815_0015, Converge legacy device/interop and monitoring migration heads.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0015 -> 20260815_0016, Scope integrated device identifiers to their laboratory tenant.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0016 -> 20260815_0017, Add tenant-scoped device gateway outbox.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0017 -> 20260815_0018, Add tenant-scoped device gateway registry.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0018 -> 20260815_0019, Create tenant-scoped FHIR resource registry.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0019 -> 20260815_0020, Add privacy-separated user accessibility and health preferences.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0020 -> 20260815_0021, Add account-level brute-force lockout state.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0021 -> 20260815_0022, Add institution-scoped pharmacy POS sales.
+INFO  [alembic.runtime.migration] Running upgrade 20260814_0006 -> 20260901_0001, Blood Bank Phase 2 operational lifecycle tables.
+INFO  [alembic.runtime.migration] Running upgrade 20260901_0001 -> 20260901_0002, Persistent Blood Bank return and discard records.
+INFO  [alembic.runtime.migration] Running upgrade 20260901_0002 -> 20260901_0003, Align Blood Bank Phase 2 tables with the shared AuditMixin.
+INFO  [alembic.runtime.migration] Running upgrade 20260901_0003 -> 20260901_0004, Align Phase 2 Blood Bank tables with shared BaseEntity columns.
+INFO  [alembic.runtime.migration] Running upgrade 20260901_0004 -> 20260908_0002, Add durable receipts for safety-critical clinical commands.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0022 -> 507ea11c820a, add_performance_indexes_to_lab_orders
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0022 -> 20260815_0023, Institution-scoped drug substitution rules and approval requests.
+INFO  [alembic.runtime.migration] Running upgrade 20260815_0023, 507ea11c820a -> 20260819_0001, Merge the dated application chain with the performance-index branch.
+INFO  [alembic.runtime.migration] Running upgrade 20260819_0001 -> 20260819_0002, Add tenant-scoped canonical wearable measurements.
+INFO  [alembic.runtime.migration] Running upgrade 20260819_0002 -> 20260819_0003, Add tenant-scoped clinical research entities.
+INFO  [alembic.runtime.migration] Running upgrade 20260819_0003 -> 20260820_0004, Create surgical safety checklists.
+INFO  [alembic.runtime.migration] Running upgrade 20260820_0004 -> 20260820_0005, add independent verification to critical care infusions
+INFO  [alembic.runtime.migration] Running upgrade 20260819_0003 -> 20260819_0004, Create tenant-scoped national search persistence.
+INFO  [alembic.runtime.migration] Running upgrade 20260819_0004, 20260820_0005, 20260908_0002 -> 20260908_0001, Merge the three independent migration branches into one head.
+INFO  [alembic.runtime.migration] Running upgrade 20260908_0001 -> 20261114_0001, Unify foundation: patient identifier widening, organization/facility columns,
+claims per-lab idempotency, and the identity-authorities registry.
+INFO  [alembic.runtime.migration] Running upgrade 20261114_0001 -> 20261114_0002, PROGRAM-STABLE-001: index all foreign-key columns lacking leading indexes
+INFO  [alembic.runtime.migration] Running upgrade 20261114_0002 -> 20261114_0003, PROGRAM-COMM-003: User Communication Experience tables
+INFO  [alembic.runtime.migration] Running upgrade 20261114_0003 -> 20261114_0004, Unify professional identity: civil professional registry, identity providers,
+and separable professional authorizations.
+INFO  [alembic.runtime.migration] Running upgrade 20261114_0004 -> 20261114_0005, PROGRAM-STABLE-004: Domain Platform Framework — domain registrations,
+instances, versions, contracts, lifecycle events, workspace bindings.
+INFO  [alembic.runtime.migration] Running upgrade 20261114_0005 -> 20261114_0006, Unify authorization indexes omitted by origin/main.
+INFO  [alembic.runtime.migration] Running upgrade 20261114_0006 -> 20261118_0001, Add account_kind to oauth2_tokens (AUD-API-002 / AUD-SEC-002).
+INFO  [alembic.runtime.migration] Running upgrade 20261118_0001 -> 20261119_0001, NIAM step-up authentication evidence (owner-approved 5-minute window)
+INFO  [alembic.runtime.migration] Running upgrade 20261119_0001 -> 20261119_0002, B5 — canonical NIAM delegation input to the single authorization authority
+INFO  [alembic.runtime.migration] Running upgrade 20261119_0002 -> 20261119_0003, Wave 2 (DB integrity) - care_continuum + national FK-dependency closure.
+INFO  [alembic.runtime.migration] Running upgrade 20261119_0003 -> 20261124_0001, Wave A (PRG-05/PRG-09) - real persistence for generated capability CRUD.
+INFO  [alembic.runtime.migration] Running upgrade 20261124_0001 -> 20261124_0002, Add explicit lab ownership to capability CRUD records.
+  ✓ Created index ix_quality_controls_lab_test_time on quality_controls('lab_id', 'test_code', 'created_at')
+  ✓ Created index ix_outbox_events_status_created on outbox_events('status', 'created_at')
+  ✓ Created index ix_audit_logs_user_time on audit_logs('user_id', 'created_at')
+EXIT=0

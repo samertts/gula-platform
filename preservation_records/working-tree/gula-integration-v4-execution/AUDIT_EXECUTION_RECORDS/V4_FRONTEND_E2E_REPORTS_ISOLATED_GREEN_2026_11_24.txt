@@ -1,0 +1,15 @@
+
+Running 9 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 320 (2.1s)
+  ✓  2 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 360 (2.7s)
+  ✓  3 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 375 (2.1s)
+  ✓  4 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 390 (3.1s)
+  ✓  5 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 412 (3.7s)
+  ✓  6 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 768 (2.6s)
+  ✓  7 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 1024 (2.8s)
+  ✓  8 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1280 (3.4s)
+  ✓  9 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1440 (3.2s)
+
+  9 passed (29.0s)
+EXIT=0

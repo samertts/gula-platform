@@ -1,0 +1,36 @@
+
+Running 3 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 320px (1.7s)
+  ✓  2 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 390px (1.7s)
+  ✘  3 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at desktop (30.1s)
+
+
+  1) [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at desktop 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'فتح العرض التجريبي الآمن' })
+
+
+      40 |       await expectNoHorizontalOverflow(page);
+      41 |
+    > 42 |       await page.getByRole("button", { name: "فتح العرض التجريبي الآمن" }).click();
+         |                                                                            ^
+      43 |       await expect(page).toHaveURL(/\/dashboard/);
+      44 |       await expect(page.locator("#main-content")).toBeVisible();
+      45 |       await expectNoHorizontalOverflow(page);
+        at /home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3/e2e/session-authorization.spec.ts:42:76
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/session-authorization-Sess-845eb-hout-authz-reads-at-desktop-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/session-authorization-Sess-845eb-hout-authz-reads-at-desktop-chromium/error-context.md
+
+  1 failed
+    [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at desktop 
+  2 passed (36.3s)
+EXIT=1

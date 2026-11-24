@@ -1,0 +1,495 @@
+{
+  "audit_id": "A5",
+  "audit_name": "Team A5 Independent Adversarial Audit — Performance & Scalability, Offline Resilience, Frontend/UX",
+  "target_repository": "/home/samertts/workspace/projects/gula-integration",
+  "target_branch": "integration/gula-unification-v1",
+  "target_head": "2206654dc713ea2de8c564a3207dfe05fde23549",
+  "audited_tree": "observed working tree (dirty: tracked archive renames/modifications and untracked deliverables), not committed HEAD alone",
+  "sibling_repository": {
+    "path": "/home/samertts/workspace/projects/gula-platform",
+    "pinned_head": "f478676b6fc375338648dde46fbf076c015a3f91",
+    "access": "READ_ONLY",
+    "modified": false
+  },
+  "method": "READ-ONLY static adversarial review; no source/git/config/DB modification; no network; no operational DB; no benchmark or browser execution; synthetic reasoning only",
+  "verdict": {
+    "performance_and_scalability": "BLOCKED",
+    "offline_resilience": "BLOCKED",
+    "frontend_ux": "BLOCKED",
+    "independently_verified_awarded": false,
+    "production_ready_awarded": false,
+    "note": "No status of INDEPENDENTLY VERIFIED or PRODUCTION READY is awarded to audited work. All performance/availability figures are NOT MEASURED."
+  },
+  "status_vocabulary": [
+    "IMPLEMENTED",
+    "TESTED",
+    "INTEGRATED",
+    "INDEPENDENTLY VERIFIED",
+    "PRODUCTION READY",
+    "BLOCKED",
+    "NOT IMPLEMENTED"
+  ],
+  "finding_status": "DISCOVERED",
+  "disclosure_discipline": {
+    "known_disclosures_not_rereported": [
+      "NR-011 FK test under tests/identity",
+      "10_RELIABILITY_OFFLINE_SURVEY.md:16-21 durable anchor BLOCKED, crash durability NOT IMPLEMENTED, RPO/RTO NOT IMPLEMENTED",
+      "13_INTEGRATION_TEST_AND_VERIFICATION.md:108 T3 synthetic in-process queue; no runtime wiring"
+    ],
+    "synthetic_data_honesty": "Checked and not reported: synthetic/demo surfaces are explicitly labelled (e.g. HealthEcosystemPage.tsx:168, LabOperationsWorkspacePage.tsx:145,150, DeviceIntegrationWorkspacePage.tsx:51)"
+  },
+  "summary": {
+    "total_findings": 17,
+    "by_severity": {
+      "HIGH": 7,
+      "MEDIUM": 8,
+      "LOW": 2
+    },
+    "by_area": {
+      "PERF": 7,
+      "OFF": 6,
+      "FE": 4
+    },
+    "owner_gated": 6,
+    "by_likelihood": {
+      "HIGH": 10,
+      "MEDIUM": 7
+    }
+  },
+  "coverage": {
+    "performance": {
+      "stats_aggregation_and_caching": "AUD-PERF-003",
+      "metrics_slo_rule_chain": ["AUD-PERF-001", "AUD-PERF-005"],
+      "db_pool_session_replica": ["AUD-PERF-002", "AUD-PERF-004"],
+      "cache_manager_l1_l2": "AUD-PERF-003",
+      "load_and_benchmark_evidence": ["AUD-PERF-002", "AUD-PERF-006"],
+      "list_endpoint_bounds": "AUD-PERF-007",
+      "latency_throughput_availability_error_budget": "NOT MEASURED",
+      "production_readiness": "BLOCKED"
+    },
+    "offline": {
+      "durable_queue_semantics_and_wiring": "AUD-OFF-002",
+      "offline_outbox_replay": "prior disclosure honoured; not re-reported",
+      "conflict_strategy_consistency": "AUD-OFF-001",
+      "sync_integrity_and_encryption": ["AUD-OFF-004", "AUD-OFF-005"],
+      "edge_agent_state_durability": "AUD-OFF-006",
+      "browser_offline_capability": "AUD-OFF-003",
+      "crash_durability_rpo_rto": "NOT MEASURED / NOT IMPLEMENTED (already disclosed)",
+      "production_readiness": "BLOCKED"
+    },
+    "frontend_ux": {
+      "pwa_service_worker": ["AUD-FE-001", "AUD-FE-003", "AUD-FE-004"],
+      "client_offline_data": "AUD-FE-001",
+      "i18n_rtl_consistency": "AUD-FE-002",
+      "synthetic_data_honesty": "checked; no finding — explicitly labelled",
+      "wcag_aa_deep_audit": "NOT MEASURED",
+      "visual_responsive_regression": "NOT MEASURED",
+      "production_readiness": "BLOCKED"
+    },
+    "constraints_observed": {
+      "source_git_config_db_modified": false,
+      "network_used": false,
+      "operational_db_used": false,
+      "secrets_accessed": false,
+      "sibling_repo_modified": false,
+      "artifacts_written_only_under": "GOVERNANCE/ADVERSARIAL_ASSURANCE/"
+    }
+  },
+  "findings": [
+    {
+      "id": "AUD-PERF-001",
+      "area": "PERFORMANCE",
+      "title": "Availability SLO computed from a hardcoded gauge; 99.99% target is unobservable",
+      "evidence": [
+        "backend/app/services/metrics_service.py:385-392",
+        "config/prometheus/rules/slo.yml:12-18",
+        "config/prometheus/rules/slo.yml:116-126",
+        "backend/app/services/metrics_service.py:15-25"
+      ],
+      "evidence_detail": "metrics_service emits literal 'gula_up 1' / 'gula_down 0'; slo:availability_window applies rate() over those gauges; SLOAvailabilityBelow therefore cannot observe real downtime; latency/error counters are process-local dicts.",
+      "reproduction_falsification": "Read the cited lines: gula_up is never set to 0 by any probe. Falsify by demonstrating a real health probe driving gula_up/down and a recorded availability series, or an external black-box SLI.",
+      "root_cause": "Availability modelled as a static self-report rather than a probed signal; counters not aggregated across workers.",
+      "impact": "The 99.99% availability target provides false assurance and its alert cannot fire for real outages. Actual availability is NOT MEASURED.",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "recommended_remediation": "Drive gula_up/down from black-box probe results without changing the owner-approved 99.99% target; aggregate counters across workers before recording error-budget rules; add a regression test that flips the probe and asserts the alert fires.",
+      "alternatives": [
+        "Compute availability from ingress/load-balancer access logs instead of app gauges",
+        "Rename the app metric to gula_self_report_up and exclude it from SLO rules"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-PERF-002",
+      "area": "PERFORMANCE",
+      "title": "Performance certification claims contradict source defaults; supporting evidence is failing or absent",
+      "evidence": [
+        "backend/app/database.py:188-192",
+        "PERFORMANCE_CERTIFICATION.md:58-63",
+        "contracts/quality/benchmark-results.json:7",
+        "k6/load_test.js"
+      ],
+      "evidence_detail": "Code defaults are WEB_CONCURRENCY=2, DB_POOL_SIZE=5, DB_MAX_OVERFLOW=10; certification claims Workers 3 and DB pool 18 with 'Status: PASS'; the only benchmark result artifact reports overall_status FAIL; no k6 result artifact found.",
+      "reproduction_falsification": "Compare the four sources. Falsify with a checked-in timestamped k6 summary artifact and a deployment manifest showing the env overrides that produce workers=3/pool=18.",
+      "root_cause": "Certification authored from intended rather than effective configuration; no result artifact bound to the PASS claim.",
+      "impact": "PASS status is unsupported and no stated number is reproducible. Throughput and latency are NOT MEASURED.",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "recommended_remediation": "Regenerate the certification from a reproducible load artifact; reconcile worker/pool values with code defaults or document exact env overrides; set status to BLOCKED until a passing run exists.",
+      "alternatives": [
+        "Relabel the document as an unmeasured design target with no PASS status",
+        "Pin configuration in code so documentation and runtime cannot diverge"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-PERF-003",
+      "area": "PERFORMANCE",
+      "title": "Per-call Redis client creation, sequential bulk operations, and blocking Redis calls inside async methods",
+      "evidence": [
+        "backend/app/services/stats_service.py:22-53",
+        "backend/app/services/stats_service.py:242-287",
+        "backend/app/core/cache_manager.py:314-338",
+        "backend/app/core/cache_manager.py:402-419"
+      ],
+      "evidence_detail": "_get_redis() constructs a new client per cache op; stats_summary issues nine sequential scalar COUNT queries; get_many/set_many loop sequentially; _l2_get/_l2_set call synchronous redis_cache.get/set inside async def.",
+      "reproduction_falsification": "Static call-site trace. Falsify by showing a module-level pooled client, a grouped aggregate query, and non-blocking L2 access.",
+      "root_cause": "Convenience helpers written synchronously then wrapped in async signatures without I/O offload or connection reuse.",
+      "impact": "Connection churn, event-loop stalls under load, nine round-trips per stats cache miss. Latency amplification is NOT MEASURED.",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "recommended_remediation": "Use one module-level Redis client with a bounded pool; collapse the nine counts into one grouped aggregate query; pipeline bulk cache ops and offload blocking L2 calls; add a regression test asserting one client construction and bounded query count.",
+      "alternatives": [
+        "Cache the whole summary blob keyed by (lab_id, window)",
+        "Materialise dashboard counters in a scheduled aggregate table"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PERF-004",
+      "area": "PERFORMANCE",
+      "title": "Async compatibility layer runs blocking SQL; read replica is defined but unused",
+      "evidence": [
+        "backend/app/database.py:301-317",
+        "backend/app/database.py:379-384",
+        "backend/app/database.py:246"
+      ],
+      "evidence_detail": "_AwaitableProxy wraps an already-computed sync result; get_read_db() exists with a docstring directing read routes to it; a comment claims routes use it; repo-wide search finds no route dependency on it.",
+      "reproduction_falsification": "grep -rn 'get_read_db' backend/app --include='*.py' returns only the definition and the comment. Falsify by identifying a route dependency.",
+      "root_cause": "Read-scaling path added but never wired; async-looking API is a compatibility shim over sync SQLAlchemy sessions.",
+      "impact": "Read scaling is inert and async endpoints can block workers on DB I/O. Read capacity is NOT MEASURED.",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "recommended_remediation": "Wire read-only endpoints through get_read_db and verify replica lag, or remove the dead dependency and comment; move blocking session work to a threadpool where async behaviour is required.",
+      "alternatives": [
+        "Adopt a fully async SQLAlchemy engine for affected paths",
+        "Declare those routes as def (FastAPI threadpool) rather than async"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PERF-005",
+      "area": "PERFORMANCE",
+      "title": "Metrics endpoint is process-local and performs synchronous work per scrape",
+      "evidence": [
+        "backend/app/services/metrics_service.py:15-25",
+        "backend/app/services/metrics_service.py:56-66",
+        "backend/app/services/metrics_service.py:101-115",
+        "config/prometheus/rules/slo.yml:24-25",
+        "config/prometheus/rules/slo.yml:31-50"
+      ],
+      "evidence_detail": "Counters are module-level per-process dicts; ping_redis performs a sync ping; get_queue_backlog opens a new SessionLocal and COUNTs on every scrape; SLO latency/error-budget rules consume these counters.",
+      "reproduction_falsification": "Trace the cited functions. Falsify by showing cross-worker metric aggregation and a background backlog collector.",
+      "root_cause": "Scrape-time computation and per-process instrumentation.",
+      "impact": "SLO records reflect an arbitrary single worker; scrapes add DB load proportional to scrape frequency. Error budget and p99 are NOT MEASURED.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "recommended_remediation": "Export per-worker series and aggregate in Prometheus or a shared backend; collect backlog in a background task; bound scrape duration.",
+      "alternatives": [
+        "Use the existing OTLP/HTTP tracing pipeline for latency instead of in-process buckets",
+        "Derive error budget from ingress logs rather than app counters"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PERF-006",
+      "area": "PERFORMANCE",
+      "title": "Load test covers health/read paths only; write path and concurrency unverified; no result artifact",
+      "evidence": [
+        "k6/load_test.js:115-179",
+        "backend/tests/test_performance_budgets.py:19-21",
+        "contracts/quality/benchmark-results.json:7"
+      ],
+      "evidence_detail": "k6 default function groups are liveness/read-only; performance-budget tests are pure SQLAlchemy + TestClient query-count guards; only benchmark result artifact reports FAIL and no k6 summary export exists.",
+      "reproduction_falsification": "Inspect the k6 script for mutating verbs and search for k6 result artifacts. Falsify with a write-mixed k6 run and checked-in summary.",
+      "root_cause": "Performance assurance scoped to read surfaces and micro-benchmarks.",
+      "impact": "Throughput under write contention, lock behaviour, and stampede resistance are NOT MEASURED.",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "recommended_remediation": "Add a write-heavy scenario with realistic tenant/lab mix and idempotency keys; check in the k6 summary; gate certification on its thresholds. Never run against production data.",
+      "alternatives": [
+        "Use a synthetic single-tenant dataset for write load",
+        "Add queue-depth/lock-wait instrumentation as a leading indicator"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PERF-007",
+      "area": "PERFORMANCE",
+      "title": "Unbounded page size on administrative lab listing",
+      "evidence": [
+        "backend/app/routes/admin.py:104-110"
+      ],
+      "evidence_detail": "list_all_labs declares limit: int = 50 as a plain default with no Query(..., le=...) upper bound.",
+      "reproduction_falsification": "Call GET /admin/labs?limit=1000000 with an authorised principal; no upper bound is applied. Falsify by showing a global query-param clamp middleware.",
+      "root_cause": "Missing bound on a FastAPI query parameter.",
+      "impact": "Unbounded result materialisation/serialisation and memory pressure; cheap amplification vector for authorised users.",
+      "severity": "LOW",
+      "likelihood": "MEDIUM",
+      "recommended_remediation": "Use Query(50, ge=1, le=500) consistent with other list endpoints and add a test for 422 rejection above the cap.",
+      "alternatives": [
+        "Enforce a global list-endpoint cap middleware",
+        "Use cursor pagination for this endpoint"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-OFF-001",
+      "area": "OFFLINE",
+      "title": "Default conflict resolution is LAST_WRITE_WINS, contradicting the 'no lost updates' safety claim",
+      "evidence": [
+        "backend/app/services/offline_sync_service.py:293-308",
+        "backend/app/services/offline_sync_service.py:25",
+        "backend/app/services/offline_sync_service.py:200-246",
+        "GOVERNANCE/NATIONAL_INTEGRATION/10_RELIABILITY_OFFLINE_SURVEY.md:13",
+        "backend/app/health_core/integration/conflicts.py:94-95",
+        "backend/app/health_core/integration/conflicts.py:23"
+      ],
+      "evidence_detail": "_detect_conflict returns ConflictRecord(resolution=LAST_WRITE_WINS) for causally-unrelated concurrent operations; an honest CONFLICT_QUARANTINE branch exists at lines 200-246 (status string at 238) but is not the default; the survey asserts honest CONFLICT_QUARANTINE with 'no lost updates'.",
+      "reproduction_falsification": "Create two SyncOperations for the same entity with unrelated vector clocks, call _detect_conflict, and observe LAST_WRITE_WINS. Falsify by showing the runtime flow always overrides to quarantine before apply, or a test proving no overwrite occurs.",
+      "root_cause": "Safe strategy implemented but the detector default was left at last-write-wins; assurance documentation describes the safe branch as the default.",
+      "impact": "Concurrent offline edits can silently overwrite one another while documentation asserts the opposite; clinical result/order data loss is possible. Runtime impact is NOT MEASURED (static finding).",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "recommended_remediation": "With owner approval, default to CONFLICT_QUARANTINE, correct the survey sentence, and add a regression test asserting concurrent same-entity operations are quarantined with audit and neither is discarded. Keep KEEP_LAST_WITH_AUDIT explicit-only.",
+      "alternatives": [
+        "Fail closed on unresolved conflict and require human adjudication",
+        "Implement CRDT only for non-clinical fields, excluding results/orders"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-OFF-002",
+      "area": "OFFLINE",
+      "title": "'Durable' queue is synthetic and non-wired; replay reconstructs events with empty payloads",
+      "evidence": [
+        "backend/app/health_core/reliability/durable_queue.py:1-18",
+        "backend/app/health_core/reliability/durable_queue.py:1042-1052",
+        "GOVERNANCE/NATIONAL_INTEGRATION/13_INTEGRATION_TEST_AND_VERIFICATION.md:108"
+      ],
+      "evidence_detail": "Module docstring states the log is an in-process byte buffer with no filesystem/database/broker/network/keyed signature/external anchor and 'NOT production-grade durability'; replay builds QueueEvent(payload={}); T3 is documented as synthetic with no runtime wiring; no runtime import outside package/tests.",
+      "reproduction_falsification": "Read the cited docstring and replay constructor and run an import search. Falsify by showing production wiring into real delivery plus an external anchor whose payload survives process restart.",
+      "root_cause": "Module is a correctness harness for queue semantics, not a persistence implementation; naming overstates capability.",
+      "impact": "No offline durable event delivery at runtime; even synthetic crash recovery loses payload content. Durability is NOT IMPLEMENTED / BLOCKED (already disclosed).",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "recommended_remediation": "After owner authorisation, implement a keyed tenant-scoped durable external anchor with encrypted payload persistence, wire into real delivery, and add a true process-restart test; until then avoid 'durable' as a production claim.",
+      "alternatives": [
+        "Adopt an existing self-hosted durable broker consistent with Free/Open-Source/No-Vendor-Lock-In policy",
+        "Extend the existing outbox table pattern if made crash-safe"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-OFF-003",
+      "area": "OFFLINE",
+      "title": "No client-side offline data capability; 'offline-first' is not implemented in the browser",
+      "evidence": [
+        "frontend-v3/src/main.tsx:6-17",
+        "frontend-v3/vite.config.ts:45-71",
+        "frontend-v3/vite.config.ts:60-69"
+      ],
+      "evidence_detail": "SW registration is the only offline bootstrap; Workbox caches static globs, images and Google Fonts only; repo-wide search of frontend-v3/src for indexedDB/idb/Dexie/localforage/navigator.onLine/background sync returns zero matches.",
+      "reproduction_falsification": "Load the built app offline and open a patient/order view: shell renders but no data loads or queues. Falsify by identifying a client store and offline queue surviving reload and re-syncing online.",
+      "root_cause": "Offline implemented as backend in-process harnesses plus static-asset PWA shell; no browser persistence layer.",
+      "impact": "No patient/order/result data offline and no offline action survives reload. Client offline capability is NOT IMPLEMENTED.",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "recommended_remediation": "With owner approval, implement an encrypted IndexedDB outbox with idempotency keys, cache only required reference/read data, wire to the server quarantine conflict path, and add an offline→online browser test.",
+      "alternatives": [
+        "Declare the web client online-only and scope offline-first to a dedicated native/edge client",
+        "Ship a read-only offline reference cache explicitly excluding clinical writes"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-OFF-004",
+      "area": "OFFLINE",
+      "title": "Operation signature is a homebrew digest that omits timestamp and vector clock; forgeable with default empty secret",
+      "evidence": [
+        "backend/app/services/offline_sync_service.py:328-336",
+        "backend/app/services/offline_sync_service.py:81-84",
+        "backend/app/services/offline_sync_service.py:97-116"
+      ],
+      "evidence_detail": "_sign_operation computes sha256 of op_id:data:device_id:secret rather than an HMAC; device_secret defaults to empty string; timestamp (client time.time()) and vector_clock are not in signed material.",
+      "reproduction_falsification": "Instantiate OfflineSyncEngine() with no secret and compute a valid digest from public fields; alter op.timestamp or vector_clock and observe _verify_signature still true. Falsify by showing a proper HMAC over all integrity-sensitive fields with a provisioned per-device key.",
+      "root_cause": "Ad-hoc digest used as authenticity control without key management or field-coverage design.",
+      "impact": "Operation data can be forged and causality fields tampered with when the secret is empty or leaked, undermining conflict detection. Deployment integrity is NOT MEASURED.",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "recommended_remediation": "Use hmac.new(key, canonical_bytes, sha256) over op_id, entity_id, operation, data, device_id, timestamp and vector_clock; require a non-empty per-device key, fail closed if absent, and use compare_digest.",
+      "alternatives": [
+        "Use a standard signed envelope (JWS with per-device key)",
+        "Rely on transport mTLS plus server-assigned timestamps and drop the custom signature"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-OFF-005",
+      "area": "OFFLINE",
+      "title": "Encrypted sync store silently falls back to plaintext when no key is configured",
+      "evidence": [
+        "backend/app/services/offline_sync_service.py:339-342",
+        "backend/app/services/offline_sync_service.py:371-377",
+        "backend/app/services/offline_sync_service.py:379-385"
+      ],
+      "evidence_detail": "_encrypt and _decrypt return data unchanged when self._key is falsy.",
+      "reproduction_falsification": "Instantiate EncryptedSyncStore() with no key, put bytes, and observe plaintext storage. Falsify by showing a mandatory validated key or fail-closed constructor.",
+      "root_cause": "Optional-encryption design where key absence degrades silently instead of failing.",
+      "impact": "A component described as encrypted may hold sensitive payloads in plaintext; later keyed deployment cannot decrypt earlier plaintext. Actual exposure is NOT MEASURED.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "recommended_remediation": "Require an encryption key at construction (raise if missing/weak), use authenticated encryption with versioned key IDs, and add a test asserting no plaintext bytes are stored.",
+      "alternatives": [
+        "Rename to MaybeEncryptedStore and gate every call on a capability check",
+        "Store only a server-side reference, never payload bytes on the device"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-OFF-006",
+      "area": "OFFLINE",
+      "title": "Edge agent state file written non-atomically",
+      "evidence": [
+        "edge_agent/gula_edge_agent/state.py:65-70",
+        "edge_agent/gula_edge_agent/state.py:58-62",
+        "edge_agent/gula_edge_agent/agent.py:191-199"
+      ],
+      "evidence_detail": "_write calls state_file.write_bytes(blob) in place with no temp file, os.replace or fsync; _read raises StateError on truncated/corrupt ciphertext; the agent polls heartbeat-driven kill/quarantine commands and has no offline task queue.",
+      "reproduction_falsification": "Inspect _write for atomic-rename and fsync semantics. Falsify by showing temp-file + atomic-replace + directory fsync plus a simulated power-loss test.",
+      "root_cause": "In-place overwrite of a single state file.",
+      "impact": "Crash or power loss during write can corrupt state and prevent the edge agent from resuming. Crash-consistency is NOT IMPLEMENTED.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "recommended_remediation": "Write to a temp file in the same directory, fsync it, os.replace atomically, fsync the directory, keep a last-known-good backup, and add an interruption test.",
+      "alternatives": [
+        "Use an embedded transactional store for agent state",
+        "Treat state as disposable and re-fetch from control plane on corruption"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-FE-001",
+      "area": "FRONTEND",
+      "title": "'Offline-first' PWA caches only static assets; no clinical data or API cache",
+      "evidence": [
+        "frontend-v3/src/main.tsx:6-17",
+        "frontend-v3/vite.config.ts:45-47",
+        "frontend-v3/vite.config.ts:47-70",
+        "frontend-v3/vite.config.ts:60-69"
+      ],
+      "evidence_detail": "SW registration is the only offline bootstrap; globPatterns cover build assets only; runtime caching covers images and Google Fonts; no client data store or navigator.onLine anywhere in frontend-v3/src.",
+      "reproduction_falsification": "Go offline and open a patient/order/results view: shell renders but no data loads or queues. Falsify by identifying a client store and offline queue surviving reload and re-syncing online.",
+      "root_cause": "Offline implemented at asset layer and backend harnesses with no browser persistence.",
+      "impact": "Browser cannot support offline-first clinical workflows; no offline action survives page reload. Client offline data capability is NOT IMPLEMENTED (corroborates AUD-OFF-003).",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "recommended_remediation": "With owner approval, add an encrypted IndexedDB outbox with idempotency keys, cache only needed reference/read data, wire to the quarantine conflict path, and add an offline→online browser test.",
+      "alternatives": [
+        "Declare the web app online-only and scope offline to a dedicated client",
+        "Offer a minimal read-only offline reference cache with explicit 'no clinical data offline' UX"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-FE-002",
+      "area": "FRONTEND",
+      "title": "Hardcoded Arabic/RTL in document and manifest conflicts with runtime locale switching",
+      "evidence": [
+        "frontend-v3/index.html:2",
+        "frontend-v3/vite.config.ts:23-24",
+        "frontend-v3/src/contexts/LocaleContext.tsx:29-31"
+      ],
+      "evidence_detail": "index.html hardcodes lang=ar dir=rtl; manifest hardcodes lang ar / dir rtl; LocaleContext mutates document.documentElement.lang/dir at runtime; 14 literal dir=rtl attributes across 13 .tsx files do not follow runtime direction.",
+      "reproduction_falsification": "Switch to an LTR locale: document direction changes but component dir attributes and manifest remain RTL, producing mixed-direction layout. Falsify by showing derived dir attributes and per-locale manifests.",
+      "root_cause": "Direction hardcoded at HTML/manifest/component level rather than derived from one locale source of truth.",
+      "impact": "Broken layout/accessibility for non-Arabic locales and RTL flash before hydration. Arabic-first defaults are preserved; this is partial i18n, not a constitution violation.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "recommended_remediation": "Keep Arabic/RTL as default but derive all dir attributes from the locale context; generate per-locale manifests; add a Playwright test switching locale and asserting consistent direction.",
+      "alternatives": [
+        "If only Arabic is supported this release, remove the runtime switch or mark other locales BLOCKED",
+        "Use CSS logical properties and drop per-component dir attributes"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-FE-003",
+      "area": "FRONTEND",
+      "title": "No connectivity/offline UX affordance",
+      "evidence": [
+        "frontend-v3/src/main.tsx:6-17",
+        "frontend-v3/vite.config.ts:45-71"
+      ],
+      "evidence_detail": "SW registration block has no online/offline event handling or connectivity state; repo-wide search finds no navigator.onLine, connectivity listener, offline banner, or Workbox navigation fallback.",
+      "reproduction_falsification": "Go offline and navigate to a non-cached route: no explicit offline state is communicated. Falsify by identifying a connectivity provider/banner and a Workbox navigation fallback.",
+      "root_cause": "No user-facing connectivity state designed.",
+      "impact": "Users cannot distinguish no-network from backend error, cannot tell if an action is queued, and get no guidance — a clinical usability concern.",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "recommended_remediation": "Add a connectivity provider with an Arabic-first offline banner, disable or mark unavailable actions offline, and provide a Workbox navigation fallback; add a browser test toggling connectivity.",
+      "alternatives": [
+        "Surface a minimal 'connection lost — retry' toast on failed requests",
+        "Rely on browser native offline page (weak for clinical use)"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-FE-004",
+      "area": "FRONTEND",
+      "title": "Service-worker update prompt is blocking, unlocalised, and has no registration/offline-ready handling",
+      "evidence": [
+        "frontend-v3/src/main.tsx:9-16"
+      ],
+      "evidence_detail": "registerSW uses blocking confirm() with an inline Arabic string; only onNeedRefresh is supplied; no onOfflineReady, onRegisterError, or i18n key.",
+      "reproduction_falsification": "Inspect registerSW options. Falsify by showing an i18n-backed non-blocking update UI with explicit offline-ready/error handlers.",
+      "root_cause": "Minimal PWA scaffold left without UX/i18n integration.",
+      "impact": "Non-localised blocking prompt in an i18n app; silent SW registration failures leave stale assets unnoticed.",
+      "severity": "LOW",
+      "likelihood": "MEDIUM",
+      "recommended_remediation": "Replace confirm() with an accessible in-app dialog using i18n keys; add onOfflineReady and onRegisterError handlers; add an update-path test.",
+      "alternatives": [
+        "Auto-update with skipWaiting and a non-blocking 'new version available' toast",
+        "Defer update to next launch with a version indicator"
+      ],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    }
+  ]
+}

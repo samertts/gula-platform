@@ -1,0 +1,9 @@
+
+Running 3 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 320px (1.6s)
+  ✓  2 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 390px (2.2s)
+  ✓  3 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at desktop (2.3s)
+
+  3 passed (8.5s)
+EXIT=0

@@ -1,0 +1,10 @@
+# Additive SHA-256 manifest — 2026-11-21 documentation-only rebuild (hashes only)
+# Generated: 2026-11-20T21:17:34Z UTC
+# Documents created: 4
+# This manifest is ADDITIVE. It does not replace CRITICAL_FILE_SHA256.txt or any earlier registry.
+# No protected-file hash is changed. No secret value or key material is recorded.
+# This manifest file itself is excluded (self-hash would be recursively unstable).
+70ae78b55681fd81996afcd1b32d03b1da9bd991581ac78bc35c8d0dc492a9ca  AUDIT_EXECUTION_RECORDS/BASELINE_2026_11_21.md
+d99bab30bd95d378bf9cf27e841dcbad47d68b9b8ab21a06c66e3b1c8f61e989  AUDIT_EXECUTION_RECORDS/P-02_DECISION_PACKET_REV2.md
+b22253cc8d4167a2e0bb91b9b7236665bdbe819613907d2a7f2e661be5939891  AUDIT_EXECUTION_RECORDS/P-03_DECISION_PACKET_REV2.md
+27693b5a658ce12d6de3137af8e439a66bc4ac1c6980223889fde9c229ee5092  AUDIT_EXECUTION_RECORDS/PACKET_REVIEW_2026_11_21.md

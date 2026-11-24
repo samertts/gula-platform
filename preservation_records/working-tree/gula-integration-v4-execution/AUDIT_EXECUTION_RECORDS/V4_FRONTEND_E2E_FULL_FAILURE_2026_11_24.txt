@@ -1,0 +1,727 @@
+
+Running 56 tests using 1 worker
+
+[WebServer] 1:43:41 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:41 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   1 [chromium] › e2e/auth.spec.ts:61:3 › Authentication › should display login page with correct Arabic text (1.5s)
+[WebServer] 1:43:42 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:42 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   2 [chromium] › e2e/auth.spec.ts:69:3 › Authentication › should show validation error for empty fields (1.4s)
+[WebServer] 1:43:43 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:43 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   3 [chromium] › e2e/auth.spec.ts:76:3 › Authentication › should show error message on failed login (1.7s)
+[WebServer] 1:43:46 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:46 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:46 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:46 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:46 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:46 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:46 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:46 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   4 [chromium] › e2e/auth.spec.ts:92:3 › Authentication › should login successfully and redirect to dashboard (2.2s)
+[WebServer] 1:43:47 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:47 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   5 [chromium] › e2e/auth.spec.ts:104:3 › Authentication › should redirect to login when accessing protected routes without token (943ms)
+[WebServer] 1:43:48 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:48 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:49 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:49 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:49 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:49 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:49 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:49 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:50 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:50 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   6 [chromium] › e2e/auth.spec.ts:109:3 › Authentication › should logout successfully (2.4s)
+[WebServer] 1:43:51 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:51 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:51 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:51 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:52 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   7 [chromium] › e2e/billing-insurance.spec.ts:62:3 › billing and insurance workspace › hydrates live data and supports guarded backend actions (3.7s)
+[WebServer] 1:43:54 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:54 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:54 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:54 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:55 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:55 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:55 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:55 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:56 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:56 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:56 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:56 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:56 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:56 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   8 [chromium] › e2e/fhir.spec.ts:53:3 › FHIR › should navigate to FHIR page (2.5s)
+[WebServer] 1:43:57 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:57 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:57 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:57 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:43:58 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓   9 [chromium] › e2e/fhir.spec.ts:58:3 › FHIR › should display FHIR Patient resources (2.5s)
+  ✘  10 [chromium] › e2e/financial-governance.spec.ts:5:3 › financial governance workspace › loads tenant-scoped control summary without external operations (30.1s)
+[WebServer] 1:44:31 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:44:31 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  11 [chromium] › e2e/mobile-layout.spec.ts:16:5 › Mobile app-like shell › keeps login and demo dashboard usable at 320px (2.0s)
+[WebServer] 1:44:33 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:44:33 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  12 [chromium] › e2e/mobile-layout.spec.ts:16:5 › Mobile app-like shell › keeps login and demo dashboard usable at 390px (2.0s)
+[WebServer] 1:44:35 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:44:35 PM [vite] http proxy error: /session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  13 [chromium] › e2e/mobile-layout.spec.ts:16:5 › Mobile app-like shell › keeps login and demo dashboard usable at desktop (2.0s)
+  ✓  14 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Dashboard page (3.0s)
+  ✓  15 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Patients page (3.3s)
+  ✓  16 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Orders page (3.1s)
+  ✓  17 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Results page (2.4s)
+  ✓  18 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Samples page (2.5s)
+  ✓  19 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Labs page (2.4s)
+  ✓  20 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Critical Alerts page (2.3s)
+  ✓  21 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Notifications page (2.4s)
+  ✓  22 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to AI page (3.1s)
+  ✓  23 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Stats page (2.7s)
+  ✓  24 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to QC page (2.8s)
+  ✓  25 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Patient Card page (2.9s)
+  ✓  26 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Identity page (3.6s)
+  ✓  27 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Compliance page (4.6s)
+  ✓  28 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Settings page (2.7s)
+  ✓  29 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Profile page (3.3s)
+  ✓  30 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Security page (3.8s)
+  ✓  31 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to FHIR page (3.9s)
+  ✓  32 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to EHR page (3.1s)
+  ✓  33 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Hospital page (2.9s)
+  ✓  34 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to Edge page (3.6s)
+  ✓  35 [chromium] › e2e/navigation.spec.ts:48:5 › Navigation & Routing › should navigate to National Data page (5.9s)
+[WebServer] 1:45:50 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:50 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:50 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:50 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:51 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:51 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:51 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:51 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:53 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:53 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:53 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:53 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:53 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:53 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:53 PM [vite] http proxy error: /api/v1/clinical/orders?search=&limit=50
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  36 [chromium] › e2e/orders.spec.ts:10:3 › Order workspace read safety › navigates to the orders surface (5.7s)
+[WebServer] 1:45:55 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:55 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:55 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:55 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:55 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:55 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:55 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:55 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:56 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:56 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:56 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:56 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:56 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:56 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:57 PM [vite] http proxy error: /api/v1/clinical/orders?search=&limit=50
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  37 [chromium] › e2e/orders.spec.ts:16:3 › Order workspace read safety › blocks direct order reads until server enforcement is proven (3.7s)
+[WebServer] 1:45:58 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:58 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:58 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:58 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:59 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:59 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:59 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:45:59 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:00 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:00 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:00 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:00 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:00 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:00 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:01 PM [vite] http proxy error: /api/v1/clinical/patients?search=&limit=50
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  38 [chromium] › e2e/patients.spec.ts:10:3 › Patient workspace read safety › navigates to the patients surface (3.9s)
+[WebServer] 1:46:02 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:02 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:02 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:02 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:02 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:02 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:02 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:02 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:03 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:03 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:03 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:03 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:03 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:03 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:03 PM [vite] http proxy error: /api/v1/clinical/patients?search=&limit=50
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  39 [chromium] › e2e/patients.spec.ts:16:3 › Patient workspace read safety › blocks direct patient reads until server enforcement is proven (2.9s)
+[WebServer] 1:46:05 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:05 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:05 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:05 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:06 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:06 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:06 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:06 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:07 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:07 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:07 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:07 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:07 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:07 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  40 [chromium] › e2e/results.spec.ts:10:3 › Results safe transitional surface › navigates to the results surface (3.9s)
+  ✘  41 [chromium] › e2e/results.spec.ts:15:3 › Results safe transitional surface › shows a safe bridge instead of ungoverned result data (30.2s)
+[WebServer] 1:46:41 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:41 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:41 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:41 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:41 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:41 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:41 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:41 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:43 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:43 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:43 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:43 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:43 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:43 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  42 [chromium] › e2e/samples.spec.ts:10:3 › Samples safe transitional surface › navigates to the samples surface (4.4s)
+[WebServer] 1:46:46 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:46 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:46 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:46 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:47 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:47 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:47 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:47 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:48 PM [vite] http proxy error: /niam/memberships/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:48 PM [vite] http proxy error: /authz/me
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:48 PM [vite] http proxy error: /authz/me/menu
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:48 PM [vite] http proxy error: /authz/me/permissions
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:48 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+[WebServer] 1:46:48 PM [vite] http proxy error: /niam/workspaces
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8000
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16)
+  ✓  43 [chromium] › e2e/samples.spec.ts:15:3 › Samples safe transitional surface › shows a safe bridge instead of ungoverned sample data (4.7s)
+  ✓  44 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 320px (3.0s)
+  ✓  45 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at 390px (2.2s)
+  ✓  46 [chromium] › e2e/session-authorization.spec.ts:18:5 › Session authorization bootstrap › demo mode remains RTL and responsive without authz reads at desktop (2.8s)
+  ✘  47 [chromium] › e2e/dark-mode.spec.ts:9:1 › يطبق dark mode palette آمنة ومتسقة على سطح التقارير (5ms)
+  ✘  48 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 320 (7ms)
+  ✘  49 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 360 (4ms)
+  ✘  50 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 375 (11ms)
+  ✘  51 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 390 (5ms)
+  ✘  52 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 412 (5ms)
+  ✘  53 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 768 (6ms)
+  ✘  54 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 1024 (3ms)
+  ✘  55 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1280 (4ms)
+  ✘  56 [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1440 (4ms)
+
+
+  1) [chromium] › e2e/dark-mode.spec.ts:9:1 › يطبق dark mode palette آمنة ومتسقة على سطح التقارير ──
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/dark-mode-يطبق-dark-mode-p-df6e1-منة-ومتسقة-على-سطح-التقارير-chromium/error-context.md
+
+  2) [chromium] › e2e/financial-governance.spec.ts:5:3 › financial governance workspace › loads tenant-scoped control summary without external operations 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('#email')
+
+
+       at helpers.ts:65
+
+      63 | export async function setupAuthenticatedPage(page: Page) {
+      64 |   await page.goto("/login");
+    > 65 |   await page.locator("#email").fill(TEST_CREDENTIALS.email);
+         |                                ^
+      66 |   await page.locator("#password").fill(TEST_CREDENTIALS.password);
+      67 |   await page.locator('button[type="submit"]').click();
+      68 |   await page.waitForURL(/\/dashboard/);
+        at setupAuthenticatedPage (/home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3/e2e/helpers.ts:65:32)
+        at /home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3/e2e/financial-governance.spec.ts:55:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/financial-governance-finan-d0cca-without-external-operations-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/financial-governance-finan-d0cca-without-external-operations-chromium/error-context.md
+
+  3) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 320 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-0e9ae-ة-واتجاه-RTL-على-الهاتف-320-chromium/error-context.md
+
+  4) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 360 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-04fc0-ة-واتجاه-RTL-على-الهاتف-360-chromium/error-context.md
+
+  5) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 375 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-b70a7-ة-واتجاه-RTL-على-الهاتف-375-chromium/error-context.md
+
+  6) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 390 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-bfc0e-ة-واتجاه-RTL-على-الهاتف-390-chromium/error-context.md
+
+  7) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 412 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-7226e-ة-واتجاه-RTL-على-الهاتف-412-chromium/error-context.md
+
+  8) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 768 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-dfd92-ة-واتجاه-RTL-على-اللوحي-768-chromium/error-context.md
+
+  9) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 1024 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-90a6a--واتجاه-RTL-على-اللوحي-1024-chromium/error-context.md
+
+  10) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1280 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-fd412-جاه-RTL-على-سطح-المكتب-1280-chromium/error-context.md
+
+  11) [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1440 
+
+    Error: browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/chromium
+
+    Error Context: test-results/reports-safe-empty-سطح-الت-11fd6-جاه-RTL-على-سطح-المكتب-1440-chromium/error-context.md
+
+  12) [chromium] › e2e/results.spec.ts:15:3 › Results safe transitional surface › shows a safe bridge instead of ungoverned result data 
+
+    Test timeout of 30000ms exceeded while running "beforeEach" hook.
+
+      3 |
+      4 | test.describe("Results safe transitional surface", () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await mockLogin(page);
+      7 |     await setupAuthenticatedPage(page);
+      8 |   });
+        at /home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3/e2e/results.spec.ts:5:8
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('#email')
+
+
+       at helpers.ts:65
+
+      63 | export async function setupAuthenticatedPage(page: Page) {
+      64 |   await page.goto("/login");
+    > 65 |   await page.locator("#email").fill(TEST_CREDENTIALS.email);
+         |                                ^
+      66 |   await page.locator("#password").fill(TEST_CREDENTIALS.password);
+      67 |   await page.locator('button[type="submit"]').click();
+      68 |   await page.waitForURL(/\/dashboard/);
+        at setupAuthenticatedPage (/home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3/e2e/helpers.ts:65:32)
+        at /home/samertts/workspace/projects/gula-integration-v4-execution/frontend-v3/e2e/results.spec.ts:7:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/results-Results-safe-trans-2e544-d-of-ungoverned-result-data-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/results-Results-safe-trans-2e544-d-of-ungoverned-result-data-chromium/error-context.md
+
+  12 failed
+    [chromium] › e2e/dark-mode.spec.ts:9:1 › يطبق dark mode palette آمنة ومتسقة على سطح التقارير ───
+    [chromium] › e2e/financial-governance.spec.ts:5:3 › financial governance workspace › loads tenant-scoped control summary without external operations 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 320 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 360 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 375 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 390 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على الهاتف 412 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 768 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على اللوحي 1024 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1280 
+    [chromium] › e2e/reports-safe-empty.spec.ts:23:5 › سطح التقارير الآمن › يعرض حالة آمنة واتجاه RTL على سطح المكتب 1440 
+    [chromium] › e2e/results.spec.ts:15:3 › Results safe transitional surface › shows a safe bridge instead of ungoverned result data 
+  44 passed (3.5m)
+EXIT=1

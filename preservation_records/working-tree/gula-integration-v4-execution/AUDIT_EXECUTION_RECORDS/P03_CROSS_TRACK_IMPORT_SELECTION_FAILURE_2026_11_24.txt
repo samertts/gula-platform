@@ -1,0 +1,101 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/opencode/p03-concurrency/backend
+configfile: pytest.ini
+plugins: asyncio-1.5.0, anyio-4.16.0, timeout-2.4.0, Faker-40.63.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 14 items
+
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py . [  7%]
+FFFFFFFFFFFFF                                                            [100%]
+
+=================================== FAILURES ===================================
+_______ test_isolation_matrix_rejects_unsafe_transactions_before_insert ________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:153: in test_isolation_matrix_rejects_unsafe_transactions_before_insert
+    with pytest.raises(audit_service.AuditChainIsolationError):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'app.services.audit_service' has no attribute 'AuditChainIsolationError'
+_______ test_advisory_lock_is_transaction_scoped_and_timeout_is_bounded ________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:190: in test_advisory_lock_is_transaction_scoped_and_timeout_is_bounded
+    with pytest.raises(OperationalError) as exc_info:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE OperationalError
+_________________ test_rollback_and_replay_do_not_break_chain __________________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:228: in test_rollback_and_replay_do_not_break_chain
+    assert emitted == []
+E   AssertionError: assert [(1, 'a0f9db8...f08228800f8')] == []
+E     
+E     Left contains one more item: (1, 'a0f9db84dda5b8fb4fcf252516160f7bb81d729610ae4c28a1a58f08228800f8')
+E     Use -v to get more diff
+____________ test_repeated_stress_has_no_forks_or_lost_events[0-10] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 10, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:05.868393+00:00', 'stored_hash': '1379e6d7938eac6c2da9c76329ae28c6513f892ace261783f60197b3f00232bc', ...}, ...], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[0-20] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 20, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:06.105966+00:00', 'stored_hash': 'c21bbd0229872ddaa6baf8f77ceca19397536c8a2c13c62de8806613ba83d5bf', ...}, ...], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[0-50] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 50, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:06.354413+00:00', 'stored_hash': 'eb38bf76fb83f58244db28e5ffd4df920592dd78931783d4f7bdf2f7076f68b1', ...}, ...], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[1-10] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 10, 'broken_entries': [{'id': 2, 'action': 'test.concurre...T09:25:06.714192+00:00', 'stored_hash': '79455ab428f3dec58e521a144751df775fc2e005b4ba2ae90d569137f98e679c', ...}], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[1-20] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 20, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:06.955811+00:00', 'stored_hash': '10f88287b4014b180926901fb8d584b8adec8bd355ee3ee690c141b0def90a0d', ...}, ...], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[1-50] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 50, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:07.223526+00:00', 'stored_hash': '3a0041b9006baf1df72100d3c1805816ed542931a6bbb3ceebed480f78cf4662', ...}, ...], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[2-10] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 10, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:07.628644+00:00', 'stored_hash': '1ce3051fda85730c789524319e299490ec300ba105658959eeae362045ba2fd8', ...}, ...], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[2-20] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 20, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:07.819615+00:00', 'stored_hash': '305326af146e98d9ceb7fb0a89f4a1397e784ef0c5ec62c6e9bdaea5ec7be43c', ...}, ...], ...}
+E   assert False is True
+____________ test_repeated_stress_has_no_forks_or_lost_events[2-50] ____________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:251: in test_repeated_stress_has_no_forks_or_lost_events
+    assert verification["verified"] is True, verification
+E   AssertionError: {'status': 'tampered', 'verified': False, 'entries_checked': 50, 'broken_entries': [{'id': 2, 'action': 'test.concurre...5:08.108408+00:00', 'stored_hash': '96448fff8c58c29a49f44495b5679f7639ce29b287e21f2a5df3a1a4cf897f5e', ...}, ...], ...}
+E   assert False is True
+__________ test_lock_is_acquired_before_sequence_and_predecessor_read __________
+../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py:265: in test_lock_is_acquired_before_sequence_and_predecessor_read
+    lock_at = log_body.index("pg_advisory_xact_lock")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: substring not found
+=============================== warnings summary ===============================
+../../../../home/samertts/.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/samertts/.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_isolation_matrix_rejects_unsafe_transactions_before_insert
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_advisory_lock_is_transaction_scoped_and_timeout_is_bounded
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_rollback_and_replay_do_not_break_chain
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[0-10]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[0-20]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[0-50]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[1-10]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[1-20]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[1-50]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[2-10]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[2-20]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_repeated_stress_has_no_forks_or_lost_events[2-50]
+FAILED ../../p03-concurrency/backend/tests/test_p03_concurrency_validation_postgres.py::test_lock_is_acquired_before_sequence_and_predecessor_read
+=================== 13 failed, 1 passed, 1 warning in 3.46s ====================
+EXIT=1

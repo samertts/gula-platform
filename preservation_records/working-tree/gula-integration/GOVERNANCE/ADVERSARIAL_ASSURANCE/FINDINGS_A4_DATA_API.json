@@ -1,0 +1,371 @@
+{
+  "audit_id": "A4",
+  "audit_name": "GULA Extreme Adversarial Audit & Remediation Program — Team A (independent adversarial auditor)",
+  "scope": "DATABASE INTEGRITY / MIGRATIONS + API & INTEROPERABILITY",
+  "repository": "/home/samertts/workspace/projects/gula-integration",
+  "branch": "integration/gula-unification-v1",
+  "head": "2206654dc713ea2de8c564a3207dfe05fde23549",
+  "sibling_repository": "/home/samertts/workspace/projects/gula-platform (READ-ONLY, pinned f478676b; not modified)",
+  "method": "STATIC SOURCE AUDIT ONLY. AST parsing, grep and file reads. No git add/commit/push, no operational DB connection, no migration execution, no network, no secrets, no synthetic data creation in source. All reproduction steps are static/falsifiable.",
+  "status_vocabulary": ["IMPLEMENTED", "TESTED", "INTEGRATED", "INDEPENDENTLY VERIFIED", "PRODUCTION READY", "BLOCKED", "NOT IMPLEMENTED"],
+  "status_note": "No audited work is awarded INDEPENDENTLY VERIFIED or PRODUCTION READY (Team C only). Every finding below has status DISCOVERED. Positive corroborations use IMPLEMENTED/TESTED only where sourced from the cited evidence; none are release certifications.",
+  "owner_decisions_immutable": ["HOLD", "MPI REJECT", "MP-001", "ODR-001", "ODR-002", "ODR-003", "ODR-004", "D-020", "D-021", "ADR-A", "ADR-B", "ADR-C", "ADR-D", "ADR-E", "ADR-F", "ADR-G", "ADR-H", "ADR-I", "ADR-J", "AUD-02", "AUD-07", "AUD-16"],
+  "classification_vocabulary": ["safe additive", "requires data transformation", "potentially destructive", "breaking", "unresolved", "owner-decision"],
+  "coverage": {
+    "databases_and_migrations": {
+      "migration_files_enumerated": 107,
+      "unique_revisions": 107,
+      "duplicate_revisions": 0,
+      "cycles": 0,
+      "roots": ["20250322_0000"],
+      "heads_single": ["20261114_0006"],
+      "merge_migrations": ["20260815_0003", "20260815_0015", "20260819_0001", "20260908_0001"],
+      "historical_branch_points": ["20260814_0006", "20260814_0011", "20260815_0002", "20260815_0022", "20260819_0003"],
+      "upgrade_op_counts": {
+        "op.create_table": 435,
+        "op.create_index": 943,
+        "op.execute": 233,
+        "op.add_column": 75,
+        "op.get_bind": 55,
+        "op.create_foreign_key": 10,
+        "op.batch_alter_table": 7,
+        "op.bulk_insert": 3,
+        "op.create_unique_constraint": 3,
+        "op.drop_constraint": 3,
+        "op.drop_table_in_downgrade_only": true
+      },
+      "chain_verdict": "Single head, single root, no duplicates, no cycles — no finding raised on chain topology. Initial multi-head signal was an AST artifact (annotated `revision: str = ...` assignments) and was falsified by the refined scan.",
+      "consulted": ["backend/migrations/versions/** (107 files)", "backend/migrations/env.py", "backend/app/database.py", "backend/app/ehr/models/allergy.py", "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_DB_ALEMBIC_DIFF_CLASSIFICATION.md", "GOVERNANCE/DATABASE_COMPATIBILITY_REPORT.md", "GOVERNANCE/MIGRATION_RECONCILIATION_MATRIX.md", "GOVERNANCE/FINAL_DECISION.md", "GOVERNANCE/PHASE_C_DATABASE_REHEARSAL_REPORT.md"],
+      "static_crosscheck_284_1364": {
+        "category_sum": "191 + 5 + 6 + 82 = 284 (PASS)",
+        "inventory_sum": "16 grouped rows: 6+5+4+6+21+2+5+1+43+45+32+45+37+17+10+5 = 284 (PASS)",
+        "fk_gap_root_cause": "app/ehr/models/allergy.py:14 ForeignKey('national_encounters.id'); zero migration files define national_encounters (CONFIRMED by grep)",
+        "three_mentioned_tables": "hospital_operation_theaters, national_citizens, national_patients appear only as guarded conditional FK targets, never as create_table (CONFIRMED)",
+        "1364_destructive_ops": "NOT independently reproducible statically — derived from live-PG alembic check diff. Owner-gated BLOCKED; no PG connection used by this audit. Arithmetically internally consistent per GOVERNANCE/NATIONAL_INTEGRATION/ADVERSARIAL_REVIEW_RECORD.md:97."
+      }
+    },
+    "api_and_interoperability": {
+      "route_functions_enumerated": 2408,
+      "active_routers_in_factory": 83,
+      "auth_scan_result": "No confirmed unauthenticated sensitive endpoint found after accounting for router-level `dependencies=[Depends(...)]` and helper dependencies (e.g. _read_actor, _READ). Initial 'unauthenticated' hits (NIAM accounts 410 Gone, ecosystem router system:admin guard, contracts _READ/_WRITE, blood-bank router system:admin) were individually falsified by reading code.",
+      "consulted": ["backend/app/factory.py", "backend/app/main.py", "backend/app/capabilities/fhir_interoperability/**", "backend/app/interoperability/fhir_http/**", "backend/app/integration/routes.py", "backend/app/integration/standards/**", "backend/app/routes/oauth2.py", "backend/app/security/oauth2_provider.py", "backend/app/security/auth.py", "backend/app/security/dependencies.py", "shared/auth/jwt.py", "backend/app/middleware.py", "backend/app/health_core/terminology/**", "backend/tests/health_core/test_quality_review_static.py", "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_T6_FHIR_EVIDENCE.md", "GOVERNANCE/NATIONAL_SERVICE_CONTRACTS.md", "GOVERNANCE/PUBLIC_ENDPOINT_REGISTER.md"],
+      "fhir_r4": "T6 fhir_http router CONFIRMED non-activated (no import in factory.py/main.py); WS-E guard CONFIRMED holding (AST checks + FINAL_DECISION.md MD5 effdfeaf10234678d83b2668c4489552 matches). ACTIVE router capabilities.fhir_interoperability audited — see AUD-API-006.",
+      "hl7_v2": "Synthetic ORU^R01 subset parser audited (hl7.py); see AUD-API-007.",
+      "dicom": "Only dataclasses + hardcoded service/modality lists; no DICOM protocol engine — see AUD-API-008.",
+      "loinc_snomed_icd_ucum": "Robust curated validators exist ONLY in non-activated health_core synthetic slice; active integration/standards TerminologyService is declaration-only — see AUD-API-008.",
+      "oauth_oidc": "Discovery/JWKS fail-closed posture corroborated (JWKS 503, HS256-only). Claim/validation defects raised in AUD-API-002/003/004/005.",
+      "rate_limiting": "GlobalRateLimitMiddleware present and wired (factory.py:429,443); all paths except _ALWAYS_ALLOWED_PATHS covered by coarse IP budget. No 'missing rate limiting' finding raised.",
+      "not_covered": ["Runtime HTTP exercise (no server started, no network)", "Live PostgreSQL verification (prohibited)", "Full 2408-endpoint line-by-line semantic review (risk-sampled; router-level deps verified on all flagged candidates)"]
+    }
+  },
+  "findings_summary": {
+    "total": 15,
+    "by_severity": {"CRITICAL": 0, "HIGH": 5, "MEDIUM": 8, "LOW": 2},
+    "by_area": {"AUD-DB": 6, "AUD-API": 9},
+    "owner_gated_true": 10,
+    "owner_gated_false": 5
+  },
+  "findings": [
+    {
+      "id": "AUD-DB-001",
+      "title": "Tenant isolation is application-only; no database-enforced row-level security",
+      "file_line_evidence": [
+        "backend/app/database.py:20-24 — lab_id held in contextvars.ContextVar, not a DB session setting",
+        "backend/app/database.py:284-298 — get_db() yields a plain Session; no SET LOCAL / current_setting / tenant role",
+        "backend/migrations/versions/*.py (all 107 files) — zero CREATE POLICY / ROW LEVEL SECURITY / current_setting() statements (grep verified)"
+      ],
+      "reproduction": "Static: `grep -rniE 'ROW LEVEL SECURITY|CREATE POLICY|current_setting\\(|SET LOCAL' backend/migrations/versions/*.py` returns zero DDL policy hits. Falsification: point to any migration that creates an RLS policy or to get_db() setting a tenant context — none exists.",
+      "root_cause": "Multi-tenancy was implemented exclusively as `lab_id == actor.lab_id` filters in repository/service queries; no database-level defense in depth.",
+      "impact": "A single omitted/incorrect lab_id predicate in any query (present or future) exposes cross-tenant PHI. No DB-level backstop; national deployment raises breach and confidentiality impact.",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "classification": "owner-decision",
+      "recommended_remediation": "Owner decision first (ADR-A/tenant architecture): evaluate PostgreSQL RLS with session tenant context as defense in depth; meanwhile run a static query audit asserting every PHI-table query carries a lab_id predicate.",
+      "alternatives": ["(1) Keep app-only scoping + mandatory query-lint gate (lowest cost, weaker)", "(2) Add RLS policies per tenant-bearing table (strong, migration-heavy, owner-gated)", "(3) Separate schemas/databases per tenant (strongest, highest TCO, conflicts with national single-deployment model)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-DB-002",
+      "title": "Unguarded drop_constraint in 20260815_0016 breaks fresh-install and drifted-DB upgrade paths",
+      "file_line_evidence": [
+        "backend/migrations/versions/20260815_0016_device_tenant_isolation.py:16-21 — op.drop_constraint('uq_integrated_devices_uid', ...) with no table/constraint existence guard",
+        "backend/migrations/versions/20260815_0016_device_tenant_isolation.py:22-26 — creates composite (lab_id, device_uid) unique constraint",
+        "backend/migrations/versions/20260815_0016_device_tenant_isolation.py:29-39 — downgrade re-adds global unique on device_uid"
+      ],
+      "reproduction": "Static: construct a database where uq_integrated_devices_uid does not exist (fresh install whose ORM model already declares only the composite constraint) and run `alembic upgrade 20260815_0016`; the unguarded drop raises a lookup error. Falsification: show a runtime inspector guard in upgrade(). Contrast guarded sibling backend/migrations/versions/20260815_0002_scope_inbox_idempotency.py:27-40. Downgrade falsification: insert two rows with same device_uid under different lab_id, then downgrade — global unique creation fails.",
+      "root_cause": "Migration authored for one lineage state only; no inspector-based idempotency guard unlike neighbouring revisions.",
+      "impact": "Forward upgrade can abort mid-chain on fresh/drifted databases; downgrade is data-dependent and may fail after legitimate per-lab duplicate UIDs exist.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "classification": "potentially destructive",
+      "recommended_remediation": "Wrap both drop and create in inspector guards (mirroring 20260815_0002) and document a data-reconciliation precondition for downgrade.",
+      "alternatives": ["(1) Guard with inspector (recommended, mechanical)", "(2) Move constraint changes into a new forward-only reconciliation migration behind ADR-A", "(3) Accept forward-only and make downgrade a documented no-op with explicit warning"],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-DB-003",
+      "title": "Claims global idempotency uniqueness and NOT NULL constraints dropped; downgrade not reliably reversible",
+      "file_line_evidence": [
+        "backend/migrations/versions/20261114_0001_unify_foundation.py:9-11 — header claims 'Every statement is additive or widening ... safe on an existing database'",
+        "backend/migrations/versions/20261114_0001_unify_foundation.py:106-120 — op.execute('ALTER TABLE claims DROP CONSTRAINT IF EXISTS claims_idempotency_key_key') then composite unique index (lab_id, idempotency_key)",
+        "backend/migrations/versions/20261114_0001_unify_foundation.py:83 and :97 — _drop_not_null('organizations','name'), _drop_not_null('facilities','name')",
+        "backend/migrations/versions/20261114_0001_unify_foundation.py:172-176 — downgrade re-adds global UNIQUE (idempotency_key)"
+      ],
+      "reproduction": "Static: read lines 106-120 and compare with the header claim at 9-11. Falsification attempt: two claims rows with identical idempotency_key in different labs after upgrade; downgrade then fails re-adding global unique. Also note downgrade deliberately does not restore NOT NULL (line 178-180).",
+      "root_cause": "Idempotency scope was changed from global to per-lab, but the migration is documented as purely additive and its downgrade assumes pre-change data uniqueness.",
+      "impact": "Data-integrity semantics silently weakened; documentation misstates the operation class (breaking, not additive); partial rollback can fail on production data, contradicting recorded rollback posture.",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "classification": "breaking",
+      "recommended_remediation": "Correct the header to 'breaking (constraint scope change)'; record the idempotency-scope decision with the owner; provide a documented data check before downgrade or make downgrade conditional and honest about residual state.",
+      "alternatives": ["(1) Forward-only with documented residual state (recommended)", "(2) Data-reconciliation downgrade that deduplicates keys (destructive — requires owner approval)", "(3) Revert the scope change (would undo MP/ODR-scoped per-lab design — owner-gated)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-DB-004",
+      "title": "ORM foreign key targets an unmigrated table — static root cause of the 284-table gap / NR-011",
+      "file_line_evidence": [
+        "backend/app/ehr/models/allergy.py:14 — encounter_id = Column(String(26), ForeignKey('national_encounters.id', ondelete='SET NULL'), ...)",
+        "backend/migrations/versions/*.py — zero occurrences of 'national_encounters' (grep verified across all 107 files)",
+        "backend/migrations/env.py:36-40 — imports app.national.domain so the FK target is discovered by autogenerate",
+        "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_DB_ALEMBIC_DIFF_CLASSIFICATION.md:15,169-171 — 284 add_table differences; ADR-A BLOCKED"
+      ],
+      "reproduction": "Static: `grep -rn 'national_encounters' backend/migrations/versions/*.py` -> empty; `grep -n 'national_encounters' backend/app/ehr/models/allergy.py` -> line 14. Any autogenerate that resolves this FK cannot find a migrated target. Falsification: add a migration defining national_encounters (would change the 284 figure). This audit did NOT run alembic or connect to PG; no destructive migration proposed.",
+      "root_cause": "National domain ORM models were added to metadata without corresponding Alembic history; ownership of national_* tables is undecided (ADR-B/W1), so they cannot simply be generated.",
+      "impact": "Autogenerate abort / incomplete schema; EHR allergy encounters cannot be represented in the migrated schema; 284-table gap remains BLOCKED; national deployment data model incomplete. Immutable ADR-A decision respected — no migration produced.",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "classification": "owner-decision",
+      "recommended_remediation": "Owner must rule on ADR-A/ADR-B ownership before any CREATE_FORWARD wave. This auditor proposes NO migration and applies none. Static corroboration only.",
+      "alternatives": ["(1) Owner-approved staged forward waves (report §6)", "(2) Declare national_* intentionally unmigrated and remove from autogenerate scope (changes national platform design — owner-gated)", "(3) Leave BLOCKED (current posture; keeps HOLD)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-DB-005",
+      "title": "Migration/source drift: chain head revisions and 8 existing revisions are uncommitted in this worktree",
+      "file_line_evidence": [
+        "git status --porcelain backend/migrations/versions/ — 6 untracked files 20261114_0001..20261114_0006, 8 modified files",
+        "backend/migrations/versions/ on disk: 107 files; `git ls-files backend/migrations/versions/` returns 102",
+        "backend/migrations/versions/20261114_0006_unify_authorization_indexes.py:17-18 — revision 20261114_0006 / down 20261114_0006's parent; file is untracked (??) and is the single chain head"
+      ],
+      "reproduction": "Static: `git status --porcelain -- backend/migrations/versions/` and `git ls-files backend/migrations/versions/ | wc -l`. Falsification: commit the 6 head files and confirm 108 tracked / 0 untracked (not done — read-only mandate).",
+      "root_cause": "Integration worktree accumulated uncommitted migration lineage on top of 2206654d.",
+      "impact": "A clean/checkout operation silently collapses the chain to an earlier head, losing the 20261114 reconciliation set; governance documents describing the current schema would then be false. Integrity of all 284-gap evidence depends on uncommitted files.",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "classification": "unresolved",
+      "recommended_remediation": "Owner-directed commit of the migration head set after full verification; until then treat all schema evidence as worktree-scoped and non-durable.",
+      "alternatives": ["(1) Commit head migrations atomically after verification (recommended)", "(2) Archive a read-only snapshot of the 6 files under GOVERNANCE evidence (does not replace commit)", "(3) Keep HOLD and do not rely on this worktree for release decisions (current posture)"],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-DB-006",
+      "title": "Forward migration performs unlogged data deletion (role-permission over-grant repair)",
+      "file_line_evidence": [
+        "backend/migrations/versions/20260814_0006_security_audit_governance.py:179-184 — DELETE FROM niam_role_permissions WHERE role='organization_manager' AND permission='audit.read'"
+      ],
+      "reproduction": "Static read of upgrade() lines 179-184. Falsification: show an audit row written for this deletion or a downgrade step restoring the grant — neither exists in the file.",
+      "root_cause": "Security over-grant repair implemented as inline DML in an Alembic upgrade with no accompanying audit event or reversal path.",
+      "impact": "Authorization state changes without an immutable audit trail; if the repair is later deemed wrong, no deterministic restoration path. Low likelihood of harm because the deletion is narrowly scoped.",
+      "severity": "LOW",
+      "likelihood": "LOW",
+      "classification": "requires data transformation",
+      "recommended_remediation": "Emit a structured audit event for authorization-state DML in migrations and document the intended final grant set; avoid relying on migration DML as the sole control record.",
+      "alternatives": ["(1) Add audit event + documented final state (recommended)", "(2) Move to governed bootstrap service with its own audit log", "(3) Accept as-is with explicit owner note"],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-API-001",
+      "title": "Active admin endpoint GET /integration/standards deterministically raises AttributeError (HTTP 500)",
+      "file_line_evidence": [
+        "backend/app/integration/routes.py:171-205 — standards_conformance() reads fhir.fhir_version, fhir.capabilities, hl7.hl7_version, hl7.supported_message_types, dicom.supported_sop_classes, ihe.supported_profiles, terms.terminology_systems",
+        "backend/app/integration/standards/fhir.py:20-48 — FHIRService exposes _version/version(), NOT fhir_version/capabilities",
+        "backend/app/integration/standards/hl7.py:44-60 — HL7Service exposes _version/parse/create_message, NOT hl7_version/supported_message_types",
+        "backend/app/integration/standards/dicom.py:37-61 — DICOMService exposes dicom_services()/modalities(), NOT supported_sop_classes",
+        "backend/app/integration/standards/ihe.py:20-60 — IHEService exposes list_profiles()/_supported_profiles, NOT supported_profiles",
+        "backend/app/integration/standards/terminology.py:25-69 — TerminologyService exposes list_systems()/_supported_systems, NOT terminology_systems",
+        "backend/app/factory.py:766-767 — IntegrationPlatform().initialize(app) mounts this router in production startup"
+      ],
+      "reproduction": "Static: for each of the 6 attribute names, grep the defining class module — no definition exists (only underscored fields or methods). Any GET /integration/standards therefore hits AttributeError before returning. Falsification: add @property definitions for all six names and re-check; no such properties exist in the cited files. Note: this is a NO-network static deduction; no server was started.",
+      "root_cause": "Conformance-display endpoint was written against an assumed service API that the standards classes never implemented; no test covers this endpoint.",
+      "impact": "A mounted, system:admin-protected observability endpoint always fails (500). It is also the platform's advertised standards-conformance surface, so the failure masks whether FHIR/HL7/DICOM/termininology claims are real.",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "classification": "breaking",
+      "recommended_remediation": "Rewrite endpoint to call the real accessors (fhir.version(), ihe.list_profiles(), terms.list_systems(), dicom.dicom_services(), etc.) and add a focused endpoint test; do not invent new attributes to satisfy the endpoint.",
+      "alternatives": ["(1) Use real accessors + test (recommended)", "(2) Remove the endpoint from schema until implemented", "(3) Add thin @property aliases to standards classes (keeps 500 away but preserves conformance-theater semantics — not recommended)"],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-API-002",
+      "title": "Every OAuth2-issued access token is rejected by the platform's own protected endpoints",
+      "file_line_evidence": [
+        "backend/app/security/oauth2_provider.py:119-128 — create_access_token_oauth2() sets payload['type'] = 'oauth2_access'",
+        "backend/app/security/auth.py:99-106 — decode_token() returns None unless payload['type'] == 'access'",
+        "backend/app/security/dependencies.py:37-50,71-75 — get_current_user() uses decode_token() and rejects None; requires user_id",
+        "backend/app/security/oauth2_provider.py:151-158 — decode_oauth2_token() is the only decoder accepting 'oauth2_access'",
+        "grep — decode_oauth2_token has ZERO call sites anywhere in backend/app (definition only)",
+        "backend/app/routes/oauth2.py:144-160 — /oauth2/token issues these unusable tokens"
+      ],
+      "reproduction": "Static data-flow: /token -> create_access_token_oauth2(type='oauth2_access') -> presented as Bearer to any protected route -> get_current_user -> decode_token -> type mismatch -> None -> 401. Falsification: show a route/dependency that calls decode_oauth2_token, or change create_access_token_oauth2 to type='access' and add user_id for client_credentials. Neither exists.",
+      "root_cause": "OAuth2 provider was built as a parallel token kind with its own (orphaned) decoder instead of integrating with the canonical decode_token/get_current_user chain.",
+      "impact": "The entire OAuth2/OIDC authorization-code and refresh-token flow is non-functional against GULA's own API — tokens can be minted but never used. Any relying party integrating against advertised OAuth2 endpoints fails at first call. Public discovery advertises these endpoints as usable.",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "classification": "breaking",
+      "recommended_remediation": "Owner decision on OAuth2's role; then either (a) unify token type with canonical 'access' and populate user_id/lab_id/perm_ver claims, or (b) wire decode_oauth2_token into an accepted dependency and define its authorization semantics. Add an end-to-end test that mints via /token and calls a protected route.",
+      "alternatives": ["(1) Unify into canonical token pipeline (recommended; single decoder)", "(2) Keep separate decoder + explicit OAuth2 dependency on selected routers", "(3) Mark OAuth2 NOT INTEGRATED and remove from discovery until owner rules"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-API-003",
+      "title": "OAuth client registration and scope/grant assignment are ungoverned; grant_types never enforced",
+      "file_line_evidence": [
+        "backend/app/routes/oauth2.py:54-80 — POST /oauth2/register requires only get_current_user (no admin permission); caller chooses allowed_scopes, grant_types, response_types, token_endpoint_auth_method",
+        "backend/app/routes/oauth2.py:83-141 — /authorize stores caller-supplied `scope` verbatim (line 127); no check against client.allowed_scopes",
+        "backend/app/routes/oauth2.py:144-160 — /token dispatches on data.grant_type without checking client.grant_types",
+        "backend/app/routes/oauth2.py:242-249 — token_endpoint_auth_method == 'none' skips client secret verification",
+        "backend/app/security/oauth2_provider.py:212-216 — discovery advertises auth method 'none' and scopes openid/profile/email/read/write"
+      ],
+      "reproduction": "Static: any authenticated user can POST /register with is_confidential=false, token_endpoint_auth_method='none', allowed_scopes=['system:admin'], grant_types=['client_credentials']; then /authorize accepts an arbitrary scope. Falsification: show a permission dependency on /register or a scope/grant allowlist check at token issuance — absent in cited lines. Present impact is bounded because get_current_user requires user_id (client_credentials tokens have none) and RBAC reads roles, not token scope; but any scope-consuming relying party would be exposed.",
+      "root_cause": "Client onboarding treated as self-service utility; no governance boundary around OAuth2 trust anchors.",
+      "impact": "Attacker-controlled scope claims in minted tokens; public clients with arbitrary grants; governance/NIST least-privilege gap. Present platform RBAC limits escalation, so impact is latent rather than confirmed.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "classification": "owner-decision",
+      "recommended_remediation": "Require an admin/governance permission for client registration; validate requested scope against allowed_scopes at /authorize; enforce grant_types and response_types at /token and /authorize; restrict 'none' auth method to explicitly approved public clients.",
+      "alternatives": ["(1) Govern registration + enforce all allowlists (recommended)", "(2) Disable OAuth2 registration/issuance until owner rules (safe, matches current non-functional state)", "(3) Keep permissive with monitoring (not recommended for national platform)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-API-004",
+      "title": "JWT validation enforces only exp/iat — no audience, issuer or subject binding",
+      "file_line_evidence": [
+        "shared/auth/jwt.py:18-25 — _validate_claims() registry has exp and iat only",
+        "shared/auth/jwt.py:60-72 — decode_access_token() calls _validate_claims; no aud/iss checks",
+        "backend/app/security/oauth2_provider.py:119-129 — access-token payload has jti/client_id/type/user_id/scope but no aud or iss",
+        "backend/app/security/auth.py:99-106 — decode_token() adds only a type check"
+      ],
+      "reproduction": "Static: read the JWTClaimsRegistry construction at shared/auth/jwt.py:19-22 — keys are exp and iat. Falsification: show aud/iss in the registry or in create_access_token_oauth2 payload — absent.",
+      "root_cause": "Token validation was designed for a single shared-secret audience; no multi-client/national relying-party model was implemented.",
+      "impact": "Tokens minted for one client/realm are accepted anywhere the shared HMAC key is known; no audience isolation between national services. Contributes to OIDC claim-conformance gap.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "classification": "breaking",
+      "recommended_remediation": "Add aud/iss to issued tokens and validate them against configured expected values in decode_access_token; coordinate with AUD-API-002 unification so one decoder enforces the full claim set.",
+      "alternatives": ["(1) Full claims validation (recommended)", "(2) Document single-audience limitation and keep HOLD (current posture)", "(3) Separate signing keys per audience (higher key-management cost; ODR-gated asymmetric decision pending)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-API-005",
+      "title": "OAuth2 introspection and revocation endpoints require no client authentication",
+      "file_line_evidence": [
+        "backend/app/routes/oauth2.py:163-188 — POST /oauth2/introspect: no Depends on client auth; returns active, client_id, user_id, scope, token_type, exp",
+        "backend/app/routes/oauth2.py:191-205 — POST /oauth2/revoke: no client authentication; any caller can mark a token revoked",
+        "backend/app/security/oauth2_provider.py:205-210 — discovery advertises both endpoints"
+      ],
+      "reproduction": "Static: both function signatures contain only data/request/db parameters — no _authenticate_client call (contrast /token at line 150). Falsification: show a client-auth dependency or _authenticate_client() call inside introspect/revoke — absent.",
+      "root_cause": "RFC 7662/RFC 7009 client-authentication requirements were not implemented; endpoints were added as simple token-hash lookups.",
+      "impact": "Token information disclosure to any holder of a token string, and unauthenticated denial-of-service via revocation. Global IP rate limit exists but is a coarse mitigation, not client authentication.",
+      "severity": "MEDIUM",
+      "likelihood": "MEDIUM",
+      "classification": "breaking",
+      "recommended_remediation": "Require client authentication on both endpoints and restrict introspection response fields to those the authenticated client is entitled to (RFC 7662 §2.2).",
+      "alternatives": ["(1) Client auth + field scoping (recommended)", "(2) Remove endpoints from discovery and disable until implemented", "(3) Keep as-is relying on global rate limit (not recommended)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-API-006",
+      "title": "Active FHIR R4 router accepts arbitrary unvalidated JSON and returns non-FHIR errors",
+      "file_line_evidence": [
+        "backend/app/factory.py:656-658 — capabilities.fhir_interoperability.routes is MOUNTED (unlike the non-activated T6 router)",
+        "backend/app/capabilities/fhir_interoperability/schemas.py:21-22 — FHIRResourceInput model_config = ConfigDict(extra='allow')",
+        "backend/app/capabilities/fhir_interoperability/service.py:56,67 — payload.model_dump(exclude_none=True) persisted verbatim into FHIRResourceRecord.resource",
+        "backend/app/capabilities/fhir_interoperability/routes.py:26-31,107-112,155-156 — errors are plain HTTPException(detail=str), not application/fhir+json OperationOutcome",
+        "backend/app/capabilities/fhir_interoperability/schemas.py:79-86 — CapabilityStatement declares fhirVersion 4.0.1 but no type/profile/terminology validation"
+      ],
+      "reproduction": "Static: POST /fhir-interoperability/resources with a valid resourceType plus arbitrary extra fields; schemas.py:22 allows them and service.py:56 stores them. Trigger 404 at routes.py:155-156 and observe a plain `{\"detail\": ...}` body, which is not an R4 OperationOutcome. Falsification: point to a canonicalization/allowlist step or an OperationOutcome exception handler on this router — neither exists. (The non-activated T6 router does implement OperationOutcome, but is not mounted.)",
+      "root_cause": "The mounted capability is a thin persistence facade; FHIR conformance is represented by type names and a CapabilityStatement rather than by validation of FHIR structures, references, profiles or terminology.",
+      "impact": "Stored PHI resources may contain arbitrary client-controlled fields; interoperability clients cannot rely on FHIR error semantics; nominal R4 conformance could be mistaken for real conformance in national integration.",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "classification": "breaking",
+      "recommended_remediation": "Set extra='forbid' (or canonicalize through the in-repo Health Core FhirR4Adapter), validate CodeableBinding/terminology and references, and add an exception handler emitting R4 OperationOutcome for all failures on this router.",
+      "alternatives": ["(1) Reuse canonical FHIR adapters + OperationOutcome (recommended; reuse before build)", "(2) Keep facade but document as NOT FHIR-conformant and remove R4 claims from CapabilityStatement", "(3) Activate T6 router instead after real auth boundary (owner-gated, D-020)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-API-007",
+      "title": "HL7 OBX numeric values 'NaN'/'Infinity' cause HTTP 500 in active FHIR conversion endpoint",
+      "file_line_evidence": [
+        "backend/app/capabilities/fhir_interoperability/hl7.py:96-107 — float(value) with no isfinite() guard; NaN/Infinity flow into valueQuantity.value",
+        "backend/app/capabilities/fhir_interoperability/routes.py:71-85 — POST /hl7/convert returns the bundle dict via FastAPI JSON serialization",
+        "Starlette JSONResponse.render (verified from installed source) — json.dumps(..., allow_nan=False)"
+      ],
+      "reproduction": "Static: send an ORU^R01 message whose OBX-5 is 'NaN' (or 'Infinity'); _observation_value returns float('nan'); Starlette JSONResponse raises ValueError on allow_nan=False → 500. Falsification: show math.isfinite() guard or string coercion before serialization — absent.",
+      "root_cause": "Numeric parsing accepts all float() lexical forms without domain validation; response serialization is strict RFC 8259.",
+      "impact": "Low-cost unauthenticated-to-this-router (but system:admin at router level) request can produce 500s and log noise; corrupt numeric FHIR observations if a non-strict serializer is later introduced.",
+      "severity": "LOW",
+      "likelihood": "MEDIUM",
+      "classification": "unresolved",
+      "recommended_remediation": "Reject non-finite floats (math.isfinite) and emit valueString or a 422 for non-numeric/non-finite OBX values; bound OBX-5 length.",
+      "alternatives": ["(1) isfinite guard (recommended)", "(2) Coerce to string (loses numeric semantics)", "(3) Pydantic strict Decimal parsing"],
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-API-008",
+      "title": "Terminology/DICOM 'support' is declaration-only — hardcoded lists with no validation engine",
+      "file_line_evidence": [
+        "backend/app/integration/standards/terminology.py:31-42 — supported systems from a hardcoded string map with zero concepts",
+        "backend/app/integration/standards/terminology.py:50-54 — validate() delegates to an empty CodeSystem for known systems (always False unless concepts registered); fallback branch unreachable for supported systems",
+        "backend/app/integration/standards/terminology.py:69 — is_supported() returns True purely from the string map",
+        "backend/app/integration/standards/dicom.py:37-61 — DICOMService has dataclasses and service/modality name lists, no DIMSE/network/UID validation",
+        "backend/app/integration/standards/fhir.py:32-35 — validate() checks only presence of 'resourceType'",
+        "backend/app/health_core/terminology/validators.py:225-303 — real LOINC check-digit/ICD-10/UCUM allowlist validators exist here, but WS-E guard keeps this package out of factory/main (backend/tests/health_core/test_quality_review_static.py:120-130)"
+      ],
+      "reproduction": "Static: instantiate TerminologyService; get_system('LOINC') creates an empty CodeSystem (lines 34-39); validate('LOINC','718-7') then evaluates `'718-7' in {}` -> False, while is_supported('LOINC') -> True. No DICOM protocol module exists in app/integration/standards/dicom.py. Falsification: show a caller that registers curated concepts into the active TerminologyService or a real DICOM engine — grep shows none.",
+      "root_cause": "Standards support was modeled as capability descriptors for reporting, not as validation engines; the robust validators live in an intentionally non-wired synthetic slice.",
+      "impact": "LOINC/SNOMED/ICD-10/UCUM and DICOM support claims in /integration/standards and NATIONAL_SERVICE_CONTRACTS are not enforceable in the active runtime; downstream clinical data can carry unvalidated codes/units.",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "classification": "unresolved",
+      "recommended_remediation": "Either wire the curated Health Core validators into the active boundary (respecting WS-E — do NOT move HTTP code into health_core) or explicitly reclassify standards support as NOT IMPLEMENTED in contracts. Add code-system content before claiming validation.",
+      "alternatives": ["(1) Reuse canonical validators via an adapter outside health_core (recommended)", "(2) Relabel descriptors as 'declared, not validated' and keep HOLD", "(3) Build new validators (violates reuse-before-build)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-API-009",
+      "title": "T6 FHIR router remains non-activated with a synthetic header principal — activation risk if wired unchanged",
+      "file_line_evidence": [
+        "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_T6_FHIR_EVIDENCE.md:46-49 — router not imported/registered in factory.py or main.py",
+        "GOVERNANCE/PHASE_B_EVIDENCE/PHASEB_T6_FHIR_EVIDENCE.md:84-88,132-134,160-163 — X-GULA-Principal header is synthetic; spoofable if activated",
+        "backend/app/factory.py — no fhir_http import/reference (verified by grep); only capabilities.fhir_interoperability is mounted at :656-658",
+        "backend/tests/health_core/test_quality_review_static.py:30,407,410-418 — WS-E guard: FINAL_DECISION.md MD5 effdfeaf10234678d83b2668c4489552 (verified matching on disk) and no HTTP/DDL artifacts in health_core; guard holds"
+      ],
+      "reproduction": "Static: grep 'fhir_http' in factory.py/main.py -> no hits; md5sum GOVERNANCE/FINAL_DECISION.md -> matches guard constant; AST guard conditions read and satisfied. Falsification: show a factory include_router for fhir_http (none) or a modified guard constant/MD5 mismatch (none). No defect is active today — this is a residual activation gate recorded for completeness.",
+      "root_cause": "Interim design uses a test-only header principal pending a real identity/authz boundary (D-020 owner-gated).",
+      "impact": "Currently zero runtime exposure. If mounted before replacing the synthetic principal, any caller able to set headers can impersonate a tenant/facility principal and access FHIR resources.",
+      "severity": "MEDIUM",
+      "likelihood": "LOW",
+      "classification": "owner-decision",
+      "recommended_remediation": "Keep non-activated (MP-001/ODR posture respected). Add a CI guard asserting no fhir_http import in factory/main, and require a real signed-token boundary plus D-020 ruling before activation.",
+      "alternatives": ["(1) Keep dormant + CI guard (recommended)", "(2) Replace header principal with canonical auth then activate (owner-gated, D-020)", "(3) Delete the router (destroys strategic dormant asset — not permitted)"],
+      "status": "DISCOVERED",
+      "owner_gated": true
+    }
+  ]
+}

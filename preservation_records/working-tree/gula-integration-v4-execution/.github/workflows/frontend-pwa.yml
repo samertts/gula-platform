@@ -1,0 +1,238 @@
+name: Frontend - PWA Build & Deploy
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend-v3/**'
+      - 'packages/uap/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'vercel.json'
+      - '.github/workflows/frontend-pwa.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend-v3/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+      run_lighthouse:
+        description: 'Run Lighthouse CI audit'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '24'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PWA_PROJECT_ID }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build PWA
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend-v3
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend-v3/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: frontend-v3/node_modules
+          key: node-modules-${{ hashFiles('frontend-v3/package-lock.json') }}
+          restore-keys: |
+            node-modules-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build PWA
+        run: npm run build
+        env:
+          CI: true
+          # Must end in /api: the production gateway (config/nginx/conf.d/api.conf)
+          # only reaches the backend under /api/, /auth/, /mobile/, /compliance/,
+          # /health/. An origin-only base URL sends /dashboard to the SPA handler.
+          VITE_API_BASE_URL: https://api.gula-platform.org/api
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pwa-build
+          path: frontend-v3/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload source maps
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pwa-source-maps
+          path: frontend-v3/dist/assets/*.map
+          if-no-files-found: warn
+          retention-days: 3
+
+  lighthouse:
+    name: Lighthouse CI Audit
+    needs: [build]
+    if: github.event_name == 'pull_request' || github.event.inputs.run_lighthouse == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend-v3
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: pwa-build
+          path: frontend-v3/dist/
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18
+        with:
+          configPath: frontend-v3/lighthouserc.json
+          temporaryPublicStorage: true
+          uploadArtifacts: true
+          runs: 3
+
+  deploy-vercel-preview:
+    name: Deploy Preview to Vercel
+    permissions:
+      contents: read
+      issues: write
+    needs: [build]
+    # Vercel is connected to Git and deploys previews automatically. Enable this
+    # optional CLI path only after VERCEL_CI_ENABLED and VERCEL_TOKEN are set.
+    if: github.event_name == 'pull_request' && vars.VERCEL_CI_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Download build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: pwa-build
+          path: frontend-v3/dist/
+
+      - name: Deploy to Vercel (Preview)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is not configured; skipping optional Vercel preview CLI deployment."
+            exit 0
+          fi
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --token="$VERCEL_TOKEN" > vercel-url.txt
+          echo "VERCEL_URL=$(cat vercel-url.txt)" >> "$GITHUB_ENV"
+
+      - name: Comment PR with preview URL
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Preview deployed\n\n**URL:** ${process.env.VERCEL_URL}\n\nLighthouse and build checks will be available shortly.`
+            })
+
+  deploy-vercel-production:
+    name: Deploy Production to Vercel
+    needs: [build]
+    # Deploy explicitly for main pushes and manual production dispatches.
+    # The Vercel token is stored only in GitHub Secrets.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Download build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: pwa-build
+          path: frontend-v3/dist/
+
+      - name: Deploy to Vercel (Production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is not configured; skipping optional Vercel production CLI deployment."
+            exit 0
+          fi
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel deploy --prod --prebuilt --token="$VERCEL_TOKEN"
+
+      - name: Upload source maps to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: gula-platform
+          SENTRY_PROJECT: frontend-pwa
+          RELEASE_REF: ${{ github.ref_name }}
+        run: |
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "SENTRY_AUTH_TOKEN is not configured; skipping optional source-map upload."
+            exit 0
+          fi
+          npx @sentry/cli releases new "$RELEASE_REF"
+          npx @sentry/cli releases files "$RELEASE_REF" upload-sourcemaps frontend-v3/dist/assets/
+          npx @sentry/cli releases set-commits "$RELEASE_REF" --auto
+          npx @sentry/cli releases finalize "$RELEASE_REF"

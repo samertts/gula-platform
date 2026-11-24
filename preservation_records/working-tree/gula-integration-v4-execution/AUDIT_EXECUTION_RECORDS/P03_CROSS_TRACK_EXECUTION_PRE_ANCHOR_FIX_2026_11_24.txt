@@ -1,0 +1,34 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/samertts/workspace/projects/gula-integration-v4-execution/backend
+configfile: pytest.ini
+plugins: asyncio-1.5.0, anyio-4.16.0, timeout-2.4.0, Faker-40.63.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 14 items
+
+tests/test_p03_cross_track_validation_postgres.py ..FF..........         [100%]
+
+=================================== FAILURES ===================================
+_______ test_advisory_lock_is_transaction_scoped_and_timeout_is_bounded ________
+tests/test_p03_cross_track_validation_postgres.py:194: in test_advisory_lock_is_transaction_scoped_and_timeout_is_bounded
+    assert exc_info.value.orig.pgcode == "55P03"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'LockNotAvailable' object has no attribute 'pgcode'. Did you mean: 'pgconn'?
+_________________ test_rollback_and_replay_do_not_break_chain __________________
+tests/test_p03_cross_track_validation_postgres.py:228: in test_rollback_and_replay_do_not_break_chain
+    assert emitted == []
+E   AssertionError: assert [(1, '8a3b1c4...f5e64de0177')] == []
+E     
+E     Left contains one more item: (1, '8a3b1c4c1d86688300e25a7a2ec17b9850cc5fa23de977eb68acef5e64de0177')
+E     Use -v to get more diff
+=============================== warnings summary ===============================
+../../../../.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/samertts/.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_p03_cross_track_validation_postgres.py::test_advisory_lock_is_transaction_scoped_and_timeout_is_bounded
+FAILED tests/test_p03_cross_track_validation_postgres.py::test_rollback_and_replay_do_not_break_chain
+=================== 2 failed, 12 passed, 1 warning in 6.34s ====================
+EXIT=1

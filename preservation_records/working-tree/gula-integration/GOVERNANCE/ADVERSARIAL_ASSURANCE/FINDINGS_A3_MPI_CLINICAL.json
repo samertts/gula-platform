@@ -1,0 +1,388 @@
+{
+  "audit_id": "A3",
+  "audit_name": "Team A adversarial reassessment - MPI identity and clinical safety",
+  "audit_date": "2026-11-18",
+  "repository": "gula-integration",
+  "audited_ref": "2206654dc713ea2de8c564a3207dfe05fde23549",
+  "mode": "read-only static adversarial audit with synthetic reproduction designs",
+  "sibling_repository": {
+    "path": "/home/samertts/workspace/projects/gula-platform",
+    "head": "f478676b6fc375338648dde46fbf076c015a3f91",
+    "written": false
+  },
+  "protected_document_md5_verified": {
+    "GOVERNANCE/FINAL_DECISION.md": "effdfeaf10234678d83b2668c4489552",
+    "GOVERNANCE/IDENTITY_REMEDIATION/MPI_FINAL_INDEPENDENT_AUDIT.md": "1a02c01563c93b07a7cdb92c0462bf36",
+    "GOVERNANCE/IDENTITY_REMEDIATION/MPI_INDEPENDENT_AUDIT_FINDINGS.md": "ea3969d09aaf7b0b28a065838b44a594"
+  },
+  "status_vocabulary_note": "New findings carry the required lifecycle status DISCOVERED. The separate assurance_status field uses only IMPLEMENTED, TESTED, INTEGRATED, BLOCKED and NOT IMPLEMENTED. No elevated assurance status was awarded to audited work.",
+  "coverage": {
+    "mpi_prior_findings_reassessed": 16,
+    "mpi_reassessment_counts": {
+      "implemented_or_tested": 13,
+      "partially_implemented_owner_blocked": 1,
+      "blocked_on_owner_decision": 2
+    },
+    "clinical_workflows_reviewed": [
+      "LIMS result auto-validation",
+      "LIMS critical-result workflow endpoint",
+      "LIMS event definitions and emitters",
+      "Pharmacy interaction, allergy, contraindication and dose engines"
+    ],
+    "source_files_inspected": [
+      "backend/app/services/mpi/resolver.py",
+      "backend/app/services/mpi/api.py",
+      "backend/app/services/mpi/models.py",
+      "backend/app/services/mpi/canonical_service.py",
+      "backend/app/services/mpi/reliability.py",
+      "backend/app/routes/canonical_patient.py",
+      "backend/app/routes/compliance.py",
+      "backend/app/models/canonical_patient.py",
+      "backend/app/config.py",
+      "backend/app/lims/workflows.py",
+      "backend/app/lims/routes.py",
+      "backend/app/lims/services.py",
+      "backend/app/lims/events.py",
+      "backend/app/pharmacy/clinical.py",
+      "backend/app/pharmacy/base.py",
+      "backend/app/pharmacy/routes.py",
+      "shared/models/base.py"
+    ],
+    "verification_performed": [
+      "static source inspection",
+      "call-site and grep analysis",
+      "controlled comparison with protected governance documents",
+      "synthetic reproduction and falsification design"
+    ],
+    "verification_not_performed": [
+      "database connection",
+      "runtime HTTP execution",
+      "network access",
+      "test-suite execution",
+      "real patient data use",
+      "secret access",
+      "git staging, commit or push"
+    ],
+    "known_disclosed_failure_not_reported_as_new": [
+      "NR-011 FK test failure under tests/identity co-collection"
+    ],
+    "new_findings_total": 6,
+    "new_findings_by_severity": {
+      "CRITICAL": 1,
+      "HIGH": 4,
+      "MEDIUM": 0,
+      "LOW": 1
+    },
+    "new_findings_by_category": {
+      "MPI": 2,
+      "CLINICAL": 4
+    }
+  },
+  "owner_decisions_unchanged": {
+    "mpi_verdict": "REJECT",
+    "release_verdict": "HOLD",
+    "open_audits": [
+      "AUD-02",
+      "AUD-07",
+      "AUD-16"
+    ],
+    "open_decision_items": [
+      "MP-001",
+      "ODR-001",
+      "ODR-002",
+      "ODR-003",
+      "ODR-004",
+      "D-020",
+      "D-021",
+      "ADR-A",
+      "ADR-B",
+      "ADR-C",
+      "ADR-D",
+      "ADR-E",
+      "ADR-F",
+      "ADR-G",
+      "ADR-H",
+      "ADR-I",
+      "ADR-J"
+    ],
+    "decisions_made_by_this_audit": []
+  },
+  "findings": [
+    {
+      "id": "AUD-MPI-001",
+      "title": "Unverified lab-supplied NID short-circuits identity matching into an auto-claim",
+      "category": "MPI",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "assurance_status": "NOT IMPLEMENTED",
+      "owner_gated": true,
+      "owner_gate": "Identity/data owner decision required for NID provenance and verification authority policy.",
+      "linked_hazard": "H-MPI-001",
+      "evidence": [
+        {
+          "file:line": "backend/app/services/mpi/resolver.py:420-430",
+          "observation": "Any nid_hash equality hit sets best_candidate, best_score=1.0 and best_method=nid_exact without checking nid_verified."
+        },
+        {
+          "file:line": "backend/app/services/mpi/resolver.py:476-480",
+          "observation": "best_method == nid_exact auto-claims the citizen and records match_score 1.0 regardless of demographic disagreement."
+        },
+        {
+          "file:line": "backend/app/services/mpi/models.py:79",
+          "observation": "Citizen.nid_verified is Boolean nullable=False default=False."
+        },
+        {
+          "file:line": "backend/app/services/mpi/resolver.py:522",
+          "observation": "Genesis citizen is written with nid_verified=False."
+        },
+        {
+          "file:line": "backend/app/services/mpi/resolver.py:702",
+          "observation": "Detached citizen is written with nid_verified=False."
+        },
+        {
+          "file:line": "backend/app/routes/register.py:94",
+          "observation": "Registration path writes nid_verified=False."
+        },
+        {
+          "file:line": "backend/app/config.py:215-220",
+          "observation": "NID HMAC key falls back to other secrets in non-production with only a warning; key stability is a contributing control concern."
+        }
+      ],
+      "reproduction": "Synthetic only: seed citizen A with NID hash H and A's name/DOB/gender; seed lab patient P with B's name/DOB/gender but submit a raw national ID that hashes to H; call /mpi/resolve. Observe returned citizen A, match_method nid_exact, match_score 1.0, and nid_verified still false. No real patient data required.",
+      "falsification": "Finding is falsified if an authoritative verification gate blocks or downgrades an unverified nid_exact hit before auto-claim, or if a test proves nid_verified=True is required and set for this path.",
+      "root_cause": "The fast path treats hash equality of a submitted identifier as equivalent to verified national identity; the existing nid_verified field is not used as an authorization signal.",
+      "impact": "A wrong, stale or maliciously supplied NID can bind a lab patient to another person's canonical identity, propagating results and demographics to the wrong record. This is distinct from AUD-01 review-reject and AUD-04 concurrency race.",
+      "severity_rationale": "Wrong-patient identity linkage is a high-harm safety failure; exposure is not universal because an incorrect NID input or stale upstream identifier is required.",
+      "remediation": "Require an authoritative verification signal before nid_exact score 1.0; otherwise downgrade to probabilistic scoring and force pending_review when demographics disagree; persist verification provenance and reviewer; add a synthetic regression test asserting an unverified NID cannot auto-claim.",
+      "alternatives": [
+        "NID verification service assertion with cache expiry.",
+        "Dual-factor match requiring NID plus DOB and name agreement.",
+        "Owner-approved lab-trusted-identifier allowlist."
+      ],
+      "verification_scope": "Static source and grep analysis plus synthetic reproduction design; no runtime execution."
+    },
+    {
+      "id": "AUD-MPI-002",
+      "title": "Latent non-atomic canonical auto-create has no lock or DB uniqueness fence",
+      "category": "MPI",
+      "severity": "LOW",
+      "likelihood": "LOW",
+      "status": "DISCOVERED",
+      "assurance_status": "NOT IMPLEMENTED",
+      "owner_gated": true,
+      "owner_gate": "Full fence depends on MP-001 / ODR-004 schema and canonical-hardening decisions.",
+      "linked_hazard": "H-MPI-001",
+      "evidence": [
+        {
+          "file:line": "backend/app/services/mpi/canonical_service.py:20-61",
+          "observation": "find_or_create_canonical performs get-then-insert for CanonicalPatient and link rows without acquiring a canonical link lock."
+        },
+        {
+          "file:line": "backend/app/services/mpi/canonical_service.py:17",
+          "observation": "acquire_canonical_link_lock is imported."
+        },
+        {
+          "file:line": "backend/app/services/mpi/canonical_service.py:191",
+          "observation": "Lock is used in an explicit link function, not in find_or_create_canonical."
+        },
+        {
+          "file:line": "backend/app/services/mpi/canonical_service.py:237",
+          "observation": "Lock is used in the second explicit link function, not in find_or_create_canonical."
+        },
+        {
+          "file:line": "backend/app/models/canonical_patient.py:61-101",
+          "observation": "PatientLink and CitizenLink have indexes but no unique constraints on patient_id or citizen_id."
+        }
+      ],
+      "reproduction": "Synthetic design only: if a future caller invokes find_or_create_canonical for the same patient from two sessions, both can observe no existing canonical, insert two canonical rows and two links, and a later first() lookup can strand one canonical. Static grep found no current caller.",
+      "falsification": "Finding is falsified if all callers are proven to hold the same advisory lock with DB uniqueness, or if the helper is removed or converted to the locked link service.",
+      "root_cause": "The helper uses a check-then-insert pattern while the repository's canonical write discipline was added only to explicit link endpoints.",
+      "impact": "Dormant split-identity risk if the helper is wired into national onboarding; overlaps MP-001 but is a distinct code path.",
+      "severity_rationale": "Low because there are currently no callers; likelihood rises immediately if national onboarding adopts the helper.",
+      "remediation": "Acquire the canonical link lock inside the helper, re-check under lock, use conflict-safe insert, and require MP-001 uniqueness before exposing callers; add a concurrency test before first use.",
+      "alternatives": [
+        "Delete the unused helper.",
+        "Convert it to a thin wrapper over the locked link service."
+      ],
+      "verification_scope": "Static source and grep analysis; no runtime execution."
+    },
+    {
+      "id": "AUD-CLIN-001",
+      "title": "Critical-result notification workflow returns false success without emitting any notification, event, audit or outbox record",
+      "category": "CLINICAL",
+      "severity": "CRITICAL",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "assurance_status": "NOT IMPLEMENTED",
+      "owner_gated": true,
+      "owner_gate": "Clinical owner must define recipient, escalation and acknowledgement policy; outbox implementation itself is engineering work.",
+      "linked_hazard": "H-CLIN-001",
+      "evidence": [
+        {
+          "file:line": "backend/app/lims/workflows.py:1-5",
+          "observation": "Module docstring states every workflow emits events for notification, audit and external systems via the outbox pattern."
+        },
+        {
+          "file:line": "backend/app/lims/workflows.py:221-259",
+          "observation": "process_critical_result queries the result, computes notification_window and returns status alerted with action notify_ordering_physician; no notification, event, outbox, audit or delivery record is created."
+        },
+        {
+          "file:line": "backend/app/lims/events.py:113-114",
+          "observation": "CriticalResultDetected event class exists but grep found no emitter or call site."
+        },
+        {
+          "file:line": "backend/app/lims/routes.py:2174-2183",
+          "observation": "The endpoint returns the no-op process_critical_result value directly to the caller."
+        }
+      ],
+      "reproduction": "Synthetic only: create a synthetic Result with is_critical=true and is_panic=true in a synthetic lab; call the critical-result endpoint or process_critical_result; observe response status alerted and action notify_ordering_physician while notification/outbox/audit/event tables and the event bus remain unchanged. No real patient data required.",
+      "falsification": "Finding is falsified if a test demonstrates that the workflow emits a durable CriticalResultDetected event or outbox/notification/audit record with delivery tracking and acknowledgement semantics on the same call.",
+      "root_cause": "The workflow implements only metadata computation; the documented steps 2-4 (log alert, determine pathway, trigger outbound notification) have no integration with the notification or outbox layer.",
+      "impact": "A critical or panic result can appear handled in API responses while no clinician is notified, creating delayed treatment, patient harm and medico-legal false assurance.",
+      "severity_rationale": "Missed critical-result notification can cause immediate harm or death; detectability is low because the API returns a success state.",
+      "remediation": "Implement transactional outbox/event emission with durable delivery attempts and acknowledgement state; fail the endpoint if no notification can be enqueued; write an audit row with actor, result, recipient and time; add tests that assert zero-alert and delivered-alert states distinctly.",
+      "alternatives": [
+        "Synchronous notification adapter with explicit failure propagation.",
+        "External LIMS alert bridge with a durable reconciliation check.",
+        "Capability-gated manual escalation queue until automated delivery is verified."
+      ],
+      "verification_scope": "Static source, event-definition and call-site analysis plus synthetic reproduction design; no runtime execution."
+    },
+    {
+      "id": "AUD-CLIN-002",
+      "title": "Auto-validation omits patient gender and age, permitting wrong reference interval and critical detection",
+      "category": "CLINICAL",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "status": "DISCOVERED",
+      "assurance_status": "NOT IMPLEMENTED",
+      "owner_gated": true,
+      "owner_gate": "Clinical/data owner must define authoritative demographic-specific reference ranges and fail-closed behavior for missing ranges.",
+      "linked_hazard": "H-CLIN-002",
+      "evidence": [
+        {
+          "file:line": "backend/app/lims/workflows.py:21-31",
+          "observation": "auto_validate_result exposes patient_age_days and patient_gender as optional arguments."
+        },
+        {
+          "file:line": "backend/app/lims/workflows.py:70-88",
+          "observation": "Gender and age filters are applied only when arguments are provided; selection orders by lab_id and gender descending with nulls last."
+        },
+        {
+          "file:line": "backend/app/lims/routes.py:2158-2163",
+          "observation": "The manual auto-validate endpoint passes only result value, test code, lab_id and instrument_id."
+        },
+        {
+          "file:line": "backend/app/lims/services.py:252-259",
+          "observation": "Result creation passes only value, test code, lab_id and instrument_id."
+        }
+      ],
+      "reproduction": "Synthetic only: configure two active ranges for the same test, one pediatric/female and one adult/generic with different critical_high; create a synthetic pediatric female result whose value is critical under the pediatric range but normal under the adult range; invoke either auto-validation call site. Observe that no gender/age filters are applied and a generic or wrong-specificity range can be selected. Falsification requires the call sites to pass demographics and a test proving the correct range is selected.",
+      "falsification": "Finding is falsified if all auto-validation call sites pass patient_age_days and patient_gender and regression tests prove the demographic-specific range is selected, with fail-closed behavior when no matching range exists.",
+      "root_cause": "Patient context is available in the caller layers but is dropped at the API boundary; the engine treats demographics as optional and silently falls back to generic ranges.",
+      "impact": "Abnormal or critical results can be reported as normal and auto-validated, or receive the wrong flag, especially for neonates, children and sex-specific analytes.",
+      "severity_rationale": "Both reachable call sites omit demographics, making exposure high; partial flags may provide some detection, so detectability is medium.",
+      "remediation": "Derive age in days and gender from the patient record at every call site and pass them explicitly; enforce required demographics for range-governed tests; log the selected range id and applied filters; add synthetic tests for pediatric, adult, male, female and missing-range cases.",
+      "alternatives": [
+        "Resolve ranges in a dedicated clinical-range service that fetches demographics by result id.",
+        "Fail validation and route to manual review whenever demographic-specific ranges cannot be resolved."
+      ],
+      "verification_scope": "Static source and call-site analysis plus synthetic reproduction design; no runtime execution."
+    },
+    {
+      "id": "AUD-CLIN-003",
+      "title": "Auto-validation critical flags are not persisted by the route, so critical-result workflow skips the result",
+      "category": "CLINICAL",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "assurance_status": "NOT IMPLEMENTED",
+      "owner_gated": false,
+      "owner_gate": null,
+      "linked_hazard": "H-CLIN-003",
+      "evidence": [
+        {
+          "file:line": "backend/app/lims/workflows.py:103-108",
+          "observation": "Critical high/low conditions append flags and warnings only to the returned dictionary."
+        },
+        {
+          "file:line": "backend/app/lims/routes.py:2165-2169",
+          "observation": "The route commits only validation_status, auto_validated and auto_validated_at when auto_validated is true; it does not persist flags, is_critical, is_abnormal or flag."
+        },
+        {
+          "file:line": "backend/app/lims/workflows.py:245-246",
+          "observation": "process_critical_result returns skipped when Result.is_critical is false."
+        },
+        {
+          "file:line": "backend/app/lims/services.py:266-272",
+          "observation": "The result-creation service persists critical/abnormal flags, showing an inconsistent second write path."
+        }
+      ],
+      "reproduction": "Synthetic only: create a synthetic result whose value exceeds configured critical_high; call the manual auto-validate endpoint; observe the response contains critical_high and a warning while Result.is_critical remains false and no commit of flags occurs; then call the critical-result endpoint and observe status skipped. Falsification requires post-commit assertion that every critical_* response flag persists is_critical=true.",
+      "falsification": "Finding is falsified if a single validation-application path persists all flags and status fields before commit and a test proves the critical-result endpoint subsequently reports alerted for the same result.",
+      "root_cause": "The route consumes only the auto_validated subset of the validation result; flag application exists in a different service path, leaving two divergent handoffs.",
+      "impact": "A result detected as critical by validation can be invisible to the critical-result notification workflow, compounding AUD-CLIN-001 and allowing release/escalation decisions based on incomplete state.",
+      "severity_rationale": "Loss of the critical flag at a handoff can suppress escalation; exposure requires the manual route path, so likelihood is medium.",
+      "remediation": "Centralize application of validation outcomes in one function used by both route and service paths; persist is_critical, is_abnormal, flag, validation_status and audit data in the same transaction; add endpoint-pair regression tests.",
+      "alternatives": [
+        "Make the critical-result workflow derive criticality from validation flags instead of Result.is_critical.",
+        "Reject the auto-validate response unless a post-commit persistence assertion passes."
+      ],
+      "verification_scope": "Static source and divergent-path analysis plus synthetic reproduction design; no runtime execution."
+    },
+    {
+      "id": "AUD-CLIN-004",
+      "title": "Pharmacy clinical engines ignore lab_id and select arbitrary or cross-tenant rules",
+      "category": "CLINICAL",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "status": "DISCOVERED",
+      "assurance_status": "NOT IMPLEMENTED",
+      "owner_gated": true,
+      "owner_gate": "Clinical formulary/data owner must define rule source, version and tenant-scope policy.",
+      "linked_hazard": "H-CLIN-004",
+      "evidence": [
+        {
+          "file:line": "backend/app/pharmacy/clinical.py:23-40",
+          "observation": "DrugInteractionEngine stores lab_id but its query has no lab/tenant predicate and returns q.first()."
+        },
+        {
+          "file:line": "backend/app/pharmacy/clinical.py:100-110",
+          "observation": "ContraindicationEngine stores lab_id but queries drug and condition only, returning all matches without lab scope."
+        },
+        {
+          "file:line": "backend/app/pharmacy/clinical.py:142-152",
+          "observation": "AllergyEngine stores lab_id but returns q.first() from an unscoped drug/allergen query."
+        },
+        {
+          "file:line": "backend/app/pharmacy/clinical.py:198-237",
+          "observation": "DoseEngine stores lab_id but DoseGuideline query filters only drug/indication/age/weight and returns all results."
+        },
+        {
+          "file:line": "backend/app/pharmacy/clinical.py:281-284",
+          "observation": "Renal adjustment uses an unscoped first() rule."
+        },
+        {
+          "file:line": "shared/models/base.py:25-26",
+          "observation": "TenantMixin only declares a lab_id column; it does not install automatic query scoping."
+        },
+        {
+          "file:line": "backend/app/pharmacy/routes.py:1061-1116",
+          "observation": "Routes construct the engines with user.lab_id, which the engines never apply."
+        }
+      ],
+      "reproduction": "Synthetic only: seed two synthetic labs with conflicting rules for the same drug pair, allergy or dose guideline; instantiate the engine with lab B's id; observe that returned rules can originate from lab A or from arbitrary first/all ordering. Falsification requires a test asserting every returned rule lab_id equals the caller's lab_id and that ambiguous rule sets are rejected.",
+      "falsification": "Finding is falsified if every engine query applies the caller's lab/tenant scope with deterministic ordering and a cross-tenant synthetic test proves no foreign rule is returned.",
+      "root_cause": "Engines accept and store lab_id as a parameter but never incorporate it into query predicates; underlying mixins provide a column only, not automatic tenant isolation.",
+      "impact": "Missed interactions, wrong allergy warnings, wrong dose guidance or cross-tenant rule leakage can influence medication decisions.",
+      "severity_rationale": "Clinical rule leakage or arbitrary selection can cause medication harm; exposure depends on multiple labs and conflicting rules, so likelihood is medium.",
+      "remediation": "Apply tenant/lab predicates to every clinical rule query; add deterministic ordering and rule source/version pinning; reject ambiguous sets instead of using first(); log rule id/version; add cross-tenant regression tests for all four engines.",
+      "alternatives": [
+        "Repository-level tenant-scoped query base that makes unscoped rule reads impossible.",
+        "Owner-approved centrally governed rule set with explicit cross-lab publication and versioning."
+      ],
+      "verification_scope": "Static source, mixin and call-site analysis plus synthetic reproduction design; no runtime execution."
+    }
+  ]
+}

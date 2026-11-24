@@ -1,0 +1,3002 @@
+{
+  "schema_version": "1.0.0",
+  "program": "GLOSI",
+  "updated": "2026-11-15",
+  "scoring_model": {
+    "weights": {
+      "functionality_fit": 15,
+      "maturity_stability": 15,
+      "security_privacy": 15,
+      "interoperability": 15,
+      "engineering_quality": 10,
+      "license_sustainability": 10,
+      "reliability_scalability": 10,
+      "cost_maintenance": 5,
+      "iraqi_context": 5
+    },
+    "bands": {
+      "excellent": [
+        90,
+        100
+      ],
+      "strong_candidate": [
+        80,
+        89
+      ],
+      "needs_verification": [
+        70,
+        79
+      ],
+      "limited_study": [
+        60,
+        69
+      ],
+      "not_recommended": [
+        0,
+        59
+      ]
+    }
+  },
+  "records": [
+    {
+      "identity": {
+        "registry_id": "GLOSI-0001",
+        "name": "OpenELIS Global",
+        "category": "B_laboratory",
+        "subcategory": "lis_core",
+        "description": "Open-source LIS/LIMS for clinical and public-health laboratories; Java/Spring and React, FHIR R4 aware.",
+        "official_url": "https://github.com/DIGI-UW/OpenELIS-Global-2",
+        "source_type": "open_source_repository",
+        "organization": "DIGI-UW (University of Washington)",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "DIGI-UW/OpenELIS-Global-2",
+          "evidence_url": "https://api.github.com/repos/DIGI-UW/OpenELIS-Global-2",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-15T01:53:26Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Java",
+          "JavaScript",
+          "SQL"
+        ],
+        "frameworks": [
+          "Spring",
+          "React",
+          "Hibernate"
+        ],
+        "architecture": "Modular web application (server-rendered UI + REST/FHIR interfaces)",
+        "database_support": [
+          "PostgreSQL"
+        ],
+        "api_support": [
+          "REST",
+          "FHIR R4"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR R4",
+          "HL7 v2 (interface support claims require review)",
+          "ASTM (analyzer interfaces require review)"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "3.3.0"
+      },
+      "legal": {
+        "license": "MPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/DIGI-UW/OpenELIS-Global-2"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-15; release 3.3.0 published 2026-10-20.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: 3.3.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "LIS / Laboratory",
+        "component": "Backend interoperability and LIS benchmarking",
+        "architecture_layer": "Integration / external system reference",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Reference for LIS workflow, analyzer integration, and FHIR-facing laboratory exchange.",
+        "operational_risks": "Overlaps with GULA LIS core; MPL file-level obligations; no local security or license review yet."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "3.3.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0001",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/DIGI-UW/OpenELIS-Global-2",
+          "https://api.github.com/repos/DIGI-UW/OpenELIS-Global-2"
+        ],
+        "adr_reference": null,
+        "rationale": "High domain relevance, but GULA already has a LIS core. Use for comparative study and interoperability patterns; no code reuse proposed."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "3.3.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/DIGI-UW/OpenELIS-Global-2",
+            "https://github.com/DIGI-UW/OpenELIS-Global-2"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0002",
+        "name": "SENAITE",
+        "category": "B_laboratory",
+        "subcategory": "lis_core",
+        "description": "Open-source laboratory information management system built on Plone/Zope, with modules for sample and workflow management.",
+        "official_url": "https://github.com/senaite/senaite.core",
+        "source_type": "open_source_repository",
+        "organization": "SENAITE community",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "senaite/senaite.core",
+          "evidence_url": "https://api.github.com/repos/senaite/senaite.core",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-14T15:22:00Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Python",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "Plone",
+          "Zope"
+        ],
+        "architecture": "Plone add-on / modular LIMS",
+        "database_support": [
+          "ZODB"
+        ],
+        "api_support": [
+          "XML-RPC",
+          "JSON API (version-specific; verify before use)"
+        ],
+        "interoperability_standards": [
+          "UNKNOWN"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "v2.6.0"
+      },
+      "legal": {
+        "license": "GPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/senaite/senaite.core"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-14; latest release v2.6.0 published 2025-04-04 (release cadence to verify).",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: v2.6.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "LIMS / Laboratory",
+        "component": "Laboratory workflow reference",
+        "architecture_layer": "Study only",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Workflow and quality-management patterns for laboratory operations.",
+        "operational_risks": "GPL-2.0 copyleft; ZODB/Plone stack differs from GULA; no security/legal review yet."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "v2.6.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0002",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/senaite/senaite.core",
+          "https://api.github.com/repos/senaite/senaite.core"
+        ],
+        "adr_reference": null,
+        "rationale": "Potentially useful workflow design reference; GPL-2.0 and stack divergence preclude code reuse without a dedicated legal/architecture review."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "v2.6.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/senaite/senaite.core",
+            "https://github.com/senaite/senaite.core"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0003",
+        "name": "OpenMRS",
+        "category": "A_health_systems",
+        "subcategory": "ehr",
+        "description": "Open-source electronic medical record platform with a modular Java core and a global implementer community.",
+        "official_url": "https://github.com/openmrs/openmrs-core",
+        "source_type": "open_source_repository",
+        "organization": "OpenMRS Inc. / community",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "openmrs/openmrs-core",
+          "evidence_url": "https://api.github.com/repos/openmrs/openmrs-core",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-14T21:19:41Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Java",
+          "JavaScript",
+          "SQL"
+        ],
+        "frameworks": [
+          "Spring",
+          "Hibernate"
+        ],
+        "architecture": "Modular monolith with extension modules",
+        "database_support": [
+          "MySQL",
+          "MariaDB",
+          "PostgreSQL (verify version support)"
+        ],
+        "api_support": [
+          "REST",
+          "FHIR (via modules)"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR (module-dependent)",
+          "HL7 v2 (module-dependent)"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Tomcat",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "2.8.10"
+      },
+      "legal": {
+        "license": "MPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/openmrs/openmrs-core"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-14; latest release 2.8.10 published 2026-10-06.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: 2.8.10",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "EHR / Clinical records",
+        "component": "Clinical data model and FHIR-facing integration reference",
+        "architecture_layer": "Study / interoperability reference",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Mature clinical record modelling and modular extension patterns.",
+        "operational_risks": "Broad clinical scope; module quality varies; replacing GULA core would be architecturally unacceptable."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "2.8.10",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0003",
+        "decision": "MONITOR",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/openmrs/openmrs-core",
+          "https://api.github.com/repos/openmrs/openmrs-core"
+        ],
+        "adr_reference": null,
+        "rationale": "Relevant for clinical interoperability and module patterns only. No replacement of GULA records or identity is proposed."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "2.8.10",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/openmrs/openmrs-core",
+            "https://github.com/openmrs/openmrs-core"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0004",
+        "name": "Bahmni",
+        "category": "A_health_systems",
+        "subcategory": "his",
+        "description": "Open-source hospital system distribution built around OpenMRS, with OPD/IPD, billing, and laboratory modules.",
+        "official_url": "https://github.com/Bahmni/bahmni-core",
+        "source_type": "open_source_repository",
+        "organization": "Bahmni community",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "Bahmni/bahmni-core",
+          "evidence_url": "https://api.github.com/repos/Bahmni/bahmni-core",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-12T12:09:35Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Java",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "OpenMRS",
+          "Spring"
+        ],
+        "architecture": "Distribution of OpenMRS modules and integration components",
+        "database_support": [
+          "MySQL/MariaDB (OpenMRS-dependent; verify)"
+        ],
+        "api_support": [
+          "REST (module-dependent)",
+          "FHIR (module-dependent)"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR (module-dependent)"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "1.3.0"
+      },
+      "legal": {
+        "license": "MPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/Bahmni/bahmni-core"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-12; latest release 1.3.0 published 2025-10-10.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: 1.3.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Hospital workflows / HIS",
+        "component": "Hospital operations reference",
+        "architecture_layer": "Study only",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Hospital workflow patterns and OpenMRS integration experience.",
+        "operational_risks": "Complex distribution; dependency on OpenMRS stack; not a drop-in for GULA."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "1.3.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0004",
+        "decision": "MONITOR",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/Bahmni/bahmni-core",
+          "https://api.github.com/repos/Bahmni/bahmni-core"
+        ],
+        "adr_reference": null,
+        "rationale": "Monitor hospital workflow patterns and integration lessons; no integration proposed."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "1.3.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/Bahmni/bahmni-core",
+            "https://github.com/Bahmni/bahmni-core"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0005",
+        "name": "DHIS2",
+        "category": "C_public_health",
+        "subcategory": "indicator_based",
+        "description": "Open-source health management information system for aggregate indicators, public-health reporting, and national programmes.",
+        "official_url": "https://github.com/dhis2/dhis2-core",
+        "source_type": "open_source_repository",
+        "organization": "HISP Centre, University of Oslo",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "dhis2/dhis2-core",
+          "evidence_url": "https://api.github.com/repos/dhis2/dhis2-core",
+          "release_source": "official DHIS2 release pages (GitHub releases API returned no releases)",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-15T06:24:21Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Java",
+          "JavaScript",
+          "SQL"
+        ],
+        "frameworks": [
+          "Spring",
+          "Hibernate"
+        ],
+        "architecture": "Modular monolith with Web API and app platform",
+        "database_support": [
+          "PostgreSQL"
+        ],
+        "api_support": [
+          "REST/Web API",
+          "FHIR (module/version-dependent)"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR (limited; verify)",
+          "DHIS2 data model"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Tomcat",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "Android Capture app is separate; core server is online-first.",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "43.2.1 (security hotfix)"
+      },
+      "legal": {
+        "license": "BSD-3-Clause",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/dhis2/dhis2-core"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-15; security hotfix 43.2.1 announced 2026-10-28.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: 43.2.1 (security hotfix)",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Public health / aggregate reporting",
+        "component": "National aggregate reporting and surveillance reference",
+        "architecture_layer": "Future connector / study",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "National indicator reporting, offline Android data capture patterns, and aggregate/public-health interoperability.",
+        "operational_risks": "Not an individual clinical record; connector would need strict privacy separation; no security review yet."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "43.2.1 (security hotfix)",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0005",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/dhis2/dhis2-core",
+          "https://api.github.com/repos/dhis2/dhis2-core"
+        ],
+        "adr_reference": null,
+        "rationale": "Relevant to public-health reporting, but GULA's operational record must remain separate and sovereign. Study aggregate exchange and offline capture patterns."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "43.2.1 (security hotfix)",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/dhis2/dhis2-core",
+            "https://github.com/dhis2/dhis2-core"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0006",
+        "name": "SORMAS",
+        "category": "C_public_health",
+        "subcategory": "disease_surveillance",
+        "description": "Open-source surveillance, outbreak response, and analysis system for infectious disease management.",
+        "official_url": "https://github.com/SORMAS-Foundation/SORMAS-Project",
+        "source_type": "open_source_repository",
+        "organization": "SORMAS Foundation",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "SORMAS-Foundation/SORMAS-Project",
+          "evidence_url": "https://api.github.com/repos/SORMAS-Foundation/SORMAS-Project",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-13T19:32:44Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Java",
+          "TypeScript",
+          "SQL"
+        ],
+        "frameworks": [
+          "Java EE",
+          "Vaadin"
+        ],
+        "architecture": "Modular monolith (server + web/mobile clients)",
+        "database_support": [
+          "PostgreSQL"
+        ],
+        "api_support": [
+          "REST (version-dependent; verify)"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR (verify)",
+          "SORMAS-specific data model"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "Mobile/offline claims require verification.",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "v1.104.0"
+      },
+      "legal": {
+        "license": "GPL-3.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/SORMAS-Foundation/SORMAS-Project"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-13; latest release v1.104.0 published 2026-07-14.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: v1.104.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Public health surveillance",
+        "component": "Surveillance and outbreak reference",
+        "architecture_layer": "Future study / connector",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Case investigation, contact tracing, outbreak workflow, and public-health reporting patterns.",
+        "operational_risks": "GPL-3.0 copyleft; public-health scope differs from LIS; no security review."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "v1.104.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0006",
+        "decision": "MONITOR",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/SORMAS-Foundation/SORMAS-Project",
+          "https://api.github.com/repos/SORMAS-Foundation/SORMAS-Project"
+        ],
+        "adr_reference": null,
+        "rationale": "Monitor surveillance and outbreak patterns for future public-health modules; no code reuse due to license and scope."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "v1.104.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/SORMAS-Foundation/SORMAS-Project",
+            "https://github.com/SORMAS-Foundation/SORMAS-Project"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0007",
+        "name": "OpenHIE",
+        "category": "D_standards_interoperability",
+        "subcategory": "openhie",
+        "description": "Community reference architecture and specifications for country-led health information exchange, including shared services and interoperability layers.",
+        "official_url": "https://ohie.org/",
+        "source_type": "technical_documentation",
+        "organization": "OpenHIE community",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "openhie/openhie-specification",
+          "evidence_url": "https://api.github.com/repos/openhie/openhie-specification",
+          "release_source": "no release verified (specification repository)",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2025-05-12T15:01:57Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Markdown"
+        ],
+        "frameworks": [
+          "Reference architecture"
+        ],
+        "architecture": "Service-oriented HIE architecture (registries, interoperability layer, shared record)",
+        "database_support": [
+          "Not applicable"
+        ],
+        "api_support": [
+          "Not applicable"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR",
+          "HL7 v2",
+          "IHE profiles"
+        ],
+        "deployment_options": [
+          "Architecture guidance"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "UNKNOWN (no tagged release verified)"
+      },
+      "legal": {
+        "license": "MPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/openhie/openhie-specification"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "SPECIFICATION UPDATED: repository pushed 2025-05-12; no versioned release verified.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: UNKNOWN (no tagged release verified)",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "National health information exchange",
+        "component": "Integration architecture and shared-services pattern",
+        "architecture_layer": "Architecture / standards",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Reference model for GULA's national exchange and interoperability layer.",
+        "operational_risks": "Reference architecture, not a product; adoption requires GULA-specific design and governance."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "UNKNOWN (no tagged release verified)",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0007",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/openhie/openhie-specification",
+          "https://api.github.com/repos/openhie/openhie-specification"
+        ],
+        "adr_reference": null,
+        "rationale": "Use as an architectural reference alongside FHIR R4; no code or runtime dependency."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "UNKNOWN (no tagged release verified)",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/openhie/openhie-specification",
+            "https://github.com/openhie/openhie-specification"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0008",
+        "name": "OpenHIM",
+        "category": "D_standards_interoperability",
+        "subcategory": "ihe",
+        "description": "Open Health Information Mediator: an interoperability layer implementing the OpenHIE interoperability component with routing, orchestration, and audit.",
+        "official_url": "https://github.com/jembi/openhim-core-js",
+        "source_type": "open_source_repository",
+        "organization": "Jembi Health Systems",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "jembi/openhim-core-js",
+          "evidence_url": "https://api.github.com/repos/jembi/openhim-core-js",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-09-25T15:20:55Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "JavaScript",
+          "TypeScript"
+        ],
+        "frameworks": [
+          "Node.js"
+        ],
+        "architecture": "Mediator/gateway with console and mediators",
+        "database_support": [
+          "MongoDB"
+        ],
+        "api_support": [
+          "REST",
+          "OpenHIM APIs"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR (via mediators)",
+          "OpenHIE"
+        ],
+        "deployment_options": [
+          "Docker",
+          "npm",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "v8.5.0"
+      },
+      "legal": {
+        "license": "MPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/jembi/openhim-core-js"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE DEVELOPMENT: repository pushed 2026-09-25; latest release v8.5.0 published 2024-09-16 (release cadence to verify).",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: v8.5.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Health information exchange",
+        "component": "Interoperability gateway reference",
+        "architecture_layer": "Future integration / study",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Gateway routing, mediator patterns, transaction audit, and OpenHIE alignment.",
+        "operational_risks": "Adds MongoDB and a Node service; latest GitHub release 2024 while repository remains active; no security review."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "v8.5.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0008",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/jembi/openhim-core-js",
+          "https://api.github.com/repos/jembi/openhim-core-js"
+        ],
+        "adr_reference": null,
+        "rationale": "Study mediator/audit patterns and compare with GULA's own integration gateway; no deployment proposed."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "v8.5.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/jembi/openhim-core-js",
+            "https://github.com/jembi/openhim-core-js"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0009",
+        "name": "HAPI FHIR",
+        "category": "D_standards_interoperability",
+        "subcategory": "fhir_r4",
+        "description": "Java library and server for HL7 FHIR clients and servers, widely used for FHIR validation and interoperability.",
+        "official_url": "https://github.com/hapifhir/hapi-fhir",
+        "source_type": "open_source_repository",
+        "organization": "Smile CDR / community",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "hapifhir/hapi-fhir",
+          "evidence_url": "https://api.github.com/repos/hapifhir/hapi-fhir",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-15T02:08:33Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Java"
+        ],
+        "frameworks": [
+          "Spring",
+          "JPA"
+        ],
+        "architecture": "Library + FHIR server (JPA/REST)",
+        "database_support": [
+          "PostgreSQL",
+          "Oracle",
+          "SQL Server",
+          "H2 (version-dependent)"
+        ],
+        "api_support": [
+          "REST",
+          "FHIR R4/R5"
+        ],
+        "interoperability_standards": [
+          "HL7 FHIR R4",
+          "HL7 FHIR R5",
+          "SMART on FHIR (server features)"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Java application",
+          "WAR"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "v8.10.3"
+      },
+      "legal": {
+        "license": "Apache-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/hapifhir/hapi-fhir"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-15; latest release v8.10.3 published 2026-11-13.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: v8.10.3",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "FHIR interoperability",
+        "component": "FHIR validation and conformance reference",
+        "architecture_layer": "Standards / testing reference",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Reference for FHIR validation, profiles, and conformance testing.",
+        "operational_risks": "Java server stack differs from GULA backend; adopting the full server would duplicate existing FHIR capability."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "v8.10.3",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0009",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/hapifhir/hapi-fhir",
+          "https://api.github.com/repos/hapifhir/hapi-fhir"
+        ],
+        "adr_reference": null,
+        "rationale": "Use as a conformance/validation reference and test oracle; no runtime adoption proposed."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "v8.10.3",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/hapifhir/hapi-fhir",
+            "https://github.com/hapifhir/hapi-fhir"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0010",
+        "name": "Open Concept Lab (OCL)",
+        "category": "D_standards_interoperability",
+        "subcategory": "terminology",
+        "description": "Open-source terminology service for managing, versioning, and sharing concept collections and mappings.",
+        "official_url": "https://github.com/OpenConceptLab/oclapi2",
+        "source_type": "open_source_repository",
+        "organization": "Open Concept Lab",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "OpenConceptLab/oclapi2",
+          "evidence_url": "https://api.github.com/repos/OpenConceptLab/oclapi2",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-13T23:10:26Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Python",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "Django"
+        ],
+        "architecture": "Terminology API + web client",
+        "database_support": [
+          "PostgreSQL"
+        ],
+        "api_support": [
+          "REST"
+        ],
+        "interoperability_standards": [
+          "FHIR terminology concepts (verify)",
+          "OCL data model"
+        ],
+        "deployment_options": [
+          "Docker"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "2.3.252"
+      },
+      "legal": {
+        "license": "MPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/OpenConceptLab/oclapi2"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-13; latest release 2.3.252 published 2026-11-13.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: 2.3.252",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Terminology services",
+        "component": "Terminology management reference",
+        "architecture_layer": "Future terminology integration",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Concept collections, mappings, versions, and terminology governance patterns.",
+        "operational_risks": "Successor project to the archived oclapi; operational maturity needs review; no security/legal review."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "2.3.252",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0010",
+        "decision": "MONITOR",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/OpenConceptLab/oclapi2",
+          "https://api.github.com/repos/OpenConceptLab/oclapi2"
+        ],
+        "adr_reference": null,
+        "rationale": "Monitor oclapi2 and terminology governance; no integration until GULA terminology requirements and licensing are settled."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "2.3.252",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/OpenConceptLab/oclapi2",
+            "https://github.com/OpenConceptLab/oclapi2"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0011",
+        "name": "Keycloak",
+        "category": "E_identity_security_privacy",
+        "subcategory": "authentication",
+        "description": "Open-source identity and access management for modern applications, supporting OpenID Connect, OAuth 2.0, and SAML.",
+        "official_url": "https://github.com/keycloak/keycloak",
+        "source_type": "open_source_repository",
+        "organization": "Red Hat / CNCF community",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "keycloak/keycloak",
+          "evidence_url": "https://api.github.com/repos/keycloak/keycloak",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-15T03:06:47Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Java",
+          "TypeScript"
+        ],
+        "frameworks": [
+          "Quarkus",
+          "React"
+        ],
+        "architecture": "Identity provider / SSO server",
+        "database_support": [
+          "PostgreSQL",
+          "MySQL",
+          "MariaDB",
+          "Oracle",
+          "SQL Server"
+        ],
+        "api_support": [
+          "OpenID Connect",
+          "OAuth 2.0",
+          "SAML",
+          "Admin REST API"
+        ],
+        "interoperability_standards": [
+          "OpenID Connect",
+          "OAuth 2.0",
+          "SAML 2.0",
+          "SCIM (verify)"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Kubernetes",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "UNKNOWN",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "26.8.2"
+      },
+      "legal": {
+        "license": "Apache-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/keycloak/keycloak"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-15; latest release 26.8.2 published 2026-11-05.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: 26.8.2",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Identity and access management",
+        "component": "NIAM identity provider reference",
+        "architecture_layer": "Identity / security",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Protocol conformance, federation, and IAM operational patterns.",
+        "operational_risks": "GULA NIAM is authoritative; replacing it would change identity semantics and is out of scope. No security review."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "26.8.2",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0011",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/keycloak/keycloak",
+          "https://api.github.com/repos/keycloak/keycloak"
+        ],
+        "adr_reference": null,
+        "rationale": "Use for OIDC/SAML conformance and identity patterns only; NIAM remains the sole authority."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "26.8.2",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/keycloak/keycloak",
+            "https://github.com/keycloak/keycloak"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0012",
+        "name": "OpenBao",
+        "category": "E_identity_security_privacy",
+        "subcategory": "encryption",
+        "description": "Open-source secrets management system for storing, distributing, and managing secrets, certificates, and keys.",
+        "official_url": "https://github.com/openbao/openbao",
+        "source_type": "open_source_repository",
+        "organization": "OpenBao project (Linux Foundation)",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "openbao/openbao",
+          "evidence_url": "https://api.github.com/repos/openbao/openbao",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-12T10:12:51Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Go"
+        ],
+        "frameworks": [
+          "Go stdlib"
+        ],
+        "architecture": "Distributed secrets service with storage backends",
+        "database_support": [
+          "Integrated storage (Raft)",
+          "PostgreSQL (verify plugin/version)"
+        ],
+        "api_support": [
+          "HTTP API",
+          "CLI"
+        ],
+        "interoperability_standards": [
+          "TLS",
+          "PKI",
+          "JWT/OIDC (verify)"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Kubernetes",
+          "Virtual machine"
+        ],
+        "offline_capabilities": "Self-hosted; operation can be local.",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "v2.7.2"
+      },
+      "legal": {
+        "license": "MPL-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/openbao/openbao"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-12; latest release v2.7.2 published 2026-10-26.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: v2.7.2",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Secrets and key management",
+        "component": "Infrastructure secrets management",
+        "architecture_layer": "Infrastructure / security",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Replacement path for proprietary secrets managers and central key/certificate governance.",
+        "operational_risks": "Operational complexity; HA/backup requirements; no security review; not an application runtime dependency yet."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "v2.7.2",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0012",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/openbao/openbao",
+          "https://api.github.com/repos/openbao/openbao"
+        ],
+        "adr_reference": null,
+        "rationale": "Evaluate for future self-hosted secrets management; no current integration or migration proposed."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "v2.7.2",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/openbao/openbao",
+            "https://github.com/openbao/openbao"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0013",
+        "name": "OpenTelemetry Collector",
+        "category": "F_infrastructure_reliability",
+        "subcategory": "observability",
+        "description": "Vendor-neutral telemetry collector for traces, metrics, and logs, supporting OTLP and multiple exporters.",
+        "official_url": "https://github.com/open-telemetry/opentelemetry-collector",
+        "source_type": "open_source_repository",
+        "organization": "OpenTelemetry / CNCF",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "open-telemetry/opentelemetry-collector",
+          "evidence_url": "https://api.github.com/repos/open-telemetry/opentelemetry-collector",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-14T21:33:35Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Go"
+        ],
+        "frameworks": [
+          "OpenTelemetry"
+        ],
+        "architecture": "Agent/collector pipeline (receivers, processors, exporters)",
+        "database_support": [
+          "Not applicable"
+        ],
+        "api_support": [
+          "OTLP",
+          "Prometheus",
+          "multiple exporters"
+        ],
+        "interoperability_standards": [
+          "OpenTelemetry",
+          "OTLP",
+          "W3C Trace Context"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Kubernetes",
+          "Binary"
+        ],
+        "offline_capabilities": "Self-hosted; no vendor backend required.",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "v0.165.0"
+      },
+      "legal": {
+        "license": "Apache-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/open-telemetry/opentelemetry-collector"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-14; latest release v0.165.0 published 2026-11-06.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: v0.165.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Observability",
+        "component": "Tracing/metrics pipeline",
+        "architecture_layer": "Infrastructure / observability",
+        "integration_possibility": "ALREADY_IN_USE_VERIFY_VERSION",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Vendor-neutral telemetry export, local deployment, and reduced lock-in.",
+        "operational_risks": "GULA already uses OpenTelemetry SDK; collector deployment/version must be verified separately."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "v0.165.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0013",
+        "decision": "MONITOR",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/open-telemetry/opentelemetry-collector",
+          "https://api.github.com/repos/open-telemetry/opentelemetry-collector"
+        ],
+        "adr_reference": null,
+        "rationale": "Recorded as an existing baseline dependency; no new integration. Version and deployment evidence remain UNKNOWN."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "v0.165.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/open-telemetry/opentelemetry-collector",
+            "https://github.com/open-telemetry/opentelemetry-collector"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0014",
+        "name": "Prometheus",
+        "category": "F_infrastructure_reliability",
+        "subcategory": "observability",
+        "description": "Open-source metrics monitoring and time-series database with PromQL and service discovery.",
+        "official_url": "https://github.com/prometheus/prometheus",
+        "source_type": "open_source_repository",
+        "organization": "Prometheus / CNCF",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "prometheus/prometheus",
+          "evidence_url": "https://api.github.com/repos/prometheus/prometheus",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-15T07:43:39Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Go"
+        ],
+        "frameworks": [
+          "Prometheus ecosystem"
+        ],
+        "architecture": "Pull-based metrics server + TSDB",
+        "database_support": [
+          "Prometheus TSDB",
+          "remote storage integrations"
+        ],
+        "api_support": [
+          "HTTP API",
+          "PromQL",
+          "remote write/read"
+        ],
+        "interoperability_standards": [
+          "OpenMetrics",
+          "Prometheus exposition format"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Kubernetes",
+          "Binary"
+        ],
+        "offline_capabilities": "Self-hosted; no external backend required.",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "v3.16.0"
+      },
+      "legal": {
+        "license": "Apache-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/prometheus/prometheus"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-15; latest release v3.16.0 published 2026-11-05.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: v3.16.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Observability",
+        "component": "Metrics and alerting",
+        "architecture_layer": "Infrastructure / observability",
+        "integration_possibility": "ALREADY_IN_USE_VERIFY_VERSION",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Local metrics, alerting, and operational visibility without paid SaaS.",
+        "operational_risks": "Existing deployment and retention/HA design not verified in this registry."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "v3.16.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0014",
+        "decision": "MONITOR",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/prometheus/prometheus",
+          "https://api.github.com/repos/prometheus/prometheus"
+        ],
+        "adr_reference": null,
+        "rationale": "Recorded as an existing baseline component; no new integration. Verify deployment and retention separately."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "v3.16.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/prometheus/prometheus",
+            "https://github.com/prometheus/prometheus"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0015",
+        "name": "Apache CouchDB",
+        "category": "F_infrastructure_reliability",
+        "subcategory": "sync",
+        "description": "Document database with HTTP/JSON API and multi-primary synchronization designed for offline-tolerant replication.",
+        "official_url": "https://github.com/apache/couchdb",
+        "source_type": "open_source_repository",
+        "organization": "Apache Software Foundation",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "apache/couchdb",
+          "evidence_url": "https://api.github.com/repos/apache/couchdb",
+          "release_source": "official couchdb.apache.org download page (GitHub releases API returned no releases)",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-15T05:21:43Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Erlang",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "Erlang/OTP"
+        ],
+        "architecture": "Document store with replication and clustering",
+        "database_support": [
+          "CouchDB storage engine"
+        ],
+        "api_support": [
+          "HTTP/JSON",
+          "replication protocol"
+        ],
+        "interoperability_standards": [
+          "JSON",
+          "HTTP"
+        ],
+        "deployment_options": [
+          "Docker",
+          "Package",
+          "Cluster"
+        ],
+        "offline_capabilities": "Replication supports offline/intermittent nodes; conflict semantics require design.",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "3.5.3"
+      },
+      "legal": {
+        "license": "Apache-2.0",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/apache/couchdb"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-15; official site lists 3.5.3 as latest.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: 3.5.3",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Offline-first / data sync",
+        "component": "Offline replication pattern",
+        "architecture_layer": "Infrastructure / sync",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Mature replication and conflict model for offline-first scenarios.",
+        "operational_risks": "Separate database technology conflicts with GULA PostgreSQL canonical store; no security review."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "3.5.3",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0015",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/apache/couchdb",
+          "https://api.github.com/repos/apache/couchdb"
+        ],
+        "adr_reference": null,
+        "rationale": "Study replication/conflict patterns; do not introduce a second operational database without an approved ADR."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "3.5.3",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/apache/couchdb",
+            "https://github.com/apache/couchdb"
+          ]
+        }
+      ]
+    },
+    {
+      "identity": {
+        "registry_id": "GLOSI-0016",
+        "name": "Automerge",
+        "category": "F_infrastructure_reliability",
+        "subcategory": "sync",
+        "description": "Open-source CRDT library for concurrent editing and automatic merge of JSON-like data.",
+        "official_url": "https://github.com/automerge/automerge",
+        "source_type": "open_source_repository",
+        "organization": "Automerge / Ink & Switch",
+        "country": "UNKNOWN",
+        "first_release": "UNKNOWN",
+        "last_verified": "2026-11-15",
+        "verification": {
+          "method": "github_rest_api_v3 + official release metadata",
+          "repository": "automerge/automerge",
+          "evidence_url": "https://api.github.com/repos/automerge/automerge",
+          "release_source": "github_releases_api",
+          "retrieved_at": "2026-11-15T09:48:36Z",
+          "archived": false,
+          "pushed_at": "2026-11-13T14:03:57Z"
+        }
+      },
+      "technical": {
+        "languages": [
+          "Rust",
+          "JavaScript",
+          "TypeScript"
+        ],
+        "frameworks": [
+          "CRDT"
+        ],
+        "architecture": "CRDT library (Rust core with JS bindings)",
+        "database_support": [
+          "Not applicable"
+        ],
+        "api_support": [
+          "Library API"
+        ],
+        "interoperability_standards": [
+          "JSON-like data model"
+        ],
+        "deployment_options": [
+          "npm",
+          "Rust crate",
+          "WASM"
+        ],
+        "offline_capabilities": "Designed for offline/concurrent edits.",
+        "scalability": "UNKNOWN",
+        "hardware_requirements": "UNKNOWN",
+        "dependencies": "UNKNOWN",
+        "latest_verified_version": "js/automerge-3.5.0"
+      },
+      "legal": {
+        "license": "MIT",
+        "license_compatibility": "UNKNOWN",
+        "commercial_use_permission": "UNKNOWN",
+        "modification_permission": "UNKNOWN",
+        "redistribution_permission": "UNKNOWN",
+        "attribution_requirements": "UNKNOWN",
+        "copyleft_obligations": "UNKNOWN",
+        "patent_trademark_considerations": "UNKNOWN",
+        "data_licensing_restrictions": "UNKNOWN",
+        "review_status": "NOT_REVIEWED",
+        "license_evidence_url": "https://github.com/automerge/automerge"
+      },
+      "security": {
+        "security_policy": "UNKNOWN",
+        "vulnerability_disclosure": "UNKNOWN",
+        "known_cves": "UNKNOWN",
+        "dependency_risks": "UNKNOWN",
+        "authentication_model": "UNKNOWN",
+        "authorization_model": "UNKNOWN",
+        "encryption": "UNKNOWN",
+        "audit_logging": "UNKNOWN",
+        "sbom_availability": "UNKNOWN",
+        "maintenance_activity": "ACTIVE: repository pushed 2026-11-13; latest release js/automerge-3.5.0 published 2026-09-16.",
+        "security_review_status": "NOT_REVIEWED"
+      },
+      "operational": {
+        "production_usage_evidence": "UNKNOWN",
+        "deployment_scale": "UNKNOWN",
+        "community_health": "UNKNOWN",
+        "release_frequency": "latest verified release: js/automerge-3.5.0",
+        "maintainer_responsiveness": "UNKNOWN",
+        "documentation_quality": "UNKNOWN",
+        "test_coverage": "UNKNOWN",
+        "ci_status": "UNKNOWN",
+        "backup_recovery": "UNKNOWN",
+        "upgrade_migration_complexity": "UNKNOWN"
+      },
+      "gula": {
+        "domain": "Offline-first / conflict resolution",
+        "component": "CRDT engine evaluation",
+        "architecture_layer": "Future offline sync / study",
+        "integration_possibility": "STUDY_ONLY",
+        "required_adapter": "UNKNOWN",
+        "required_api": "UNKNOWN",
+        "required_changes": "UNKNOWN",
+        "dependencies_on_gula": "UNKNOWN",
+        "conflicts_with_existing_components": "UNKNOWN",
+        "estimated_integration_cost": "UNKNOWN",
+        "expected_benefits": "Conflict-free merge model for offline edits and multi-device workflows.",
+        "operational_risks": "GULA sync semantics and clinical conflict rules are domain-specific; no security/clinical review."
+      },
+      "evaluation": {
+        "status": "PARTIAL",
+        "confidence": "LOW",
+        "dimensions": {
+          "functionality_fit": {
+            "score": null,
+            "evidence": []
+          },
+          "maturity_stability": {
+            "score": null,
+            "evidence": []
+          },
+          "security_privacy": {
+            "score": null,
+            "evidence": []
+          },
+          "interoperability": {
+            "score": null,
+            "evidence": []
+          },
+          "engineering_quality": {
+            "score": null,
+            "evidence": []
+          },
+          "license_sustainability": {
+            "score": null,
+            "evidence": []
+          },
+          "reliability_scalability": {
+            "score": null,
+            "evidence": []
+          },
+          "cost_maintenance": {
+            "score": null,
+            "evidence": []
+          },
+          "iraqi_context": {
+            "score": null,
+            "evidence": []
+          }
+        },
+        "weighted_total": null,
+        "band": null,
+        "evaluated_version": "js/automerge-3.5.0",
+        "evaluated_at": "2026-11-15",
+        "notes": "Metadata and license/release verification only. No security, legal, functional, or clinical review."
+      },
+      "decision": {
+        "decision_id": "GLOSI-DEC-0016",
+        "decision": "STUDY",
+        "status": "PROPOSED",
+        "date": "2026-11-15",
+        "owner": "GLOSI Program (proposed, non-binding)",
+        "reviewers": {
+          "technical": "UNASSIGNED",
+          "security": "UNASSIGNED",
+          "legal": "UNASSIGNED"
+        },
+        "evidence": [
+          "https://github.com/automerge/automerge",
+          "https://api.github.com/repos/automerge/automerge"
+        ],
+        "adr_reference": null,
+        "rationale": "Evaluate CRDT concepts for future offline synchronization; no dependency added."
+      },
+      "evaluation_history": [
+        {
+          "date": "2026-11-15",
+          "version": "js/automerge-3.5.0",
+          "evaluation_status": "PARTIAL",
+          "summary": "Initial metadata, release, and license-source verification; full review not performed.",
+          "evidence_refs": [
+            "https://api.github.com/repos/automerge/automerge",
+            "https://github.com/automerge/automerge"
+          ]
+        }
+      ]
+    }
+  ]
+}

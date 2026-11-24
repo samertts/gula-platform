@@ -1,0 +1,1035 @@
+{
+  "audit_id": "A2",
+  "audit_name": "Team A independent adversarial audit - security and healthcare patient data privacy",
+  "team": "Team A",
+  "date": "2026-11-18",
+  "repository": {
+    "path": "/home/samertts/workspace/projects/gula-integration",
+    "branch": "integration/gula-unification-v1",
+    "head": "2206654dc713ea2de8c564a3207dfe05fde23549"
+  },
+  "sibling_repository": {
+    "path": "/home/samertts/workspace/projects/gula-platform",
+    "branch": "remediate-security-001",
+    "head": "f478676b6fc375338648dde46fbf076c015a3f91",
+    "access": "read-only; no files changed"
+  },
+  "scope": {
+    "lanes": [
+      "SECURITY",
+      "HEALTHCARE_PATIENT_DATA_PRIVACY"
+    ],
+    "constraints": [
+      "No source, git index/history, config, database, or sibling repository modification",
+      "No git add, commit, push, merge, network call, database access, or exploitation",
+      "No secrets or real patient data accessed or generated",
+      "Only artifacts under GOVERNANCE/ADVERSARIAL_ASSURANCE/ were written"
+    ]
+  },
+  "status_vocabulary_allowed": [
+    "IMPLEMENTED",
+    "TESTED",
+    "INTEGRATED",
+    "INDEPENDENTLY VERIFIED",
+    "PRODUCTION READY",
+    "BLOCKED",
+    "NOT IMPLEMENTED"
+  ],
+  "finding_status_used": "DISCOVERED",
+  "independently_verified_or_production_ready_awarded": false,
+  "owner_gated_decisions_preserved_unchanged": [
+    "HOLD",
+    "MPI REJECT",
+    "MP-001",
+    "ODR-001",
+    "ODR-002",
+    "ODR-003",
+    "ODR-004",
+    "D-020",
+    "D-021",
+    "ADR-A",
+    "ADR-B",
+    "ADR-C",
+    "ADR-D",
+    "ADR-E",
+    "ADR-F",
+    "ADR-G",
+    "ADR-H",
+    "ADR-I",
+    "ADR-J",
+    "AUD-02",
+    "AUD-07",
+    "AUD-16"
+  ],
+  "coverage": {
+    "methods": [
+      "Static read-only source inspection",
+      "Read-only grep cross-checks",
+      "Read-only git status and git diff inspection",
+      "STRIDE categorization",
+      "DREAD scoring",
+      "Owner-gated artifact cross-check"
+    ],
+    "surfaces_reviewed": [
+      "backend/app/routes/login.py",
+      "backend/app/routes/mfa.py",
+      "backend/app/routes/patients.py",
+      "backend/app/security/auth.py",
+      "backend/app/security/dependencies.py",
+      "backend/app/security/mfa_service.py",
+      "backend/app/security/consent_dep.py",
+      "backend/app/identity/security.py",
+      "backend/app/identity/api/router.py",
+      "backend/app/identity/api/access.py",
+      "backend/app/identity/api/workspaces.py",
+      "backend/app/identity/governance/routes.py",
+      "backend/app/identity/trust/routes.py",
+      "backend/app/identity/lifecycle/routes.py",
+      "backend/app/identity/federation/routes.py",
+      "backend/app/identity/certificates/routes.py",
+      "backend/app/identity/adaptive_auth/routes.py",
+      "backend/app/identity/professional_registry/routes.py",
+      "backend/app/identity/professional_registry/services.py",
+      "backend/app/identity/admin/routes.py",
+      "backend/app/identity/compliance/routes.py",
+      "backend/app/health_core/authorization/guard.py",
+      "backend/app/interoperability/fhir_http/security.py",
+      "backend/app/services/patient_service.py",
+      "backend/app/services/mpi/api.py",
+      "backend/app/services/audit_service.py",
+      "backend/app/models/patient.py",
+      "backend/app/factory.py",
+      ".github/workflows/frontend-pwa.yml",
+      "GOVERNANCE/SECURITY_COVERAGE_MATRIX.md",
+      "GOVERNANCE/FINAL_DECISION.md",
+      "SECURITY_REMEDIATION_REPORT.md"
+    ],
+    "not_covered": [
+      "Runtime exploitation or live request replay",
+      "Database connectivity or query execution",
+      "Network calls",
+      "Team C independent verification or certification",
+      "Modification or re-adjudication of owner-gated decisions"
+    ],
+    "excluded_items": [
+      "NR-011 FK test co-collection failure - already disclosed; not re-reported",
+      "backend/app/interoperability/fhir_http/security.py synthetic-header surface - reviewed but not counted as live because no factory include_router mount was found",
+      "GOVERNANCE/PUBLIC_ENDPOINT_REGISTER.md and owner decision records - treated as owner-gated evidence and left unchanged"
+    ]
+  },
+  "observed_control_status": [
+    {
+      "control": "Privileged authentication and MFA",
+      "status": "BLOCKED",
+      "finding_ids": [
+        "AUD-SEC-003"
+      ]
+    },
+    {
+      "control": "JWT identity binding",
+      "status": "BLOCKED",
+      "finding_ids": [
+        "AUD-SEC-002"
+      ]
+    },
+    {
+      "control": "NIAM registry reader/writer authorization",
+      "status": "IMPLEMENTED",
+      "scope_note": "Persons, sessions, devices only",
+      "finding_ids": [
+        "AUD-SEC-001"
+      ]
+    },
+    {
+      "control": "Bearer logout revocation",
+      "status": "BLOCKED",
+      "finding_ids": [
+        "AUD-SEC-004"
+      ]
+    },
+    {
+      "control": "Patient PHI action authorization",
+      "status": "BLOCKED",
+      "finding_ids": [
+        "AUD-SEC-005",
+        "AUD-PRV-001",
+        "AUD-PRV-003"
+      ]
+    },
+    {
+      "control": "Consent-gated PHI access",
+      "status": "INTEGRATED",
+      "scope_note": "One production endpoint only; otherwise NOT IMPLEMENTED",
+      "finding_ids": [
+        "AUD-PRV-002"
+      ]
+    },
+    {
+      "control": "Health Core authorization facade runtime wiring",
+      "status": "NOT IMPLEMENTED",
+      "finding_ids": [
+        "AUD-SEC-008"
+      ]
+    },
+    {
+      "control": "Release evidence integrity",
+      "status": "BLOCKED",
+      "finding_ids": [
+        "AUD-SEC-009"
+      ]
+    }
+  ],
+  "summary": {
+    "total_findings": 14,
+    "by_lane": {
+      "SECURITY": 9,
+      "PATIENT_DATA_PRIVACY": 5
+    },
+    "by_severity": {
+      "CRITICAL": 3,
+      "HIGH": 10,
+      "MEDIUM": 1,
+      "LOW": 0
+    },
+    "top_3_material_findings": [
+      "AUD-SEC-001",
+      "AUD-SEC-002",
+      "AUD-PRV-001"
+    ],
+    "verdict": "NOT CERTIFIED; release decision HOLD preserved"
+  },
+  "findings": [
+    {
+      "id": "AUD-SEC-001",
+      "lane": "SECURITY",
+      "title": "NIAM governance, trust, lifecycle, federation, certificates and adaptive-auth control planes accept any authenticated actor",
+      "severity": "CRITICAL",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 9,
+        "reproducibility": 9,
+        "exploitability": 8,
+        "affected_users": 9,
+        "discoverability": 7,
+        "score": 8.4
+      },
+      "stride": [
+        "Elevation of Privilege",
+        "Tampering",
+        "Repudiation"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/identity/api/router.py",
+          "lines": "34",
+          "excerpt": "_AUTH_REQUIRED = [Depends(get_current_niam_actor)]"
+        },
+        {
+          "file": "backend/app/identity/api/router.py",
+          "lines": "54-63",
+          "excerpt": "governance, trust, lifecycle, federation, certificates, notifications, adaptive_auth, admin and compliance routers mounted with _AUTH_REQUIRED; professional_registry mounted without registry authorization dependency"
+        },
+        {
+          "file": "backend/app/identity/api/access.py",
+          "lines": "59-75",
+          "excerpt": "stricter require_niam_registry_reader and require_niam_registry_writer exist but are applied only to persons, sessions and devices in router.py"
+        },
+        {
+          "file": "backend/app/identity/governance/routes.py",
+          "lines": "374-392",
+          "excerpt": "POST /suspensions accepts caller-supplied suspended_by; no permission dependency"
+        },
+        {
+          "file": "backend/app/identity/governance/routes.py",
+          "lines": "494-522",
+          "excerpt": "POST /registry/certify accepts caller-supplied verified_by, digital_signature and certification fields"
+        },
+        {
+          "file": "backend/app/identity/trust/routes.py",
+          "lines": "26-51",
+          "excerpt": "POST /frameworks creates trust framework without permission dependency"
+        },
+        {
+          "file": "backend/app/identity/trust/routes.py",
+          "lines": "214-241",
+          "excerpt": "POST /anchors creates trust anchor with caller-supplied key/certificate material"
+        },
+        {
+          "file": "backend/app/identity/trust/routes.py",
+          "lines": "301-326",
+          "excerpt": "POST /federation creates federation trust relationship"
+        },
+        {
+          "file": "backend/app/identity/lifecycle/routes.py",
+          "lines": "71-79",
+          "excerpt": "POST /enterprise/{reg_id}/approve with caller-supplied approved_by"
+        },
+        {
+          "file": "backend/app/identity/federation/routes.py",
+          "lines": "18-38",
+          "excerpt": "POST /providers registers identity provider including encrypted client secret field"
+        },
+        {
+          "file": "backend/app/identity/certificates/routes.py",
+          "lines": "16-45,48-70",
+          "excerpt": "certificate issue, revoke and rotate handlers have no permission dependency"
+        },
+        {
+          "file": "backend/app/identity/professional_registry/routes.py",
+          "lines": "71-87",
+          "excerpt": "POST /{registry_id}/verify uses verified_by=Depends(get_actor_identity_id)"
+        },
+        {
+          "file": "backend/app/identity/security.py",
+          "lines": "104-119",
+          "excerpt": "get_actor_identity_id derives identity only; no role or authority check"
+        },
+        {
+          "file": "backend/app/identity/professional_registry/services.py",
+          "lines": "97-126,152-175",
+          "excerpt": "verify is documented as the only privilege activation path; is_privileged is the single enforcement point"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Statically follow router.py:54-63 into any listed control-plane router; confirm only authentication is inherited and the handler mutates identity/trust/certificate/privilege state without an authorization dependency. Falsification requires an equivalent policy dependency as in access.py:59-75 or admin/routes.py:30-50 plus a negative test proving a non-privileged actor receives 403.",
+      "root_cause": "Authentication was treated as authorization for high-impact identity control planes; actor identity is used as an audit label rather than as input to an authorization decision.",
+      "impact": "Any authenticated NIAM identity can suspend identities, certify trust, register identity providers, issue or revoke certificates, and self-verify professional privilege entries, with downstream PHI and clinical authorization consequences.",
+      "remediation": "Apply explicit permission dependencies to every affected router and handler, derive all *_by fields from the authenticated principal, use AuthorizationDecisionService for mutations, and add negative authorization tests.",
+      "alternatives": [
+        "Consolidate all NIAM control planes behind one gateway authorization dependency",
+        "Disable affected routers until role catalog and tests land",
+        "Keep router-level auth and add service-layer guardrails"
+      ],
+      "preferred_alternative": "Consolidated gateway dependency plus handler-level defense in depth",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-002",
+      "lane": "SECURITY",
+      "title": "JWT payload has no account-type discriminator and LabUser is resolved before User",
+      "severity": "CRITICAL",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 9,
+        "reproducibility": 8,
+        "exploitability": 8,
+        "affected_users": 9,
+        "discoverability": 7,
+        "score": 8.2
+      },
+      "stride": [
+        "Spoofing",
+        "Elevation of Privilege"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/security/auth.py",
+          "lines": "41-48",
+          "excerpt": "_TokenUser and JWTClaims contain no account-kind field"
+        },
+        {
+          "file": "backend/app/security/auth.py",
+          "lines": "79-85",
+          "excerpt": "build_token_payload emits user_id, lab_id, role and perm_ver only"
+        },
+        {
+          "file": "backend/app/routes/login.py",
+          "lines": "186-193",
+          "excerpt": "citizen token payload uses user_id=citizen.id, lab_id=None, role=citizen, perm_ver=1"
+        },
+        {
+          "file": "backend/app/security/dependencies.py",
+          "lines": "27-35",
+          "excerpt": "_extract_token accepts Bearer then cookie"
+        },
+        {
+          "file": "backend/app/security/dependencies.py",
+          "lines": "77-84",
+          "excerpt": "get_current_user queries LabUser by user_id first, then User; token lab_id and role are not checked"
+        },
+        {
+          "file": "backend/app/security/dependencies.py",
+          "lines": "93-98",
+          "excerpt": "perm_version is checked against whichever ORM class was selected"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Trace a token from login.py:186-193 into dependencies.py:77. Because User.id and LabUser.id are independent primary-key spaces, LabUser.id==N can be selected even when the token claims lab_id=None and role=citizen. Falsification requires a signed account_kind claim plus strict dependency validation and a mismatch-rejection test.",
+      "root_cause": "Token identity is a bare integer without a domain qualifier; identity resolution uses table precedence rather than an explicit account-kind contract.",
+      "impact": "A token minted for one account family can resolve to another account family on ID collision, potentially conferring lab roles, lab scope and permissions or misattributing audit and permission-version checks.",
+      "remediation": "Add a signed account_kind claim at issuance, validate it in every token-consuming dependency, enforce lab_id/workspace consistency with the resolved principal, and reject mismatches.",
+      "alternatives": [
+        "Use globally unique ULIDs or UUIDs across account tables and still validate account_kind",
+        "Namespace the user_id claim as lab:<id> or user:<id>"
+      ],
+      "preferred_alternative": "Globally unique identifiers plus explicit account_kind validation",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-003",
+      "lane": "SECURITY",
+      "title": "Privileged login checks MFA enrollment only and issues full tokens without an MFA challenge",
+      "severity": "CRITICAL",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 9,
+        "reproducibility": 8,
+        "exploitability": 8,
+        "affected_users": 8,
+        "discoverability": 8,
+        "score": 8.2
+      },
+      "stride": [
+        "Spoofing",
+        "Elevation of Privilege"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/routes/login.py",
+          "lines": "141-160",
+          "excerpt": "privileged roles check only mfa.has_mfa_enabled(user.id)"
+        },
+        {
+          "file": "backend/app/routes/login.py",
+          "lines": "197-198",
+          "excerpt": "create_token and create_refresh_token are called immediately after enrollment check"
+        },
+        {
+          "file": "backend/app/routes/login.py",
+          "lines": "211-244",
+          "excerpt": "tokens and session response are returned"
+        },
+        {
+          "file": "backend/app/security/mfa_service.py",
+          "lines": "48-60",
+          "excerpt": "setup_totp creates an active MFADevice before any verification"
+        },
+        {
+          "file": "backend/app/security/mfa_service.py",
+          "lines": "255-262",
+          "excerpt": "has_mfa_enabled only checks for an active device row"
+        },
+        {
+          "file": "backend/app/routes/mfa.py",
+          "lines": "55-75,107-131",
+          "excerpt": "MFA verification endpoints depend on get_current_user, i.e. require an existing token"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Trace a privileged login through login.py:141-160 and confirm no call to verify_totp, complete_webauthn_authentication or verify_mfa_session before create_token at :197. Falsification requires a short-lived pre-token MFA session verified before full token issuance plus a password-only rejection test.",
+      "root_cause": "MFA is modeled as an enrollment attribute rather than a second authentication step in the login state machine.",
+      "impact": "Password compromise or phishing against a privileged account yields a fully authenticated session even when MFA is enrolled, creating false assurance of MFA enforcement.",
+      "remediation": "Implement staged privileged login: credential verification, scoped short-lived MFA challenge token, MFA verification, then full access and refresh token issuance; add replay, expiry and negative tests.",
+      "alternatives": [
+        "Use WebAuthn as primary passwordless factor for privileged roles",
+        "Require step-up MFA at every critical API call via AuthorizationDecisionService"
+      ],
+      "preferred_alternative": "Staged login plus step-up for critical actions",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-004",
+      "lane": "SECURITY",
+      "title": "Logout revokes only cookie tokens; Bearer clients retain usable sessions",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "dread": {
+        "damage": 7,
+        "reproducibility": 8,
+        "exploitability": 7,
+        "affected_users": 5,
+        "discoverability": 7,
+        "score": 6.8
+      },
+      "stride": [
+        "Spoofing",
+        "Repudiation"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/security/dependencies.py",
+          "lines": "27-35",
+          "excerpt": "_extract_token accepts Bearer credentials before cookie"
+        },
+        {
+          "file": "backend/app/routes/login.py",
+          "lines": "257-267",
+          "excerpt": "logout reads access token only from request.cookies"
+        },
+        {
+          "file": "backend/app/routes/login.py",
+          "lines": "269-278",
+          "excerpt": "refresh token revocation reads only the cookie"
+        },
+        {
+          "file": "backend/app/routes/login.py",
+          "lines": "280-295",
+          "excerpt": "perm_version bump depends on user_id which remains None for Bearer-only logout"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Compare dependencies.py:32-34 with login.py:258 and :270. A Bearer-only client has no cookies, so no JTI is blacklisted and no user_id is derived. Falsification requires logout to use the shared extraction helper and a test proving a Bearer token receives 401 after logout.",
+      "root_cause": "Token extraction logic is duplicated and inconsistent between request authentication and logout.",
+      "impact": "Logout is ineffective for native and mobile clients; retained or stolen tokens remain valid until expiry, defeating session termination and incident response.",
+      "remediation": "Reuse _extract_token in logout, accept both Bearer and cookie tokens, blacklist both JTIs, derive user_id from either source, and bump perm_version when identity is known.",
+      "alternatives": [
+        "Server-side session store with explicit session IDs",
+        "Short access-token TTL with refresh-token rotation"
+      ],
+      "preferred_alternative": "Shared token extraction plus both revocation layers and short TTL defense in depth",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-005",
+      "lane": "SECURITY",
+      "title": "Patient PHI routes require authentication but no per-action authorization or consent",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 8,
+        "reproducibility": 9,
+        "exploitability": 8,
+        "affected_users": 8,
+        "discoverability": 8,
+        "score": 8.2
+      },
+      "stride": [
+        "Information Disclosure",
+        "Elevation of Privilege"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "159-175",
+          "excerpt": "GET /patients depends only on get_current_user"
+        },
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "178-207",
+          "excerpt": "POST /patients depends only on get_current_user and passes force_create through"
+        },
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "210-286",
+          "excerpt": "family, children, read-by-id and update routes depend only on get_current_user"
+        },
+        {
+          "file": "backend/app/security/dependencies.py",
+          "lines": "37-41,77-124",
+          "excerpt": "get_current_user authenticates and checks perm_version and lab-active state but performs no patient action authorization"
+        },
+        {
+          "file": "backend/app/capabilities/fhir_interoperability/routes.py",
+          "lines": "34-39",
+          "excerpt": "stricter require_institutional_permission pattern exists but is not used by /patients"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Inspect each listed route signature and confirm absence of require_institutional_permission, require_niam_*, require_consent or AuthorizationDecisionService. Falsification requires explicit patient:read/manage/create dependencies plus negative tests for citizen and low-privilege actors.",
+      "root_cause": "get_current_user is used as a substitute for authorization; no per-resource policy is attached to the legacy patient surface.",
+      "impact": "Any authenticated account that can obtain a token may enumerate, read, create or update PHI without role, purpose or consent checks.",
+      "remediation": "Add explicit patient action permissions to every route, bind reads and writes to institutional workspace or facility scope, apply consent for cross-lab or citizen data, and add negative authorization tests.",
+      "alternatives": [
+        "Wrap the legacy patient router in a policy-enforcing facade",
+        "Migrate to the Health Core authorized facade once it is actually wired"
+      ],
+      "preferred_alternative": "Policy-enforcing facade now, Health Core migration as target state",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-006",
+      "lane": "SECURITY",
+      "title": "Adaptive-auth policy, MFA and session control plane is mounted authentication-only",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 8,
+        "reproducibility": 9,
+        "exploitability": 8,
+        "affected_users": 9,
+        "discoverability": 7,
+        "score": 8.2
+      },
+      "stride": [
+        "Tampering",
+        "Elevation of Privilege"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/identity/api/router.py",
+          "lines": "61",
+          "excerpt": "adaptive_auth router mounted with _AUTH_REQUIRED only"
+        },
+        {
+          "file": "backend/app/identity/adaptive_auth/routes.py",
+          "lines": "35-43",
+          "excerpt": "risk history readable for arbitrary account_id"
+        },
+        {
+          "file": "backend/app/identity/adaptive_auth/routes.py",
+          "lines": "46-68",
+          "excerpt": "MFA challenge creation and verification accept caller-supplied account_id and mfa_id"
+        },
+        {
+          "file": "backend/app/identity/adaptive_auth/routes.py",
+          "lines": "90-143",
+          "excerpt": "risk policies can be created and arbitrarily updated"
+        },
+        {
+          "file": "backend/app/identity/adaptive_auth/routes.py",
+          "lines": "165-213",
+          "excerpt": "session policies can be created and updated"
+        },
+        {
+          "file": "backend/app/identity/adaptive_auth/routes.py",
+          "lines": "261-280",
+          "excerpt": "session policy enforcement and expiry checks callable without authorization"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Follow router.py:61 into adaptive_auth/routes.py and confirm no role or permission dependency on listed handlers. Falsification requires explicit security-admin permission, actor/account binding, audit of mutations and negative tests.",
+      "root_cause": "Security-control configuration endpoints were treated as ordinary authenticated APIs.",
+      "impact": "Any authenticated identity can weaken risk thresholds, manipulate session policies, forge MFA challenges for other accounts and read risk history.",
+      "remediation": "Require a dedicated security-admin permission for all adaptive-auth reads and mutations, bind account_id to actor unless explicitly authorized, audit every change, and add negative tests.",
+      "alternatives": [
+        "Move endpoints under the NIAM admin router with _require_permission",
+        "Make endpoints internal-only and remove from the public API"
+      ],
+      "preferred_alternative": "Move under NIAM admin with dedicated permission keys",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-007",
+      "lane": "SECURITY",
+      "title": "Async NIAM actor dependency omits the account-lock check present in the sync dependency",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "dread": {
+        "damage": 7,
+        "reproducibility": 8,
+        "exploitability": 7,
+        "affected_users": 7,
+        "discoverability": 7,
+        "score": 7.2
+      },
+      "stride": [
+        "Elevation of Privilege"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/identity/api/workspaces.py",
+          "lines": "37-62",
+          "excerpt": "sync actor query includes Account.is_locked.is_(False) at line 54"
+        },
+        {
+          "file": "backend/app/identity/api/workspaces.py",
+          "lines": "65-89",
+          "excerpt": "async actor query filters status and is_active but omits is_locked"
+        },
+        {
+          "file": "backend/app/identity/security.py",
+          "lines": "84-92",
+          "excerpt": "generic resolver checks is_locked and locked_until but async workspace actor path does not call it"
+        },
+        {
+          "file": "backend/app/identity/api/router.py",
+          "lines": "34",
+          "excerpt": "_AUTH_REQUIRED uses get_current_niam_actor, the async variant"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Diff the two queries at workspaces.py:47-58 and :75-85 and confirm is_locked appears only in the sync variant. Falsification requires the async query to include an equivalent fail-closed lock predicate and a locked-account negative test.",
+      "root_cause": "Duplicated authentication logic drifted between sync and async implementations.",
+      "impact": "A locked NIAM account can continue to access all async NIAM routes, including the affected control planes, until token expiry or separate revocation.",
+      "remediation": "Consolidate both dependencies on one canonical predicate builder that always checks active status, is_active, is_locked, valid session and JTI revocation; add parity tests.",
+      "alternatives": [
+        "Add the missing predicate directly as a hotfix",
+        "Replace both dependencies with a shared account and session validator"
+      ],
+      "preferred_alternative": "Shared validator, with direct predicate addition as immediate hotfix",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-008",
+      "lane": "SECURITY",
+      "title": "Health Core deny-by-default authorization facade is not wired into runtime routes",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "dread": {
+        "damage": 8,
+        "reproducibility": 8,
+        "exploitability": 6,
+        "affected_users": 7,
+        "discoverability": 5,
+        "score": 6.8
+      },
+      "stride": [
+        "Elevation of Privilege",
+        "Information Disclosure"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/health_core/authorization/guard.py",
+          "lines": "1-11",
+          "excerpt": "module docstring explicitly states nothing is wired into a route or factory.py"
+        },
+        {
+          "file": "backend/app/health_core/authorization/guard.py",
+          "lines": "78-79",
+          "excerpt": "AuthorizedHealthCore is described as the authorization gate callers must use"
+        },
+        {
+          "file": "backend/app/health_core/authorization/__init__.py",
+          "lines": "27-28,54",
+          "excerpt": "facade is exported"
+        },
+        {
+          "file": "backend/app/factory.py",
+          "lines": "640-679",
+          "excerpt": "representative route mounting block contains no AuthorizedHealthCore integration"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Read guard.py:3-4 and search factory and route modules for AuthorizedHealthCore; no runtime consumer was found. Falsification requires a composition root that routes clinical and lab reads and mutations exclusively through the facade plus bypass-prevention tests.",
+      "root_cause": "A strong authorization component was delivered as a library without a composition-root integration step.",
+      "impact": "The deny-by-default policy engine, scope index and audited authorization decisions are not applied to HTTP traffic; any claim based on this facade is NOT IMPLEMENTED at runtime.",
+      "remediation": "Wire the facade into the clinical gateway composition root, replace direct unwrapped service calls, and add route-level and architecture tests preventing bypass imports.",
+      "alternatives": [
+        "Keep facade dormant and explicitly exclude it from security claims",
+        "Expose it through a thin FastAPI dependency wrapper",
+        "Migrate routes to the canonical clinical gateway"
+      ],
+      "preferred_alternative": "Migrate routes to canonical clinical gateway with a thin wrapper as transition",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-SEC-009",
+      "lane": "SECURITY",
+      "title": "Security-relevant fixes and evidence remain uncommitted; release evidence is internally inconsistent",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 8,
+        "reproducibility": 9,
+        "exploitability": 6,
+        "affected_users": 9,
+        "discoverability": 8,
+        "score": 8.0
+      },
+      "stride": [
+        "Repudiation",
+        "Tampering"
+      ],
+      "evidence": [
+        {
+          "file": "GOVERNANCE/FINAL_DECISION.md",
+          "lines": "13",
+          "excerpt": "HOLD - do not release to production"
+        },
+        {
+          "file": "GOVERNANCE/FINAL_DECISION.md",
+          "lines": "20-27",
+          "excerpt": "S-01..S-13 and kill-switch fixes implemented in working tree; uncommitted and not yet independently reviewed"
+        },
+        {
+          "file": "GOVERNANCE/FINAL_DECISION.md",
+          "lines": "45-47",
+          "excerpt": "authorization coverage REMEDIATED (uncommitted, unreviewed); security certification NOT CERTIFIED; release candidate HOLD"
+        },
+        {
+          "file": "SECURITY_REMEDIATION_REPORT.md",
+          "lines": "274",
+          "excerpt": "DEP-AUDIT-BACKEND set to VERIFIED in uncommitted addendum"
+        },
+        {
+          "file": "SECURITY_REMEDIATION_REPORT.md",
+          "lines": "280",
+          "excerpt": "addendum states it does not certify production readiness or clinical safety; release remains HOLD"
+        },
+        {
+          "file": ".github/workflows/frontend-pwa.yml",
+          "lines": "82-85",
+          "excerpt": "uncommitted VITE_API_BASE_URL changed to https://api.gula-platform.org/api"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Read-only git status at HEAD 2206654 showed large modified and untracked security-relevant sets including config.py, factory.py, login.py, all health_core, NIAM control planes and dependency manifests. Falsification requires a clean committed tree at a named revision containing all fixes, regenerated gates and a consistent decision record.",
+      "root_cause": "Remediation evidence was written into governance reports before the corresponding code was committed and independently reviewed.",
+      "impact": "A release evaluator cannot reproduce the certified state from HEAD; changes can be lost or deployed selectively; assurance claims cannot be tied to an immutable revision.",
+      "remediation": "Commit the complete reviewed change-set atomically, rerun all gates against that commit, update decision records with the exact commit hash, and reconcile VERIFIED dependency language with the still-HOLD release decision.",
+      "alternatives": [
+        "Revert uncommitted security changes and reapply under review",
+        "Create a signed evidence bundle bound to the working tree for internal testing only"
+      ],
+      "preferred_alternative": "Atomic reviewed commit with gates rerun at that revision",
+      "status": "DISCOVERED",
+      "owner_gated": true
+    },
+    {
+      "id": "AUD-PRV-001",
+      "lane": "PATIENT_DATA_PRIVACY",
+      "title": "Cross-facility PHI disclosure in national-ID duplicate response",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "dread": {
+        "damage": 8,
+        "reproducibility": 8,
+        "exploitability": 7,
+        "affected_users": 7,
+        "discoverability": 6,
+        "score": 7.2
+      },
+      "stride": [
+        "Information Disclosure"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/services/patient_service.py",
+          "lines": "324-345",
+          "excerpt": "_check_duplicates receives lab_id but the national-ID branch queries Patient.national_id_hash == nid_hash without a lab filter and returns patient_to_dict(existing)"
+        },
+        {
+          "file": "backend/app/services/patient_service.py",
+          "lines": "53-68",
+          "excerpt": "patient_to_dict exposes full_name, phone, birth_date, gender, email, health_id, is_minor, guardian_id and created_at"
+        },
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "187-205",
+          "excerpt": "route passes caller lab_id and returns service error body, including existing_patient"
+        },
+        {
+          "file": "backend/app/models/patient.py",
+          "lines": "20-24",
+          "excerpt": "composite index ix_patients_lab_nid over lab_id and national_id_hash shows intended tenant-partitioned lookup"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Inspect patient_service.py:334-345 and compare with the phone branch at :347-350; the national-ID query lacks the tenant predicate and the 409 body carries the full patient DTO. Falsification requires a lab-scoped query plus a non-identifying conflict marker or an explicitly authorized MPI disclosure path.",
+      "root_cause": "MPI-style global identity lookup was implemented inside a lab-scoped patient-creation path without tenant isolation or purpose limitation on the response.",
+      "impact": "A user at one facility who knows a national ID can receive another facility's patient PHI including name, phone, DOB, gender, email, health ID and guardian link.",
+      "remediation": "Scope duplicate query by lab_id for local duplicates; route national cross-facility matches through the MPI consent and authorization layer; return only a conflict token; add cross-facility negative tests.",
+      "alternatives": [
+        "Keep global duplicate detection but return exists:true only",
+        "Require an explicit audited MPI disclosure permission and log purpose"
+      ],
+      "preferred_alternative": "Non-identifying conflict marker on create endpoint; dedicated MPI API for authorized disclosure",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PRV-002",
+      "lane": "PATIENT_DATA_PRIVACY",
+      "title": "Consent enforcement is effectively unwired and break-glass is a client-supplied header",
+      "severity": "HIGH",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 8,
+        "reproducibility": 9,
+        "exploitability": 8,
+        "affected_users": 8,
+        "discoverability": 7,
+        "score": 8.0
+      },
+      "stride": [
+        "Information Disclosure",
+        "Elevation of Privilege"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/security/consent_dep.py",
+          "lines": "74-195",
+          "excerpt": "require_consent implements owner, emergency and active-consent checks"
+        },
+        {
+          "file": "backend/app/security/consent_dep.py",
+          "lines": "68-71",
+          "excerpt": "break-glass flag is read from X-Emergency-Access header"
+        },
+        {
+          "file": "backend/app/security/consent_dep.py",
+          "lines": "121-153",
+          "excerpt": "doctor role plus header is allowed with only an audit row; no justification, approval or expiry"
+        },
+        {
+          "file": "backend/app/security/consent_dep.py",
+          "lines": "53-65",
+          "excerpt": "owner bypass relies on attached citizen_ulid attribute not directly exposed by LabUser until portal fully live"
+        },
+        {
+          "file": "backend/app/services/mpi/api.py",
+          "lines": "560-572",
+          "excerpt": "only production use found: GET /mpi/citizens/{citizen_ulid}/access with Depends(require_consent(read:citizen))"
+        },
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "159-286",
+          "excerpt": "patient PHI routes do not use consent"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Read-only usage scan found require_consent only in its definition, mpi/api.py:571 and tests. Falsification requires consent dependencies on all PHI reads plus server-issued break-glass grants with case ID, justification, expiry and post-use approval.",
+      "root_cause": "The consent engine was built as a reusable dependency but not adopted by primary PHI surfaces; break-glass was modeled as a request flag rather than a governed clinical process.",
+      "impact": "Most PHI access is not consent-gated; where consent is used, a doctor can self-authorize emergency access by setting a header, producing only an after-the-fact audit record.",
+      "remediation": "Apply require_consent to every cross-lab or citizen PHI read; replace raw header with short-lived server-issued emergency grant tied to case and approver; require post-use review; add tests for denied, consented, owner and emergency paths.",
+      "alternatives": [
+        "Move break-glass into the clinical gateway policy engine with purpose-of-use context",
+        "Require signed emergency token plus mandatory review queue while retaining header"
+      ],
+      "preferred_alternative": "Clinical gateway policy engine with governed emergency grants",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PRV-003",
+      "lane": "PATIENT_DATA_PRIVACY",
+      "title": "Client-controlled force_create bypasses duplicate detection without authorization",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "dread": {
+        "damage": 7,
+        "reproducibility": 8,
+        "exploitability": 7,
+        "affected_users": 8,
+        "discoverability": 6,
+        "score": 7.2
+      },
+      "stride": [
+        "Tampering"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "39",
+          "excerpt": "force_create: bool = False with comment skip duplicate check"
+        },
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "199",
+          "excerpt": "force_create passed directly into create_patient"
+        },
+        {
+          "file": "backend/app/services/patient_service.py",
+          "lines": "149-155",
+          "excerpt": "duplicate detection skipped entirely when force_create is true"
+        },
+        {
+          "file": "backend/app/models/patient.py",
+          "lines": "29",
+          "excerpt": "national_id_hash is indexed but not unique"
+        },
+        {
+          "file": "backend/app/services/patient_service.py",
+          "lines": "182-185",
+          "excerpt": "MPI resolution still runs after the bypass"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Trace force_create from routes/patients.py:39,199 into patient_service.py:149-155 and confirm no permission check and no uniqueness constraint. Falsification requires an authorized override with mandatory reason and audit plus a transaction-safe uniqueness or MPI merge path.",
+      "root_cause": "A clinical safety override was exposed as an ordinary request parameter without authority, justification or compensation.",
+      "impact": "Duplicate patient rows can fragment identity, duplicate orders and results, and increase wrong-patient clinical risk.",
+      "remediation": "Remove the public flag; implement a server-side override permission with mandatory reason and audit; add a partial unique constraint or transaction-safe lock; require duplicate-resolution review.",
+      "alternatives": [
+        "Keep override only in an admin-only endpoint",
+        "Automatically route duplicates to MPI review instead of creating a row"
+      ],
+      "preferred_alternative": "Automatic MPI review with controlled admin override only",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PRV-004",
+      "lane": "PATIENT_DATA_PRIVACY",
+      "title": "Raw PII is written into the tamper-evident audit log",
+      "severity": "MEDIUM",
+      "likelihood": "HIGH",
+      "dread": {
+        "damage": 5,
+        "reproducibility": 9,
+        "exploitability": 6,
+        "affected_users": 7,
+        "discoverability": 6,
+        "score": 6.6
+      },
+      "stride": [
+        "Information Disclosure"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/services/patient_service.py",
+          "lines": "187-196",
+          "excerpt": "audit details string includes patient.full_name and phone"
+        },
+        {
+          "file": "backend/app/services/audit_service.py",
+          "lines": "198-212",
+          "excerpt": "log_action serializes details and writes it verbatim into AuditLog.details"
+        },
+        {
+          "file": "GOVERNANCE/SECURITY_COVERAGE_MATRIX.md",
+          "lines": "22,53",
+          "excerpt": "audit immutability and tenant-context hash-chain are owner-listed controls that must be preserved"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Read patient_service.py:194 and audit_service.py:198-212 and confirm raw name and phone are stored. Falsification requires redaction or tokenization at the logging boundary and a test asserting no raw PII in AuditLog.details.",
+      "root_cause": "Audit logging treats details as free-form human text rather than a data-minimized structured field.",
+      "impact": "The append-only audit log becomes a secondary PHI repository with different retention and access controls, complicating minimization and breach response.",
+      "remediation": "Log resource IDs, reference tokens and field names only; never log raw names, phones, emails, national IDs or family IDs; add a redaction helper and CI PII-pattern test.",
+      "alternatives": [
+        "Store a salted reference token for the patient",
+        "Encrypt audit details with a separate key and strict reviewer permission"
+      ],
+      "preferred_alternative": "Reference token plus minimization; encryption only as defense in depth",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    },
+    {
+      "id": "AUD-PRV-005",
+      "lane": "PATIENT_DATA_PRIVACY",
+      "title": "Minor and guardian linkage is optional and unenforced",
+      "severity": "HIGH",
+      "likelihood": "MEDIUM",
+      "dread": {
+        "damage": 8,
+        "reproducibility": 8,
+        "exploitability": 7,
+        "affected_users": 6,
+        "discoverability": 6,
+        "score": 7.0
+      },
+      "stride": [
+        "Information Disclosure",
+        "Tampering"
+      ],
+      "evidence": [
+        {
+          "file": "backend/app/routes/patients.py",
+          "lines": "124-126",
+          "excerpt": "guardian_id described as strongly recommended for under-18 patients, not required"
+        },
+        {
+          "file": "backend/app/services/patient_service.py",
+          "lines": "157-163",
+          "excerpt": "guardian validated only if guardian_id is not None; no age-derived requirement"
+        },
+        {
+          "file": "backend/app/models/patient.py",
+          "lines": "33-36,54-59",
+          "excerpt": "guardian FK is nullable and is_minor is derived from birth_date"
+        },
+        {
+          "file": "backend/app/services/patient_service.py",
+          "lines": "304-321",
+          "excerpt": "children view returns patients linked by guardian_id; missing links silently reduce visibility"
+        }
+      ],
+      "safe_reproduction_or_falsification": "Compare age derivation in models/patient.py:54-59 with create validation in patient_service.py:157-163 and confirm a minor can be submitted with guardian_id=None. Falsification requires a validator requiring an adult guardian for minors plus tests for missing, invalid, cross-lab and deceased guardian cases.",
+      "root_cause": "Guardian linkage is treated as optional metadata rather than as a privacy and safety control for pediatric records.",
+      "impact": "Minor PHI can be created without a verifiable guardian, breaking consent and guardian-authorization assumptions and weakening auditability of who may act for the child.",
+      "remediation": "Derive age from birth_date, require a guardian for minors, verify guardian is an adult in the same lab or facility scope, and record guardian IDs only in audit details.",
+      "alternatives": [
+        "Block creation until guardian verification",
+        "Create a pending state with limited access until guardian link is supplied"
+      ],
+      "preferred_alternative": "Pending state for emergency intake; block routine registration without guardian",
+      "status": "DISCOVERED",
+      "owner_gated": false
+    }
+  ]
+}

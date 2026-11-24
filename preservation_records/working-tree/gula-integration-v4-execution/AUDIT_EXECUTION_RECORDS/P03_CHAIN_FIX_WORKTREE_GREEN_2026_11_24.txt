@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/opencode/p03-chain/backend
+configfile: pytest.ini
+plugins: asyncio-1.5.0, anyio-4.16.0, timeout-2.4.0, Faker-40.63.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 14 items
+
+tests/test_p03_chain_integrity_postgres.py ..............                [100%]
+
+=============================== warnings summary ===============================
+../../../../home/samertts/.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/samertts/.cache/gula-int-py312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 14 passed, 1 warning in 25.35s ========================
+EXIT=0

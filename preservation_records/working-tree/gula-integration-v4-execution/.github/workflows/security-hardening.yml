@@ -1,0 +1,108 @@
+name: Security Hardening
+
+on:
+  push:
+    branches: [main, 'release/*']
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-hardening-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret Scan
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Repository source guard
+        run: python3 scripts/security/check_public_secrets.py
+      - name: Gitleaks history scan
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  python-dependency-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        manifest:
+          - backend/requirements-lock.txt
+          - edge_agent/requirements.txt
+          - nhop-platform/requirements.txt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install pip-audit
+        run: python -m pip install --disable-pip-version-check --no-cache-dir pip-audit
+      - name: Audit pinned manifest
+        run: |
+          if [ ! -f "${{ matrix.manifest }}" ]; then
+            echo "Missing manifest: ${{ matrix.manifest }}"
+            exit 1
+          fi
+          pip-audit -r "${{ matrix.manifest }}" --strict --progress-spinner off
+
+  # AUD-SUP-001: the pip path above was clean but uv.lock had drifted to
+  # pre-remediation (vulnerable) transitive pins because uv resolves from
+  # pyproject.toml. Enforce lock/manifest consistency as a HARD gate and audit
+  # the actual resolved set so the two paths can never silently diverge again.
+  python-uv-lock-consistency:
+    name: Python uv.lock Consistency + Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install pinned uv
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir uv==0.11.26
+          uv --version
+      - name: Enforce backend/uv.lock is in sync with pyproject.toml
+        working-directory: backend
+        run: uv lock --check
+      - name: Export locked dependency set and audit it
+        working-directory: backend
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir pip-audit
+          uv export --frozen --no-hashes --format requirements-txt --no-emit-project \
+            -o /tmp/gula-uv-requirements.txt
+          if [ ! -s /tmp/gula-uv-requirements.txt ]; then
+            echo "uv export produced an empty manifest"
+            exit 1
+          fi
+          grep -iE '^(certifi|dnspython|idna|joserfc|pillow|pyasn1|urllib3)==' \
+            /tmp/gula-uv-requirements.txt
+          pip-audit -r /tmp/gula-uv-requirements.txt --strict --progress-spinner off
+
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0,AGPL-3.0
