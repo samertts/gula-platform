@@ -8,20 +8,17 @@ orders) — constant-time regardless of data volume.
 """
 
 import time
-from datetime import date, datetime
+from datetime import date
 
-from fastapi import APIRouter, Depends, Request, Response
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
 
-from app._compat import UTC
-
-from ..config import IS_PRODUCTION
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
+from ..services.metrics_service import build_prometheus_response, get_json_metrics
 
 router = APIRouter(tags=["metrics"])
 
@@ -112,27 +109,12 @@ def get_metrics(
 ):
     """Return operational metrics for the monitoring dashboard.
 
-    Scope:
+    Delegates to `app.services.metrics_service.get_json_metrics`. Scope:
     - master_admin / ministry_admin / province_admin: platform-wide numbers
     - Everyone else: scoped to their lab_id
     """
-    db_status, db_ms = _ping_db_detail()
-    red_ok, red_ms = _ping_redis()
-
     is_wide = current_user.role in _WIDE_ROLES
-    stats = _order_stats(db, lab_id=None if is_wide else current_user.lab_id)
-    uptime_s = int(time.time() - _START)
-
-    return {
-        "uptime_s": uptime_s,
-        "uptime_h": round(uptime_s / 3600, 2),
-        "memory_mb": _rss_mb(),
-        "db": {"status": db_status, "ok": db_status == "ok", "ping_ms": db_ms},
-        "redis": {"ok": red_ok, "ping_ms": red_ms},
-        "stats": stats,
-        "scope": "platform" if is_wide else "lab",
-        "timestamp": datetime.now(UTC).isoformat(),
-    }
+    return get_json_metrics(db, lab_id=current_user.lab_id, is_wide=is_wide)
 
 
 # ── Prometheus text-format exposition ─────────────────────────────────────────
@@ -144,216 +126,10 @@ _PROM_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
 
 @router.get("/metrics/prom", include_in_schema=False)
 def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
-    """Prometheus text-format exposition endpoint.
+    """Prometheus text-format exposition.
 
-    Secured by Bearer token in production. Missing production key material
-    fails closed with 503 rather than exposing platform-wide telemetry. Open
-    (no auth) in development so Prometheus can scrape without credentials.
+    All rendering, including the production fail-closed scrape policy and SLO
+    metrics, is owned by `services.metrics_service.build_prometheus_response`.
+    This route is a thin adapter so there is exactly one live renderer.
     """
-    import os
-
-    token = os.getenv("METRICS_BEARER_TOKEN", "")
-    if IS_PRODUCTION:
-        if not token:
-            return Response(status_code=503, content="Metrics authentication is not configured")
-        auth = request.headers.get("Authorization", "")
-        if auth != f"Bearer {token}":
-            return Response(status_code=401, content="Unauthorized")
-
-    db_ok, db_ms = _ping_db(db)
-    red_ok, red_ms = _ping_redis()
-    rss = _rss_mb()
-    uptime_s = int(time.time() - _START)
-
-    # Platform-wide order stats (Prometheus sees the whole system)
-    try:
-        stats = _order_stats(db, lab_id=None)
-    except Exception:
-        stats = {}
-
-    # Outbox queue backlog (undelivered async events)
-    queue_backlog = 0
-    try:
-        from ..database import SessionLocal
-        from ..models.outbox import OutboxEvent
-
-        _db2 = SessionLocal()
-        try:
-            queue_backlog = (
-                _db2.query(OutboxEvent).filter(OutboxEvent.processed_at.is_(None)).count()
-            )
-        finally:
-            _db2.close()
-    except Exception:
-        pass
-
-    lines = [
-        "# HELP gula_up Platform is operational (1=up, 0=down)",
-        "# TYPE gula_up gauge",
-        "gula_up 1",
-        "",
-        "# HELP gula_uptime_seconds Process uptime in seconds",
-        "# TYPE gula_uptime_seconds counter",
-        f"gula_uptime_seconds {uptime_s}",
-        "",
-        "# HELP gula_memory_rss_mb Resident set size in MB",
-        "# TYPE gula_memory_rss_mb gauge",
-        f"gula_memory_rss_mb {rss}",
-        "",
-        "# HELP gula_db_up Database connectivity (1=ok, 0=down)",
-        "# TYPE gula_db_up gauge",
-        f"gula_db_up {1 if db_ok else 0}",
-        "",
-        "# HELP gula_db_latency_ms Last DB ping latency in milliseconds",
-        "# TYPE gula_db_latency_ms gauge",
-        f"gula_db_latency_ms {db_ms}",
-        "",
-        "# HELP gula_redis_up Redis connectivity (1=ok, 0=down)",
-        "# TYPE gula_redis_up gauge",
-        f"gula_redis_up {1 if red_ok else 0}",
-        "",
-        "# HELP gula_redis_latency_ms Last Redis ping latency in milliseconds",
-        "# TYPE gula_redis_latency_ms gauge",
-        f"gula_redis_latency_ms {red_ms}",
-        "",
-        "# HELP gula_orders_total Total lab orders ever created",
-        "# TYPE gula_orders_total counter",
-        f"gula_orders_total {stats.get('orders_total', 0)}",
-        "",
-        "# HELP gula_orders_pending Orders currently in pending state",
-        "# TYPE gula_orders_pending gauge",
-        f"gula_orders_pending {stats.get('pending', 0)}",
-        "",
-        "# HELP gula_active_requests Concurrent requests being processed",
-        "# TYPE gula_active_requests gauge",
-        "",
-        "# HELP gula_queue_backlog Outbox events pending delivery",
-        "# TYPE gula_queue_backlog gauge",
-        f"gula_queue_backlog {queue_backlog}",
-    ]
-
-    try:
-        from ..middleware import ConcurrencyLimitMiddleware
-
-        lines.append(f"gula_active_requests {ConcurrencyLimitMiddleware._active}")
-    except Exception:
-        lines.append("gula_active_requests 0")
-
-    # ── Per-error-type DB counters ────────────────────────────────────────────
-    # Exposes cumulative counts so Prometheus can track error trends and trigger
-    # differentiated alerts:
-    #   auth_failed > 0 → CRITICAL (misconfiguration, never self-heals)
-    #   refused > N     → WARNING  (postgres down or network issue)
-    #   timeout > N     → WARNING  (DB overloaded)
-    try:
-        from ..database import get_db_error_counts
-
-        ec = get_db_error_counts()
-        lines += [
-            "",
-            "# HELP gula_db_refused_total Cumulative DB 'connection refused' errors",
-            "# TYPE gula_db_refused_total counter",
-            f"gula_db_refused_total {ec.get('refused', 0)}",
-            "",
-            "# HELP gula_db_auth_failed_total Cumulative DB authentication failures (wrong password / pg_hba.conf)",
-            "# TYPE gula_db_auth_failed_total counter",
-            f"gula_db_auth_failed_total {ec.get('auth_failed', 0)}",
-            "",
-            "# HELP gula_db_timeout_total Cumulative DB connection timeouts",
-            "# TYPE gula_db_timeout_total counter",
-            f"gula_db_timeout_total {ec.get('timeout', 0)}",
-            "",
-            "# HELP gula_db_error_total Cumulative DB unknown/other errors",
-            "# TYPE gula_db_error_total counter",
-            f"gula_db_error_total {ec.get('error', 0)}",
-        ]
-    except Exception:
-        pass
-
-    # ── Sliding Window DB rates (5-minute) ───────────────────────────────────
-    # These gauges capture the *rate* of DB events in the last 5 minutes,
-    # enabling ratio-based Prometheus alerts that ignore ancient history.
-    try:
-        from ..database import get_db_window_snapshot
-
-        win = get_db_window_snapshot(window_s=300)
-        total_events = max(win["ok"] + win["refused"] + win["timeout"], 1)
-        lines += [
-            "",
-            "# HELP gula_db_refused_rate_5m DB 'refused' events per minute (5min window)",
-            "# TYPE gula_db_refused_rate_5m gauge",
-            f"gula_db_refused_rate_5m {win['refused_per_min']}",
-            "",
-            "# HELP gula_db_timeout_rate_5m DB timeout events per minute (5min window)",
-            "# TYPE gula_db_timeout_rate_5m gauge",
-            f"gula_db_timeout_rate_5m {win['timeout_per_min']}",
-            "",
-            "# HELP gula_db_error_ratio_5m Fraction of DB checks that failed in last 5min (0-1)",
-            "# TYPE gula_db_error_ratio_5m gauge",
-            f"gula_db_error_ratio_5m {round((win['refused'] + win['timeout']) / total_events, 4)}",
-        ]
-    except Exception:
-        pass
-
-    # ── Clinical command safety metrics ─────────────────────────────────────
-    # The renderer exports only allow-listed, low-cardinality labels.  It never
-    # includes patients, users, resource IDs, request bodies, or free text.
-    try:
-        from app.clinical.observability import prometheus_lines as _clinical_prometheus_lines
-
-        lines += _clinical_prometheus_lines()
-    except Exception:
-        # Monitoring must not make the protected metrics endpoint unavailable.
-        # The safety control itself remains fail-closed inside the command guard.
-        pass
-
-    # ── Control Layer metrics ────────────────────────────────────────────────
-    try:
-        from ..core.policy_engine import policy_engine
-
-        ps = policy_engine.stats()
-        lines += [
-            "",
-            "# HELP gula_policy_block_total Total autonomous actions blocked by policy",
-            "# TYPE gula_policy_block_total counter",
-            f"gula_policy_block_total {ps['blocked_total']}",
-            "",
-            "# HELP gula_policy_allow_total Total autonomous actions permitted by policy",
-            "# TYPE gula_policy_allow_total counter",
-            f"gula_policy_allow_total {ps['allowed_total']}",
-        ]
-    except Exception:
-        pass
-
-    try:
-        from ..core.auto_repair import auto_repair
-
-        total_repairs = sum(v["triggered"] for v in auto_repair.stats().values())
-        lines += [
-            "",
-            "# HELP gula_auto_repair_total Total autonomous repair actions triggered",
-            "# TYPE gula_auto_repair_total counter",
-            f"gula_auto_repair_total {total_repairs}",
-        ]
-    except Exception:
-        pass
-
-    try:
-        from ..core.kill_switch import is_kill_switch_active
-        from ..core.self_healing import health as _sh
-
-        lines += [
-            "",
-            "# HELP gula_kill_switch_active Kill switch state (1=active, 0=inactive)",
-            "# TYPE gula_kill_switch_active gauge",
-            f"gula_kill_switch_active {1 if is_kill_switch_active() else 0}",
-            "",
-            "# HELP gula_degradation_level Current degradation level (0=NONE 1=L1 2=L2 3=L3)",
-            "# TYPE gula_degradation_level gauge",
-            f"gula_degradation_level {_sh.degradation_level.value}",
-        ]
-    except Exception:
-        pass
-
-    lines.append("")
-    return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)
+    return build_prometheus_response(request, db)

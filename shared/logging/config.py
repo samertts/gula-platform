@@ -10,6 +10,7 @@ from typing import Any
 from backend.app._compat import UTC
 
 _ctx_request_id: ContextVar[str] = ContextVar("request_id", default="")
+_ctx_correlation_id: ContextVar[str] = ContextVar("correlation_id", default="")
 _ctx_user_id: ContextVar[int | None] = ContextVar("user_id", default=None)
 _ctx_lab_id: ContextVar[int | None] = ContextVar("lab_id", default=None)
 
@@ -18,9 +19,12 @@ def bind_log_context(
     request_id: str = "",
     user_id: int | None = None,
     lab_id: int | None = None,
+    correlation_id: str = "",
 ) -> None:
     if request_id:
         _ctx_request_id.set(request_id)
+    if correlation_id:
+        _ctx_correlation_id.set(correlation_id)
     if user_id is not None:
         _ctx_user_id.set(user_id)
     if lab_id is not None:
@@ -29,6 +33,10 @@ def bind_log_context(
 
 def get_request_id() -> str:
     return _ctx_request_id.get("")
+
+
+def get_correlation_id() -> str:
+    return _ctx_correlation_id.get("")
 
 
 class JSONFormatter(logging.Formatter):
@@ -43,6 +51,9 @@ class JSONFormatter(logging.Formatter):
         if rid:
             doc["request_id"] = rid
             doc["trace_id"] = rid
+        cid = _ctx_correlation_id.get("")
+        if cid:
+            doc["correlation_id"] = cid
         uid = _ctx_user_id.get(None)
         if uid is not None:
             doc["user_id"] = uid
