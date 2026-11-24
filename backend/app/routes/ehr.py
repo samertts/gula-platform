@@ -148,9 +148,14 @@ def update_clinical_note(
     if not record:
         raise HTTPException(status_code=404, detail="Clinical note not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
-    updated = ehr_service.update_clinical_note(
-        db, note_id, body.model_dump(exclude_none=True),
-    )
+    try:
+        updated = ehr_service.update_clinical_note(
+            db, note_id, body.model_dump(exclude_none=True),
+        )
+    except ehr_service.ClinicalRecordImmutableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
     db.commit()
     return updated.to_dict()
 
@@ -165,7 +170,10 @@ def delete_clinical_note(
     if not record:
         raise HTTPException(status_code=404, detail="Clinical note not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
-    ehr_service.soft_delete_clinical_note(db, note_id)
+    try:
+        ehr_service.soft_delete_clinical_note(db, note_id)
+    except ehr_service.ClinicalRecordImmutableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
     db.commit()
     return {"detail": "Clinical note deleted"}
 

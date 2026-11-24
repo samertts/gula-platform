@@ -5,6 +5,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 from app.ehr.models import (
     AllergyIntolerance,
     CarePlan,
@@ -25,7 +27,10 @@ from app.ehr.models import (
     RiskFactorRecord,
     SocialHistoryRecord,
 )
+from app.national.domain.encounter import Encounter as NationalEncounter
+from app.national.domain.observation import Observation as NationalObservation
 from app.national.domain.patient import Patient as NationalPatient
+from app.radiology.models import RadiologyReport
 
 
 def get_national_patient_or_404(
@@ -116,12 +121,57 @@ def get_clinical_note_for_verified_facility(
     )
 
 
+class ClinicalRecordImmutableError(ValueError):
+    """Raised when a final or signed clinical record would be changed in place."""
+
+
+_NOTE_VERSION_CONTROL_FIELDS = frozenset(
+    {
+        "version",
+        "fhir_id",
+        "fhir_resource_type",
+        "prior_version_id",
+        "superseded_by_id",
+        "is_amended",
+        "amendment_reason",
+        "is_signed",
+        "signed_by",
+        "signed_at",
+        "cosigned_by",
+        "cosigned_at",
+        "witnessed_by",
+        "witnessed_at",
+        "electronic_signature",
+        "signature_hash",
+        "authored_at",
+    },
+)
+
+
+def _assert_note_is_editable(note: ClinicalNote) -> None:
+    if note.is_final or note.is_signed:
+        raise ClinicalRecordImmutableError(
+            "Final or signed clinical notes cannot be changed in place; use an amendment",
+        )
+
+
 def update_clinical_note(
     db: Session, note_id: str, data: dict[str, Any],
 ) -> ClinicalNote | None:
     note = get_clinical_note(db, note_id)
     if not note:
         return None
+    _assert_note_is_editable(note)
+
+    blocked = _NOTE_VERSION_CONTROL_FIELDS.intersection(data)
+    if blocked:
+        raise ValueError(
+            "Clinical note version, signature and provenance fields cannot be edited in place: "
+            + ", ".join(sorted(blocked)),
+        )
+    if "is_final" in data and data["is_final"] is not True:
+        raise ValueError("A clinical note cannot be un-finalized by an in-place update")
+
     for key, value in data.items():
         setattr(note, key, value)
     note.version += 1
@@ -130,12 +180,80 @@ def update_clinical_note(
 
 
 def soft_delete_clinical_note(db: Session, note_id: str) -> bool:
-    note = db.query(ClinicalNote).filter(ClinicalNote.id == note_id).first()
+    note = get_clinical_note(db, note_id)
     if not note:
         return False
+    _assert_note_is_editable(note)
     note.soft_delete()
     db.flush()
     return True
+
+
+def amend_clinical_note(
+    db: Session,
+    note_id: str,
+    *,
+    content: str,
+    amendment_reason: str,
+    title: str | None = None,
+) -> ClinicalNote | None:
+    """Create a superseding amendment without changing the historical note.
+
+    This uses the existing ClinicalNote version/supersession fields. It adds no
+    new table, no new identity or authorization system, and no new route.
+    """
+
+    original = get_clinical_note(db, note_id)
+    if not original:
+        return None
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Amendment content is required")
+    if not isinstance(amendment_reason, str) or not amendment_reason.strip():
+        raise ValueError("Amendment reason is required")
+
+    # If the requested note was already superseded, amend the current version so
+    # the chain stays linear and no historical row is rewritten.
+    current = original
+    seen = {current.id}
+    while current.superseded_by_id:
+        successor_id = current.superseded_by_id
+        if successor_id in seen:
+            break
+        successor = get_clinical_note(db, successor_id)
+        if successor is None:
+            break
+        seen.add(successor_id)
+        current = successor
+
+    amendment = ClinicalNote(
+        patient_id=current.patient_id,
+        citizen_id=current.citizen_id,
+        encounter_id=current.encounter_id,
+        practitioner_id=current.practitioner_id,
+        author_id=current.author_id,
+        note_type=current.note_type,
+        title=title if title is not None else current.title,
+        title_ar=current.title_ar,
+        content=content,
+        content_format=current.content_format,
+        version=current.version + 1,
+        prior_version_id=current.id,
+        is_final=True,
+        is_signed=False,
+        is_amended=True,
+        is_deleted=False,
+        amendment_reason=amendment_reason,
+        authored_at=datetime.now(UTC),
+        facility_id=current.facility_id,
+        department_id=current.department_id,
+        tags=current.tags,
+        metadata_=current.metadata_,
+    )
+    db.add(amendment)
+    db.flush()
+    current.superseded_by_id = amendment.id
+    db.flush()
+    return amendment
 
 
 def list_clinical_notes_by_patient(
@@ -1337,3 +1455,123 @@ def build_live_timeline(
 
     events.sort(key=lambda e: e.get("event_date") or "", reverse=True)
     return events
+
+
+# ── Longitudinal history bundle ───────────────────────────────────────────
+
+
+def build_longitudinal_history_bundle(
+    events: list[dict[str, Any]],
+    *,
+    patient_id: str,
+    generated_at: datetime | None = None,
+) -> dict[str, Any]:
+    """Normalize already-authorized timeline events into one clinical record view.
+
+    The caller is responsible for completing the canonical read gate and tenant
+    scope before calling this function. This adds no new record store: every
+    event keeps its existing source_type/source_id provenance.
+    """
+
+    seen: set[tuple[str | None, str | None, str | None]] = set()
+    normalized: list[dict[str, Any]] = []
+    for event in events:
+        key = (event.get("source_type"), event.get("source_id"), event.get("event_type"))
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(dict(event))
+
+    normalized.sort(key=lambda event: event.get("event_date") or "", reverse=True)
+    return {
+        "patient_id": patient_id,
+        "generated_at": _fmt_ts(generated_at or datetime.now(UTC)),
+        "event_count": len(normalized),
+        "source_types": sorted({event.get("source_type") for event in normalized if event.get("source_type")}),
+        "events": normalized,
+    }
+
+
+def build_longitudinal_history(
+    db: Session, patient_id: str, max_per_type: int = 10,
+) -> dict[str, Any]:
+    """Aggregate existing EHR, national and radiology records for one patient.
+
+    This is a read-only projection over existing models. It does not copy PHI
+    into a new table and does not bypass the caller's authorization context.
+    """
+
+    events = list(build_live_timeline(db, patient_id, max_per_type=max_per_type))
+
+    for encounter in (
+        db.query(NationalEncounter)
+        .filter(
+            NationalEncounter.patient_id == patient_id,
+            NationalEncounter.is_deleted.is_(False),
+        )
+        .order_by(NationalEncounter.period_start.desc())
+        .limit(max_per_type)
+        .all()
+    ):
+        events.append({
+            "event_type": "encounter",
+            "event_date": _fmt_ts(encounter.period_start or encounter.created_at),
+            "title": encounter.reason_description or encounter.diagnosis_description or str(encounter.encounter_type),
+            "status": str(encounter.status) if encounter.status is not None else None,
+            "facility_id": encounter.facility_id,
+            "source_id": encounter.id,
+            "source_type": "national_encounters",
+        })
+
+    for observation in (
+        db.query(NationalObservation)
+        .filter(
+            NationalObservation.patient_id == patient_id,
+            NationalObservation.is_deleted.is_(False),
+        )
+        .order_by(NationalObservation.effective_datetime.desc())
+        .limit(max_per_type)
+        .all()
+    ):
+        events.append({
+            "event_type": "observation",
+            "event_date": _fmt_ts(
+                observation.effective_datetime or observation.issued_at or observation.created_at
+            ),
+            "title": observation.code_display or observation.code,
+            "value": (
+                observation.value_text
+                or observation.value_quantity
+                or observation.value_integer
+                or observation.value_boolean
+            ),
+            "unit": observation.unit,
+            "status": observation.status,
+            "source_id": observation.id,
+            "source_type": "national_observations",
+        })
+
+    for report in (
+        db.query(RadiologyReport)
+        .filter(
+            RadiologyReport.patient_id == patient_id,
+            RadiologyReport.is_deleted.is_(False),
+        )
+        .order_by(RadiologyReport.completed_at.desc())
+        .limit(max_per_type)
+        .all()
+    ):
+        events.append({
+            "event_type": "radiology_report",
+            "event_date": _fmt_ts(
+                report.completed_at or report.verified_at or report.amended_at or report.created_at
+            ),
+            "title": report.impression or report.conclusion or report.accession_number,
+            "status": str(report.status) if report.status is not None else None,
+            "version": report.version,
+            "prior_report_id": report.prior_report_id,
+            "source_id": report.id,
+            "source_type": "radiology_reports",
+        })
+
+    return build_longitudinal_history_bundle(events, patient_id=patient_id)

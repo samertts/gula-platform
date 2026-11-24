@@ -37,10 +37,12 @@ class FHIRValidationEngine:
 
     def _validate_patient(self, resource: dict, result: FHIRValidationResult) -> None:
         if "identifier" in resource and not isinstance(resource["identifier"], list):
+            result.valid = False
             result.errors.append("Patient.identifier must be a list")
 
     def _validate_encounter(self, resource: dict, result: FHIRValidationResult) -> None:
         valid_statuses = {"planned", "in-progress", "onleave", "finished", "cancelled", "entered-in-error", "unknown"}
         status = resource.get("status", "")
         if status and status not in valid_statuses:
+            result.valid = False
             result.errors.append(f"Invalid Encounter status: {status}")

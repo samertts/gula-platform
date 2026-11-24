@@ -23,7 +23,7 @@ from app.identity.models.session import UserSession
 from app.identity.models.verification_record import VerificationRecord
 from app.identity.services.audit_service import AuditService
 from app.identity.services.authorization_service_v2 import RolePermissionService
-from app.identity.services.phi_permission_map import resolve_phi_permission
+from app.identity.services.phi_permission_map import PHI_RESOURCE_TYPES, resolve_phi_permission
 from app.identity.services.verified_guardian_guard import (
     GUARDIAN_RELATIONSHIP_TYPE,
     guardian_relationship_permits,
@@ -309,6 +309,11 @@ class AuthorizationDecisionService:
             if request.permission_key is not None and request.permission_key != phi_key:
                 return AuthorizationDecision.deny(AuthorizationReason.phi_permission_conflict)
             request = replace(request, permission_key=phi_key)
+        elif request.resource_type in PHI_RESOURCE_TYPES:
+            # An unmapped action on a PHI resource must never fall through to a
+            # caller-supplied broad permission. The centralized map is the only
+            # authority; unresolved PHI actions are denied and audited.
+            return AuthorizationDecision.deny(AuthorizationReason.permission_unknown)
 
         permission_key = request.effective_permission
         permissions = set()
