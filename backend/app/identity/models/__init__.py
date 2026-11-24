@@ -38,10 +38,12 @@ from .citizen_relationship import (
 )
 from .consent import NiamConsent, NiamConsentSource, NiamConsentStatus
 from .credential import Credential, CredentialType
+from .delegation import DelegationStatus, NiamDelegation
 from .device import Device
 from .employment import Employment, EmploymentStatus
 from .enterprise_account import EnterpriseAccount
 from .identity import IdentityRecord, IdentityType
+from .identity_authority import IdentityAuthorityRecord
 from .legacy_account_link import LegacyAccountLink, LegacyAccountLinkSource, LegacyAccountLinkStatus
 from .license import LicenseStatus, ProfessionalLicense
 from .machine_identity import MachineIdentity
@@ -87,12 +89,14 @@ __all__ = [
     "CitizenRelationshipType",
     "Credential",
     "CredentialType",
+    "DelegationStatus",
     "Device",
     "DigitalCertificate",
     "Employment",
     "EmploymentStatus",
     "EnterpriseAccount",
     "IdentityAuditEntry",
+    "IdentityAuthorityRecord",
     "IdentityPolicy",
     "IdentityRecord",
     "IdentityType",
@@ -120,6 +124,7 @@ __all__ = [
     "NiamConsent",
     "NiamConsentSource",
     "NiamConsentStatus",
+    "NiamDelegation",
     "OrganizationOwnership",
     "OrganizationRepresentative",
     "OrganizationStatus",
