@@ -2,6 +2,7 @@ fastapi>=0.139.2
 uvicorn[standard]>=0.51.0
 gunicorn>=26.0.0
 sqlalchemy>=2.0.51
+greenlet>=3.5.5  # required by sqlalchemy.ext.asyncio; absent caused CI import failures
 alembic>=1.18.5
 psycopg2-binary>=2.9.12
 psycopg[binary]>=3.3.4,<4.0.0

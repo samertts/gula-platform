@@ -1,0 +1,140 @@
+{
+  "version": "1.168.0",
+  "results": [],
+  "errors": [
+    {
+      "code": 2,
+      "level": "warn",
+      "type": "Timeout",
+      "rule_id": "python.lang.security.audit.dangerous-system-call-tainted-env-args.dangerous-system-call-tainted-env-args",
+      "message": "Timeout when running python.lang.security.audit.dangerous-system-call-tainted-env-args.dangerous-system-call-tainted-env-args on backend/app/lims/routes.py:\n ",
+      "path": "backend/app/lims/routes.py"
+    }
+  ],
+  "paths": {
+    "scanned": [
+      "backend/app/_compat.py",
+      "backend/app/blood_bank/domain/state_machine.py",
+      "backend/app/chronic_care/care_plans.py",
+      "backend/app/clinical_gateway/contracts.py",
+      "backend/app/clinical_gateway/rollout.py",
+      "backend/app/identity/api/persons.py",
+      "backend/app/identity/api/router.py",
+      "backend/app/identity/models/administrative_structure.py",
+      "backend/app/identity/models/authorization.py",
+      "backend/app/identity/models/consent.py",
+      "backend/app/identity/models/legacy_account_link.py",
+      "backend/app/identity/models/membership.py",
+      "backend/app/identity/models/security.py",
+      "backend/app/identity/models/workspace.py",
+      "backend/app/identity/services/authorization_decision.py",
+      "backend/app/identity/services/canonical_audit.py",
+      "backend/app/identity/services/organization_service.py",
+      "backend/app/identity/services/verification_service.py",
+      "backend/app/integration/connectors/__init__.py",
+      "backend/app/integration/gateway/grpc_gateway.py",
+      "backend/app/lims/routes.py",
+      "backend/app/lims/workflows.py",
+      "backend/app/models/clinical_scope.py",
+      "backend/app/routes/register.py",
+      "backend/app/routes/test_results.py",
+      "backend/app/services/critical_result_contract.py",
+      "backend/app/services/mpi/resolver.py",
+      "backend/app/services/order_service.py",
+      "backend/migrations/versions/20260814_0005_role_permission_engine.py",
+      "backend/migrations/versions/20260814_0006_security_audit_governance.py",
+      "backend/migrations/versions/20260814_0007_clinical_gateway_scope.py",
+      "backend/migrations/versions/20260815_0023_drug_substitution.py",
+      "backend/migrations/versions/20260820_0004_surgical_safety_checklists.py",
+      "backend/migrations/versions/20261120_0001_nc013_hospital_core.py"
+    ]
+  },
+  "time": {
+    "rules": [],
+    "rules_parse_time": 0.8828039169311523,
+    "profiling_times": {
+      "config_time": 2.7296159267425537,
+      "core_time": 32.281006813049316,
+      "ignores_time": 0.0010039806365966797,
+      "total_time": 35.561197996139526
+    },
+    "parsing_time": {
+      "total_time": 0.0,
+      "per_file_time": { "mean": 0.0, "std_dev": 0.0 },
+      "very_slow_stats": { "time_ratio": 0.0, "count_ratio": 0.0 },
+      "very_slow_files": []
+    },
+    "scanning_time": {
+      "total_time": 58.44574165344238,
+      "per_file_time": {
+        "mean": 1.718992401571835,
+        "std_dev": 16.433063886574413
+      },
+      "very_slow_stats": {
+        "time_ratio": 0.8133026888134517,
+        "count_ratio": 0.17647058823529413
+      },
+      "very_slow_files": [
+        {
+          "fpath": "backend/app/routes/register.py",
+          "ftime": 2.3776159286499023
+        },
+        {
+          "fpath": "backend/migrations/versions/20260814_0006_security_audit_governance.py",
+          "ftime": 3.0418078899383545
+        },
+        {
+          "fpath": "backend/app/routes/test_results.py",
+          "ftime": 4.951832056045532
+        },
+        {
+          "fpath": "backend/app/identity/services/authorization_decision.py",
+          "ftime": 7.166778087615967
+        },
+        {
+          "fpath": "backend/app/services/order_service.py",
+          "ftime": 7.591571807861328
+        },
+        { "fpath": "backend/app/lims/routes.py", "ftime": 22.404473066329956 }
+      ]
+    },
+    "matching_time": {
+      "total_time": 0.0,
+      "per_file_and_rule_time": { "mean": 0.0, "std_dev": 0.0 },
+      "very_slow_stats": { "time_ratio": 0.0, "count_ratio": 0.0 },
+      "very_slow_rules_on_files": []
+    },
+    "tainting_time": {
+      "total_time": 0.0,
+      "per_def_and_rule_time": { "mean": 0.0, "std_dev": 0.0 },
+      "very_slow_stats": { "time_ratio": 0.0, "count_ratio": 0.0 },
+      "very_slow_rules_on_defs": []
+    },
+    "fixpoint_timeouts": [
+      {
+        "error_type": "Fixpoint timeout",
+        "severity": "warn",
+        "message": "Fixpoint timeout while performing taint analysis at backend/migrations/versions/20260814_0006_security_audit_governance.py:35:4 [rules: 1, first: python.boto3.security.hardcoded-token.hardcoded-token]",
+        "location": {
+          "path": "backend/migrations/versions/20260814_0006_security_audit_governance.py",
+          "start": { "line": 35, "col": 5, "offset": 718 },
+          "end": { "line": 35, "col": 12, "offset": 725 }
+        }
+      }
+    ],
+    "prefiltering": {
+      "project_level_time": 0.0,
+      "file_level_time": 0.0,
+      "rules_with_project_prefilters_ratio": 0.0,
+      "rules_with_file_prefilters_ratio": 0.9933774834437086,
+      "rules_selected_ratio": 0.039929879236462795,
+      "rules_matched_ratio": 0.039929879236462795
+    },
+    "targets": [],
+    "total_bytes": 0,
+    "max_memory_bytes": 803720256
+  },
+  "engine_requested": "OSS",
+  "skipped_rules": [],
+  "profiling_results": []
+}

@@ -3,13 +3,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app._compat import UTC
+from app._compat import UTC, StrEnum
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
 from app.identity.models.authorization import CatalogStatus, Permission

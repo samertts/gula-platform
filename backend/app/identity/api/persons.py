@@ -1,10 +1,12 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.identity.services.person_service import PersonService
+
+from .workspaces import NiamActor, get_current_niam_actor
 
 router = APIRouter(prefix="/persons", tags=["NIAM Persons"])
 
@@ -23,7 +25,11 @@ async def create_person(
     national_id_hash: str | None = None,
     health_id: str | None = None,
     db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    # Defense in depth: the parent router also requires this dependency, but
+    # the handler must remain safe if it is ever mounted elsewhere.
+    del actor
     service = PersonService(db)
     person = await service.create_person(
         given_name=given_name,
@@ -45,9 +51,13 @@ async def create_person(
 async def get_person(
     person_uuid: str,
     db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    del actor
     service = PersonService(db)
     person = await service.get_person_by_uuid(person_uuid)
     if not person:
-        return {"error": "not_found"}
+        # A 200 with {"error": "not_found"} made misses indistinguishable
+        # from successful reads for callers and monitoring.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
     return {"uuid": person.uuid, "given_name": person.given_name, "family_name": person.family_name}

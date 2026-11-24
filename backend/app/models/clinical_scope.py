@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
 from typing import Final
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 
-from app._compat import UTC
+from app._compat import UTC, StrEnum
 from app.database import Base
 
 

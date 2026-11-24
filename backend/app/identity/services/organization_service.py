@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 
+from app._compat import StrEnum
 from app.identity.models.administrative_structure import (
     OrganizationOwnership,
     OrganizationRepresentative,

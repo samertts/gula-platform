@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
 from typing import TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app._compat import StrEnum
 
 CONTRACT_VERSION = "1.0"
 DEFAULT_PAGE_SIZE = 50

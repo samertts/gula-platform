@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from enum import StrEnum
-
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 
+from app._compat import StrEnum
 from app.identity.base import IdentityBaseEntity
 
 

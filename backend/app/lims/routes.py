@@ -2175,11 +2175,22 @@ def process_critical_alert(
     result_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    result_store: str | None = Query(
+        None,
+        pattern="^(lab_results|lims_results)$",
+        description="Required result table namespace: lab_results or lims_results",
+    ),
 ):
-    """Process a critical result alert."""
+    """Process a critical result alert with an explicit result namespace."""
     _require_phase1_capability("phase1.lims.critical_alerts", current_user, db)
     from .workflows import process_critical_result
-    return process_critical_result(db, result_id, _lab_id(current_user), current_user.id)
+    return process_critical_result(
+        db,
+        result_id,
+        _lab_id(current_user),
+        current_user.id,
+        result_store=result_store,
+    )
 
 
 # ===========================================================================

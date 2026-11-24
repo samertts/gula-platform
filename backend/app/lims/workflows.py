@@ -12,6 +12,12 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.services.critical_result_contract import (
+    LAB_RESULT_STORE,
+    LIMS_RESULT_STORE,
+    AmbiguousResultReference,
+    extract_critical_result_ref,
+)
 
 # ===========================================================================
 # Result Auto-Validation Workflow
@@ -223,40 +229,83 @@ def process_critical_result(
     result_id: int,
     lab_id: int,
     user_id: int,
+    result_store: str | None = None,
 ) -> dict[str, Any]:
-    """Execute critical result notification workflow.
+    """Execute a critical-result workflow against an explicit result store.
 
-    Steps:
-    1. Verify result is critical
-    2. Log critical alert
-    3. Determine notification pathway
-    4. Trigger outbound notification
+    ``result_store`` is mandatory. A bare integer ID is ambiguous because
+    ``lab_results.id`` and ``lims_results.Result.id`` are unrelated sequences.
     """
-    from .models import Result
+    if result_store not in (LAB_RESULT_STORE, LIMS_RESULT_STORE):
+        return {
+            "status": "error",
+            "message": "Explicit result_store is required (lab_results or lims_results)",
+        }
 
-    result_obj = db.query(Result).filter(
-        Result.id == result_id,
-        Result.lab_id == lab_id,
-    ).first()
+    if result_store == LIMS_RESULT_STORE:
+        from .models import Result
 
-    if not result_obj:
-        return {"status": "error", "message": "Result not found"}
+        result_obj = db.query(Result).filter(
+            Result.id == result_id,
+            Result.lab_id == lab_id,
+        ).first()
+        if result_obj is None:
+            return {"status": "error", "message": "Result not found"}
+        if not result_obj.is_critical:
+            return {"status": "skipped", "message": "Result is not critical"}
 
-    if not result_obj.is_critical:
-        return {"status": "skipped", "message": "Result is not critical"}
+        is_panic = result_obj.is_panic
+        test_code = result_obj.test_code
+        namespaced_id = {"lims_result_id": result_id}
+    else:
+        from app.models.lab_order import LabOrder
+        from app.models.lab_result import LabResult
 
-    # Determine notification urgency
-    is_panic = result_obj.is_panic
+        result_obj = (
+            db.query(LabResult)
+            .join(LabOrder, LabOrder.id == LabResult.order_id)
+            .filter(
+                LabResult.id == result_id,
+                LabOrder.lab_id == lab_id,
+            )
+            .first()
+        )
+        if result_obj is None:
+            return {"status": "error", "message": "Result not found"}
+        if result_obj.flag != "critical":
+            return {"status": "skipped", "message": "Result is not critical"}
+
+        is_panic = True  # core critical flag has no separate panic state
+        test_code = result_obj.test_name
+        namespaced_id = {"lab_result_id": result_id}
+
+    # Determine notification urgency. Delivery policy is not invented here;
+    # the returned action is advisory and downstream delivery remains gated.
     notification_window = "15 minutes" if is_panic else "60 minutes"
 
     return {
         "status": "alerted",
-        "result_id": result_id,
-        "test_code": result_obj.test_code,
+        "result_store": result_store,
+        **namespaced_id,
+        "test_code": test_code,
         "is_panic": is_panic,
         "notification_window": notification_window,
         "action": "notify_ordering_physician",
     }
+
+
+def process_critical_result_from_event(
+    db: Session,
+    payload: dict[str, Any],
+    lab_id: int,
+    user_id: int,
+) -> dict[str, Any]:
+    """Consume a namespaced critical-result event without guessing the store."""
+    try:
+        store, result_id = extract_critical_result_ref(payload)
+    except AmbiguousResultReference as exc:
+        return {"status": "error", "message": str(exc)}
+    return process_critical_result(db, result_id, lab_id, user_id, result_store=store)
 
 
 # ===========================================================================
