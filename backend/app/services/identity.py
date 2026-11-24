@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+import unicodedata
 
 # Arabic character normalization map
 ARABIC_NORMALIZE = {
@@ -210,19 +211,72 @@ def jaro_winkler(s1: str, s2: str, prefix_weight: float = 0.1, max_prefix: int =
     return jaro + prefix_len * prefix_weight * (1 - jaro)
 
 
+def normalize_national_id(national_id: str | None) -> str:
+    """Return the canonical, ASCII-digit-only form of a national/family ID.
+
+    ``re.sub(r"[^\\d]", ...)`` is *not* sufficient: Python's ``\\d`` matches every
+    Unicode decimal digit, so ``١٢٣`` (Arabic-Indic) remains distinct from ``123``
+    and the two hash differently. Every Unicode decimal digit (Nd) is mapped to
+    its ASCII value here; separators (spaces, dashes, punctuation) are removed.
+
+    ``١٢٣``, ``۱۲۳``, ``1-2 3`` and ``123`` all normalize to ``123``.
+    """
+    if not national_id:
+        return ""
+    digits: list[str] = []
+    for char in national_id:
+        decimal = unicodedata.decimal(char, None)
+        if decimal is not None:
+            digits.append(str(decimal))
+    return "".join(digits)
+
+
 def hash_national_id(national_id: str) -> str:
     """Hash a national ID for secure storage using HMAC-SHA256 with a stable key.
 
-    Uses NID_HMAC_KEY (not SECRET_KEY) so hashes survive secret rotation.
+    Uses NID_HMAC_KEY (not SECRET_KEY) so hashes survive secret rotation. The
+    identifier is canonicalized first so equivalent Arabic-Indic / Western
+    representations produce the same hash.
     """
     import hmac
 
     from ..config import NID_HMAC_KEY
 
-    cleaned = re.sub(r"[^\d]", "", national_id)
+    cleaned = normalize_national_id(national_id)
     if not cleaned:
         return ""
     return hmac.new(NID_HMAC_KEY.encode(), cleaned.encode(), hashlib.sha256).hexdigest()
+
+
+def nid_hash_candidates(national_id: str | None) -> list[str]:
+    """Return distinct HMAC hashes to try when *verifying* an existing record.
+
+    The canonical hash is always first (new writes use it). Two legacy forms are
+    appended so records written before normalization remain discoverable:
+      1. the previous ``identity.py`` form (separators removed, Unicode digits kept);
+      2. the raw submitted string (as ``register.py`` historically hashed it).
+
+    This is for lookup/verification only. New writes must use
+    :func:`hash_national_id` so the stored value is always canonical.
+    """
+    import hmac
+
+    from ..config import NID_HMAC_KEY
+
+    key = NID_HMAC_KEY.encode()
+    candidates: list[str] = []
+
+    def _add(raw: str) -> None:
+        if not raw:
+            return
+        digest = hmac.new(key, raw.encode(), hashlib.sha256).hexdigest()
+        if digest not in candidates:
+            candidates.append(digest)
+
+    _add(normalize_national_id(national_id))
+    _add(re.sub(r"[^\d]", "", national_id or ""))
+    _add(national_id or "")
+    return candidates
 
 
 def hash_family_id(family_id: str) -> str:
@@ -230,12 +284,13 @@ def hash_family_id(family_id: str) -> str:
 
     Uses the same HMAC key as national IDs but prefixes the input with "fam:"
     to prevent hash collisions with national IDs that share the same digit sequence.
+    Digit canonicalization matches :func:`hash_national_id`.
     """
     import hmac
 
     from ..config import NID_HMAC_KEY
 
-    cleaned = re.sub(r"[^\d]", "", family_id)
+    cleaned = normalize_national_id(family_id)
     if not cleaned:
         return ""
     return hmac.new(NID_HMAC_KEY.encode(), f"fam:{cleaned}".encode(), hashlib.sha256).hexdigest()

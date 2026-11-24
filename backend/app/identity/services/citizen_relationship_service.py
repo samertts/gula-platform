@@ -17,11 +17,28 @@ from app.identity.models.citizen_relationship import (
     CitizenRelationshipStatus,
     CitizenRelationshipType,
 )
+from app.identity.services.verified_guardian_guard import (
+    GUARDIAN_PURPOSES,
+    GuardianPolicyError,
+    assert_no_twin_merge,
+    canonical_nid_hash,
+    derive_age,
+    is_authorized_verifier_role,
+    subject_is_linkable,
+)
 from app.models.lab_user import LabUser
 from app.models.user import User
 from app.national.domain.citizen import Citizen
 from app.national.domain.patient import Patient
 from app.services.audit_service import log_action
+
+# B3 — guardian types accepted by the canonical GuardianRulesService table.
+B3_GUARDIAN_TYPES = frozenset(
+    {
+        "legal_guardian", "parent", "grandparent", "sibling",
+        "caregiver", "authorized_representative",
+    }
+)
 
 
 class CitizenRelationshipWorkflowError(ValueError):
@@ -237,6 +254,149 @@ class CitizenRelationshipWorkflow:
                 f"relationship_id={relationship.id};status=pending;source_kind={source_kind};"
                 f"legacy_user_id={legacy_user_id};citizen_id={citizen_id};patient_id={patient_id};"
                 f"scope={json.dumps(normalized_scope, sort_keys=True)}"
+            ),
+        )
+        self.db.commit()
+        self.db.refresh(relationship)
+        return relationship
+
+    def create_pending_guardian(
+        self,
+        *,
+        legacy_user_id: int,
+        citizen_id: str,
+        guardian_type: str,
+        guardian_nid_input: str,
+        purpose: str,
+        scope: dict[str, Any],
+        idempotency_key: str,
+    ) -> CitizenRelationship:
+        """B3 — create a pending, verifiable guardian relationship.
+
+        Additive to the C2 ``self`` workflow; never performs matching/backfill.
+        An authorized verifier (not the subject) must submit, the subject must be
+        a server-verified minor, the guardian's NID input must pass the single
+        canonical NHID input contract (no identifier is minted), and any weak
+        identity collision fails closed (twins-never-merged). Activation remains
+        the separate explicit verification transition in :meth:`activate`.
+        """
+        # 1. Only an explicitly authorized verifier role may establish guardianship.
+        if not is_authorized_verifier_role(self.actor.role):
+            raise CitizenRelationshipUnsupported("Actor is not an authorized guardian verifier")
+        if guardian_type not in B3_GUARDIAN_TYPES:
+            raise CitizenRelationshipConflict("Unsupported guardian_type")
+        if purpose not in GUARDIAN_PURPOSES:
+            raise CitizenRelationshipUnsupported("Unsupported guardian relationship purpose")
+        if not 16 <= len(idempotency_key) <= 128:
+            raise CitizenRelationshipConflict("Idempotency-Key must be 16 to 128 characters")
+
+        # 2. NID input is validated through the ONLY sanctioned contract; the raw
+        #    value is never persisted (only its canonical digest).
+        try:
+            guardian_nid_hash = canonical_nid_hash(guardian_nid_input)
+        except GuardianPolicyError as exc:
+            raise CitizenRelationshipConflict(f"Invalid guardian NID input: {exc}") from exc
+
+        normalized_scope = _canonical_scope(scope)
+
+        # 3. Source must be an active, verified guardian account.
+        source = self.db.query(User).filter(User.id == legacy_user_id).first()
+        if source is None or not source.is_active or not source.is_verified:
+            raise CitizenRelationshipConflict("Guardian source account must be active and verified")
+
+        # 4. Subject must be a linkable, server-verified minor.
+        citizen = self.db.query(Citizen).filter(Citizen.id == citizen_id).first()
+        if citizen is None:
+            raise CitizenRelationshipNotFound("Citizen record not found")
+        if not subject_is_linkable(citizen):
+            raise CitizenRelationshipConflict("Citizen record is not linkable (merged/deceased/inactive)")
+        try:
+            subject_age = derive_age(citizen.date_of_birth)
+        except GuardianPolicyError as exc:
+            raise CitizenRelationshipConflict(f"Subject age is not verifiable: {exc}") from exc
+        if subject_age >= 18:
+            raise CitizenRelationshipConflict("Guardian relationship requires a minor subject")
+
+        # 5. TWINS-NEVER-MERGED: a distinct citizen sharing the subject's
+        #    blocking key AND DOB makes identity resolution ambiguous -> deny.
+        #    (The guardian's NID digest is used only for input validation and
+        #    metadata; guardian and subject are different people.)
+        subject_block = getattr(citizen, "name_blocking_key", None)
+        subject_dob = getattr(citizen, "date_of_birth", None)
+        if subject_block and subject_dob:
+            collision = (
+                self.db.query(Citizen)
+                .filter(
+                    Citizen.name_blocking_key == subject_block,
+                    Citizen.date_of_birth == subject_dob,
+                )
+                .first()
+            )
+            if collision is not None:
+                try:
+                    assert_no_twin_merge(collision, citizen)
+                except GuardianPolicyError as exc:
+                    raise CitizenRelationshipConflict(f"Ambiguous identity: {exc}") from exc
+
+        payload = {
+            "source_kind": "legacy_user",
+            "legacy_user_id": legacy_user_id,
+            "citizen_id": citizen_id,
+            "relationship_type": "guardian",
+            "purpose": purpose,
+            "guardian_type": guardian_type,
+            "scope": normalized_scope,
+        }
+        fingerprint = _request_fingerprint(payload)
+        key_hash = _digest(f"idempotency:{idempotency_key}")
+        existing_by_key = (
+            self.db.query(CitizenRelationship)
+            .filter(CitizenRelationship.idempotency_key_hash == key_hash)
+            .with_for_update()
+            .first()
+        )
+        if existing_by_key:
+            if existing_by_key.request_fingerprint != fingerprint:
+                raise CitizenRelationshipConflict("Idempotency-Key was reused for a different request")
+            return existing_by_key
+
+        relationship = CitizenRelationship(
+            source_kind="legacy_user",
+            legacy_user_id=legacy_user_id,
+            citizen_id=citizen_id,
+            patient_id=None,
+            relationship_type="guardian",
+            status=CitizenRelationshipStatus.pending.value,
+            purpose=purpose,
+            scope=normalized_scope,
+            valid_from=_now(),
+            version=1,
+            idempotency_key_hash=key_hash,
+            request_fingerprint=fingerprint,
+            metadata_={
+                "workflow": "b3",
+                "guardian_type": guardian_type,
+                "source_verified": bool(source.is_verified),
+                "guardian_verified": True,
+                "guardian_nid_digest": guardian_nid_hash,
+                "verified_by_role": self.actor.role,
+                "subject_age_at_creation": subject_age,
+            },
+        )
+        self.db.add(relationship)
+        self.db.flush()
+        log_action(
+            self.db,
+            action="guardian_relationship_created",
+            resource_type="citizen_relationship",
+            resource_id=None,
+            user_id=self.actor.id,
+            user_role=self.actor.role,
+            ip_address=self.request_ip,
+            details=(
+                f"relationship_id={relationship.id};status=pending;guardian_type={guardian_type};"
+                f"legacy_user_id={legacy_user_id};citizen_id={citizen_id};"
+                f"subject_age={subject_age};verified_by_role={self.actor.role}"
             ),
         )
         self.db.commit()

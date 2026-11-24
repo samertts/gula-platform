@@ -16,8 +16,10 @@ from app.identity.models.authorization import (
     RoleAssignmentStatus,
     RolePermission,
 )
+from app.identity.models.delegation import DelegationStatus, NiamDelegation
 from app.identity.models.membership import Membership, MembershipStatus
 from app.identity.services.audit_service import AuditService
+from app.identity.services.delegation_service import MAX_DELEGATION_DEPTH
 from app.identity.services.membership_service import MembershipService
 
 LEGAL_ROLE_ASSIGNMENT_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -200,6 +202,57 @@ class RolePermissionService:
         await self._audit(AuditAction.role_assignment_revoked, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"reason": reason})
         return assignment
 
+    async def _delegation_chain_valid(
+        self, delegation: NiamDelegation, organization_id: str, now: datetime
+    ) -> bool:
+        """A delegation confers authority only while its ENTIRE chain is live.
+
+        Team C B5 residual — transitive revocation: revoking the original
+        delegator's direct role assignment used to leave a live delegation in
+        force at enforcement time. Walk delegator -> parent delegation -> ...
+        until a live direct ``RoleAssignment`` is reached. Any broken link,
+        cycle, missing parent or depth violation fails closed.
+        """
+        seen: set[str] = set()
+        current = delegation
+        while True:
+            if current.id in seen:
+                return False
+            seen.add(current.id)
+            depth = int(current.depth or 0)
+            if depth < 1 or depth > MAX_DELEGATION_DEPTH:
+                return False
+            delegator = current.delegator_account_id
+            direct = await self.session.scalar(
+                select(RoleAssignment.id).where(
+                    RoleAssignment.account_id == delegator,
+                    RoleAssignment.role_id == current.role_id,
+                    RoleAssignment.organization_id == organization_id,
+                    RoleAssignment.status == RoleAssignmentStatus.active.value,
+                    or_(RoleAssignment.expires_at.is_(None), RoleAssignment.expires_at > now),
+                    RoleAssignment.revoked_at.is_(None),
+                )
+            )
+            if direct is not None:
+                return True
+            if depth == 1:
+                return False
+            parent = await self.session.scalar(
+                select(NiamDelegation).where(
+                    NiamDelegation.delegate_account_id == delegator,
+                    NiamDelegation.role_id == current.role_id,
+                    NiamDelegation.organization_id == organization_id,
+                    NiamDelegation.depth == depth - 1,
+                    NiamDelegation.status == DelegationStatus.active,
+                    NiamDelegation.starts_at <= now,
+                    NiamDelegation.expires_at > now,
+                    NiamDelegation.revoked_at.is_(None),
+                ).order_by(NiamDelegation.expires_at.desc())
+            )
+            if parent is None:
+                return False
+            current = parent
+
     async def effective_permissions(
         self,
         account_id: str,
@@ -232,7 +285,52 @@ class RolePermissionService:
                 scope_match,
             ),
         )
-        return set(result.scalars().all())
+        direct = set(result.scalars().all())
+
+        # B5 — delegated authority is an INPUT to this same canonical authority,
+        # never a second engine. The delegation must be active, in force, within
+        # its verified permission subset and depth cap, match the same RBAC/ABAC
+        # scope predicate as a direct role assignment, AND still have a live
+        # delegator chain (transitive-revocation hardening).
+        delegated = (await self.session.execute(
+            select(NiamDelegation).where(
+                NiamDelegation.delegate_account_id == account_id,
+                NiamDelegation.status == DelegationStatus.active,
+                NiamDelegation.depth >= 1,
+                NiamDelegation.depth <= MAX_DELEGATION_DEPTH,
+                NiamDelegation.starts_at <= now,
+                NiamDelegation.expires_at > now,
+                NiamDelegation.revoked_at.is_(None),
+                NiamDelegation.organization_id == organization_id,
+                or_(NiamDelegation.facility_id.is_(None), NiamDelegation.facility_id == facility_id),
+                or_(NiamDelegation.department_id.is_(None), NiamDelegation.department_id == department_id),
+                or_(NiamDelegation.unit_id.is_(None), NiamDelegation.unit_id == unit_id),
+                or_(NiamDelegation.workspace_id.is_(None), NiamDelegation.workspace_id == workspace_id),
+            )
+        )).scalars().all()
+
+        active_keys_by_role: dict[str, set[str]] = {}
+        for delegation in delegated:
+            if not await self._delegation_chain_valid(delegation, organization_id, now):
+                continue
+            role_id = delegation.role_id
+            if role_id not in active_keys_by_role:
+                active_keys_by_role[role_id] = set((await self.session.execute(
+                    select(Permission.permission_key)
+                    .join(RolePermission, RolePermission.permission_id == Permission.id)
+                    .join(Role, Role.id == RolePermission.role_id)
+                    .where(
+                        RolePermission.role_id == role_id,
+                        RolePermission.status == CatalogStatus.active.value,
+                        Permission.status == CatalogStatus.active.value,
+                        Role.status == CatalogStatus.active.value,
+                    )
+                )).scalars().all())
+            keys = delegation.permission_keys
+            if not isinstance(keys, list):
+                continue
+            direct |= {k for k in keys if isinstance(k, str)} & active_keys_by_role[role_id]
+        return direct
 
     async def has_permission(self, account_id: str, permission_key: str, organization_id: str, **scope: str | None) -> bool:
         permission = await self.session.scalar(

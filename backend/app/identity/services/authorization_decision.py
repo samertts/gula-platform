@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -20,6 +20,12 @@ from app.identity.models.session import UserSession
 from app.identity.models.verification_record import VerificationRecord
 from app.identity.services.audit_service import AuditService
 from app.identity.services.authorization_service_v2 import RolePermissionService
+from app.identity.services.phi_permission_map import resolve_phi_permission
+from app.identity.services.verified_guardian_guard import (
+    GUARDIAN_RELATIONSHIP_TYPE,
+    guardian_relationship_permits,
+)
+from app.national.domain.citizen import Citizen
 
 
 class AuthorizationDecisionValue(StrEnum):
@@ -40,6 +46,7 @@ class AuthorizationReason(StrEnum):
     role_unresolved = "ROLE_UNRESOLVED"
     permission_unknown = "PERMISSION_UNKNOWN"
     permission_missing = "PERMISSION_MISSING"
+    phi_permission_conflict = "PHI_PERMISSION_CONFLICT"
     resource_unresolved = "RESOURCE_UNRESOLVED"
     cross_tenant_denied = "CROSS_TENANT_DENIED"
     workspace_boundary_denied = "WORKSPACE_BOUNDARY_DENIED"
@@ -276,6 +283,15 @@ class AuthorizationDecisionService:
                 required_assurance="MFA",
             )
 
+        # B1 — centralized per-action PHI permission map. For a PHI resource the
+        # permission key is authoritative from the map, never from the caller;
+        # a supplied broad/substitute key cannot authorize a different action.
+        phi_key = resolve_phi_permission(request.resource_type, request.action)
+        if phi_key is not None:
+            if request.permission_key is not None and request.permission_key != phi_key:
+                return AuthorizationDecision.deny(AuthorizationReason.phi_permission_conflict)
+            request = replace(request, permission_key=phi_key)
+
         permission_key = request.effective_permission
         permissions = set()
         if membership is not None and request.organization_id:
@@ -428,6 +444,22 @@ class AuthorizationDecisionService:
                 continue
             if request.purpose is not None and relationship.purpose != request.purpose:
                 continue
+            # B3 — guardian relationships carry an extra fail-closed guard:
+            # subject minor status is derived server-side from DOB, the
+            # relationship must be explicitly verified, and the canonical
+            # GuardianRulesService table must permit the action. Other
+            # relationship types (e.g. self) are unchanged.
+            if request.relationship_type == GUARDIAN_RELATIONSHIP_TYPE:
+                subject = await self.session.scalar(
+                    select(Citizen).where(Citizen.id == relationship.citizen_id)
+                )
+                if not guardian_relationship_permits(
+                    relationship,
+                    action=request.action,
+                    resource_type=request.resource_type,
+                    subject=subject,
+                ):
+                    continue
             if not relationship.allows(
                 request.resource_type,
                 write=request.action not in {"read", "list", "view"},
