@@ -11,9 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus
+from app.identity.models.assignment import Assignment, AssignmentStatus
 from app.identity.models.audit import AuditAction
 from app.identity.models.authorization import CatalogStatus, Permission
 from app.identity.models.citizen_relationship import CitizenRelationship
+from app.identity.models.employment import Employment
+from app.identity.models.identity import IdentityRecord
 from app.identity.models.membership import Membership, MembershipStatus
 from app.identity.models.policy import IdentityPolicy
 from app.identity.models.session import UserSession
@@ -42,6 +45,8 @@ class AuthorizationReason(StrEnum):
     membership_unresolved = "MEMBERSHIP_UNRESOLVED"
     membership_inactive = "MEMBERSHIP_INACTIVE"
     membership_scope_mismatch = "MEMBERSHIP_SCOPE_MISMATCH"
+    employment_terminated = "EMPLOYMENT_TERMINATED"
+    assignment_expired = "ASSIGNMENT_EXPIRED"
     organization_authority_required = "ORGANIZATION_AUTHORITY_REQUIRED"
     role_unresolved = "ROLE_UNRESOLVED"
     permission_unknown = "PERMISSION_UNKNOWN"
@@ -227,6 +232,15 @@ class AuthorizationDecisionService:
         if session.account_id != account.id or not session.is_active or session.expires_at <= now:
             return AuthorizationDecision.deny(AuthorizationReason.session_invalid)
 
+        # Wave 04: a terminated workforce relationship must not survive through
+        # an old account, token, role or facility membership. This is evaluated
+        # on every decision (no unrestricted authorization cache) and before
+        # break-glass or scope logic. Accounts with no employment relationship
+        # are governed by the existing membership/relationship checks below.
+        workforce_failure = await self._workforce_relationship_failure(account, now)
+        if workforce_failure is not None:
+            return AuthorizationDecision.deny(workforce_failure)
+
         if request.break_glass:
             if not request.break_glass_authorized:
                 return AuthorizationDecision.deny(AuthorizationReason.break_glass_workflow_required)
@@ -260,6 +274,10 @@ class AuthorizationDecisionService:
             scope_failure = self._check_scope(request, membership)
             if scope_failure is not None:
                 return AuthorizationDecision.deny(scope_failure)
+
+        assignment_failure = await self._assignment_scope_failure(account, request, membership, now)
+        if assignment_failure is not None:
+            return AuthorizationDecision.deny(assignment_failure)
 
         resource_failure = self._check_resource_context(request)
         if resource_failure is not None:
@@ -302,6 +320,7 @@ class AuthorizationDecisionService:
                 department_id=request.department_id,
                 unit_id=request.unit_id,
                 workspace_id=request.workspace_id,
+                membership_id=membership.id if membership is not None else None,
             )
         if request.resource_type not in self.NON_ORGANIZATIONAL_READS and not management_authority:
             if not await self._permission_exists(permission_key):
@@ -321,6 +340,109 @@ class AuthorizationDecisionService:
             policy_id=policy.policy_id if policy is not None else None,
             policy_version=policy.version if policy is not None else None,
         )
+
+    # Wave 04 workforce enforcement. Only employment states that still confer
+    # an active relationship are accepted; suspended, terminated, retired and
+    # transferred-out relationships fail closed. A transfer with a new active
+    # employment still passes via that new record.
+    _ACTIVE_EMPLOYMENT_STATUSES = frozenset({"active", "on_leave"})
+
+    async def _workforce_person_id(self, account: Account) -> str | None:
+        """Resolve the canonical person behind an account, without caching."""
+        identities = (
+            await self.session.execute(
+                select(IdentityRecord).where(IdentityRecord.id == account.identity_id)
+            )
+        ).scalars().all()
+        for identity in identities:
+            if getattr(identity, "person_id", None):
+                return identity.person_id
+        return None
+
+    async def _workforce_relationship_failure(
+        self,
+        account: Account,
+        now: datetime,
+    ) -> AuthorizationReason | None:
+        """Deny when every employment relationship of the actor has ended.
+
+        This is evaluated inside the canonical decision engine on each request:
+        an old account, token, role or facility membership cannot preserve
+        access after employment termination. Accounts with no employment record
+        are unaffected (citizens, contractors and other relationship types stay
+        governed by the existing membership/relationship checks).
+        """
+        person_id = await self._workforce_person_id(account)
+        if person_id is None:
+            return None
+        employments = (
+            await self.session.execute(
+                select(Employment).where(Employment.person_id == person_id)
+            )
+        ).scalars().all()
+        if not employments:
+            return None
+
+        today = now.date()
+        for employment in employments:
+            if employment.status not in self._ACTIVE_EMPLOYMENT_STATUSES:
+                continue
+            if not employment.is_active:
+                continue
+            if employment.start_date and employment.start_date > today:
+                continue
+            if employment.end_date and employment.end_date < today:
+                continue
+            if employment.termination_date and employment.termination_date <= today:
+                continue
+            return None
+        return AuthorizationReason.employment_terminated
+
+    async def _assignment_scope_failure(
+        self,
+        account: Account,
+        request: AuthorizationRequest,
+        membership: Membership | None,
+        now: datetime,
+    ) -> AuthorizationReason | None:
+        """Deny an expired/done temporary assignment at the requested facility.
+
+        A direct facility-scoped membership is an independent authorization basis
+        and is not overridden here. This check only closes the case where facility
+        access was derived from an assignment that is no longer in force.
+        """
+        if not request.facility_id:
+            return None
+        if membership is not None and getattr(membership, "facility_id", None) == request.facility_id:
+            return None
+        person_id = await self._workforce_person_id(account)
+        if person_id is None:
+            return None
+        assignments = (
+            await self.session.execute(
+                select(Assignment).where(
+                    Assignment.person_id == person_id,
+                    Assignment.facility_id == request.facility_id,
+                )
+            )
+        ).scalars().all()
+        if not assignments:
+            return None
+
+        today = now.date()
+        for assignment in assignments:
+            if assignment.status != AssignmentStatus.active.value:
+                continue
+            if not assignment.is_active:
+                continue
+            if assignment.start_date and assignment.start_date > today:
+                continue
+            if assignment.end_date and assignment.end_date < today:
+                continue
+            if assignment.expected_end_date and assignment.expected_end_date < today:
+                continue
+            return None
+        return AuthorizationReason.assignment_expired
 
     @staticmethod
     def _requires_management_authority(request: AuthorizationRequest) -> bool:
@@ -361,6 +483,7 @@ class AuthorizationDecisionService:
             Membership.organization_id == request.organization_id,
             Membership.status == MembershipStatus.active.value,
             Membership.is_active.is_(True),
+            Membership.revoked_at.is_(None),
         ]
         if request.membership_id:
             conditions.append(Membership.id == request.membership_id)

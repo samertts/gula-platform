@@ -261,6 +261,7 @@ class RolePermissionService:
         department_id: str | None = None,
         unit_id: str | None = None,
         workspace_id: str | None = None,
+        membership_id: str | None = None,
     ) -> set[str]:
         now = datetime.now(UTC)
         scope_match = and_(
@@ -270,6 +271,13 @@ class RolePermissionService:
             or_(RoleAssignment.unit_id.is_(None), RoleAssignment.unit_id == unit_id),
             or_(RoleAssignment.workspace_id.is_(None), RoleAssignment.workspace_id == workspace_id),
         )
+        # Wave 04: when the canonical decision engine has resolved a specific
+        # membership, role assignments are restricted to that membership. This
+        # prevents a second valid membership from lending permissions across
+        # scope boundaries. Callers that do not supply a membership keep the
+        # previous behavior (the aggregator alone is not the route authority).
+        if membership_id is not None:
+            scope_match = and_(scope_match, RoleAssignment.membership_id == membership_id)
         result = await self.session.execute(
             select(Permission.permission_key)
             .join(RolePermission, RolePermission.permission_id == Permission.id)
