@@ -1,0 +1,24 @@
+[
+  {
+    "common_dir": "/home/samertts/workspace/projects/gula-platform/.git",
+    "representative": "/home/samertts/workspace/projects/gula-demo-preview",
+    "ref": "stash@{0}",
+    "stash_sha": "0518cbdb8fc267f12335bed8df5c6d12ce479080",
+    "message": "On remediate-security-001: unstaged",
+    "base_sha": "66ea075d9f954f2446284618fff09ee726b1e2db",
+    "patch": "/home/samertts/workspace/gula-preservation/20261124T125514Z/patches/gula-demo-preview_stash_0.patch",
+    "patch_exit": 0,
+    "sha256": "2b5eef37186482f2c0a365a31610bdaa8875828d00905ae9e0fbd38b8836b615"
+  },
+  {
+    "common_dir": "/home/samertts/workspace/projects/gula-platform/.git",
+    "representative": "/home/samertts/workspace/projects/gula-demo-preview",
+    "ref": "stash@{1}",
+    "stash_sha": "4d05fda7b6d187771d191e835a91c1347a620df8",
+    "message": "WIP on remediate-security-001: 66ea075d feat(routes): register 4 FHIR sub-pages in router (explorer, patients, observations, reports) feat(security): add security compliance module framework",
+    "base_sha": "66ea075d9f954f2446284618fff09ee726b1e2db",
+    "patch": "/home/samertts/workspace/gula-preservation/20261124T125514Z/patches/gula-demo-preview_stash_1.patch",
+    "patch_exit": 0,
+    "sha256": "c586f031fb6a21bf3643ce810ee396e254bd9d210a8c4125478436a32ccf16d7"
+  }
+]
