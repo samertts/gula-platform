@@ -27,7 +27,7 @@
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.7.0",
     "clsx": "^2.1.0",
-    "i18next": "^27.2.7",
+    "i18next": "^27.2.6",
     "lucide-react": "^0.460.0",
     "react": "^19.2.9",
     "react-dom": "^19.2.9",
