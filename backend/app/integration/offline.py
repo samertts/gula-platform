@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import time
 from collections import defaultdict
@@ -7,8 +9,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.platform.sync import SyncChange, SyncService
+from app.services.offline_sync_service import is_clinical_entity
 
 logger = logging.getLogger("gula.integration.offline")
+
+_SUPPORTED_STRATEGIES = frozenset(
+    {"last_write_wins", "first_write_wins", "merge", "manual"}
+)
+
+
+def _fingerprint(entry: "OfflineQueueEntry") -> str:
+    payload = json.dumps(entry.payload, sort_keys=True, default=str)
+    return hashlib.sha256(f"{entry.id}:{entry.entity_id}:{entry.action}:{payload}".encode()).hexdigest()
 
 
 @dataclass
@@ -29,9 +41,15 @@ class StoreForwardEngine:
         self._queue: list[OfflineQueueEntry] = []
         self._processing = False
 
-    def enqueue(self, entry: OfflineQueueEntry) -> None:
+    def enqueue(self, entry: OfflineQueueEntry) -> bool:
+        fingerprint = _fingerprint(entry)
+        for existing in self._queue:
+            if existing.id == entry.id and _fingerprint(existing) == fingerprint:
+                logger.info("Offline duplicate suppressed: %s", entry.id)
+                return False
         self._queue.append(entry)
         logger.info("Offline entry enqueued: %s/%s", entry.entity_type, entry.action)
+        return True
 
     def dequeue(self, count: int = 10) -> list[OfflineQueueEntry]:
         batch = [e for e in self._queue if e.status == "pending"][:count]
@@ -67,7 +85,9 @@ class StoreForwardEngine:
 
 
 class ConflictResolver:
-    def __init__(self, strategy: str = "last_write_wins") -> None:
+    def __init__(self, strategy: str = "manual") -> None:
+        if strategy not in _SUPPORTED_STRATEGIES:
+            raise ValueError(f"unsupported offline conflict strategy: {strategy}")
         self._strategy = strategy
 
     def resolve(
@@ -76,19 +96,42 @@ class ConflictResolver:
         remote: dict[str, Any],
         version_local: int,
         version_remote: int,
+        entity_type: str = "unknown",
+        timestamp_local: float = 0.0,
+        timestamp_remote: float = 0.0,
     ) -> dict[str, Any]:
+        envelope = {
+            "_conflict": True,
+            "entity_type": entity_type,
+            "local": local,
+            "remote": remote,
+            "version_local": version_local,
+            "version_remote": version_remote,
+            "timestamp_local": timestamp_local,
+            "timestamp_remote": timestamp_remote,
+        }
+
+        if is_clinical_entity(entity_type) and self._strategy != "manual":
+            logger.warning(
+                "Rejected automatic clinical conflict resolution for %s with strategy %s",
+                entity_type,
+                self._strategy,
+            )
+            return {**envelope, "reason": "automatic clinical resolution not authorized"}
+
+        if version_local == version_remote:
+            return {**envelope, "reason": "equal versions require manual review"}
+
         if self._strategy == "last_write_wins":
-            return remote if version_remote >= version_local else local
+            return remote if version_remote > version_local else local
         if self._strategy == "first_write_wins":
-            return local if version_local >= version_remote else remote
+            return local if version_local > version_remote else remote
         if self._strategy == "merge":
             merged = dict(local)
             merged.update(remote)
             merged["_merged"] = True
             return merged
-        if self._strategy == "manual":
-            return {"_conflict": True, "local": local, "remote": remote}
-        return remote
+        return envelope
 
 
 class DeltaSyncEngine:
@@ -177,6 +220,7 @@ class OfflineSyncEngine:
         self._conflict_resolver = conflict_resolver or ConflictResolver()
         self._delta_sync = delta_sync or DeltaSyncEngine(self._sync_service)
         self._edge_sync = edge_sync or EdgeSyncEngine(self._store_forward, self._conflict_resolver)
+        self._processed: set[tuple[str, str]] = set()
 
     @property
     def store_forward(self) -> StoreForwardEngine:
@@ -198,6 +242,12 @@ class OfflineSyncEngine:
         batch = self._store_forward.dequeue(50)
         results: list[dict[str, Any]] = []
         for entry in batch:
+            fingerprint = _fingerprint(entry)
+            marker = (entry.id, fingerprint)
+            if marker in self._processed:
+                self._store_forward.mark_success(entry.id)
+                results.append({"id": entry.id, "status": "duplicate"})
+                continue
             try:
                 change = SyncChange(
                     id=entry.id,
@@ -205,11 +255,12 @@ class OfflineSyncEngine:
                     entity_id=entry.entity_id,
                     action=entry.action,
                     data=entry.payload,
-                    version=1,
+                    version=int(entry.payload.get("version", 1)),
                     timestamp=str(entry.timestamp),
                 )
                 self._delta_sync.push_delta([change])
                 self._store_forward.mark_success(entry.id)
+                self._processed.add(marker)
                 results.append({"id": entry.id, "status": "synced"})
             except Exception as exc:
                 self._store_forward.mark_failed(entry.id, str(exc))
@@ -217,6 +268,7 @@ class OfflineSyncEngine:
         return {
             "synced": sum(1 for r in results if r["status"] == "synced"),
             "failed": sum(1 for r in results if r["status"] == "failed"),
+            "duplicates": sum(1 for r in results if r["status"] == "duplicate"),
             "results": results,
         }
 
@@ -225,6 +277,7 @@ class OfflineSyncEngine:
         sync_status = self._sync_service.get_sync_status()
         return {
             "queue": queue_status,
+            "conflicts": queue_status.get("conflict", 0),
             "sync": sync_status,
             "edge_nodes": len(self._edge_sync._edge_nodes),
             "engine": "active",
