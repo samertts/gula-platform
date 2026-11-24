@@ -34,7 +34,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..services.audit_service import get_latest_anchor, log_action, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
@@ -179,7 +179,7 @@ def audit_summary(
 @router.get("/fhir/patient/{patient_id}", summary="FHIR Patient resource (basic)")
 def get_fhir_patient(
     patient_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Returns patient data in HL7 FHIR R4 Patient resource format.
@@ -255,7 +255,7 @@ def get_fhir_patient(
 @router.get("/fhir/observation/{order_id}", summary="FHIR Observation resource (basic)")
 def get_fhir_observations(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab results in HL7 FHIR R4 Observation bundle format.
@@ -354,7 +354,7 @@ def get_fhir_observations(
 @router.get("/fhir/diagnostic-report/{order_id}", summary="FHIR DiagnosticReport resource")
 def get_fhir_diagnostic_report(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab order as HL7 FHIR R4 DiagnosticReport resource.
@@ -465,7 +465,7 @@ def get_fhir_diagnostic_report(
 @router.get("/fhir/service-request/{order_id}", summary="FHIR ServiceRequest resource")
 def get_fhir_service_request(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab order as HL7 FHIR R4 ServiceRequest resource.

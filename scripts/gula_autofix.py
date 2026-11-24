@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+"""DEPRECATED — superseded by scripts/auto_heal.sh.
+
+Evidence (session forensic inventory, docs/engineering/
+MUSTAFA_ACTIVE_REPAIR_QUEUE.md, row "autonomous-repair-family-inventory"):
+this script is a strict subset of auto_heal.sh's Docker-container
+health-check-and-restart logic, with no MAX_RESTARTS_PER_HOUR-style
+rate-limit guard, and is not referenced by any cron entry, systemd unit,
+Makefile target, or CI workflow anywhere in this repo (exhaustively
+grepped) — auto_heal.sh is the real, cron-installed (scripts/
+server-setup.sh), rate-limited version of this same idea.
+
+Not deleted: per this session's own retirement policy, an unused script
+is documented and guarded against accidental reactivation, not removed
+outright, without an explicit human decision to do so. Do not wire this
+into cron/systemd/Makefile — use scripts/auto_heal.sh instead.
+"""
 
 import logging
 import subprocess

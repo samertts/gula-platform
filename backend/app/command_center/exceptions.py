@@ -12,6 +12,16 @@ class ResourceRequestNotFoundError(CommandCenterError):
         return "Resource request not found"
 
 
+class EmergencyAlreadyResolvedError(CommandCenterError):
+    def __str__(self) -> str:
+        return "Emergency declaration is already resolved"
+
+
+class ResourceRequestAlreadyFulfilledError(CommandCenterError):
+    def __str__(self) -> str:
+        return "Resource request is already fulfilled"
+
+
 class SituationReportNotFoundError(CommandCenterError):
     def __str__(self) -> str:
         return "Situation report not found"

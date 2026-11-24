@@ -13,7 +13,9 @@ from app.command_center.domain.entities import (
     SituationReport,
 )
 from app.command_center.exceptions import (
+    EmergencyAlreadyResolvedError,
     EmergencyNotFoundError,
+    ResourceRequestAlreadyFulfilledError,
     ResourceRequestNotFoundError,
 )
 from app.database import get_db
@@ -78,6 +80,8 @@ async def resolve_emergency(
     try:
         return _emergency_to_dict(service.resolve_emergency(
             emergency_id, body.get("resolved_by", ""), body.get("notes", "")))
+    except EmergencyAlreadyResolvedError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Emergency declaration is already resolved") from e
     except EmergencyNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
@@ -111,6 +115,8 @@ async def fulfill_resource(
 ) -> dict[str, Any]:
     try:
         return _resource_to_dict(service.fulfill_resource(request_id, body))
+    except ResourceRequestAlreadyFulfilledError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource request is already fulfilled") from e
     except ResourceRequestNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 

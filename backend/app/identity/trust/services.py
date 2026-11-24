@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 from .models import (
     AAL1,
@@ -28,11 +29,40 @@ from .models import (
     TrustFramework,
 )
 
+# SAFE_METADATA only (Phase 9/10 field classification -- see
+# docs/security/NIAM_PLATFORM_AUTHORITY_ARCHITECTURE.md Section 5/9).
+# status/supersedes_framework_id are SECURITY_SENSITIVE and already have
+# dedicated operations (activate_framework/supersede_framework below) --
+# deliberately not reachable through this generic path. assurance_policies/
+# scope/authority_id are also SECURITY_SENSITIVE and have no existing
+# dedicated-operation precedent to route them through; per Phase 10 Section 9
+# ("do not invent speculative operations... STOP and report rather than
+# inventing"), they are left unreachable via any path this phase, not routed
+# around the missing precedent.
+_TRUST_FRAMEWORK_UPDATABLE_FIELDS = frozenset({"name_en", "name_ar", "version", "effective_date"})
+
+# TrustFramework state machine (built from the behavior the code already
+# encoded, not invented -- see docs/security/TRUSTFRAMEWORK_STATE_MACHINE_STATUS.md
+# for the full transition matrix). "superseded" is terminal: nothing may
+# transition out of it. "active" is idempotent under activate (a repeated
+# activate() on an already-active framework is a no-op, not an error --
+# matches the pre-existing behavior of every other idempotent status-set
+# call in this codebase, e.g. revoke_certificate/revoke_key).
+_TERMINAL_STATUSES = frozenset({"superseded"})
+
+
+class TrustFrameworkInvalidTransition(Exception):
+    def __init__(self, current_status: str, requested: str) -> None:
+        self.current_status = current_status
+        self.requested = requested
+        super().__init__(f"cannot transition TrustFramework from {current_status!r} to {requested!r}")
+
 
 class TrustFrameworkService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_framework(
         self,
@@ -45,6 +75,7 @@ class TrustFrameworkService:
         authority_id: str | None = None,
         scope: dict | None = None,
         assurance_policies: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> TrustFramework:
         entity = TrustFramework(
             uuid=str(uuid.uuid4()),
@@ -62,6 +93,19 @@ class TrustFrameworkService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_CREATED",
+                category="TRUST",
+                action="trust.framework.create",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_framework(self, framework_id: str) -> TrustFramework | None:
@@ -72,23 +116,83 @@ class TrustFrameworkService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def activate_framework(self, framework_id: str) -> TrustFramework | None:
-        entity = await self.get_framework(framework_id)
+    async def _get_framework_for_update(self, framework_id: str) -> TrustFramework | None:
+        """Same lookup as get_framework, but with a row-level PostgreSQL
+        lock (`SELECT ... FOR UPDATE`) held for the rest of the
+        transaction -- a second concurrent state-transition call on the
+        same framework blocks until this one commits or rolls back, then
+        re-reads the now-current status rather than racing it. No schema
+        change needed (no optimistic-lock `version` column exists on
+        IdentityBaseEntity) -- this is the smallest concurrency guard the
+        existing architecture already supports."""
+        stmt = (
+            select(TrustFramework)
+            .where(
+                TrustFramework.framework_id == framework_id,
+                TrustFramework.is_active.is_(True),
+            )
+            .with_for_update()
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def activate_framework(
+        self, framework_id: str, actor_account_id: str | None = None,
+    ) -> TrustFramework | None:
+        entity = await self._get_framework_for_update(framework_id)
         if not entity:
             return None
+        if entity.status == "active":
+            return entity  # idempotent no-op -- already in the requested state
+        if entity.status in _TERMINAL_STATUSES:
+            raise TrustFrameworkInvalidTransition(entity.status, "active")
         entity.status = "active"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_ACTIVATED",
+                category="TRUST",
+                action="trust.framework.activate",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def supersede_framework(
-        self, framework_id: str, superseded_by_id: str,
+        self, framework_id: str, superseded_by_id: str, actor_account_id: str | None = None,
     ) -> TrustFramework | None:
-        entity = await self.get_framework(framework_id)
+        """Service-only -- no route exists (undiscussed precedent from
+        Workstream 1: not fabricated a route for an operation with no
+        prior HTTP entry point). Hardened here anyway so the state
+        machine is safe the moment a route is added, and so direct
+        service callers get the same guarantees as activate_framework."""
+        entity = await self._get_framework_for_update(framework_id)
         if not entity:
             return None
+        if entity.status in _TERMINAL_STATUSES:
+            raise TrustFrameworkInvalidTransition(entity.status, "superseded")
         entity.status = "superseded"
         entity.supersedes_framework_id = superseded_by_id
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_SUPERSEDED",
+                category="TRUST",
+                action="trust.framework.supersede",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"superseded_by_id": superseded_by_id},
+            ),
+        )
         return entity
 
     async def list_frameworks(
@@ -104,15 +208,31 @@ class TrustFrameworkService:
         return list(result.scalars().all())
 
     async def update_framework(
-        self, framework_id: str, **kwargs: Any,
+        self, framework_id: str, data: dict[str, Any], actor_account_id: str | None = None,
     ) -> TrustFramework | None:
         entity = await self.get_framework(framework_id)
         if not entity:
             return None
-        for key, value in kwargs.items():
-            if hasattr(entity, key) and value is not None:
+        applied: dict[str, Any] = {}
+        for key, value in data.items():
+            if key in _TRUST_FRAMEWORK_UPDATABLE_FIELDS and value is not None:
                 setattr(entity, key, value)
+                applied[key] = value
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FRAMEWORK_UPDATED",
+                category="TRUST",
+                action="trust.framework.update",
+                actor_id=actor_account_id,
+                target_type="trust_framework",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"fields": applied},
+            ),
+        )
         return entity
 
 
@@ -120,6 +240,7 @@ class AssuranceService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def assign_profile(
         self,
@@ -130,6 +251,7 @@ class AssuranceService:
         fal: str = FAL1,
         assessed_by: str | None = None,
         evidence: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> IdentityAssuranceProfile:
         overall = self._calculate_overall(ial, aal, fal)
         entity = IdentityAssuranceProfile(
@@ -149,6 +271,19 @@ class AssuranceService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ASSURANCE_PROFILE_ASSIGNED",
+                category="TRUST",
+                action="trust.assurance_profile.assign",
+                actor_id=actor_account_id,
+                target_type="assurance_profile",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     def _calculate_overall(self, ial: str, aal: str, fal: str) -> str:
@@ -191,12 +326,27 @@ class AssuranceService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def revoke_profile(self, profile_id: str) -> IdentityAssuranceProfile | None:
+    async def revoke_profile(
+        self, profile_id: str, actor_account_id: str | None = None,
+    ) -> IdentityAssuranceProfile | None:
         entity = await self.get_profile(profile_id)
         if not entity:
             return None
         entity.status = "revoked"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ASSURANCE_PROFILE_REVOKED",
+                category="TRUST",
+                action="trust.assurance_profile.revoke",
+                actor_id=actor_account_id,
+                target_type="assurance_profile",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def list_profiles(
@@ -216,6 +366,7 @@ class TrustAnchorService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_anchor(
         self,
@@ -229,6 +380,7 @@ class TrustAnchorService:
         valid_from: datetime | None = None,
         valid_to: datetime | None = None,
         signed_by: str | None = None,
+        actor_account_id: str | None = None,
     ) -> TrustAnchor:
         entity = TrustAnchor(
             uuid=str(uuid.uuid4()),
@@ -247,6 +399,19 @@ class TrustAnchorService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ANCHOR_CREATED",
+                category="TRUST",
+                action="trust.anchor.create",
+                actor_id=actor_account_id,
+                target_type="trust_anchor",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_anchor(self, anchor_id: str) -> TrustAnchor | None:
@@ -258,7 +423,7 @@ class TrustAnchorService:
         return result.scalar_one_or_none()
 
     async def revoke_anchor(
-        self, anchor_id: str, reason: str,
+        self, anchor_id: str, reason: str, actor_account_id: str | None = None,
     ) -> TrustAnchor | None:
         entity = await self.get_anchor(anchor_id)
         if not entity:
@@ -267,6 +432,20 @@ class TrustAnchorService:
         entity.revoked_at = datetime.now(UTC)
         entity.revocation_reason = reason
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_ANCHOR_REVOKED",
+                category="TRUST",
+                action="trust.anchor.revoke",
+                actor_id=actor_account_id,
+                target_type="trust_anchor",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"reason": reason},
+            ),
+        )
         return entity
 
     async def list_anchors(
@@ -302,6 +481,7 @@ class FederationTrustService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_trust(
         self,
@@ -315,6 +495,7 @@ class FederationTrustService:
         established_at: datetime | None = None,
         expires_at: datetime | None = None,
         terms: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> FederationTrust:
         entity = FederationTrust(
             uuid=str(uuid.uuid4()),
@@ -333,6 +514,19 @@ class FederationTrustService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FEDERATION_CREATED",
+                category="TRUST",
+                action="trust.federation.create",
+                actor_id=actor_account_id,
+                target_type="federation_trust",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_trust(self, trust_id: str) -> FederationTrust | None:
@@ -343,20 +537,50 @@ class FederationTrustService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def suspend_trust(self, trust_id: str) -> FederationTrust | None:
+    async def suspend_trust(
+        self, trust_id: str, actor_account_id: str | None = None,
+    ) -> FederationTrust | None:
         entity = await self.get_trust(trust_id)
         if not entity:
             return None
         entity.status = "suspended"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FEDERATION_SUSPENDED",
+                category="TRUST",
+                action="trust.federation.suspend",
+                actor_id=actor_account_id,
+                target_type="federation_trust",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
-    async def terminate_trust(self, trust_id: str) -> FederationTrust | None:
+    async def terminate_trust(
+        self, trust_id: str, actor_account_id: str | None = None,
+    ) -> FederationTrust | None:
         entity = await self.get_trust(trust_id)
         if not entity:
             return None
         entity.status = "terminated"
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_FEDERATION_TERMINATED",
+                category="TRUST",
+                action="trust.federation.terminate",
+                actor_id=actor_account_id,
+                target_type="federation_trust",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def list_for_org(self, org_id: str) -> list[FederationTrust]:
@@ -389,6 +613,7 @@ class IdentityProofingService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_proofing(
         self,
@@ -400,6 +625,7 @@ class IdentityProofingService:
         evidence_type: dict | None = None,
         evidence_documents: dict | None = None,
         authority_id: str | None = None,
+        actor_account_id: str | None = None,
     ) -> IdentityProofing:
         entity = IdentityProofing(
             uuid=str(uuid.uuid4()),
@@ -416,10 +642,23 @@ class IdentityProofingService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_PROOFING_CREATED",
+                category="TRUST",
+                action="trust.proofing.create",
+                actor_id=actor_account_id,
+                target_type="identity_proofing",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def verify_proofing(
-        self, proofing_id: str, verified_by: str,
+        self, proofing_id: str, verified_by: str, actor_account_id: str | None = None,
     ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
@@ -429,10 +668,23 @@ class IdentityProofingService:
         entity.verified_at = datetime.now(UTC)
         entity.valid_from = datetime.now(UTC)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_PROOFING_VERIFIED",
+                category="TRUST",
+                action="trust.proofing.verify",
+                actor_id=actor_account_id,
+                target_type="identity_proofing",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def reject_proofing(
-        self, proofing_id: str, reason: str,
+        self, proofing_id: str, reason: str, actor_account_id: str | None = None,
     ) -> IdentityProofing | None:
         entity = await self.get_proofing(proofing_id)
         if not entity:
@@ -440,6 +692,20 @@ class IdentityProofingService:
         entity.status = "rejected"
         entity.rejection_reason = reason
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_PROOFING_REJECTED",
+                category="TRUST",
+                action="trust.proofing.reject",
+                actor_id=actor_account_id,
+                target_type="identity_proofing",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+                changes={"reason": reason},
+            ),
+        )
         return entity
 
     async def get_proofing(self, proofing_id: str) -> IdentityProofing | None:
@@ -481,6 +747,7 @@ class TrustEvaluationService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     async def create_evaluation(
         self,
@@ -494,6 +761,7 @@ class TrustEvaluationService:
         evaluation_method: str | None = None,
         findings: dict | None = None,
         recommendations: dict | None = None,
+        actor_account_id: str | None = None,
     ) -> TrustEvaluation:
         entity = TrustEvaluation(
             uuid=str(uuid.uuid4()),
@@ -513,6 +781,19 @@ class TrustEvaluationService:
         )
         self.session.add(entity)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="TRUST_EVALUATION_CREATED",
+                category="TRUST",
+                action="trust.evaluation.create",
+                actor_id=actor_account_id,
+                target_type="trust_evaluation",
+                target_id=entity.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_TRUST_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return entity
 
     async def get_evaluation(self, evaluation_id: str) -> TrustEvaluation | None:

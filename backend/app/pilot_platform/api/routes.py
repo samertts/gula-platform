@@ -18,8 +18,19 @@ from app.pilot_platform.exceptions import (
     PilotNotFoundError,
     ReadinessAssessmentNotFoundError,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/pilot-platform", tags=["National Pilot Deployment & Readiness"])
+router = APIRouter(
+    prefix="/pilot-platform",
+    tags=["National Pilot Deployment & Readiness"],
+    # This router had no authentication at all — every write endpoint here
+    # (create_pilot, enroll_facility, decide_gate, record_deployment, ...)
+    # accepted an unauthenticated request. Every sibling national-platform
+    # router (ems, critical_care, public_health, command_center, biomedical)
+    # already gates on system:admin; this brings pilot_platform in line
+    # rather than inventing a different rule for it.
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> PilotPlatformService:

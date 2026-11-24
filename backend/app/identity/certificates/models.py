@@ -45,7 +45,7 @@ class DigitalCertificate(IdentityBaseEntity):
     last_rotated_at = Column(DateTime(timezone=True), nullable=True)
     rotation_period_days = Column(Integer, nullable=True)
 
-    issuer_ca_id = Column(String(26), ForeignKey("niam_cert_certificates.id", ondelete="SET NULL"), nullable=True)
+    issuer_ca_id = Column(String(26), ForeignKey("niam_cert_authorities.id", ondelete="SET NULL"), nullable=True)
 
     is_active = Column(Boolean, default=True, nullable=False)
 

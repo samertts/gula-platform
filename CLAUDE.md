@@ -11,7 +11,13 @@ that consolidates three previously separate GitHub repositories:
 |-------------|----------------------|------|
 | `samertts/gula-platform` | `backend/`, `services/`, `nhop-platform/`, `ai/` | Core platform (source of truth) |
 | `samertts/LabLink-Core` | `services/device_bridge/` | Lab instrument integration (ASTM/HL7) |
-| `samertts/Front-end-` | `frontend-v2/` | Rich React + Firebase UI |
+| `samertts/Front-end-` | `frontend-v3/` (see note below) | Rich React UI |
+
+> **Note:** `frontend/` and `frontend-v2/` are referenced elsewhere in this
+> file but are not present in this branch's working tree — `frontend-v3/`
+> is the current live frontend. If you land here looking for either
+> directory, it does not exist; treat every `frontend-v2/`/`frontend/`
+> reference below as historical unless you've confirmed otherwise.
 
 Production stack is a FastAPI monolith (`backend/app/`) backed by PostgreSQL 17 + Redis 7;
 a parallel microservices tree (`services/`) exists for future decomposition but is not the

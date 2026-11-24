@@ -22,7 +22,6 @@ from sqlalchemy import (
     JSON,
     Numeric,
     String,
-    Text,
     UniqueConstraint,
 )
 

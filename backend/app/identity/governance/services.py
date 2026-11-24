@@ -18,6 +18,7 @@ from app.identity.governance.models import (
     NationalIdentityRegistry,
     PolicyApprovalWorkflow,
 )
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 
 def _now() -> datetime:
@@ -28,6 +29,7 @@ class GovernanceService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     # ── Authorities ───────────────────────────────────────────────────────────
 
@@ -43,6 +45,7 @@ class GovernanceService:
         established_date: datetime | None = None,
         accredited_by: str | None = None,
         accreditation_expires: datetime | None = None,
+        actor_account_id: str | None = None,
     ) -> IdentityAuthority:
         authority = IdentityAuthority(
             uuid=str(uuid.uuid4()),
@@ -61,6 +64,19 @@ class GovernanceService:
         )
         self.session.add(authority)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="IDENTITY_AUTHORITY_CREATED",
+                category="GOVERNANCE",
+                action="governance.authority.create",
+                actor_id=actor_account_id,
+                target_type="identity_authority",
+                target_id=authority.id,
+                decision="ALLOW",
+                reason_code="PLATFORM_AUTHORITY_GOVERNANCE_MANAGE",
+                data_classification="INTERNAL",
+            ),
+        )
         return authority
 
     async def get_authority(self, authority_id: str) -> IdentityAuthority | None:

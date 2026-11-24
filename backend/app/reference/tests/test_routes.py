@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -26,11 +25,6 @@ from app.reference.domain.models import (
     PatientDomain,
     Priority,
     ReferenceRange,
-)
-from app.reference.domain.services import (
-    OrderProcessingService,
-    PatientValidationService,
-    ResultValidationService,
 )
 from app.reference.services.order_service import OrderService
 from app.reference.services.patient_service import PatientService

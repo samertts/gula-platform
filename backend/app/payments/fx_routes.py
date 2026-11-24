@@ -16,7 +16,6 @@ from .fx_schemas import (
     FxQuoteCreate,
     FxQuoteResponse,
     FxRateSnapshotCreate,
-    RiskAssessmentResponse,
 )
 from .fx_service import FxService
 from .models import CurrencyDefinition, PaymentInvoice

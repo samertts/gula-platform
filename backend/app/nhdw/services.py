@@ -57,17 +57,13 @@ class NHDWService:
         if bed_id:
             bed = db.query(Bed).filter(
                 Bed.id == bed_id, Bed.lab_id == lab_id, ~Bed.is_deleted,
-            ).first()
+            ).with_for_update().first()
             if not bed:
-                raise HTTPException(
-                    status_code=404, detail="Bed not found",
-                    detail_ar="السرير غير موجود",
-                )
+                raise HTTPException(status_code=404, detail="Bed not found")
             if bed.status != "available":
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=f"Bed is currently {bed.status}",
-                    detail_ar=f"السرير حالياً {bed.status}",
                 )
             bed.status = "occupied"
             bed.current_patient_id = patient_id
@@ -82,7 +78,7 @@ class NHDWService:
         admission = Admission(lab_id=lab_id, created_by=user_id, **data)
         db.add(admission)
         db.flush()
-        log_action(db, "nhdw.admission.create", admission.id, lab_id, user_id, data)
+        log_action(db, "nhdw.admission.create", "admission", None, user_id=user_id, lab_id=lab_id, details={"resource_id": admission.id, **data})
         return admission
 
     @staticmethod
@@ -97,16 +93,31 @@ class NHDWService:
         return admission
 
     @staticmethod
+    def _get_admission_locked(db: Session, lab_id: int, admission_id: str) -> Admission:
+        """Same lookup as get_admission, but row-locked for a mutation. Used
+        by update/discharge/transfer so two concurrent requests against the
+        same admission serialize instead of racing on a stale read."""
+        admission = db.query(Admission).filter(
+            Admission.id == admission_id,
+            Admission.lab_id == lab_id,
+            ~Admission.is_deleted,
+        ).with_for_update().first()
+        if not admission:
+            raise HTTPException(status_code=404, detail="Admission not found")
+        return admission
+
+    @staticmethod
     def update_admission(db: Session, lab_id: int, user_id: int, admission_id: str, data: dict) -> Admission:
-        admission = NHDWService.get_admission(db, admission_id, lab_id)
+        admission = NHDWService._get_admission_locked(db, lab_id, admission_id)
         for k, v in data.items():
             if k == "metadata":
                 k = "metadata_"
             if hasattr(admission, k):
                 setattr(admission, k, v)
         admission.updated_by = user_id
+        admission.version += 1
         db.flush()
-        log_action(db, "nhdw.admission.update", admission_id, lab_id, user_id, data)
+        log_action(db, "nhdw.admission.update", "admission", None, user_id=user_id, lab_id=lab_id, details={"resource_id": admission_id, **data})
         return admission
 
     @staticmethod
@@ -146,21 +157,21 @@ class NHDWService:
     def discharge_patient(
         db: Session, lab_id: int, user_id: int, admission_id: str, data: dict,
     ) -> Discharge:
-        admission = NHDWService.get_admission(db, admission_id, lab_id)
+        admission = NHDWService._get_admission_locked(db, lab_id, admission_id)
         if admission.discharge_date is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Patient already discharged",
-                detail_ar="المريض تم تخريجه بالفعل",
             )
         if admission.bed_id:
             bed = db.query(Bed).filter(
                 Bed.id == admission.bed_id, Bed.lab_id == lab_id,
-            ).first()
+            ).with_for_update().first()
             if bed:
                 bed.status = "cleaning"
                 bed.current_patient_id = None
         admission.discharge_date = data.get("discharge_date", datetime.now(UTC))
+        admission.version += 1
         discharge = Discharge(
             lab_id=lab_id, created_by=user_id,
             admission_id=admission_id, patient_id=admission.patient_id,
@@ -168,14 +179,14 @@ class NHDWService:
         )
         db.add(discharge)
         db.flush()
-        log_action(db, "nhdw.discharge.create", discharge.id, lab_id, user_id, data)
+        log_action(db, "nhdw.discharge.create", "discharge", None, user_id=user_id, lab_id=lab_id, details={"resource_id": discharge.id, **data})
         return discharge
 
     @staticmethod
     def transfer_patient(
         db: Session, lab_id: int, user_id: int, admission_id: str, data: dict,
     ) -> Transfer:
-        admission = NHDWService.get_admission(db, admission_id, lab_id)
+        admission = NHDWService._get_admission_locked(db, lab_id, admission_id)
         if admission.discharge_date is not None:
             raise HTTPException(status_code=409, detail="Admission already discharged")
         to_dept = db.query(Department).filter(
@@ -188,10 +199,19 @@ class NHDWService:
         from_room_id = admission.room_id
         from_bed_id = admission.bed_id
         if data.get("to_bed_id"):
-            new_bed = db.query(Bed).filter(Bed.id == data["to_bed_id"]).first()
-            if new_bed and new_bed.status == "available":
+            # `to_bed_id` is client-supplied: without the lab_id filter this
+            # let a caller transfer a patient into another tenant's bed,
+            # occupying it and overwriting its current_patient_id cross-tenant.
+            new_bed = db.query(Bed).filter(
+                Bed.id == data["to_bed_id"], Bed.lab_id == lab_id,
+            ).with_for_update().first()
+            if not new_bed:
+                raise HTTPException(status_code=404, detail="Target bed not found")
+            if new_bed.status == "available":
                 if from_bed_id:
-                    old_bed = db.query(Bed).filter(Bed.id == from_bed_id).first()
+                    old_bed = db.query(Bed).filter(
+                        Bed.id == from_bed_id, Bed.lab_id == lab_id,
+                    ).with_for_update().first()
                     if old_bed:
                         old_bed.status = "available"
                         old_bed.current_patient_id = None
@@ -200,6 +220,7 @@ class NHDWService:
                 admission.bed_id = data["to_bed_id"]
         admission.department_id = data["to_department_id"]
         admission.room_id = data.get("to_room_id", from_room_id)
+        admission.version += 1
         transfer = Transfer(
             lab_id=lab_id, created_by=user_id,
             patient_id=admission.patient_id,
@@ -217,7 +238,7 @@ class NHDWService:
         )
         db.add(transfer)
         db.flush()
-        log_action(db, "nhdw.transfer.create", transfer.id, lab_id, user_id, data)
+        log_action(db, "nhdw.transfer.create", "transfer", None, user_id=user_id, lab_id=lab_id, details={"resource_id": transfer.id, **data})
         return transfer
 
     @staticmethod
@@ -225,7 +246,7 @@ class NHDWService:
         entry = QueueEntry(lab_id=lab_id, created_by=user_id, **data)
         db.add(entry)
         db.flush()
-        log_action(db, "nhdw.queue.add", entry.id, lab_id, user_id, data)
+        log_action(db, "nhdw.queue.add", "queue_entry", None, user_id=user_id, lab_id=lab_id, details={"resource_id": entry.id, **data})
         return entry
 
     @staticmethod
@@ -282,7 +303,7 @@ class NHDWService:
                 entry.total_wait_minutes = int(diff)
         entry.status = status
         db.flush()
-        log_action(db, "nhdw.queue.status", entry_id, lab_id, user_id, {"status": status.value})
+        log_action(db, "nhdw.queue.status", "queue_entry", None, user_id=user_id, lab_id=lab_id, details={"resource_id": entry_id, "status": status.value})
         return entry
 
     @staticmethod
@@ -311,7 +332,7 @@ class NHDWService:
         entry = WaitingListEntry(lab_id=lab_id, created_by=user_id, **data)
         db.add(entry)
         db.flush()
-        log_action(db, "nhdw.waiting_list.add", entry.id, lab_id, user_id, data)
+        log_action(db, "nhdw.waiting_list.add", "waiting_list_entry", None, user_id=user_id, lab_id=lab_id, details={"resource_id": entry.id, **data})
         return entry
 
     @staticmethod
@@ -343,7 +364,7 @@ class NHDWService:
         admission = NHDWService.create_admission(db, lab_id, user_id, data)
         entry.status = "served"
         db.flush()
-        log_action(db, "nhdw.waiting_list.convert", entry_id, lab_id, user_id, {"admission_id": admission.id})
+        log_action(db, "nhdw.waiting_list.convert", "waiting_list_entry", None, user_id=user_id, lab_id=lab_id, details={"resource_id": entry_id, "admission_id": admission.id})
         return admission
 
     @staticmethod
@@ -351,7 +372,7 @@ class NHDWService:
         task = ClinicalTask(lab_id=lab_id, created_by=user_id, assigned_by=user_id, **data)
         db.add(task)
         db.flush()
-        log_action(db, "nhdw.task.create", task.id, lab_id, user_id, data)
+        log_action(db, "nhdw.task.create", "clinical_task", None, user_id=user_id, lab_id=lab_id, details={"resource_id": task.id, **data})
         return task
 
     @staticmethod
@@ -368,7 +389,7 @@ class NHDWService:
                 setattr(task, k, v)
         task.updated_by = user_id
         db.flush()
-        log_action(db, "nhdw.task.update", task_id, lab_id, user_id, data)
+        log_action(db, "nhdw.task.update", "clinical_task", None, user_id=user_id, lab_id=lab_id, details={"resource_id": task_id, **data})
         return task
 
     @staticmethod
@@ -384,7 +405,7 @@ class NHDWService:
         task.status = ClinicalTaskStatus.ASSIGNED
         task.updated_by = user_id
         db.flush()
-        log_action(db, "nhdw.task.assign", task_id, lab_id, user_id, {"assigned_to": assign_to})
+        log_action(db, "nhdw.task.assign", "clinical_task", None, user_id=user_id, lab_id=lab_id, details={"resource_id": task_id, "assigned_to": assign_to})
         return task
 
     @staticmethod
@@ -400,7 +421,7 @@ class NHDWService:
         task.completed_at = datetime.now(UTC)
         task.completed_by = user_id
         db.flush()
-        log_action(db, "nhdw.task.complete", task_id, lab_id, user_id)
+        log_action(db, "nhdw.task.complete", "clinical_task", None, user_id=user_id, lab_id=lab_id, details={"resource_id": task_id})
         return task
 
     @staticmethod
@@ -455,7 +476,7 @@ class NHDWService:
         ward_round = WardRound(lab_id=lab_id, created_by=user_id, **data)
         db.add(ward_round)
         db.flush()
-        log_action(db, "nhdw.ward_round.create", ward_round.id, lab_id, user_id, data)
+        log_action(db, "nhdw.ward_round.create", "ward_round", None, user_id=user_id, lab_id=lab_id, details={"resource_id": ward_round.id, **data})
         return ward_round
 
     @staticmethod
@@ -525,7 +546,7 @@ class NHDWService:
         care_plan = CarePlan(lab_id=lab_id, created_by=user_id, **data)
         db.add(care_plan)
         db.flush()
-        log_action(db, "nhdw.care_plan.create", care_plan.id, lab_id, user_id, data)
+        log_action(db, "nhdw.care_plan.create", "care_plan", None, user_id=user_id, lab_id=lab_id, details={"resource_id": care_plan.id, **data})
         return care_plan
 
     @staticmethod
@@ -550,7 +571,7 @@ class NHDWService:
                 setattr(plan, k, v)
         plan.updated_by = user_id
         db.flush()
-        log_action(db, "nhdw.care_plan.update", plan_id, lab_id, user_id, data)
+        log_action(db, "nhdw.care_plan.update", "care_plan", None, user_id=user_id, lab_id=lab_id, details={"resource_id": plan_id, **data})
         return plan
 
     @staticmethod
@@ -567,7 +588,7 @@ class NHDWService:
             plan.notes = (plan.notes or "") + f"\n[Review by {user_id}]: {review_notes}"
         plan.updated_by = user_id
         db.flush()
-        log_action(db, "nhdw.care_plan.review", plan_id, lab_id, user_id)
+        log_action(db, "nhdw.care_plan.review", "care_plan", None, user_id=user_id, lab_id=lab_id, details={"resource_id": plan_id})
         return plan
 
     @staticmethod
@@ -618,7 +639,7 @@ class NHDWService:
         msg = HospitalMessage(lab_id=lab_id, created_by=user_id, sender_id=user_id, **data)
         db.add(msg)
         db.flush()
-        log_action(db, "nhdw.message.send", msg.id, lab_id, user_id, data)
+        log_action(db, "nhdw.message.send", "message", None, user_id=user_id, lab_id=lab_id, details={"resource_id": msg.id, **data})
         return msg
 
     @staticmethod
@@ -683,7 +704,7 @@ class NHDWService:
         alert = HospitalAlert(lab_id=lab_id, created_by=user_id, triggered_by=user_id, **data)
         db.add(alert)
         db.flush()
-        log_action(db, "nhdw.alert.create", alert.id, lab_id, user_id, data)
+        log_action(db, "nhdw.alert.create", "alert", None, user_id=user_id, lab_id=lab_id, details={"resource_id": alert.id, **data})
         return alert
 
     @staticmethod
@@ -729,7 +750,7 @@ class NHDWService:
         alert.resolved_at = datetime.now(UTC)
         alert.resolved_by = user_id
         db.flush()
-        log_action(db, "nhdw.alert.resolve", alert_id, lab_id, user_id)
+        log_action(db, "nhdw.alert.resolve", "alert", None, user_id=user_id, lab_id=lab_id, details={"resource_id": alert_id})
         return alert
 
     @staticmethod
@@ -756,7 +777,7 @@ class NHDWService:
         session = TelemedicineSession(lab_id=lab_id, created_by=user_id, **data)
         db.add(session)
         db.flush()
-        log_action(db, "nhdw.telemedicine.create", session.id, lab_id, user_id, data)
+        log_action(db, "nhdw.telemedicine.create", "telemedicine_session", None, user_id=user_id, lab_id=lab_id, details={"resource_id": session.id, **data})
         return session
 
     @staticmethod
@@ -831,7 +852,7 @@ class NHDWService:
         schedule = ResourceSchedule(lab_id=lab_id, created_by=user_id, **data)
         db.add(schedule)
         db.flush()
-        log_action(db, "nhdw.resource_schedule.create", schedule.id, lab_id, user_id, data)
+        log_action(db, "nhdw.resource_schedule.create", "resource_schedule", None, user_id=user_id, lab_id=lab_id, details={"resource_id": schedule.id, **data})
         return schedule
 
     @staticmethod
@@ -882,14 +903,14 @@ class NHDWService:
             existing.is_default = data.get("is_default", existing.is_default)
             existing.updated_by = user_id
             db.flush()
-            log_action(db, "nhdw.dashboard_config.update", existing.id, lab_id, user_id, data)
+            log_action(db, "nhdw.dashboard_config.update", "dashboard_config", None, user_id=user_id, lab_id=lab_id, details={"resource_id": existing.id, **data})
             return existing
         config = DashboardConfiguration(
             lab_id=lab_id, created_by=user_id, user_id=user_id, **data,
         )
         db.add(config)
         db.flush()
-        log_action(db, "nhdw.dashboard_config.create", config.id, lab_id, user_id, data)
+        log_action(db, "nhdw.dashboard_config.create", "dashboard_config", None, user_id=user_id, lab_id=lab_id, details={"resource_id": config.id, **data})
         return config
 
     @staticmethod
@@ -912,7 +933,7 @@ class NHDWService:
         report = ShiftReport(lab_id=lab_id, created_by=user_id, report_author=user_id, **data)
         db.add(report)
         db.flush()
-        log_action(db, "nhdw.shift_report.create", report.id, lab_id, user_id, data)
+        log_action(db, "nhdw.shift_report.create", "shift_report", None, user_id=user_id, lab_id=lab_id, details={"resource_id": report.id, **data})
         return report
 
     @staticmethod

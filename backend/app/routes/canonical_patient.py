@@ -16,6 +16,13 @@ from ..services.mpi.canonical_service import (
     link_patient,
     merge_canonicals,
 )
+from ..services.mpi.scope import (
+    not_found,
+    provenance_lab_id,
+    require_national_scope,
+    require_own_patient,
+    visible_canonical,
+)
 
 router = APIRouter(prefix="/api/v1/canonical-patients", tags=["canonical-patients"])
 
@@ -24,7 +31,15 @@ router = APIRouter(prefix="/api/v1/canonical-patients", tags=["canonical-patient
 
 
 class CanonicalPatientCreate(BaseModel):
-    lab_id: int | None = None
+    """NR-148: this carries no lab_id.
+
+    It used to, and `CanonicalPatient(**data.model_dump())` wrote it straight
+    onto the record, so a laboratory could file a canonical patient under
+    another laboratory's name. lab_id on this table is PROVENANCE — which lab
+    contributed the record — and provenance the client chooses is not
+    provenance. It is now taken from the authenticated caller.
+    """
+
     national_id_hash: str | None = None
     health_id: str | None = None
     full_name: str = Field(..., min_length=1, max_length=300)
@@ -117,7 +132,10 @@ def create_canonical(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
-    canonical = CanonicalPatient(**data.model_dump())
+    canonical = CanonicalPatient(
+        **data.model_dump(),
+        lab_id=provenance_lab_id(current_user),
+    )
     db.add(canonical)
     db.commit()
     db.refresh(canonical)
@@ -133,9 +151,13 @@ def get_canonical(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
-    canonical = db.query(CanonicalPatient).filter(CanonicalPatient.id == canonical_id).first()
+    # NR-148. A laboratory sees a canonical record it is connected to — one it
+    # contributed, or one linked to a patient of its own. A national role sees
+    # the index. Anything else reads as absent rather than forbidden, so this
+    # does not become an existence oracle over the national population.
+    canonical = visible_canonical(db, canonical_id, current_user)
     if canonical is None:
-        raise HTTPException(status_code=404, detail="canonical patient not found")
+        raise not_found()
     return canonical
 
 
@@ -148,6 +170,10 @@ def merge(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MergeResult:
+    # NR-148. Merging declares that two records are the same person. It is a
+    # national identity judgement, not a laboratory one, and it was reachable
+    # by any authenticated user.
+    require_national_scope(current_user, "merging canonical records")
     merge_canonicals(db, target_id=data.target_id, source_id=data.source_id)
     db.commit()
     return MergeResult(
@@ -166,6 +192,9 @@ def get_by_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
+    # NR-148. Resolving YOUR patient to their canonical record is the MPI
+    # working as intended; resolving someone else's is not.
+    require_own_patient(db, patient_id, current_user)
     canonical = get_canonical_by_patient(db, patient_id)
     if canonical is None:
         raise HTTPException(status_code=404, detail="no canonical record linked to this patient")
@@ -181,6 +210,9 @@ def get_by_citizen(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
+    # NR-148. A citizen is a national subject; a laboratory has no standing to
+    # resolve one it has not been given.
+    require_national_scope(current_user, "resolving a citizen")
     canonical = get_canonical_by_citizen(db, citizen_id)
     if canonical is None:
         raise HTTPException(status_code=404, detail="no canonical record linked to this citizen")
@@ -199,6 +231,10 @@ def search_canonical(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SearchResponse:
+    # NR-148. This searches the whole national index by name, phone or
+    # national-id hash. It was open to every authenticated user, including a
+    # technician at a single private laboratory.
+    require_national_scope(current_user, "searching the patient index")
     base = db.query(CanonicalPatient)
 
     if q:
@@ -236,6 +272,12 @@ def create_patient_link(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
+    # NR-148. Without this a laboratory could attach ANOTHER laboratory's
+    # patient to any canonical person — writing a false identity claim into
+    # the national index under someone else's name.
+    require_own_patient(db, data.patient_id, current_user)
+    if visible_canonical(db, data.canonical_id, current_user) is None:
+        raise not_found()
     link = link_patient(
         db,
         patient_id=data.patient_id,
@@ -264,6 +306,9 @@ def create_citizen_link(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
+    # NR-148. Binding a national citizen to a canonical person is a national
+    # identity assertion.
+    require_national_scope(current_user, "linking a citizen")
     link = link_citizen(
         db,
         citizen_id=data.citizen_id,

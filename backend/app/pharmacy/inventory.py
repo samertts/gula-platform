@@ -270,7 +270,7 @@ class ExpiryMonitoringService:
         expired = self.db.query(DrugBatch).filter(
             DrugBatch.expiry_date < date.today(),
             ~DrugBatch.is_deleted,
-            not DrugBatch.is_quarantined,
+            ~DrugBatch.is_quarantined,
             DrugBatch.quantity_remaining > 0,
         )
         if self.lab_id:
@@ -393,7 +393,7 @@ class ColdChainService:
                 StorageCondition.FROZEN,
             ]),
             ~DrugBatch.is_deleted,
-            not DrugBatch.is_quarantined,
+            ~DrugBatch.is_quarantined,
             DrugBatch.quantity_remaining > 0,
         )
         if self.lab_id:

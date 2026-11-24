@@ -16,6 +16,8 @@ from app.public_health.domain.entities import (
 )
 from app.public_health.exceptions import (
     DiseaseCaseNotFoundError,
+    InvalidOutbreakStatusError,
+    OutbreakAlreadyDeclaredOverError,
     OutbreakNotFoundError,
 )
 from app.security.dependencies import require_permission
@@ -120,6 +122,10 @@ async def update_alert_status(
 ) -> dict[str, Any]:
     try:
         return _alert_to_dict(service.update_alert_status(alert_id, body.get("status", ""), body.get("notes", "")))
+    except InvalidOutbreakStatusError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid outbreak alert status") from e
+    except OutbreakAlreadyDeclaredOverError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Outbreak has already been declared over") from e
     except OutbreakNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 

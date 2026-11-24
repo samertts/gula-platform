@@ -6,10 +6,14 @@ Routes:
     GET  /doctor/patient/{health_id}/timeline/{code}   Value-over-time series
     POST /doctor/refer                                 Refer to another doctor
 
-Authorization (pending the central RBAC layer):
-    * An ``X-Actor-Role`` header must equal ``DOCTOR`` (case-insensitive).
-    * An ``X-Actor-Id`` header must identify the physician and is persisted
-      on the order / referral.
+Authorization:
+    * The trusted context's role must equal ``DOCTOR``.
+    * The trusted context's actor id identifies the physician and is
+      persisted on the order / referral.
+    Both come from core.trusted_context, which fails closed (503) until a
+    real GULA-federated identity provider exists — previously this read
+    unverified ``X-Actor-Role``/``X-Actor-Id`` headers; see that module's
+    docstring for why that was a trust-boundary defect.
 
 Route ordering matters: the ``/patient/{health_id}/timeline/{test_code}``
 static prefix is declared before the looser overview route, and both are
@@ -28,6 +32,7 @@ from sqlalchemy.orm import Session
 from backend.app._compat import UTC
 
 from ...core.database import get_db
+from ...core.trusted_context import current_context
 from ...models.citizen import Citizen
 from ...models.lab import Lab
 from ...models.test_order import TestOrder, TestOrderStatus
@@ -57,7 +62,7 @@ _DOCTOR_ROLE = "DOCTOR"
 
 
 def _actor_id(request: Request) -> str | None:
-    return request.headers.get("X-Actor-Id")
+    return current_context(request).actor_id
 
 
 def _client_ip(request: Request) -> str | None:
@@ -69,23 +74,24 @@ def _client_ip(request: Request) -> str | None:
 def _require_doctor(request: Request) -> str:
     """Enforce the DOCTOR role + presence of an actor id.
 
-    Returns the doctor id so endpoint code does not have to re-read headers.
-    Raises 403 on missing / wrong role, 401 on missing actor id, matching
-    the minimal auth contract used elsewhere in the service.
+    Returns the doctor id so endpoint code does not have to re-read the
+    context. Role and actor id both come from the server-established
+    trusted context (never from client-supplied headers) — see
+    core/trusted_context.py.
     """
-    role = (request.headers.get("X-Actor-Role") or "").strip().upper()
+    ctx = current_context(request)
+    role = (ctx.role or "").strip().upper()
     if role != _DOCTOR_ROLE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="DOCTOR role required",
         )
-    doctor_id = _actor_id(request)
-    if not doctor_id:
+    if not ctx.actor_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="X-Actor-Id header required",
+            detail="trusted context has no actor id",
         )
-    return doctor_id
+    return ctx.actor_id
 
 
 def _require_citizen(db: Session, health_id: str) -> Citizen:

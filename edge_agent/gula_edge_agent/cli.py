@@ -34,12 +34,12 @@ def _load_config(path: str | None) -> dict[str, Any]:
     cfg_path = Path(path or os.getenv("GULA_EDGE_CONFIG", "config.toml"))
     if not cfg_path.exists():
         sys.exit(f"config not found at {cfg_path} — copy config.example.toml")
-    import tomllib  # type: ignore
+    try:
+        import tomllib  # type: ignore  # stdlib on Python 3.11+
+    except ImportError:
+        import tomli as tomllib  # type: ignore  # backport, see requirements.txt
     with cfg_path.open("rb") as f:
         return tomllib.load(f)
-    import tomli  # type: ignore
-    with cfg_path.open("rb") as f:
-        return tomli.load(f)
 
 
 def _cmd_register(cfg: dict[str, Any]) -> int:

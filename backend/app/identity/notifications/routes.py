@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.identity.niam_async_db import get_niam_db
 
 from .services import NotificationService
 
@@ -24,7 +24,7 @@ async def send_notification(
     priority: str = "medium",
     recipient_type: str = "person",
     scheduled_at: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     notification = await service.send_notification(
@@ -38,6 +38,7 @@ async def send_notification(
         recipient_type=recipient_type,
         scheduled_at=scheduled_at,
     )
+    await db.commit()
     return {"queue_id": notification.queue_id, "status": notification.status}
 
 
@@ -51,7 +52,7 @@ async def create_template(
     variables: list[str] | None = None,
     locale: str = "ar",
     version: str = "1.0",
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     template = await service.create_template(
@@ -64,6 +65,7 @@ async def create_template(
         locale=locale,
         version=version,
     )
+    await db.commit()
     return template.to_dict()
 
 
@@ -71,7 +73,7 @@ async def create_template(
 async def list_templates(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     templates = await service.list_templates(skip=skip, limit=limit)
@@ -83,7 +85,7 @@ async def get_queue(
     recipient_id: str,
     skip: int = 0,
     limit: int = 50,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     notifications = await service.get_queue_for_recipient(
@@ -97,19 +99,20 @@ async def get_queue(
 @router.post("/queue/{queue_id}/read")
 async def mark_read(
     queue_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     notification = await service.mark_read(queue_id)
     if not notification:
         return {"error": "not_found"}
+    await db.commit()
     return {"queue_id": notification.queue_id, "status": notification.status}
 
 
 @router.get("/preferences/{recipient_id}")
 async def get_preferences(
     recipient_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     preferences = await service.get_preferences(recipient_id)
@@ -125,7 +128,7 @@ async def update_preferences(
     recipient_type: str = "person",
     quiet_hours_start: str | None = None,
     quiet_hours_end: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     preference = await service.update_preferences(
@@ -137,6 +140,7 @@ async def update_preferences(
         quiet_hours_start=quiet_hours_start,
         quiet_hours_end=quiet_hours_end,
     )
+    await db.commit()
     return preference.to_dict()
 
 
@@ -148,7 +152,7 @@ async def send_template_notification(
     priority: str = "medium",
     recipient_type: str = "person",
     scheduled_at: datetime | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     notification = await service.send_template(
@@ -161,37 +165,40 @@ async def send_template_notification(
     )
     if not notification:
         return {"error": "template_not_found"}
+    await db.commit()
     return {"queue_id": notification.queue_id, "status": notification.status}
 
 
 @router.post("/queue/{queue_id}/sent")
 async def mark_notification_sent(
     queue_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     notification = await service.mark_sent(queue_id)
     if not notification:
         return {"error": "not_found"}
+    await db.commit()
     return {"queue_id": notification.queue_id, "status": notification.status}
 
 
 @router.post("/queue/{queue_id}/delivered")
 async def mark_notification_delivered(
     queue_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     notification = await service.mark_delivered(queue_id)
     if not notification:
         return {"error": "not_found"}
+    await db.commit()
     return {"queue_id": notification.queue_id, "status": notification.status}
 
 
 @router.get("/pending")
 async def get_pending_notifications(
     limit: int = 50,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     service = NotificationService(db)
     notifications = await service.get_pending(limit=limit)

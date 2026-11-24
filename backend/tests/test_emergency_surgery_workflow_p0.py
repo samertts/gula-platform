@@ -118,6 +118,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
             db,
             1,
             101,
+            "nurse",
             theater.id,
             expected_version=theater.version,
             next_status="in_use",
@@ -128,6 +129,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
             db,
             1,
             101,
+            "nurse",
             theater.id,
             expected_version=theater.version,
             next_status="in_use",
@@ -138,6 +140,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
         db,
         1,
         101,
+        "nurse",
         {
             "operation_theater_id": theater.id,
             "surgery_id": 7001,
@@ -161,6 +164,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
         db,
         1,
         101,
+        "nurse",
         theater.id,
         expected_version=theater.version,
         next_status="in_use",
@@ -174,6 +178,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
             db,
             1,
             101,
+            "nurse",
             theater.id,
             expected_version=active.version,
             next_status="available",
@@ -183,6 +188,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
         db,
         1,
         101,
+        "nurse",
         theater.id,
         expected_version=active.version,
         next_status="cleaning",
@@ -209,6 +215,7 @@ def test_bed_transfer_preserves_patient_and_closes_source_assignment(db: Any) ->
         db,
         1,
         101,
+        "nurse",
         source.id,
         target.id,
         from_expected_version=source.version,
@@ -221,3 +228,94 @@ def test_bed_transfer_preserves_patient_and_closes_source_assignment(db: Any) ->
     assert target.status == "occupied"
     assert target.current_patient_id == 77
     assert source_assignment.discharge_date is not None
+
+
+# ─── EMS vertical slice: ambulance-status CAS (Mustafa, this pass) ──────────
+#
+# update_ambulance_status previously did `model.status = status` for any
+# client-supplied string with no version check at all — the one EMS
+# mutation with no CAS, unlike dispatch_incident/update_incident_status/
+# submit_epcr which all already lock the row and check version. A stale
+# status-update request racing a concurrent dispatch_incident call could
+# silently flip a just-dispatched ambulance's status back to "available",
+# making it eligible for a second, simultaneous dispatch — the exact
+# "duplicate resource allocation" race class this domain's own dispatch
+# logic is otherwise careful to prevent.
+
+
+def test_update_ambulance_status_rejects_invalid_status(db: Any) -> None:
+    ambulance = AmbulanceModel(
+        lab_id=1, registration_number="EMS-P0-002", call_sign="P0-UNIT-2",
+        status="available", vehicle_status="active",
+    )
+    db.add(ambulance)
+    db.flush()
+    service = EMSService(db)
+
+    with pytest.raises(EMSWorkflowError, match="not a valid ambulance status"):
+        service.update_ambulance_status(ambulance.id, "definitely_not_real", expected_version=ambulance.version)
+
+    db.refresh(ambulance)
+    assert ambulance.status == "available"
+
+
+def test_update_ambulance_status_succeeds_and_bumps_version(db: Any) -> None:
+    ambulance = AmbulanceModel(
+        lab_id=1, registration_number="EMS-P0-003", call_sign="P0-UNIT-3",
+        status="available", vehicle_status="active",
+    )
+    db.add(ambulance)
+    db.flush()
+    version_before = ambulance.version
+    service = EMSService(db)
+
+    updated = service.update_ambulance_status(
+        ambulance.id, "maintenance", "scheduled service", expected_version=version_before,
+    )
+    assert updated.status == "maintenance"
+
+    db.refresh(ambulance)
+    assert ambulance.status == "maintenance"
+    assert ambulance.version == version_before + 1
+
+
+def test_ambulance_status_update_loses_race_to_concurrent_dispatch(db: Any) -> None:
+    """Reproduces the actual race: a status-update request reads the
+    ambulance's version, then a concurrent dispatch wins and changes it
+    (status="available" -> "en_route", version+1) before the stale request
+    commits. The stale request must be refused, and the winning dispatch's
+    state must survive untouched."""
+    incident = _incident(db)
+    ambulance = AmbulanceModel(
+        lab_id=1, registration_number="EMS-P0-RACE", call_sign="P0-RACE",
+        status="available", vehicle_status="active",
+    )
+    crew = AmbulanceCrewModel(lab_id=1, full_name="Race Crew", is_active=True, is_available=True)
+    db.add_all([ambulance, crew])
+    db.flush()
+    service = EMSService(db)
+
+    # A status-update request reads the ambulance's version here, before
+    # the race window opens.
+    stale_version = ambulance.version
+
+    # The concurrent dispatch wins the race.
+    service.dispatch_incident(
+        incident.id,
+        ambulance.id,
+        crew_ids=[crew.id],
+        incident_expected_version=incident.version,
+        ambulance_expected_version=ambulance.version,
+    )
+    db.commit()
+
+    # The losing status-update request now tries to apply, using the
+    # version it captured before the dispatch committed.
+    with pytest.raises(EMSWorkflowError, match="version conflict"):
+        service.update_ambulance_status(ambulance.id, "available", expected_version=stale_version)
+
+    db.refresh(ambulance)
+    assert ambulance.status == "en_route", (
+        "the winning dispatch's ambulance status must not be overwritten "
+        "by the losing, stale status-update request"
+    )

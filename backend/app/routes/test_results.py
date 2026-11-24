@@ -33,7 +33,7 @@ from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..models.sample import Sample, generate_barcode
 from ..models.test_type import TestType
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
 from ..services.critical_alerts import check_critical
@@ -278,7 +278,7 @@ def _fill_ranges_from_catalog(
 def create_test_result(
     data: TestResultCreate,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     """Create a single test result for a citizen (identified by health_id).
@@ -588,7 +588,7 @@ def list_citizen_results(
     is_abnormal: bool | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """All results for a citizen, filterable by category / date / abnormal flag.
@@ -657,7 +657,7 @@ def list_citizen_results(
 def citizen_timeline(
     health_id: str,
     category: str | None = Query(None, max_length=50),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Group values by test_code over time — suitable for line charts.

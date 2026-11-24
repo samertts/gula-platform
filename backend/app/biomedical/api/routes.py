@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.biomedical.application.service import BiomedicalService
 from app.biomedical.exceptions import (
     DeviceNotFoundError,
+    WorkOrderAlreadyCompletedError,
     WorkOrderNotFoundError,
 )
 from app.database import get_db
@@ -132,6 +133,8 @@ async def complete_work_order(
 ) -> dict[str, Any]:
     try:
         return _work_order_to_dict(service.complete_work_order(wo_id, body))
+    except WorkOrderAlreadyCompletedError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Work order is already completed") from e
     except WorkOrderNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 

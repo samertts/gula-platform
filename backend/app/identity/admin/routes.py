@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.identity.admin.models import (
     EnterprisePortal,
     FHIRConnection,
@@ -17,6 +16,7 @@ from app.identity.admin.models import (
 )
 from app.identity.admin.services import EnterprisePortalService
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.niam_async_db import get_niam_db
 from app.identity.services.authorization_decision import (
     AuthorizationActor,
     AuthorizationDecisionService,
@@ -63,7 +63,7 @@ async def create_portal(
     portal_type: str,
     features: str = "{}",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="organization.manage")
     try:
@@ -77,6 +77,7 @@ async def create_portal(
         features=parsed_features,
         created_by=actor.account.id,
     )
+    await db.commit()
     return {"portal": portal.to_dict()}
 
 
@@ -84,7 +85,7 @@ async def create_portal(
 async def list_org_portals(
     org_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
     portals = await EnterprisePortalService(db).get_portals_for_org(org_id)
@@ -102,7 +103,7 @@ async def add_branch(
     email: str = "",
     manager_person_id: str = "",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     portal = (
         await db.execute(
@@ -125,6 +126,7 @@ async def add_branch(
         manager_person_id=manager_person_id or None,
         actor_id=actor.account.id,
     )
+    await db.commit()
     return {"branch": branch.to_dict()}
 
 
@@ -139,7 +141,7 @@ async def add_facility(
     accreditation: str = "",
     address: str = "",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     branch = (
         await db.execute(
@@ -162,6 +164,7 @@ async def add_facility(
         address=address or None,
         actor_id=actor.account.id,
     )
+    await db.commit()
     return {"facility": facility.to_dict()}
 
 
@@ -173,7 +176,7 @@ async def add_department(
     dept_type: str = "",
     head_person_id: str = "",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     organization_id = (
         await db.execute(
@@ -192,6 +195,7 @@ async def add_department(
         organization_id=organization_id,
         actor_id=actor.account.id,
     )
+    await db.commit()
     return {"department": department.to_dict()}
 
 
@@ -199,7 +203,7 @@ async def add_department(
 async def get_subscription(
     org_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
     subscription = await EnterprisePortalService(db).get_subscription(org_id)
@@ -218,7 +222,7 @@ async def create_subscription(
     currency: str = "IQD",
     auto_renew: bool = False,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="subscription.manage")
     subscription = await EnterprisePortalService(db).manage_subscription(
@@ -233,6 +237,7 @@ async def create_subscription(
         auto_renew=auto_renew,
         actor_id=actor.account.id,
     )
+    await db.commit()
     return {"subscription": subscription.to_dict()}
 
 
@@ -244,7 +249,7 @@ async def update_subscription(
     billing_amount: int = 0,
     auto_renew: bool = False,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     subscription = (
         await db.execute(
@@ -262,6 +267,7 @@ async def update_subscription(
     if billing_amount:
         kwargs["billing_amount"] = billing_amount
     updated = await EnterprisePortalService(db).update_subscription(sub_id, actor_id=actor.account.id, **kwargs)
+    await db.commit()
     return {"subscription": updated.to_dict() if updated else None}
 
 
@@ -273,7 +279,7 @@ async def create_fhir_connection(
     base_url: str,
     auth_type: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="integration.manage")
     try:
@@ -288,6 +294,7 @@ async def create_fhir_connection(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    await db.commit()
     return {"fhir_connection": _safe_connection_payload(connection)}
 
 
@@ -295,7 +302,7 @@ async def create_fhir_connection(
 async def list_fhir_connections(
     org_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
     connections = await EnterprisePortalService(db).get_fhir_connections_for_org(org_id)
@@ -306,7 +313,7 @@ async def list_fhir_connections(
 async def test_fhir_connection(
     conn_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     connection = (
         await db.execute(
@@ -316,7 +323,9 @@ async def test_fhir_connection(
     if connection is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FHIR connection not found")
     await _require_permission(actor, db, organization_id=connection.organization_id, permission_key="integration.manage")
-    return await EnterprisePortalService(db).test_fhir_connection(conn_id, actor_id=actor.account.id)
+    result = await EnterprisePortalService(db).test_fhir_connection(conn_id, actor_id=actor.account.id)
+    await db.commit()
+    return result
 
 
 @router.get("/audit-log/{org_id}")
@@ -324,7 +333,7 @@ async def get_audit_log(
     org_id: str,
     limit: int = Query(default=100, ge=1, le=100),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     await _require_permission(actor, db, organization_id=org_id, permission_key="audit.read")
     entries = await CanonicalAuditService(db).search(organization_id=org_id, limit=limit)

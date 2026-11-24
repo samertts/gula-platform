@@ -2,17 +2,39 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.federation.models import FederatedSession
 from app.identity.federation.services import (
     CrossOrgTrustService,
     FederationAgreementService,
     FederationService,
 )
+from app.identity.niam_async_db import get_niam_db
+from app.identity.platform_authority.authorization import require_platform_capability
+from app.identity.platform_authority.models import PlatformCapability
 
 router = APIRouter(prefix="/federation", tags=["NIAM Federation"])
+
+
+def _require_self(actor: NiamActor, account_id: str) -> None:
+    """Object-level ownership check for federation's account-scoped
+    federated-login sessions (create_federated_session/
+    terminate_federated_session). These represent one specific account's
+    external-IdP login session, not a platform-administrative resource --
+    federation_manage (used elsewhere in this file for provider/trust/
+    agreement management) has no ownership semantics over an individual
+    account's own session, so the correct check is identity, matching the
+    precedent set for app.identity.adaptive_auth.routes._require_self.
+    """
+    if account_id != actor.account.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot act on another account's federated session.",
+        )
 
 
 @router.post("/providers")
@@ -34,8 +56,10 @@ async def register_provider(
     signature_algorithm: str | None = None,
     trust_anchor_id: str | None = None,
     metadata_url: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationService(db)
     provider = await svc.register_provider(
         provider_id=provider_id,
@@ -55,7 +79,9 @@ async def register_provider(
         signature_algorithm=signature_algorithm,
         trust_anchor_id=trust_anchor_id,
         metadata_url=metadata_url,
+        actor_account_id=actor.account.id,
     )
+    await db.commit()
     return {
         "uuid": provider.uuid,
         "provider_id": provider.provider_id,
@@ -66,7 +92,7 @@ async def register_provider(
 @router.get("/providers")
 async def list_providers(
     status: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = FederationService(db)
     providers = await svc.list_providers(status=status)
@@ -85,7 +111,7 @@ async def list_providers(
 @router.get("/providers/{provider_id}")
 async def get_provider(
     provider_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = FederationService(db)
     provider = await svc.get_provider(provider_id)
@@ -98,12 +124,21 @@ async def get_provider(
 async def update_provider(
     provider_id: str,
     body: dict[str, Any],
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationService(db)
-    provider = await svc.update_provider(provider_id, **body)
+    provider = await svc.update_provider(
+        provider_id, body, actor_account_id=actor.account.id,
+    )
     if not provider:
         return {"error": "not_found"}
+    # Route owns the transaction boundary here, matching the existing
+    # canonical GULA pattern (e.g. app/routes/admin.py): the service
+    # stages the mutation and its audit entry via flush(); the route
+    # commits once, atomically, only after both succeeded.
+    await db.commit()
     return provider.to_dict()
 
 
@@ -114,8 +149,10 @@ async def link_identity(
     external_subject_id: str,
     external_attributes: dict[str, Any] | None = None,
     identity_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationService(db)
     identity = await svc.link_identity(
         person_id=person_id,
@@ -124,6 +161,7 @@ async def link_identity(
         external_attributes=external_attributes,
         identity_id=identity_id,
     )
+    await db.commit()
     return {
         "uuid": identity.uuid,
         "fed_id": identity.fed_id,
@@ -135,12 +173,15 @@ async def link_identity(
 async def unlink_identity(
     fed_id: str,
     reason: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationService(db)
     identity = await svc.unlink_identity(fed_id, reason)
     if not identity:
         return {"error": "not_found"}
+    await db.commit()
     return {
         "uuid": identity.uuid,
         "fed_id": identity.fed_id,
@@ -152,7 +193,7 @@ async def unlink_identity(
 @router.get("/identities/{person_id}")
 async def get_person_identities(
     person_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = FederationService(db)
     identities = await svc.get_identities_for_person(person_id)
@@ -177,8 +218,10 @@ async def establish_trust(
     trust_type: str = "bilateral",
     agreement: dict[str, Any] | None = None,
     established_by: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = CrossOrgTrustService(db)
     trust = await svc.establish_trust(
         source_org_id=source_org_id,
@@ -188,6 +231,7 @@ async def establish_trust(
         agreement=agreement,
         established_by=established_by,
     )
+    await db.commit()
     return {
         "uuid": trust.uuid,
         "trust_id": trust.trust_id,
@@ -198,7 +242,7 @@ async def establish_trust(
 @router.get("/trust/{org_id}")
 async def get_trust_relationships(
     org_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = CrossOrgTrustService(db)
     relationships = await svc.get_trust_relationships(org_id)
@@ -226,8 +270,10 @@ async def create_agreement(
     effective_date: str | None = None,
     expiry_date: str | None = None,
     governing_law: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationAgreementService(db)
     agreement = await svc.create_agreement(
         name=name,
@@ -238,6 +284,7 @@ async def create_agreement(
         security_requirements=security_requirements,
         governing_law=governing_law,
     )
+    await db.commit()
     return {
         "uuid": agreement.uuid,
         "agreement_id": agreement.agreement_id,
@@ -249,7 +296,7 @@ async def create_agreement(
 async def list_agreements(
     status: str | None = None,
     agreement_type: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = FederationAgreementService(db)
     agreements = await svc.list_agreements(
@@ -272,8 +319,10 @@ async def list_agreements(
 async def sign_agreement(
     agreement_id: str,
     signed_by: list[dict[str, Any]],
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = FederationAgreementService(db)
     agreement = await svc.sign_agreement(
         agreement_id=agreement_id,
@@ -281,6 +330,7 @@ async def sign_agreement(
     )
     if not agreement:
         return {"error": "not_found"}
+    await db.commit()
     return {
         "uuid": agreement.uuid,
         "agreement_id": agreement.agreement_id,
@@ -292,7 +342,7 @@ async def sign_agreement(
 @router.get("/agreements/{agreement_id}")
 async def get_agreement(
     agreement_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
 ):
     svc = FederationAgreementService(db)
     agreement = await svc.get_agreement(agreement_id)
@@ -308,8 +358,10 @@ async def create_federated_session(
     fed_identity_id: str,
     tokens: dict[str, Any],
     attributes: dict[str, Any] | None = None,
-    db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_niam_db),
 ):
+    _require_self(actor, account_id)
     svc = FederationService(db)
     fed_session = await svc.create_session(
         account_id=account_id,
@@ -318,6 +370,7 @@ async def create_federated_session(
         tokens=tokens,
         attributes=attributes,
     )
+    await db.commit()
     return {
         "session_id": fed_session.session_id,
         "started_at": fed_session.started_at.isoformat(),
@@ -327,12 +380,28 @@ async def create_federated_session(
 @router.post("/sessions/{session_id}/terminate")
 async def terminate_federated_session(
     session_id: str,
-    db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_niam_db),
 ):
+    # terminate_session takes no account_id -- resolve the target
+    # federated session's owning account first so a client can never
+    # terminate another account's federated session merely by
+    # guessing/obtaining its session_id.
+    existing = (
+        await db.execute(
+            select(FederatedSession).where(
+                FederatedSession.session_id == session_id,
+                FederatedSession.is_active.is_(True),
+            ),
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        _require_self(actor, existing.account_id)
     svc = FederationService(db)
     fed_session = await svc.terminate_session(session_id)
     if not fed_session:
         return {"error": "not_found"}
+    await db.commit()
     return {
         "session_id": fed_session.session_id,
         "terminated_at": fed_session.terminated_at.isoformat() if fed_session.terminated_at else None,
@@ -342,22 +411,28 @@ async def terminate_federated_session(
 @router.post("/trust/{trust_id}/suspend")
 async def suspend_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = CrossOrgTrustService(db)
     trust = await svc.suspend_trust(trust_id)
     if not trust:
         return {"error": "not_found"}
+    await db.commit()
     return {"trust_id": trust.trust_id, "status": trust.status}
 
 
 @router.post("/trust/{trust_id}/terminate")
 async def terminate_trust(
     trust_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_niam_db),
+    actor: NiamActor = Depends(get_current_niam_actor),
 ):
+    await require_platform_capability(actor, db, PlatformCapability.federation_manage.value)
     svc = CrossOrgTrustService(db)
     trust = await svc.terminate_trust(trust_id)
     if not trust:
         return {"error": "not_found"}
+    await db.commit()
     return {"trust_id": trust.trust_id, "status": trust.status}
