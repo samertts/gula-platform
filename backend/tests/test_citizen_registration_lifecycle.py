@@ -29,6 +29,7 @@ from app.national.services.citizen_registration import (
     assert_medical_data_access_allowed,
     assert_single_initial_account,
     create_initial_account,
+    project_registration_status,
     submit_national_identity,
     verify_contact,
 )
@@ -517,3 +518,56 @@ def test_activation_remains_blocked_after_health_approval() -> None:
         )
     with pytest.raises(MedicalDataAccessDeniedError):
         assert_medical_data_access_allowed(account=approved, context=_staff_context())
+
+
+# Synthetic status projection mirrored by the demo-only Arabic RTL citizen surface.
+
+
+def test_status_projection_for_initial_account_is_bounded_and_non_official() -> None:
+    _, _, account = _initial_account()
+    view = project_registration_status(account)
+
+    assert view["lifecycle_state"] == "INITIAL_ACCOUNT_CREATED"
+    assert view["verification_state"] == "UNVERIFIED"
+    assert view["next_step"] == "verify_contact"
+    assert view["can_access_medical_data"] is False
+    assert view["official_verification"] is False
+    assert view["synthetic"] is True
+    assert view["case_reference"] == account.gula_citizen_identifier
+    assert "national_id" not in view
+    assert "raw_nid" not in view
+
+
+def test_status_projection_for_review_requires_in_person_review() -> None:
+    _, _, reviewed = _reviewed_account()
+    view = project_registration_status(reviewed)
+
+    assert view["lifecycle_state"] == "NATIONAL_IDENTITY_PENDING_REVIEW"
+    assert view["verification_state"] == "PENDING_REVIEW"
+    assert view["requires_in_person_review"] is True
+    assert view["identity_submitted"] is True
+    assert view["next_step"] == "await_in_person_review"
+    assert view["health_identity_approved"] is False
+    assert view["can_access_medical_data"] is False
+    assert view["official_verification"] is False
+
+
+def test_status_projection_never_claims_medical_access_after_health_approval() -> None:
+    _, account_store, reviewed = _reviewed_account()
+    primary, secondary = _linkage_candidates()
+    approved = approve_health_identity(
+        account=reviewed,
+        primary=primary,
+        secondary=secondary,
+        reviewer=LinkageReviewer(name="reviewer-1", user_id=7),
+        reason="synthetic approval for projection",
+        evidence_reference="SYNTHETIC-REVIEW-PROJECTION-0001",
+        context=_staff_context(),
+        account_store=account_store,
+    )
+    view = project_registration_status(approved)
+
+    assert view["health_identity_approved"] is True
+    assert view["next_step"] == "activation_pending_owner_approval"
+    assert view["can_access_medical_data"] is False
+    assert view["official_verification"] is False

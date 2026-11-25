@@ -7,9 +7,10 @@ guardian policy and NIAM consent model.
 
 Known owner-gated gaps are characterized as current behavior, not approved:
 canonical consent enforcement is absent, guardian purposes are outside the
-engine purpose allowlist, break-glass expiry/enum/workflow checks are shallow,
+engine purpose allowlist, break-glass enum/workflow checks remain shallow,
 public deny reasons can collapse to membership_unresolved, and unknown PHI
-actions use the generic permission_unknown reason.
+actions use the generic permission_unknown reason. Break-glass expiry is
+strictly parsed and enforced as a future, timezone-aware timestamp.
 """
 
 from __future__ import annotations
@@ -19,7 +20,6 @@ from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
-
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.consent import NiamConsent, NiamConsentStatus
@@ -148,21 +148,21 @@ def _actor(*, mfa: bool = False, active: bool = True) -> AuthorizationActor:
 
 
 def _request(**overrides):
-    values = dict(
-        subject_account_id=ACCOUNT,
-        action="read",
-        resource_type="patient_record",
-        resource_id=PATIENT,
-        permission_key="patient_record.read",
-        organization_id=ORG,
-        facility_id=FACILITY_A,
-        resource_context={
+    values = {
+        "subject_account_id": ACCOUNT,
+        "action": "read",
+        "resource_type": "patient_record",
+        "resource_id": PATIENT,
+        "permission_key": "patient_record.read",
+        "organization_id": ORG,
+        "facility_id": FACILITY_A,
+        "resource_context": {
             "exists": True,
             "organization_id": ORG,
             "facility_id": FACILITY_A,
             "patient_id": PATIENT,
         },
-    )
+    }
     values.update(overrides)
     return AuthorizationRequest(**values)
 
@@ -203,12 +203,12 @@ def _membership(*, facility_id=FACILITY_A, workspace_id=None, expires_at=None, r
 
 
 def _session(**overrides):
-    values = dict(
-        identity=_identity(),
-        employments=[_employment()],
-        memberships=[_membership()],
-        permissions=["patient_record.read"],
-    )
+    values = {
+        "identity": _identity(),
+        "employments": [_employment()],
+        "memberships": [_membership()],
+        "permissions": ["patient_record.read"],
+    }
     values.update(overrides)
     return _ClosureSession(**values)
 
@@ -361,7 +361,7 @@ async def test_break_glass_requires_workflow_authorization_and_environment_field
 
 
 @pytest.mark.asyncio
-async def test_break_glass_expiry_is_not_parsed_characterized_gap():
+async def test_break_glass_invalid_expiry_is_denied():
     decision = await _decide(
         _session(),
         mfa=True,
@@ -370,6 +370,45 @@ async def test_break_glass_expiry_is_not_parsed_characterized_gap():
         environment={
             "break_glass_reason": "synthetic-emergency",
             "break_glass_expires_at": "not-a-timestamp",
+        },
+    )
+    assert decision.allowed is False
+    assert decision.reason_code is AuthorizationReason.break_glass_workflow_required
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expiry",
+    [
+        (datetime.now(UTC) - timedelta(minutes=1)).isoformat(),
+        (datetime.now(UTC) + timedelta(minutes=10)).replace(tzinfo=None).isoformat(),
+    ],
+)
+async def test_break_glass_expired_or_naive_expiry_is_denied(expiry):
+    decision = await _decide(
+        _session(),
+        mfa=True,
+        break_glass=True,
+        break_glass_authorized=True,
+        environment={
+            "break_glass_reason": "synthetic-emergency",
+            "break_glass_expires_at": expiry,
+        },
+    )
+    assert decision.allowed is False
+    assert decision.reason_code is AuthorizationReason.break_glass_workflow_required
+
+
+@pytest.mark.asyncio
+async def test_break_glass_valid_future_expiry_is_allowed():
+    decision = await _decide(
+        _session(),
+        mfa=True,
+        break_glass=True,
+        break_glass_authorized=True,
+        environment={
+            "break_glass_reason": "synthetic-emergency",
+            "break_glass_expires_at": (datetime.now(UTC) + timedelta(minutes=10)).isoformat(),
         },
     )
     assert decision.allowed is True
@@ -521,20 +560,20 @@ def _adult_subject():
 
 
 def _relationship(**overrides):
-    values = dict(
-        id="RELATIONSHIP-W51",
-        relationship_type="guardian",
-        verified_at=datetime(2026, 1, 1, tzinfo=UTC),
-        purpose="guardian_access",
-        scope={"resources": ["patient_record"]},
-        metadata_={
+    values = {
+        "id": "RELATIONSHIP-W51",
+        "relationship_type": "guardian",
+        "verified_at": datetime(2026, 1, 1, tzinfo=UTC),
+        "purpose": "guardian_access",
+        "scope": {"resources": ["patient_record"]},
+        "metadata_": {
             "guardian_type": "parent",
             "source_verified": True,
             "guardian_verified": True,
         },
-        citizen_id="CITIZEN-W51-MINOR",
-        is_active_at=lambda now=None: True,
-    )
+        "citizen_id": "CITIZEN-W51-MINOR",
+        "is_active_at": lambda now=None: True,
+    }
     values.update(overrides)
     return SimpleNamespace(**values)
 
@@ -562,12 +601,12 @@ def test_verified_guardian_read_is_allowed_by_canonical_guard():
     ],
 )
 def test_guardian_overreach_is_denied_by_canonical_guard(overrides, expected_reason):
-    values = dict(
-        subject=_minor_subject(),
-        relationship=_relationship(),
-        action="read",
-        today=_TODAY,
-    )
+    values = {
+        "subject": _minor_subject(),
+        "relationship": _relationship(),
+        "action": "read",
+        "today": _TODAY,
+    }
     values.update(overrides)
     decision = evaluate_guardian_access(**values)
     assert decision.allowed is False

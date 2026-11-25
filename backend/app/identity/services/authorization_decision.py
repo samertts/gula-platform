@@ -244,7 +244,14 @@ class AuthorizationDecisionService:
         if request.break_glass:
             if not request.break_glass_authorized:
                 return AuthorizationDecision.deny(AuthorizationReason.break_glass_workflow_required)
-            if not request.environment.get("break_glass_reason") or not request.environment.get("break_glass_expires_at"):
+            raw_expiry = request.environment.get("break_glass_expires_at")
+            if not request.environment.get("break_glass_reason") or not raw_expiry:
+                return AuthorizationDecision.deny(AuthorizationReason.break_glass_workflow_required)
+            try:
+                break_glass_expiry = datetime.fromisoformat(str(raw_expiry))
+            except (TypeError, ValueError):
+                return AuthorizationDecision.deny(AuthorizationReason.break_glass_workflow_required)
+            if break_glass_expiry.tzinfo is None or break_glass_expiry <= now:
                 return AuthorizationDecision.deny(AuthorizationReason.break_glass_workflow_required)
             if not session.mfa_used:
                 return AuthorizationDecision.deny(

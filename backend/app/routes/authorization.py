@@ -436,7 +436,7 @@ def deactivate_break_glass(
     current_user: User = Depends(get_current_user),
 ):
     svc = BreakGlassService(db)
-    success = svc.deactivate(session_id)
+    success = svc.deactivate(session_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Break-glass session not found or already deactivated")
     return {"status": "deactivated"}

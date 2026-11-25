@@ -287,6 +287,57 @@ def _assert_staff_access(
         raise RegistrationAuthorizationError(str(exc)) from exc
 
 
+def project_registration_status(
+    account: CitizenRegistrationAccount,
+) -> dict[str, Any]:
+    """Return a bounded, synthetic-only citizen status presentation model.
+
+    The projection never claims official government verification and never
+    grants medical access from an incomplete lifecycle state.
+    """
+    state = account.lifecycle_state
+    if state is RegistrationLifecycleState.INITIAL_ACCOUNT:
+        next_step = "verify_contact"
+    elif state is RegistrationLifecycleState.CONTACT_VERIFIED:
+        next_step = "submit_identity"
+    elif state in {
+        RegistrationLifecycleState.IDENTITY_SUBMITTED,
+        RegistrationLifecycleState.IDENTITY_REVIEW,
+    }:
+        next_step = "await_in_person_review"
+    elif state is RegistrationLifecycleState.HEALTH_APPROVED:
+        next_step = "activation_pending_owner_approval"
+    elif state is RegistrationLifecycleState.SERVICE_ACTIVE:
+        next_step = "none"
+    else:
+        next_step = "contact_support"
+    return {
+        **account.to_public_dict(),
+        "case_reference": account.gula_citizen_identifier,
+        "next_step": next_step,
+        "requires_in_person_review": state
+        in {
+            RegistrationLifecycleState.IDENTITY_SUBMITTED,
+            RegistrationLifecycleState.IDENTITY_REVIEW,
+        },
+        "identity_submitted": state
+        in {
+            RegistrationLifecycleState.IDENTITY_SUBMITTED,
+            RegistrationLifecycleState.IDENTITY_REVIEW,
+            RegistrationLifecycleState.HEALTH_APPROVED,
+            RegistrationLifecycleState.SERVICE_ACTIVE,
+        },
+        "health_identity_approved": state
+        in {
+            RegistrationLifecycleState.HEALTH_APPROVED,
+            RegistrationLifecycleState.SERVICE_ACTIVE,
+        },
+        "official_verification": False,
+        "synthetic": True,
+        "notice": "synthetic_workflow_not_government_verification",
+    }
+
+
 def _audit_event(
     *,
     context: RegistrationContext,
@@ -599,6 +650,7 @@ __all__ = [
     "assert_medical_data_access_allowed",
     "assert_single_initial_account",
     "create_initial_account",
+    "project_registration_status",
     "reject_registration",
     "submit_national_identity",
     "verify_contact",
