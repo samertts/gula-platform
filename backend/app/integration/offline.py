@@ -5,6 +5,7 @@ import json
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -18,9 +19,11 @@ _SUPPORTED_STRATEGIES = frozenset(
 )
 
 
-def _fingerprint(entry: "OfflineQueueEntry") -> str:
+def _fingerprint(entry: OfflineQueueEntry) -> str:
     payload = json.dumps(entry.payload, sort_keys=True, default=str)
-    return hashlib.sha256(f"{entry.id}:{entry.entity_id}:{entry.action}:{payload}".encode()).hexdigest()
+    return hashlib.sha256(
+        f"{entry.id}:{entry.entity_id}:{entry.action}:{payload}".encode()
+    ).hexdigest()
 
 
 @dataclass
@@ -74,6 +77,15 @@ class StoreForwardEngine:
                     e.status = "pending"
                 break
 
+    def force_dead(self, entry_id: str, reason: str) -> bool:
+        """Move a bounded synthetic queue entry to dead state after retry exhaustion."""
+        for entry in self._queue:
+            if entry.id == entry_id:
+                entry.status = "dead"
+                logger.error("Offline entry dead after bounded retries: %s — %s", entry_id, reason)
+                return True
+        return False
+
     def queue_size(self) -> dict[str, int]:
         counts: dict[str, int] = defaultdict(int)
         for e in self._queue:
@@ -82,6 +94,61 @@ class StoreForwardEngine:
 
     def list_dead(self) -> list[OfflineQueueEntry]:
         return [e for e in self._queue if e.status == "dead"]
+
+    def snapshot(self) -> tuple[dict[str, Any], ...]:
+        """Return a bounded, JSON-safe recovery snapshot of the queue.
+
+        This is an additive, process-local recovery contract for synthetic
+        workflows. It is not a database, audit authority, or durable store.
+        """
+
+        return tuple(
+            {
+                "id": entry.id,
+                "entity_type": entry.entity_type,
+                "entity_id": entry.entity_id,
+                "action": entry.action,
+                "payload": dict(entry.payload),
+                "timestamp": entry.timestamp,
+                "retry_count": entry.retry_count,
+                "max_retries": entry.max_retries,
+                "status": entry.status,
+            }
+            for entry in self._queue
+        )
+
+    def restore(self, snapshot: Sequence[Mapping[str, Any]]) -> None:
+        """Restore a previously exported synthetic queue snapshot in place."""
+
+        restored: list[OfflineQueueEntry] = []
+        seen: set[str] = set()
+        for item in snapshot:
+            identifier = str(item.get("id", ""))
+            if not identifier or len(identifier) > 200 or identifier in seen:
+                raise ValueError("offline recovery snapshot has an invalid or duplicate entry id")
+            seen.add(identifier)
+            status = str(item.get("status", "pending"))
+            if status not in {"pending", "processing", "completed", "failed", "dead"}:
+                raise ValueError("offline recovery snapshot has an unsupported status")
+            retry_count = int(item.get("retry_count", 0))
+            max_retries = int(item.get("max_retries", 5))
+            if retry_count < 0 or max_retries < 1 or retry_count > max_retries:
+                raise ValueError("offline recovery snapshot has invalid retry state")
+            entry = OfflineQueueEntry(
+                id=identifier,
+                entity_type=str(item.get("entity_type", "")),
+                entity_id=str(item.get("entity_id", "")),
+                action=str(item.get("action", "sync")),
+                payload=dict(item.get("payload", {})),
+                timestamp=float(item.get("timestamp", 0.0)),
+                retry_count=retry_count,
+                max_retries=max_retries,
+                status=status,
+            )
+            if status == "processing":
+                entry.status = "pending"
+            restored.append(entry)
+        self._queue = restored
 
 
 class ConflictResolver:
@@ -238,8 +305,18 @@ class OfflineSyncEngine:
     def edge_sync(self) -> EdgeSyncEngine:
         return self._edge_sync
 
-    async def sync_all(self) -> dict[str, Any]:
+    async def sync_all(
+        self,
+        *,
+        eligible: Callable[[OfflineQueueEntry], bool] | None = None,
+    ) -> dict[str, Any]:
         batch = self._store_forward.dequeue(50)
+        if eligible is not None:
+            accepted = [entry for entry in batch if eligible(entry)]
+            rejected = [entry for entry in batch if not eligible(entry)]
+            for entry in rejected:
+                entry.status = "pending"
+            batch = accepted
         results: list[dict[str, Any]] = []
         for entry in batch:
             fingerprint = _fingerprint(entry)
@@ -282,3 +359,33 @@ class OfflineSyncEngine:
             "edge_nodes": len(self._edge_sync._edge_nodes),
             "engine": "active",
         }
+
+    def recovery_snapshot(self) -> dict[str, Any]:
+        """Return bounded synthetic recovery state for the queue and dedupe set."""
+
+        return {
+            "queue": list(self._store_forward.snapshot()),
+            "processed": [
+                {"id": identifier, "fingerprint": fingerprint}
+                for identifier, fingerprint in sorted(self._processed)
+            ],
+        }
+
+    def restore_recovery_snapshot(self, snapshot: Mapping[str, Any]) -> None:
+        """Restore queue and dedupe markers from a bounded synthetic snapshot."""
+
+        queue = snapshot.get("queue", [])
+        if not isinstance(queue, Sequence) or isinstance(queue, (str, bytes)):
+            raise ValueError("offline recovery snapshot queue must be a sequence")
+        self._store_forward.restore(queue)
+        processed = snapshot.get("processed", [])
+        if not isinstance(processed, Sequence) or isinstance(processed, (str, bytes)):
+            raise ValueError("offline recovery snapshot processed set must be a sequence")
+        restored: set[tuple[str, str]] = set()
+        for item in processed:
+            identifier = str(item.get("id", ""))
+            fingerprint = str(item.get("fingerprint", ""))
+            if not identifier or not fingerprint:
+                raise ValueError("offline recovery snapshot has an incomplete dedupe marker")
+            restored.add((identifier, fingerprint))
+        self._processed = restored

@@ -114,6 +114,7 @@ def build_bundle(
                 "value": result.value,
                 "unit": result.unit,
                 "system": "http://unitsofmeasure.org",
+                "code": result.unit,
             },
             "referenceRange": [
                 {
