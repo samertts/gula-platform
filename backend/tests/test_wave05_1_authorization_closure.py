@@ -10,7 +10,9 @@ canonical consent enforcement is absent, guardian purposes are outside the
 engine purpose allowlist, break-glass enum/workflow checks remain shallow,
 public deny reasons can collapse to membership_unresolved, and unknown PHI
 actions use the generic permission_unknown reason. Break-glass expiry is
-strictly parsed and enforced as a future, timezone-aware timestamp.
+strictly parsed and enforced as a future, timezone-aware timestamp. Null,
+blank, or explicitly unresolved scope markers now fail closed at the helper
+boundary; organization-wide membership that omits a scope remains unchanged.
 """
 
 from __future__ import annotations

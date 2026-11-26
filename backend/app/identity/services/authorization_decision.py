@@ -518,6 +518,18 @@ class AuthorizationDecisionService:
         )
 
     @staticmethod
+    def _scope_denial_reason(key: str) -> AuthorizationReason:
+        if key == "organization_id":
+            return AuthorizationReason.cross_tenant_denied
+        if key == "workspace_id":
+            return AuthorizationReason.workspace_boundary_denied
+        return AuthorizationReason.scope_mismatch
+
+    @staticmethod
+    def _blank_scope(value: object) -> bool:
+        return isinstance(value, str) and not value.strip()
+
+    @staticmethod
     def _check_scope(request: AuthorizationRequest, membership: Membership) -> AuthorizationReason | None:
         resource_scope = request.resource_context
         if membership.organization_id != request.organization_id:
@@ -525,13 +537,20 @@ class AuthorizationDecisionService:
 
         scope_fields = ("facility_id", "department_id", "unit_id", "workspace_id")
         for key in scope_fields:
-            requested = resource_scope.get(key, getattr(request, key))
+            trusted = getattr(request, key)
+            requested = resource_scope.get(key, trusted)
             membership_value = getattr(membership, key, None)
+            if (
+                AuthorizationDecisionService._blank_scope(trusted)
+                or AuthorizationDecisionService._blank_scope(requested)
+                or AuthorizationDecisionService._blank_scope(membership_value)
+            ):
+                return AuthorizationDecisionService._scope_denial_reason(key)
+            if key in resource_scope and requested is None and trusted is not None:
+                return AuthorizationDecisionService._scope_denial_reason(key)
             if requested is None or membership_value is None or membership_value == requested:
                 continue
-            if key == "workspace_id":
-                return AuthorizationReason.workspace_boundary_denied
-            return AuthorizationReason.scope_mismatch
+            return AuthorizationDecisionService._scope_denial_reason(key)
         return None
 
     @staticmethod
@@ -541,12 +560,15 @@ class AuthorizationDecisionService:
         for key in ("organization_id", "facility_id", "department_id", "unit_id", "workspace_id"):
             request_value = getattr(request, key)
             resource_value = request.resource_context.get(key)
+            if (
+                AuthorizationDecisionService._blank_scope(request_value)
+                or AuthorizationDecisionService._blank_scope(resource_value)
+            ):
+                return AuthorizationDecisionService._scope_denial_reason(key)
+            if key in request.resource_context and resource_value is None and request_value is not None:
+                return AuthorizationDecisionService._scope_denial_reason(key)
             if request_value is not None and resource_value is not None and request_value != resource_value:
-                if key == "organization_id":
-                    return AuthorizationReason.cross_tenant_denied
-                if key == "workspace_id":
-                    return AuthorizationReason.workspace_boundary_denied
-                return AuthorizationReason.scope_mismatch
+                return AuthorizationDecisionService._scope_denial_reason(key)
         return None
 
     async def _permission_exists(self, permission_key: str) -> bool:

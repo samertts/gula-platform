@@ -118,6 +118,64 @@ def test_resource_context_facility_mismatch_is_denied():
     assert result is AuthorizationReason.scope_mismatch
 
 
+def test_blank_scope_strings_fail_closed():
+    assert (
+        AuthorizationDecisionService._check_scope(
+            _request(facility_id=" "),
+            _membership(facility_id=" "),
+        )
+        is AuthorizationReason.scope_mismatch
+    )
+    assert (
+        AuthorizationDecisionService._check_scope(
+            _request(workspace_id="WORKSPACE-A"),
+            _membership(workspace_id="   "),
+        )
+        is AuthorizationReason.workspace_boundary_denied
+    )
+    assert (
+        AuthorizationDecisionService._check_resource_context(
+            _request(facility_id=" ", resource_context={"exists": True})
+        )
+        is AuthorizationReason.scope_mismatch
+    )
+
+
+def test_explicit_null_resource_scope_fails_closed_when_request_asserts_scope():
+    assert (
+        AuthorizationDecisionService._check_scope(
+            _request(
+                facility_id="FACILITY-A",
+                resource_context={
+                    "exists": True, "organization_id": "ORG-A", "facility_id": None,
+                },
+            ),
+            _membership(),
+        )
+        is AuthorizationReason.scope_mismatch
+    )
+    assert (
+        AuthorizationDecisionService._check_resource_context(
+            _request(
+                facility_id="FACILITY-A",
+                resource_context={
+                    "exists": True, "organization_id": "ORG-A", "facility_id": None,
+                },
+            )
+        )
+        is AuthorizationReason.scope_mismatch
+    )
+    assert (
+        AuthorizationDecisionService._check_resource_context(
+            _request(
+                organization_id="ORG-A",
+                resource_context={"exists": True, "organization_id": None},
+            )
+        )
+        is AuthorizationReason.cross_tenant_denied
+    )
+
+
 def test_unresolved_resource_is_denied():
     result = AuthorizationDecisionService._check_resource_context(
         _request(resource_context={"exists": False})

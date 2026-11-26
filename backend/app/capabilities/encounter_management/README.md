@@ -6,6 +6,8 @@
 
 Clinical encounter management: outpatient, emergency, inpatient, home visit, telemedicine, referral, admission, discharge, transfer, clinical notes
 
+**Status: STUB** — the five endpoints in `routes.py` return fixed placeholder payloads. No encounter is read or written, and no clinical workflow is implemented.
+
 ## Dependencies
 
 - patient_management
