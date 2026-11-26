@@ -17,6 +17,7 @@ from app.identity.services.authorization_decision import (
     AuthorizationReason,
 )
 from app.national.services.citizen_registration import (
+    ActorType,
     CitizenRegistrationError,
     InMemoryRegistrationAccountStore,
     InvalidRegistrationTransitionError,
@@ -76,6 +77,7 @@ def _context(**overrides) -> RegistrationContext:
     values = {
         "decision": AuthorizationDecision.allow(),
         "actor_id": "officer-1",
+        "actor_type": ActorType.CITIZEN,
         "organization_id": "ORG-SYNTHETIC",
         "facility_id": "FACILITY-SYNTHETIC",
         "purpose": "citizen_workspace",
@@ -91,6 +93,7 @@ def _context(**overrides) -> RegistrationContext:
 def _staff_context(**overrides) -> RegistrationContext:
     return _context(
         purpose="ADMINISTRATION",
+        actor_type=ActorType.STAFF,
         role=IdentityRole.IDENTITY_REVIEWER,
         **overrides,
     )

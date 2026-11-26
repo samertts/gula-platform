@@ -16,69 +16,167 @@ export interface RegistrationStatusPayload {
   notice: string;
 }
 
-const LIFECYCLE_LABELS: Record<string, string> = {
-  INITIAL_ACCOUNT_CREATED: "تم إنشاء الحساب الأولي",
-  CONTACT_VERIFIED: "تم التحقق من وسيلة التواصل",
-  NATIONAL_IDENTITY_SUBMITTED: "تم تقديم بيانات الهوية الوطنية",
-  NATIONAL_IDENTITY_PENDING_REVIEW: "قيد المراجعة الحضورية",
-  HEALTH_IDENTITY_APPROVED: "تمت الموافقة على الهوية الصحية",
-  SERVICE_ACTIVE: "الخدمة فعّالة",
-  REJECTED: "مرفوض",
-  SUSPENDED: "موقوف",
+export type CitizenRegistrationLocale = "ar" | "en";
+
+interface CitizenStatusLabels {
+  title: string;
+  description: string;
+  regionLabel: string;
+  unknownState: string;
+  verificationPrefix: string;
+  officialVerificationUnavailable: string;
+  inPersonReview: string;
+  medicalEnabled: string;
+  medicalDenied: string;
+  medicalDescription: string;
+  caseReference: string;
+  syntheticNotice: string;
+  lifecycle: Record<string, string>;
+  nextStep: Record<string, string>;
+}
+
+const AR_LABELS: CitizenStatusLabels = {
+  title: "حالة طلب إنشاء الحساب",
+  description: "عرض آمن لحالة الطلب داخل البيئة التجريبية",
+  regionLabel: "حالة طلب إنشاء الحساب",
+  unknownState: "حالة غير معروفة",
+  verificationPrefix: "حالة التحقق",
+  officialVerificationUnavailable: "التحقق الحكومي الرسمي: غير متاح",
+  inPersonReview: "مراجعة حضورية مطلوبة",
+  medicalEnabled: "الوصول للبيانات الطبية: مفعّل",
+  medicalDenied: "الوصول للبيانات الطبية: غير مفعّل",
+  medicalDescription: "لا تُمنح الصلاحية قبل استكمال التحقق واعتماد الجهة المخولة.",
+  caseReference: "رقم الحالة التجريبي",
+  syntheticNotice:
+    "بيانات تجريبية داخل بيئة معزولة. هذه الحالة ليست تحققاً حكومياً ولا تمنح الوصول إلى البيانات الطبية.",
+  lifecycle: {
+    NO_ACCOUNT: "لا يوجد حساب",
+    INITIAL_ACCOUNT_CREATED: "تم إنشاء الحساب الأولي",
+    CONTACT_VERIFIED: "تم التحقق من وسيلة التواصل",
+    NATIONAL_IDENTITY_SUBMITTED: "تم تقديم بيانات الهوية الوطنية",
+    NATIONAL_IDENTITY_PENDING_REVIEW: "قيد المراجعة الحضورية",
+    HEALTH_IDENTITY_APPROVED: "تمت الموافقة على الهوية الصحية",
+    SERVICE_ACTIVE: "الخدمة فعّالة",
+    REJECTED: "مرفوض",
+    SUSPENDED: "موقوف",
+    RESUBMITTED: "تم إعادة تقديم الطلب",
+    APPEAL_RECONSIDERED: "قيد إعادة النظر",
+    MANUAL_REVIEW_REQUESTED: "أُحيل الطلب للمراجعة اليدوية",
+  },
+  nextStep: {
+    verify_contact: "الخطوة التالية: التحقق من رقم الهاتف أو وسيلة التواصل.",
+    submit_identity: "الخطوة التالية: تقديم بيانات الوثيقة الأصلية للمراجعة.",
+    await_in_person_review: "الخطوة التالية: انتظار مراجعة مختصة في موقع معتمد.",
+    activation_pending_owner_approval: "الخطوة التالية: تفعيل الخدمة بعد اعتماد الجهة المخولة.",
+    none: "لا توجد خطوة مطلوبة حالياً.",
+    contact_support: "الخطوة التالية: التواصل مع الدعم.",
+  },
 };
 
-const VERIFICATION_LABELS: Record<string, string> = {
-  UNVERIFIED: "غير موثّق",
-  PENDING_REVIEW: "قيد المراجعة",
-  VERIFIED: "موثّق",
+// English fallback is used when a translation is incomplete or the caller
+// selects the English locale. Unknown keys are shown verbatim, never invented.
+const EN_LABELS: CitizenStatusLabels = {
+  title: "Account registration status",
+  description: "Safe view of a synthetic registration case",
+  regionLabel: "Account registration status",
+  unknownState: "Unknown state",
+  verificationPrefix: "Verification state",
+  officialVerificationUnavailable: "Official government verification: unavailable",
+  inPersonReview: "In-person review required",
+  medicalEnabled: "Medical data access: enabled",
+  medicalDenied: "Medical data access: disabled",
+  medicalDescription: "Access is not granted before verification and authorized approval.",
+  caseReference: "Synthetic case reference",
+  syntheticNotice:
+    "Synthetic data in an isolated environment. This status is not government verification and does not grant medical data access.",
+  lifecycle: {
+    NO_ACCOUNT: "No account",
+    INITIAL_ACCOUNT_CREATED: "Initial account created",
+    CONTACT_VERIFIED: "Contact verified",
+    NATIONAL_IDENTITY_SUBMITTED: "Identity evidence submitted",
+    NATIONAL_IDENTITY_PENDING_REVIEW: "Pending in-person review",
+    HEALTH_IDENTITY_APPROVED: "Health identity approved",
+    SERVICE_ACTIVE: "Service active",
+    REJECTED: "Rejected",
+    SUSPENDED: "Suspended",
+    RESUBMITTED: "Resubmitted",
+    APPEAL_RECONSIDERED: "Appeal under reconsideration",
+    MANUAL_REVIEW_REQUESTED: "Manual review requested",
+  },
+  nextStep: {
+    verify_contact: "Next step: verify a phone number or contact channel.",
+    submit_identity: "Next step: present original document evidence for review.",
+    await_in_person_review: "Next step: wait for an authorized in-person review.",
+    activation_pending_owner_approval: "Next step: activation awaits authorized approval.",
+    none: "No action is currently required.",
+    contact_support: "Next step: contact support.",
+  },
 };
 
-const NEXT_STEP_LABELS: Record<string, string> = {
-  verify_contact: "الخطوة التالية: التحقق من رقم الهاتف أو وسيلة التواصل.",
-  submit_identity: "الخطوة التالية: تقديم بيانات الوثيقة الأصلية للمراجعة.",
-  await_in_person_review: "الخطوة التالية: انتظار مراجعة مختصة في موقع معتمد.",
-  activation_pending_owner_approval: "الخطوة التالية: تفعيل الخدمة بعد اعتماد الجهة المخولة.",
-  none: "لا توجد خطوة مطلوبة حالياً.",
-  contact_support: "الخطوة التالية: التواصل مع الدعم.",
-};
+function resolveLabels(locale: CitizenRegistrationLocale): CitizenStatusLabels {
+  return locale === "en" ? EN_LABELS : AR_LABELS;
+}
 
-const SYNTHETIC_NOTICE =
-  "بيانات تجريبية داخل بيئة معزولة. هذه الحالة ليست تحققاً حكومياً ولا تمنح الوصول إلى البيانات الطبية.";
+// Only bounded, non-assertive tokens may be shown as an official state.
+// "VERIFIED" and unknown tokens are never rendered as verification claims,
+// even if a future caller sets official_verification to true.
+const SAFE_OFFICIAL_VERIFICATION_STATES = new Set([
+  "UNVERIFIED",
+  "NOT_VERIFIED",
+  "PENDING_REVIEW",
+  "REVIEW_REQUIRED",
+]);
 
-export function CitizenRegistrationStatus({ status }: { status: RegistrationStatusPayload }) {
-  const lifecycleLabel = LIFECYCLE_LABELS[status.lifecycle_state] ?? "حالة غير معروفة";
-  const verificationLabel = VERIFICATION_LABELS[status.verification_state] ?? "حالة غير معروفة";
-  const nextStep = NEXT_STEP_LABELS[status.next_step] ?? NEXT_STEP_LABELS.contact_support;
-  const medicalLabel = status.can_access_medical_data
-    ? "الوصول للبيانات الطبية: مفعّل"
-    : "الوصول للبيانات الطبية: غير مفعّل";
+export function CitizenRegistrationStatus({
+  status,
+  locale = "ar",
+}: {
+  status: RegistrationStatusPayload;
+  locale?: CitizenRegistrationLocale;
+}) {
+  const labels = resolveLabels(locale);
+  const lifecycleLabel = labels.lifecycle[status.lifecycle_state] ?? status.lifecycle_state;
+  const nextStep = labels.nextStep[status.next_step] ?? labels.nextStep.contact_support;
+  const medicalLabel = status.can_access_medical_data ? labels.medicalEnabled : labels.medicalDenied;
+  const showVerificationState =
+    status.official_verification && SAFE_OFFICIAL_VERIFICATION_STATES.has(status.verification_state);
 
   return (
-    <section dir="rtl" lang="ar" aria-label="حالة طلب إنشاء الحساب">
+    <section
+      dir={locale === "ar" ? "rtl" : "ltr"}
+      lang={locale}
+      aria-label={labels.regionLabel}
+    >
       <Card>
         <CardHeader>
-          <CardTitle>حالة طلب إنشاء الحساب</CardTitle>
-          <CardDescription>عرض آمن لحالة الطلب داخل البيئة التجريبية</CardDescription>
+          <CardTitle>{labels.title}</CardTitle>
+          <CardDescription>{labels.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{lifecycleLabel}</Badge>
-            <Badge variant="secondary">حالة التحقق: {verificationLabel}</Badge>
+            {showVerificationState ? (
+              <Badge variant="secondary">
+                {labels.verificationPrefix}: {status.verification_state}
+              </Badge>
+            ) : (
+              <Badge variant="secondary">{labels.officialVerificationUnavailable}</Badge>
+            )}
             {status.requires_in_person_review && (
-              <Badge variant="warning">مراجعة حضورية مطلوبة</Badge>
+              <Badge variant="warning">{labels.inPersonReview}</Badge>
             )}
           </div>
           <AdaptiveStatus
             state={status.can_access_medical_data ? "enabled" : "permission_denied"}
             label={medicalLabel}
-            description="لا تُمنح الصلاحية قبل استكمال التحقق واعتماد الجهة المخولة."
+            description={labels.medicalDescription}
           />
           <p role="status" aria-live="polite" className="text-sm font-semibold">
             {nextStep}
           </p>
-          <p className="text-xs leading-5 text-muted-foreground">{SYNTHETIC_NOTICE}</p>
-          <p className="text-xs text-muted-foreground" aria-label="رقم الحالة التجريبي">
-            رقم الحالة: {status.case_reference}
+          <p className="text-xs leading-5 text-muted-foreground">{labels.syntheticNotice}</p>
+          <p className="text-xs text-muted-foreground" aria-label={labels.caseReference}>
+            {labels.caseReference}: {status.case_reference}
           </p>
         </CardContent>
       </Card>
