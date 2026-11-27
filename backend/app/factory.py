@@ -813,8 +813,9 @@ def _register_routes(app: FastAPI) -> None:
     from .lifecycle_platform.api.routes import router as lifecycle_router
     app.include_router(lifecycle_router)
 
-    from .trust.routes import router as trust_router
-    app.include_router(trust_router)
+    # The NIAM trust router is mounted only through ``get_niam_router()`` below.
+    # Mounting ``app.identity.trust.routes.router`` here would create a second,
+    # weaker registration path without the canonical actor dependency.
 
     from .identity import get_router as get_niam_router
     app.include_router(get_niam_router())
