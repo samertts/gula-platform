@@ -30,7 +30,7 @@ class TestABACRBACIntegration:
         abac = ABACEngine()
         request = AccessRequest(
             subject_id="admin1", subject_roles=["vip_access"],
-            resource_is_vip=True, action="read",
+            resource_is_vip=True, purpose_of_use="treatment", action="read",
         )
         decision = abac.evaluate(request)
         assert decision.granted is True
