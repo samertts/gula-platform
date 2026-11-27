@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -85,9 +86,20 @@ async def request_break_glass(
 async def check_consent(
     data: ConsentCheck,
     current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    service = ConsentEnforcementService()
-    result = await service.check_consent(citizen_id=data.citizen_id, scope=data.scope)
+    requestor_id = getattr(current_user, "id", None) or getattr(current_user, "account_id", None)
+    if not requestor_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticated NIAM actor required for consent verification",
+        )
+    service = ConsentEnforcementService(db)
+    result = await service.check_consent(
+        patient_id=data.citizen_id,
+        scope=data.scope,
+        requestor_id=requestor_id,
+    )
     return ConsentCheckResponse(
         granted=result.granted,
         consent_id=result.consent_id,
