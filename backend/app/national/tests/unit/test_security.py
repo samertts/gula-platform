@@ -93,6 +93,7 @@ class TestBreakGlass:
         )
         assert access.access_id is not None
         assert access.is_active is True
+        assert access.expires_at is not None
 
     def test_revoke_access(self):
         svc = BreakGlassService()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -36,6 +37,8 @@ class BreakGlassAccess:
 
 
 class BreakGlassService:
+    MAX_DURATION_MINUTES = 1440
+
     def __init__(self) -> None:
         self._active_accesses: dict[str, BreakGlassAccess] = {}
 
@@ -51,7 +54,11 @@ class BreakGlassService:
         patient_id: str,
         duration_minutes: int = 60,
     ) -> BreakGlassAccess:
-        import uuid
+        if duration_minutes <= 0:
+            raise ValueError("duration_minutes must be positive")
+        if duration_minutes > self.MAX_DURATION_MINUTES:
+            raise ValueError("duration_minutes exceeds the 24 hour break-glass maximum")
+        expires_at = datetime.now(UTC) + timedelta(minutes=duration_minutes)
         access = BreakGlassAccess(
             access_id=str(uuid.uuid4()),
             user_id=user_id,
@@ -62,7 +69,7 @@ class BreakGlassService:
             resource_type=resource_type,
             resource_id=resource_id,
             patient_id=patient_id,
-            expires_at=datetime.now(UTC).replace(hour=0, minute=0, second=0) + timedelta(hours=24) if False else None,
+            expires_at=expires_at,
         )
         self._active_accesses[access.access_id] = access
         return access

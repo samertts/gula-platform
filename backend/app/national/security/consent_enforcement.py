@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
+from app.national.security.reference import pseudonymous_reference
 
 
 @dataclass
@@ -16,13 +16,6 @@ class ConsentCheckResult:
     consent_id: str | None = None
     scope: str | None = None
     expires_at: datetime | None = None
-
-
-def _reference_digest(value: str | None) -> str | None:
-    """Return a short pseudonymous reference; never place raw identifiers in audit rows."""
-    if not value:
-        return None
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:24]
 
 
 class ConsentEnforcementService:
@@ -97,8 +90,8 @@ class ConsentEnforcementService:
         resource_type: str | None = None,
         resource_id: str | None = None,
     ) -> None:
-        subject_digest = _reference_digest(patient_id)
-        resource_digest = _reference_digest(resource_id)
+        subject_digest = pseudonymous_reference(patient_id)
+        resource_digest = pseudonymous_reference(resource_id)
         await self.audit.record(
             AuditEventInput(
                 event_type="CONSENT_CHECK_DENIED" if not granted else "CONSENT_CHECK_GRANTED",
@@ -113,7 +106,7 @@ class ConsentEnforcementService:
                 data_classification="SENSITIVE",
                 outcome="denied" if not granted else "success",
                 metadata={
-                    "scope_digest": _reference_digest(scope),
+                    "scope_digest": pseudonymous_reference(scope),
                     "resource_digest": resource_digest,
                     "purpose": purpose,
                 },
