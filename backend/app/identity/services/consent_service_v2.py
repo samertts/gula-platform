@@ -164,16 +164,25 @@ class NiamConsentService:
         )
         return consent
 
-    async def check(self, *, actor_account_id: str, consent_id: str) -> NiamConsent | None:
+    async def check(
+        self,
+        *,
+        actor_account_id: str,
+        consent_id: str,
+        now: datetime | None = None,
+    ) -> NiamConsent | None:
+        """Check consent using wall-clock time unless a trusted chain time is supplied."""
         consent = await self.session.get(NiamConsent, consent_id)
         if consent is None:
             return None
         if actor_account_id not in {consent.subject_account_id, consent.grantee_account_id}:
             raise NiamConsentAccessDenied("consent check denied")
-        if consent.status == NiamConsentStatus.active.value and not consent.is_valid_now():
+        valid = consent.is_valid_now(now)
+        if consent.status == NiamConsentStatus.active.value and not valid:
             consent.status = NiamConsentStatus.expired.value
             consent.is_active = False
             await self.session.flush()
+            valid = False
         await self.audit.record(
             AuditEventInput(
                 event_type="CONSENT_CHECKED",
@@ -183,12 +192,12 @@ class NiamConsentService:
                 organization_id=await self._organization_for_account(actor_account_id),
                 target_type="consent",
                 target_id=consent.id,
-                decision="ALLOW" if consent.is_valid_now() else "DENY",
-                reason_code="ACTIVE" if consent.is_valid_now() else "NOT_ACTIVE",
+                decision="ALLOW" if valid else "DENY",
+                reason_code="ACTIVE" if valid else "NOT_ACTIVE",
                 data_classification="SENSITIVE",
             ),
         )
-        return consent if consent.is_valid_now() else None
+        return consent if valid else None
 
     async def list_for_account(self, *, actor_account_id: str, limit: int = 100, offset: int = 0) -> list[NiamConsent]:
         result = await self.session.execute(

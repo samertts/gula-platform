@@ -205,10 +205,17 @@ class AuthorizationDecisionService:
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
+        *,
+        now: datetime | None = None,
     ) -> AuthorizationDecision:
-        """Evaluate in a fixed order and fail closed on every unresolved condition."""
+        """Evaluate in a fixed order and fail closed on every unresolved condition.
+
+        ``now`` is an optional trusted evaluation time for deterministic server-side
+        chains. Untrusted callers never construct this value; when omitted the
+        decision uses wall-clock time.
+        """
         try:
-            decision = await self._evaluate(actor, request)
+            decision = await self._evaluate(actor, request, now=now)
         except Exception:
             decision = AuthorizationDecision.deny(AuthorizationReason.internal_failure)
 
@@ -220,10 +227,12 @@ class AuthorizationDecisionService:
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
+        *,
+        now: datetime | None = None,
     ) -> AuthorizationDecision:
         account = actor.account
         session = actor.session
-        now = datetime.now(UTC)
+        now = now or datetime.now(UTC)
 
         if not request.subject_account_id or account.id != request.subject_account_id:
             return AuthorizationDecision.deny(AuthorizationReason.actor_mismatch)
@@ -273,7 +282,7 @@ class AuthorizationDecisionService:
         management_authority = await self._has_management_authority(actor, request)
         if self._requires_management_authority(request) and not management_authority:
             return AuthorizationDecision.deny(AuthorizationReason.organization_authority_required)
-        membership = await self._resolve_membership(actor, request)
+        membership = await self._resolve_membership(actor, request, now=now)
         if membership is None and not management_authority and request.resource_type not in self.NON_ORGANIZATIONAL_READS:
             return AuthorizationDecision.deny(AuthorizationReason.membership_unresolved)
 
@@ -485,6 +494,8 @@ class AuthorizationDecisionService:
         self,
         actor: AuthorizationActor,
         request: AuthorizationRequest,
+        *,
+        now: datetime | None = None,
     ) -> Membership | None:
         if request.resource_type in self.NON_ORGANIZATIONAL_READS and request.organization_id is None:
             return None
@@ -500,7 +511,8 @@ class AuthorizationDecisionService:
         if request.membership_id:
             conditions.append(Membership.id == request.membership_id)
         result = await self.session.execute(select(Membership).where(*conditions))
-        memberships = [item for item in result.scalars().all() if not item.expires_at or item.expires_at > datetime.now(UTC)]
+        reference_now = now or datetime.now(UTC)
+        memberships = [item for item in result.scalars().all() if not item.expires_at or item.expires_at > reference_now]
         matching = [item for item in memberships if self._check_scope(request, item) is None]
         if not matching:
             return None

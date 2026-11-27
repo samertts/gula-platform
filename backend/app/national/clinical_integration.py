@@ -720,7 +720,11 @@ class NationalClinicalIntegration:
             request,
             effective_now,
         )
-        decision = await AuthorizationDecisionService(session).authorize(actor, request)
+        decision = await AuthorizationDecisionService(session).authorize(
+            actor,
+            request,
+            now=effective_now,
+        )
         if not decision.allowed:
             await self._deny_access(
                 session,
@@ -732,6 +736,7 @@ class NationalClinicalIntegration:
         consent = await NiamConsentService(session).check(
             actor_account_id=actor.account.id,
             consent_id=clean_consent_id,
+            now=effective_now,
         )
         if consent is None:
             await self._deny_access(
