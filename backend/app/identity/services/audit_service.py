@@ -12,6 +12,40 @@ from app._compat import UTC
 from app.identity.models.audit import AuditAction, IdentityAuditEntry
 
 
+def compute_audit_entry_hash(
+    *,
+    entry_id: str,
+    uuid_str: str,
+    action: str,
+    actor_id: str | None,
+    target_type: str | None,
+    target_id: str | None,
+    occurred_at: str,
+    outcome: str,
+    previous_hash: str | None,
+    organization_id: str | None = None,
+) -> str:
+    """Compute the legacy v1 audit hash without owning an audit stream.
+
+    This is shared by the legacy writer and the canonical verification adapter
+    so provenance checks cannot drift from the active v1 hash semantics.
+    """
+    content = {
+        "id": entry_id,
+        "uuid": uuid_str,
+        "action": action,
+        "actor_id": actor_id,
+        "target_type": target_type,
+        "target_id": target_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "organization_id": organization_id,
+        "previous_hash": previous_hash,
+    }
+    raw = json.dumps(content, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
 class AuditService:
 
     def __init__(self, session: AsyncSession) -> None:
@@ -40,20 +74,18 @@ class AuditService:
         previous_hash: str | None,
         organization_id: str | None = None,
     ) -> str:
-        content = {
-            "id": entry_id,
-            "uuid": uuid_str,
-            "action": action,
-            "actor_id": actor_id,
-            "target_type": target_type,
-            "target_id": target_id,
-            "occurred_at": occurred_at,
-            "outcome": outcome,
-            "organization_id": organization_id,
-            "previous_hash": previous_hash,
-        }
-        raw = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        return compute_audit_entry_hash(
+            entry_id=entry_id,
+            uuid_str=uuid_str,
+            action=action,
+            actor_id=actor_id,
+            target_type=target_type,
+            target_id=target_id,
+            occurred_at=occurred_at,
+            outcome=outcome,
+            previous_hash=previous_hash,
+            organization_id=organization_id,
+        )
 
     async def record(
         self,

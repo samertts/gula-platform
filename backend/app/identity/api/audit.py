@@ -155,7 +155,7 @@ async def verify_audit_integrity(
     db: AsyncSession = Depends(get_db),
 ):
     await _require_audit_permission(actor, db, organization_id=organization_id, permission_key="audit.verify_integrity")
-    return await CanonicalAuditService(db).verify(
+    return await CanonicalAuditService(db).verify_authorization_provenance(
         organization_id=organization_id,
         occurred_from=occurred_from,
         occurred_to=occurred_to,

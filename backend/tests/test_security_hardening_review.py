@@ -5,17 +5,20 @@ from unittest.mock import Mock
 
 from app.routes import metrics
 from app.security import rate_limit
+from app.services import metrics_service
 
 
 def test_prometheus_metrics_fails_closed_without_production_bearer(monkeypatch) -> None:
-    monkeypatch.setattr(metrics, "IS_PRODUCTION", True)
+    # The route is a thin adapter; the single authoritative renderer owns the
+    # production fail-closed policy, so patch that module rather than the route.
+    monkeypatch.setattr(metrics_service, "IS_PRODUCTION", True)
     monkeypatch.delenv("METRICS_BEARER_TOKEN", raising=False)
 
     request = SimpleNamespace(headers={})
     response = metrics.prometheus_metrics(request, db=Mock())
 
     assert response.status_code == 503
-    assert response.body == b"Metrics authentication is not configured"
+    assert b"METRICS_BEARER_TOKEN" in response.body
 
 
 def test_auth_identifier_rate_limit_key_is_hmac_and_does_not_contain_identifier(monkeypatch) -> None:

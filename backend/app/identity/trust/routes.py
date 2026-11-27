@@ -7,6 +7,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.authorization_guard import (
+    AuthorizationGuardSpec,
+    require_authorized_action,
+)
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 
 from .services import (
     AssuranceService,
@@ -34,8 +39,19 @@ async def create_framework(
     authority_id: str | None = None,
     scope: dict | None = None,
     assurance_policies: dict | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="create",
+            resource_type="trust_framework",
+            permission_key="trust_framework.create",
+            resource_id=framework_id,
+        ),
+    )
     service = TrustFrameworkService(db)
     entity = await service.create_framework(
         framework_id=framework_id,
@@ -88,8 +104,19 @@ async def get_framework(
 async def update_framework(
     framework_id: str,
     body: dict[str, Any],
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="update",
+            resource_type="trust_framework",
+            permission_key="trust_framework.update",
+            resource_id=framework_id,
+        ),
+    )
     service = TrustFrameworkService(db)
     entity = await service.update_framework(framework_id, **body)
     if not entity:
@@ -100,8 +127,19 @@ async def update_framework(
 @router.post("/frameworks/{framework_id}/activate")
 async def activate_framework(
     framework_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="activate",
+            resource_type="trust_framework",
+            permission_key="trust_framework.activate",
+            resource_id=framework_id,
+        ),
+    )
     service = TrustFrameworkService(db)
     entity = await service.activate_framework(framework_id)
     if not entity:
@@ -121,8 +159,20 @@ async def create_assurance_profile(
     fal: str = "FAL1",
     assessed_by: str | None = None,
     evidence: dict | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="assign",
+            resource_type="trust_assurance_profile",
+            permission_key="trust_assurance_profile.assign",
+            resource_id=identity_id,
+            resource_context={"person_id": person_id},
+        ),
+    )
     service = AssuranceService(db)
     entity = await service.assign_profile(
         person_id=person_id,
@@ -199,8 +249,19 @@ async def get_profiles_for_identity(
 @router.post("/assurance-profiles/{profile_uuid}/revoke")
 async def revoke_assurance_profile(
     profile_uuid: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="revoke",
+            resource_type="trust_assurance_profile",
+            permission_key="trust_assurance_profile.revoke",
+            resource_id=profile_uuid,
+        ),
+    )
     service = AssuranceService(db)
     entity = await service.revoke_profile(profile_uuid)
     if not entity:
@@ -223,8 +284,19 @@ async def create_anchor(
     valid_from: datetime | None = None,
     valid_to: datetime | None = None,
     signed_by: str | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="create",
+            resource_type="trust_anchor",
+            permission_key="trust_anchor.create",
+            resource_id=anchor_id,
+        ),
+    )
     service = TrustAnchorService(db)
     entity = await service.create_anchor(
         anchor_id=anchor_id,
@@ -286,8 +358,19 @@ async def validate_anchor_chain(
 async def revoke_anchor(
     anchor_id: str,
     reason: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="revoke",
+            resource_type="trust_anchor",
+            permission_key="trust_anchor.revoke",
+            resource_id=anchor_id,
+        ),
+    )
     service = TrustAnchorService(db)
     entity = await service.revoke_anchor(anchor_id, reason)
     if not entity:
@@ -309,8 +392,21 @@ async def create_federation_trust(
     agreement_id: str | None = None,
     expires_at: datetime | None = None,
     terms: dict | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="create",
+            resource_type="institution_trust",
+            permission_key="institution_trust.create",
+            resource_id=trust_id,
+            organization_id=source_org_id,
+            resource_context={"target_org_id": target_org_id},
+        ),
+    )
     service = FederationTrustService(db)
     entity = await service.create_trust(
         trust_id=trust_id,
@@ -383,8 +479,19 @@ async def list_federation_for_org(
 @router.post("/federation/{trust_id}/suspend")
 async def suspend_federation_trust(
     trust_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="suspend",
+            resource_type="institution_trust",
+            permission_key="institution_trust.suspend",
+            resource_id=trust_id,
+        ),
+    )
     service = FederationTrustService(db)
     entity = await service.suspend_trust(trust_id)
     if not entity:
@@ -395,8 +502,19 @@ async def suspend_federation_trust(
 @router.post("/federation/{trust_id}/terminate")
 async def terminate_federation_trust(
     trust_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="terminate",
+            resource_type="institution_trust",
+            permission_key="institution_trust.terminate",
+            resource_id=trust_id,
+        ),
+    )
     service = FederationTrustService(db)
     entity = await service.terminate_trust(trust_id)
     if not entity:
@@ -417,8 +535,20 @@ async def create_proofing(
     evidence_type: dict | None = None,
     evidence_documents: dict | None = None,
     authority_id: str | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="create",
+            resource_type="identity_proofing",
+            permission_key="identity_proofing.create",
+            resource_id=identity_id,
+            resource_context={"person_id": person_id},
+        ),
+    )
     service = IdentityProofingService(db)
     entity = await service.create_proofing(
         proofing_id=proofing_id,
@@ -489,8 +619,19 @@ async def list_proofing_for_person(
 async def verify_proofing(
     proofing_id: str,
     verified_by: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="verify",
+            resource_type="identity_proofing",
+            permission_key="identity_proofing.verify",
+            resource_id=proofing_id,
+        ),
+    )
     service = IdentityProofingService(db)
     entity = await service.verify_proofing(proofing_id, verified_by)
     if not entity:
@@ -502,8 +643,19 @@ async def verify_proofing(
 async def reject_proofing(
     proofing_id: str,
     reason: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="reject",
+            resource_type="identity_proofing",
+            permission_key="identity_proofing.reject",
+            resource_id=proofing_id,
+        ),
+    )
     service = IdentityProofingService(db)
     entity = await service.reject_proofing(proofing_id, reason)
     if not entity:
@@ -526,8 +678,20 @@ async def create_evaluation(
     evaluation_method: str | None = None,
     findings: dict | None = None,
     recommendations: dict | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="create",
+            resource_type="trust_evaluation",
+            permission_key="trust_evaluation.create",
+            resource_id=target_id,
+            resource_context={"target_type": target_type},
+        ),
+    )
     service = TrustEvaluationService(db)
     entity = await service.create_evaluation(
         evaluation_id=evaluation_id,

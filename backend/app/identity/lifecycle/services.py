@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -16,6 +16,11 @@ from app.identity.lifecycle.models import (
     GuardianAccount,
     WorkforceRequest,
 )
+# Wave 04: termination side effects use existing identity models only.
+from app.identity.models.account import Account
+from app.identity.models.employment import Employment, EmploymentStatus
+from app.identity.models.identity import IdentityRecord
+from app.identity.models.session import UserSession
 
 
 class EnterpriseRegistrationService:
@@ -207,7 +212,57 @@ class WorkforceService:
         req.status = "terminated"
         req.is_active = False
         db.flush()
+        # Wave 04: the authoritative workforce state and every live session must
+        # be revoked in the same operation. Otherwise an old account/token/role
+        # could keep access after termination. This is fail-closed and reuses
+        # existing models; there is no separate authorization cache to clear.
+        if req.person_id:
+            self._revoke_workforce_access(db, req.person_id, reason)
+        db.flush()
         return req
+
+    @staticmethod
+    def _revoke_workforce_access(db: Session, person_id: str, reason: str) -> None:
+        """Terminate active employment and sessions for a canonical person.
+
+        Additive, idempotent behavior: repeated termination only touches rows
+        that are still active. Accounts with no employment relationship are
+        unaffected. Existing audit columns on AuditEntity record the change.
+        """
+        now = datetime.now(UTC)
+        today = now.date()
+
+        employments = db.query(Employment).filter(
+            Employment.person_id == person_id,
+            Employment.is_active.is_(True),
+        ).all()
+        for employment in employments:
+            employment.status = EmploymentStatus.terminated.value
+            employment.is_active = False
+            employment.end_date = employment.end_date or today
+            employment.termination_date = employment.termination_date or today
+            employment.termination_reason = reason
+
+        identities = db.query(IdentityRecord).filter(
+            IdentityRecord.person_id == person_id,
+        ).all()
+        identity_ids = [identity.id for identity in identities if identity.id]
+        if not identity_ids:
+            return
+        accounts = db.query(Account).filter(
+            Account.identity_id.in_(identity_ids),
+        ).all()
+        account_ids = [account.id for account in accounts if account.id]
+        if not account_ids:
+            return
+        sessions = db.query(UserSession).filter(
+            UserSession.account_id.in_(account_ids),
+            UserSession.is_active.is_(True),
+        ).all()
+        for session in sessions:
+            session.is_active = False
+            session.terminated_at = session.terminated_at or now
+            session.termination_reason = "employment_terminated"
 
     def get_request_status(self, db: Session, request_id: str) -> WorkforceRequest | None:
         return db.query(WorkforceRequest).filter(

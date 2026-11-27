@@ -6,6 +6,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.identity.api.authorization_guard import (
+    AuthorizationGuardSpec,
+    require_authorized_action,
+)
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.federation.services import (
     CrossOrgTrustService,
     FederationAgreementService,
@@ -34,8 +39,19 @@ async def register_provider(
     signature_algorithm: str | None = None,
     trust_anchor_id: str | None = None,
     metadata_url: str | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="register",
+            resource_type="federation_provider",
+            permission_key="federation_provider.register",
+            resource_id=provider_id,
+        ),
+    )
     svc = FederationService(db)
     provider = await svc.register_provider(
         provider_id=provider_id,
@@ -98,8 +114,19 @@ async def get_provider(
 async def update_provider(
     provider_id: str,
     body: dict[str, Any],
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="update",
+            resource_type="federation_provider",
+            permission_key="federation_provider.update",
+            resource_id=provider_id,
+        ),
+    )
     svc = FederationService(db)
     provider = await svc.update_provider(provider_id, **body)
     if not provider:
@@ -114,8 +141,20 @@ async def link_identity(
     external_subject_id: str,
     external_attributes: dict[str, Any] | None = None,
     identity_id: str | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="link",
+            resource_type="federation_identity",
+            permission_key="federation_identity.link",
+            resource_id=external_subject_id,
+            resource_context={"person_id": person_id},
+        ),
+    )
     svc = FederationService(db)
     identity = await svc.link_identity(
         person_id=person_id,
@@ -135,8 +174,19 @@ async def link_identity(
 async def unlink_identity(
     fed_id: str,
     reason: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="unlink",
+            resource_type="federation_identity",
+            permission_key="federation_identity.unlink",
+            resource_id=fed_id,
+        ),
+    )
     svc = FederationService(db)
     identity = await svc.unlink_identity(fed_id, reason)
     if not identity:
@@ -177,8 +227,20 @@ async def establish_trust(
     trust_type: str = "bilateral",
     agreement: dict[str, Any] | None = None,
     established_by: str | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="establish",
+            resource_type="federation_trust",
+            permission_key="federation_trust.establish",
+            organization_id=source_org_id,
+            resource_context={"target_org_id": target_org_id},
+        ),
+    )
     svc = CrossOrgTrustService(db)
     trust = await svc.establish_trust(
         source_org_id=source_org_id,
@@ -226,8 +288,19 @@ async def create_agreement(
     effective_date: str | None = None,
     expiry_date: str | None = None,
     governing_law: str | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="create",
+            resource_type="federation_agreement",
+            permission_key="federation_agreement.create",
+            resource_context={"parties": list(parties)},
+        ),
+    )
     svc = FederationAgreementService(db)
     agreement = await svc.create_agreement(
         name=name,
@@ -272,8 +345,19 @@ async def list_agreements(
 async def sign_agreement(
     agreement_id: str,
     signed_by: list[dict[str, Any]],
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="sign",
+            resource_type="federation_agreement",
+            permission_key="federation_agreement.sign",
+            resource_id=agreement_id,
+        ),
+    )
     svc = FederationAgreementService(db)
     agreement = await svc.sign_agreement(
         agreement_id=agreement_id,
@@ -308,8 +392,20 @@ async def create_federated_session(
     fed_identity_id: str,
     tokens: dict[str, Any],
     attributes: dict[str, Any] | None = None,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="create",
+            resource_type="federated_session",
+            permission_key="federated_session.create",
+            resource_id=account_id,
+            resource_context={"provider_id": provider_id},
+        ),
+    )
     svc = FederationService(db)
     fed_session = await svc.create_session(
         account_id=account_id,
@@ -327,8 +423,19 @@ async def create_federated_session(
 @router.post("/sessions/{session_id}/terminate")
 async def terminate_federated_session(
     session_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="terminate",
+            resource_type="federated_session",
+            permission_key="federated_session.terminate",
+            resource_id=session_id,
+        ),
+    )
     svc = FederationService(db)
     fed_session = await svc.terminate_session(session_id)
     if not fed_session:
@@ -342,8 +449,19 @@ async def terminate_federated_session(
 @router.post("/trust/{trust_id}/suspend")
 async def suspend_trust(
     trust_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="suspend",
+            resource_type="federation_trust",
+            permission_key="federation_trust.suspend",
+            resource_id=trust_id,
+        ),
+    )
     svc = CrossOrgTrustService(db)
     trust = await svc.suspend_trust(trust_id)
     if not trust:
@@ -354,8 +472,19 @@ async def suspend_trust(
 @router.post("/trust/{trust_id}/terminate")
 async def terminate_trust(
     trust_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_authorized_action(
+        actor,
+        db,
+        spec=AuthorizationGuardSpec(
+            action="terminate",
+            resource_type="federation_trust",
+            permission_key="federation_trust.terminate",
+            resource_id=trust_id,
+        ),
+    )
     svc = CrossOrgTrustService(db)
     trust = await svc.terminate_trust(trust_id)
     if not trust:

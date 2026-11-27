@@ -47,6 +47,13 @@ from .matcher import (
     classify,
     score,
 )
+from .identity_safety import (
+    DETERMINISTIC_HIGH,
+    NID_CONFLICT,
+    assert_merge_allowed,
+    classify_nid_match,
+    secondary_corroboration,
+)
 from .models import Citizen, IdentityClaim, MergeAudit
 
 # ── ULID (Crockford base32, 26 chars) ────────────────────────────────────────
@@ -230,10 +237,29 @@ def resolve_identity(
             .first()
         )
         if hit is not None:
+            classification = classify_nid_match(
+                profile_hash=nid_hash,
+                candidate_hash=hit.nid_hash,
+                candidate_verified=bool(getattr(hit, "nid_verified", False)),
+                corroborated=secondary_corroboration(profile, hit),
+            )
             best_candidate = hit.canonical()
-            best_score = 1.0
-            best_features = {"nid_hash": True}
-            best_method = "nid_exact"
+            best_features = {
+                "nid_hash": classification.disposition == DETERMINISTIC_HIGH,
+                "nid_classification": classification.disposition,
+                "nid_reason": classification.reason,
+            }
+            if classification.disposition == DETERMINISTIC_HIGH:
+                best_score = 1.0
+                best_method = "nid_exact"
+            elif classification.disposition == NID_CONFLICT:
+                # Conflicting NIDs are never an automatic link. Keep the
+                # candidate visible for authorized review only.
+                best_score = 0.75
+                best_method = "nid_conflict_review"
+            else:
+                best_score = 0.75
+                best_method = "nid_uncertain_review"
 
     # ── Probabilistic path: block → score ────────────────────────────────────
     if best_candidate is None:
@@ -269,6 +295,9 @@ def resolve_identity(
 
         for c in candidates:
             survivor = c.canonical()
+            if nid_hash and getattr(survivor, "nid_hash", None) and nid_hash != survivor.nid_hash:
+                # Conflicting NID hashes must veto probabilistic auto-claim.
+                continue
             result = score(profile, _candidate_from_citizen(survivor))
             if result.score > best_score:
                 best_score = result.score
@@ -383,6 +412,13 @@ def merge_citizens(
         raise ValueError(f"primary is not active (status={primary.status})")
     if secondary.status == "merged":
         raise ValueError("secondary already merged")
+
+    assert_merge_allowed(
+        primary,
+        secondary,
+        reason=reason,
+        decided_by_user_id=decided_by_user_id,
+    )
 
     secondary.merged_into_id = primary.id
     secondary.status = "merged"

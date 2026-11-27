@@ -49,6 +49,8 @@ class ABACDecision:
 
 
 class ABACEngine:
+    ALLOWED_PURPOSES = frozenset({"treatment", "payment", "operations", "emergency"})
+
     def __init__(self) -> None:
         self._policies: list[dict] = []
 
@@ -61,9 +63,7 @@ class ABACEngine:
             return ABACDecision(granted=False, reason="Minor protection: unauthorized access")
         if request.environment_is_emergency:
             return self._handle_emergency(request)
-        if request.purpose_of_use:
-            return self._evaluate_purpose(request)
-        return ABACDecision(granted=True)
+        return self._evaluate_purpose(request)
 
     def _is_authorized_sensitive(self, request: AccessRequest) -> bool:
         return "sensitive_access" in request.subject_roles
@@ -75,6 +75,10 @@ class ABACEngine:
         return "minor_access" in request.subject_roles or "guardian" in request.subject_roles
 
     def _handle_emergency(self, request: AccessRequest) -> ABACDecision:
+        if not request.purpose_of_use:
+            return ABACDecision(granted=False, reason="Emergency purpose of use required")
+        if request.purpose_of_use not in self.ALLOWED_PURPOSES:
+            return ABACDecision(granted=False, reason=f"Purpose '{request.purpose_of_use}' not authorized")
         return ABACDecision(
             granted=True,
             reason="Emergency access granted",
@@ -82,7 +86,8 @@ class ABACEngine:
         )
 
     def _evaluate_purpose(self, request: AccessRequest) -> ABACDecision:
-        allowed_purposes = {"treatment", "payment", "operations", "emergency"}
-        if request.purpose_of_use in allowed_purposes:
+        if not request.purpose_of_use:
+            return ABACDecision(granted=False, reason="Purpose of use required")
+        if request.purpose_of_use in self.ALLOWED_PURPOSES:
             return ABACDecision(granted=True, reason=f"Purpose '{request.purpose_of_use}' authorized")
         return ABACDecision(granted=False, reason=f"Purpose '{request.purpose_of_use}' not authorized")

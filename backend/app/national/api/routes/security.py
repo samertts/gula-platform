@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 from app.models.audit_log import AuditLog
-from app.national.security.break_glass import BreakGlassService
 from app.national.security.consent_enforcement import ConsentEnforcementService
+from app.national.security.reference import pseudonymous_reference
 from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/security", tags=["Healthcare Security"])
+
+BREAK_GLASS_AUTHORITY_UNAVAILABLE = "BREAK_GLASS_AUTHORITY_UNAVAILABLE"
 
 
 class BreakGlassRequest(BaseModel):
@@ -63,31 +67,54 @@ class AuditLogResponse(BaseModel):
 async def request_break_glass(
     data: BreakGlassRequest,
     current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    service = BreakGlassService()
-    result = service.request_access(
-        citizen_id=data.citizen_id,
-        requested_by=getattr(current_user, "id", "unknown"),
-        reason=data.reason,
-        duration_minutes=data.duration_minutes,
-    )
-    if result:
-        return BreakGlassResponse(
-            access_id=result.access_id,
-            granted=True,
-            expires_at=result.expires_at.isoformat() if result.expires_at else None,
-            reason="Break glass access granted",
+    requestor_id = getattr(current_user, "id", None) or getattr(current_user, "account_id", None)
+    if not requestor_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticated NIAM actor required for break-glass requests",
         )
-    return BreakGlassResponse(granted=False, reason="Break glass access denied")
+    await CanonicalAuditService(db).record(
+        AuditEventInput(
+            event_type="BREAK_GLASS_DENIED",
+            category="SECURITY",
+            action="break_glass.request",
+            actor_id=requestor_id,
+            target_type="citizen",
+            target_id=pseudonymous_reference(data.citizen_id),
+            decision="DENY",
+            reason_code=BREAK_GLASS_AUTHORITY_UNAVAILABLE,
+            source="national_break_glass_route",
+            data_classification="SENSITIVE",
+            outcome="denied",
+            metadata={
+                "duration_minutes": data.duration_minutes,
+                "reason_digest": pseudonymous_reference(data.reason),
+            },
+        ),
+    )
+    return BreakGlassResponse(granted=False, reason=BREAK_GLASS_AUTHORITY_UNAVAILABLE)
 
 
 @router.post("/consent/check", response_model=ConsentCheckResponse)
 async def check_consent(
     data: ConsentCheck,
     current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    service = ConsentEnforcementService()
-    result = await service.check_consent(citizen_id=data.citizen_id, scope=data.scope)
+    requestor_id = getattr(current_user, "id", None) or getattr(current_user, "account_id", None)
+    if not requestor_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticated NIAM actor required for consent verification",
+        )
+    service = ConsentEnforcementService(db)
+    result = await service.check_consent(
+        patient_id=data.citizen_id,
+        scope=data.scope,
+        requestor_id=requestor_id,
+    )
     return ConsentCheckResponse(
         granted=result.granted,
         consent_id=result.consent_id,

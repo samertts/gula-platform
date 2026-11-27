@@ -1,14 +1,29 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from app.platform.sync import SyncChange, SyncService
+from app.services.offline_sync_service import is_clinical_entity
 
 logger = logging.getLogger("gula.integration.offline")
+
+_SUPPORTED_STRATEGIES = frozenset(
+    {"last_write_wins", "first_write_wins", "merge", "manual"}
+)
+
+
+def _fingerprint(entry: OfflineQueueEntry) -> str:
+    payload = json.dumps(entry.payload, sort_keys=True, default=str)
+    return hashlib.sha256(
+        f"{entry.id}:{entry.entity_id}:{entry.action}:{payload}".encode()
+    ).hexdigest()
 
 
 @dataclass
@@ -29,9 +44,15 @@ class StoreForwardEngine:
         self._queue: list[OfflineQueueEntry] = []
         self._processing = False
 
-    def enqueue(self, entry: OfflineQueueEntry) -> None:
+    def enqueue(self, entry: OfflineQueueEntry) -> bool:
+        fingerprint = _fingerprint(entry)
+        for existing in self._queue:
+            if existing.id == entry.id and _fingerprint(existing) == fingerprint:
+                logger.info("Offline duplicate suppressed: %s", entry.id)
+                return False
         self._queue.append(entry)
         logger.info("Offline entry enqueued: %s/%s", entry.entity_type, entry.action)
+        return True
 
     def dequeue(self, count: int = 10) -> list[OfflineQueueEntry]:
         batch = [e for e in self._queue if e.status == "pending"][:count]
@@ -56,6 +77,15 @@ class StoreForwardEngine:
                     e.status = "pending"
                 break
 
+    def force_dead(self, entry_id: str, reason: str) -> bool:
+        """Move a bounded synthetic queue entry to dead state after retry exhaustion."""
+        for entry in self._queue:
+            if entry.id == entry_id:
+                entry.status = "dead"
+                logger.error("Offline entry dead after bounded retries: %s — %s", entry_id, reason)
+                return True
+        return False
+
     def queue_size(self) -> dict[str, int]:
         counts: dict[str, int] = defaultdict(int)
         for e in self._queue:
@@ -65,9 +95,66 @@ class StoreForwardEngine:
     def list_dead(self) -> list[OfflineQueueEntry]:
         return [e for e in self._queue if e.status == "dead"]
 
+    def snapshot(self) -> tuple[dict[str, Any], ...]:
+        """Return a bounded, JSON-safe recovery snapshot of the queue.
+
+        This is an additive, process-local recovery contract for synthetic
+        workflows. It is not a database, audit authority, or durable store.
+        """
+
+        return tuple(
+            {
+                "id": entry.id,
+                "entity_type": entry.entity_type,
+                "entity_id": entry.entity_id,
+                "action": entry.action,
+                "payload": dict(entry.payload),
+                "timestamp": entry.timestamp,
+                "retry_count": entry.retry_count,
+                "max_retries": entry.max_retries,
+                "status": entry.status,
+            }
+            for entry in self._queue
+        )
+
+    def restore(self, snapshot: Sequence[Mapping[str, Any]]) -> None:
+        """Restore a previously exported synthetic queue snapshot in place."""
+
+        restored: list[OfflineQueueEntry] = []
+        seen: set[str] = set()
+        for item in snapshot:
+            identifier = str(item.get("id", ""))
+            if not identifier or len(identifier) > 200 or identifier in seen:
+                raise ValueError("offline recovery snapshot has an invalid or duplicate entry id")
+            seen.add(identifier)
+            status = str(item.get("status", "pending"))
+            if status not in {"pending", "processing", "completed", "failed", "dead"}:
+                raise ValueError("offline recovery snapshot has an unsupported status")
+            retry_count = int(item.get("retry_count", 0))
+            max_retries = int(item.get("max_retries", 5))
+            if retry_count < 0 or max_retries < 1 or retry_count > max_retries:
+                raise ValueError("offline recovery snapshot has invalid retry state")
+            entry = OfflineQueueEntry(
+                id=identifier,
+                entity_type=str(item.get("entity_type", "")),
+                entity_id=str(item.get("entity_id", "")),
+                action=str(item.get("action", "sync")),
+                payload=dict(item.get("payload", {})),
+                timestamp=float(item.get("timestamp", 0.0)),
+                retry_count=retry_count,
+                max_retries=max_retries,
+                status=status,
+            )
+            if status == "processing":
+                entry.status = "pending"
+            restored.append(entry)
+        self._queue = restored
+
 
 class ConflictResolver:
-    def __init__(self, strategy: str = "last_write_wins") -> None:
+    def __init__(self, strategy: str = "manual") -> None:
+        if strategy not in _SUPPORTED_STRATEGIES:
+            raise ValueError(f"unsupported offline conflict strategy: {strategy}")
         self._strategy = strategy
 
     def resolve(
@@ -76,19 +163,42 @@ class ConflictResolver:
         remote: dict[str, Any],
         version_local: int,
         version_remote: int,
+        entity_type: str = "unknown",
+        timestamp_local: float = 0.0,
+        timestamp_remote: float = 0.0,
     ) -> dict[str, Any]:
+        envelope = {
+            "_conflict": True,
+            "entity_type": entity_type,
+            "local": local,
+            "remote": remote,
+            "version_local": version_local,
+            "version_remote": version_remote,
+            "timestamp_local": timestamp_local,
+            "timestamp_remote": timestamp_remote,
+        }
+
+        if is_clinical_entity(entity_type) and self._strategy != "manual":
+            logger.warning(
+                "Rejected automatic clinical conflict resolution for %s with strategy %s",
+                entity_type,
+                self._strategy,
+            )
+            return {**envelope, "reason": "automatic clinical resolution not authorized"}
+
+        if version_local == version_remote:
+            return {**envelope, "reason": "equal versions require manual review"}
+
         if self._strategy == "last_write_wins":
-            return remote if version_remote >= version_local else local
+            return remote if version_remote > version_local else local
         if self._strategy == "first_write_wins":
-            return local if version_local >= version_remote else remote
+            return local if version_local > version_remote else remote
         if self._strategy == "merge":
             merged = dict(local)
             merged.update(remote)
             merged["_merged"] = True
             return merged
-        if self._strategy == "manual":
-            return {"_conflict": True, "local": local, "remote": remote}
-        return remote
+        return envelope
 
 
 class DeltaSyncEngine:
@@ -177,6 +287,7 @@ class OfflineSyncEngine:
         self._conflict_resolver = conflict_resolver or ConflictResolver()
         self._delta_sync = delta_sync or DeltaSyncEngine(self._sync_service)
         self._edge_sync = edge_sync or EdgeSyncEngine(self._store_forward, self._conflict_resolver)
+        self._processed: set[tuple[str, str]] = set()
 
     @property
     def store_forward(self) -> StoreForwardEngine:
@@ -194,10 +305,26 @@ class OfflineSyncEngine:
     def edge_sync(self) -> EdgeSyncEngine:
         return self._edge_sync
 
-    async def sync_all(self) -> dict[str, Any]:
+    async def sync_all(
+        self,
+        *,
+        eligible: Callable[[OfflineQueueEntry], bool] | None = None,
+    ) -> dict[str, Any]:
         batch = self._store_forward.dequeue(50)
+        if eligible is not None:
+            accepted = [entry for entry in batch if eligible(entry)]
+            rejected = [entry for entry in batch if not eligible(entry)]
+            for entry in rejected:
+                entry.status = "pending"
+            batch = accepted
         results: list[dict[str, Any]] = []
         for entry in batch:
+            fingerprint = _fingerprint(entry)
+            marker = (entry.id, fingerprint)
+            if marker in self._processed:
+                self._store_forward.mark_success(entry.id)
+                results.append({"id": entry.id, "status": "duplicate"})
+                continue
             try:
                 change = SyncChange(
                     id=entry.id,
@@ -205,11 +332,12 @@ class OfflineSyncEngine:
                     entity_id=entry.entity_id,
                     action=entry.action,
                     data=entry.payload,
-                    version=1,
+                    version=int(entry.payload.get("version", 1)),
                     timestamp=str(entry.timestamp),
                 )
                 self._delta_sync.push_delta([change])
                 self._store_forward.mark_success(entry.id)
+                self._processed.add(marker)
                 results.append({"id": entry.id, "status": "synced"})
             except Exception as exc:
                 self._store_forward.mark_failed(entry.id, str(exc))
@@ -217,6 +345,7 @@ class OfflineSyncEngine:
         return {
             "synced": sum(1 for r in results if r["status"] == "synced"),
             "failed": sum(1 for r in results if r["status"] == "failed"),
+            "duplicates": sum(1 for r in results if r["status"] == "duplicate"),
             "results": results,
         }
 
@@ -225,7 +354,38 @@ class OfflineSyncEngine:
         sync_status = self._sync_service.get_sync_status()
         return {
             "queue": queue_status,
+            "conflicts": queue_status.get("conflict", 0),
             "sync": sync_status,
             "edge_nodes": len(self._edge_sync._edge_nodes),
             "engine": "active",
         }
+
+    def recovery_snapshot(self) -> dict[str, Any]:
+        """Return bounded synthetic recovery state for the queue and dedupe set."""
+
+        return {
+            "queue": list(self._store_forward.snapshot()),
+            "processed": [
+                {"id": identifier, "fingerprint": fingerprint}
+                for identifier, fingerprint in sorted(self._processed)
+            ],
+        }
+
+    def restore_recovery_snapshot(self, snapshot: Mapping[str, Any]) -> None:
+        """Restore queue and dedupe markers from a bounded synthetic snapshot."""
+
+        queue = snapshot.get("queue", [])
+        if not isinstance(queue, Sequence) or isinstance(queue, (str, bytes)):
+            raise ValueError("offline recovery snapshot queue must be a sequence")
+        self._store_forward.restore(queue)
+        processed = snapshot.get("processed", [])
+        if not isinstance(processed, Sequence) or isinstance(processed, (str, bytes)):
+            raise ValueError("offline recovery snapshot processed set must be a sequence")
+        restored: set[tuple[str, str]] = set()
+        for item in processed:
+            identifier = str(item.get("id", ""))
+            fingerprint = str(item.get("fingerprint", ""))
+            if not identifier or not fingerprint:
+                raise ValueError("offline recovery snapshot has an incomplete dedupe marker")
+            restored.add((identifier, fingerprint))
+        self._processed = restored

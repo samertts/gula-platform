@@ -10,7 +10,8 @@ from typing import Any
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.identity.models.audit import IdentityAuditEntry
+from app.identity.models.audit import AuditAction, IdentityAuditEntry
+from app.identity.services.audit_service import compute_audit_entry_hash
 
 
 class IntegrityStatus(StrEnum):
@@ -66,6 +67,18 @@ _SECRET_KEYS = frozenset(
         "private_key",
         "credentials",
         "credentials_encrypted",
+    },
+)
+
+_AUTHORIZATION_DECISION_ACTIONS = frozenset(
+    {
+        AuditAction.authz_allow_sensitive.value,
+        AuditAction.authz_deny.value,
+        AuditAction.authz_policy_failure.value,
+        AuditAction.authz_cross_tenant_attempt.value,
+        AuditAction.authz_privilege_escalation_attempt.value,
+        AuditAction.authz_role_manipulation_attempt.value,
+        AuditAction.authz_resource_enumeration_attempt.value,
     },
 )
 
@@ -257,4 +270,117 @@ class CanonicalAuditService:
             "violations": violations[:100],
             "first_event_id": entries[0].id,
             "last_event_id": entries[-1].id,
+        }
+
+    @staticmethod
+    def _verify_legacy_authorization_entries(entries: list[IdentityAuditEntry]) -> dict[str, Any]:
+        """Verify v1 authorization decisions using the active v1 hash semantics."""
+        if not entries:
+            return {"status": IntegrityStatus.incomplete.value, "entries_checked": 0, "violations": []}
+        violations: list[dict[str, Any]] = []
+        previous_hash = entries[0].previous_hash
+        for index, entry in enumerate(entries):
+            expected_previous = previous_hash if index == 0 else entries[index - 1].entry_hash
+            if entry.previous_hash != expected_previous:
+                violations.append(
+                    {
+                        "stream": "v1_authorization",
+                        "id": entry.id,
+                        "reason": "previous_hash_mismatch",
+                        "expected": expected_previous,
+                        "actual": entry.previous_hash,
+                    },
+                )
+            expected_hash = compute_audit_entry_hash(
+                entry_id=entry.id,
+                uuid_str=entry.uuid,
+                action=entry.action,
+                actor_id=entry.actor_id,
+                target_type=entry.target_type,
+                target_id=entry.target_id,
+                occurred_at=entry.occurred_at.isoformat(),
+                outcome=entry.outcome,
+                previous_hash=entry.previous_hash,
+                organization_id=entry.organization_id,
+            )
+            if entry.entry_hash != expected_hash:
+                violations.append(
+                    {
+                        "stream": "v1_authorization",
+                        "id": entry.id,
+                        "reason": "event_hash_mismatch",
+                        "expected": expected_hash,
+                        "actual": entry.entry_hash,
+                    },
+                )
+        return {
+            "status": IntegrityStatus.invalid.value if violations else IntegrityStatus.valid.value,
+            "entries_checked": len(entries),
+            "violations": violations[:100],
+            "first_event_id": entries[0].id,
+            "last_event_id": entries[-1].id,
+        }
+
+    async def verify_authorization_provenance(
+        self,
+        *,
+        organization_id: str | None = None,
+        occurred_from: datetime | None = None,
+        occurred_to: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Verify both durable authorization decision audit streams.
+
+        This is a verification adapter over the existing audit table. It does
+        not merge v1 rows into the v2 hash chain and does not write new audit
+        records. Each stream is verified under its own hash semantics, and the
+        combined status fails closed if either stream is invalid or empty.
+        """
+        canonical = await self.verify(
+            organization_id=organization_id,
+            occurred_from=occurred_from,
+            occurred_to=occurred_to,
+        )
+        conditions = [
+            IdentityAuditEntry.event_version == "1",
+            IdentityAuditEntry.action.in_(_AUTHORIZATION_DECISION_ACTIONS),
+            IdentityAuditEntry.entry_hash.isnot(None),
+        ]
+        if organization_id is not None:
+            conditions.append(IdentityAuditEntry.organization_id == organization_id)
+        if occurred_from is not None:
+            conditions.append(IdentityAuditEntry.occurred_at >= occurred_from)
+        if occurred_to is not None:
+            conditions.append(IdentityAuditEntry.occurred_at < occurred_to)
+        result = await self.session.execute(
+            select(IdentityAuditEntry)
+            .where(and_(*conditions))
+            .order_by(IdentityAuditEntry.occurred_at.asc(), IdentityAuditEntry.id.asc()),
+        )
+        legacy = self._verify_legacy_authorization_entries(list(result.scalars().all()))
+
+        violations = [*canonical["violations"], *legacy["violations"]]
+        if violations:
+            combined_status = IntegrityStatus.invalid.value
+        elif canonical["entries_checked"] == 0 or legacy["entries_checked"] == 0:
+            combined_status = IntegrityStatus.incomplete.value
+        else:
+            combined_status = IntegrityStatus.valid.value
+
+        return {
+            **canonical,
+            "status": combined_status,
+            "violations": violations[:100],
+            "authorization_provenance": {
+                "status": combined_status,
+                "coverage": (
+                    "v1 authorization decisions and v2 canonical events are verified separately; "
+                    "no cross-version chain continuity is claimed"
+                ),
+                "legacy_authorization_chain": legacy,
+                "canonical_v2_chain": {
+                    "status": canonical["status"],
+                    "entries_checked": canonical["entries_checked"],
+                    "violations": canonical["violations"],
+                },
+            },
         }

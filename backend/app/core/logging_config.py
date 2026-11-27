@@ -10,6 +10,7 @@ from shared.logging import (
 from shared.logging import (
     bind_log_context,
     configure_logging,
+    get_correlation_id,
     get_request_id,
 )
 
@@ -20,5 +21,6 @@ __all__ = [
     "_JSONFormatter",
     "bind_log_context",
     "configure_logging",
+    "get_correlation_id",
     "get_request_id",
 ]

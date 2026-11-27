@@ -88,6 +88,11 @@ _TRANSITIONS: dict[str, set[str]] = {
     "ordered_transfusion": {"verification", "cancelled"},
     "verification": {"started", "returned", "reaction_suspected"},
     "started": {"in_progress", "reaction_suspected"},
+    # Canonical transfusion states emitted by BloodBankService. The service
+    # independently enforces bedside verification, an independent verifier and
+    # unit/patient match before these transitions are allowed; this entry only
+    # aligns the shared table with those already-enforced preconditions.
+    "verified": {"in_progress", "reaction_suspected"},
     "in_progress": {"completed", "reaction_suspected"},
     "completed": set(),
     "reaction_suspected": {"transfusion_stopped"},

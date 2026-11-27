@@ -86,3 +86,23 @@ def test_production_log_levels_exclude_debug() -> None:
 def test_sensitive_router_has_system_admin_guard(relative_path: str) -> None:
     source = (Path(__file__).parents[1] / relative_path).read_text()
     assert 'require_permission("system:admin")' in source
+
+
+def test_stub_routes_are_explicitly_labeled() -> None:
+    backend_root = Path(__file__).parents[1]
+    fhir_source = (backend_root / "app/national/api/routes/fhir.py").read_text()
+    encounter_source = (
+        backend_root / "app/capabilities/encounter_management/routes.py"
+    ).read_text()
+    capability_source = (
+        backend_root / "app/capabilities/encounter_management/capability.json"
+    ).read_text()
+    readme_source = (
+        backend_root / "app/capabilities/encounter_management/README.md"
+    ).read_text()
+
+    assert "STUB" in fhir_source
+    assert "STUB" in encounter_source
+    assert "[STUB]" in capability_source
+    assert '"implementation_status": "stub"' in capability_source
+    assert "Status: STUB" in readme_source

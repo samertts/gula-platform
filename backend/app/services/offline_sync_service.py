@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 import zlib
 from dataclasses import dataclass, field
@@ -24,6 +25,39 @@ class SyncStatus(Enum):
     SYNCED = "synced"
     CONFLICT = "conflict"
     FAILED = "failed"
+
+
+# Conservative, existing-domain entity names that must never be resolved by an
+# automatic offline strategy. This is a fail-closed boundary, not a clinical
+# conflict-resolution policy; approved manual review remains the only path.
+_CLINICAL_ENTITY_TYPES = frozenset(
+    {
+        "clinical_note",
+        "note",
+        "clinical_record",
+        "encounter",
+        "observation",
+        "diagnosis",
+        "condition",
+        "allergy",
+        "allergy_intolerance",
+        "medication",
+        "immunization",
+        "care_plan",
+        "procedure",
+        "service_request",
+        "lab_result",
+        "radiology_report",
+        "diagnostic_report",
+        "nursing_record",
+    }
+)
+
+
+def is_clinical_entity(entity_type: str) -> bool:
+    normalized = re.sub(r"(?<!^)(?=[A-Z])", "_", entity_type.strip())
+    normalized = normalized.lower().replace("-", "_").replace(" ", "_")
+    return normalized in _CLINICAL_ENTITY_TYPES
 
 
 @dataclass
@@ -124,8 +158,21 @@ class OfflineSyncEngine:
 
         conflict = self._detect_conflict(op)
         if conflict:
+            conflict.operation_a.status = SyncStatus.CONFLICT
             op.status = SyncStatus.CONFLICT
             self._conflicts[conflict.conflict_id] = conflict
+            self._sync_log.append(
+                {
+                    "type": "conflict_detected",
+                    "conflict_id": conflict.conflict_id,
+                    "entity_type": op.entity_type,
+                    "operation_hashes": [
+                        conflict.operation_a.compute_hash(),
+                        conflict.operation_b.compute_hash(),
+                    ],
+                    "timestamp": time.time(),
+                }
+            )
             logger.info("Conflict detected: %s", conflict.conflict_id)
             return op
 
@@ -155,6 +202,34 @@ class OfflineSyncEngine:
         conflict = self._conflicts.get(conflict_id)
         if not conflict:
             return None
+
+        if is_clinical_entity(conflict.operation_a.entity_type):
+            if resolution is not ConflictResolution.MANUAL:
+                rejection = {
+                    "type": "conflict_resolution_rejected",
+                    "conflict_id": conflict_id,
+                    "requested_resolution": resolution.value,
+                    "entity_type": conflict.operation_a.entity_type,
+                    "reason": "automatic clinical conflict resolution is not authorized",
+                    "timestamp": time.time(),
+                }
+                self._sync_log.append(rejection)
+                logger.warning(
+                    "Rejected automatic clinical conflict resolution %s for %s",
+                    conflict_id,
+                    conflict.operation_a.entity_type,
+                )
+                return None
+            if not resolver:
+                self._sync_log.append(
+                    {
+                        "type": "conflict_resolution_rejected",
+                        "conflict_id": conflict_id,
+                        "reason": "manual clinical resolution requires a named resolver",
+                        "timestamp": time.time(),
+                    }
+                )
+                return None
 
         if resolution == ConflictResolution.LAST_WRITE_WINS:
             winner = (
@@ -226,14 +301,15 @@ class OfflineSyncEngine:
             if not self._same_entity(existing, incoming):
                 continue
             if not self._has_causal_relationship(existing.vector_clock, incoming.vector_clock):
+                ordered_ids = sorted((existing.operation_id, incoming.operation_id))
                 conflict_id = hashlib.sha256(
-                    f"{existing.operation_id}:{incoming.operation_id}".encode(),
+                    f"{ordered_ids[0]}:{ordered_ids[1]}".encode(),
                 ).hexdigest()[:16]
                 return ConflictRecord(
                     conflict_id=conflict_id,
                     operation_a=existing,
                     operation_b=incoming,
-                    resolution=ConflictResolution.LAST_WRITE_WINS,
+                    resolution=ConflictResolution.MANUAL,
                 )
         return None
 

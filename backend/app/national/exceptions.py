@@ -120,6 +120,31 @@ class InvalidNationalIdError(NationalDomainError):
         super().__init__(f"Invalid national ID {national_id}: {reason}")
 
 
+class InvalidGulaCitizenIdentifierError(NationalDomainError):
+    """Raised when a value is not a valid immutable internal citizen identifier."""
+
+    def __init__(self, identifier: str, reason: str) -> None:
+        self.identifier = identifier
+        self.reason = reason
+        super().__init__(f"Invalid GULA Citizen Identifier: {reason}")
+
+
+class GulaCitizenIdentifierCollisionError(NationalDomainError):
+    """Raised by an atomic reservation adapter when a unique key is already used."""
+
+    def __init__(self, identifier: str) -> None:
+        self.identifier = identifier
+        super().__init__(f"GULA Citizen Identifier collision: {identifier}")
+
+
+class GulaCitizenIdentifierExhaustedError(NationalDomainError):
+    """Raised when bounded collision retries are exhausted without reservation."""
+
+    def __init__(self, attempts: int) -> None:
+        self.attempts = attempts
+        super().__init__(f"GULA Citizen Identifier reservation failed after {attempts} attempts")
+
+
 class NewbornRegistrationError(NationalDomainError):
     def __init__(self, reason: str) -> None:
         self.reason = reason

@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  CitizenRegistrationStatus,
+  SYNTHETIC_REGISTRATION_STATUS,
+} from "@/components/citizen/CitizenRegistrationStatus";
 import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -32,6 +37,7 @@ const badgeVariant = (s: string) => {
 
 export default function CitizenPlatformPage() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const { demoMode } = useAuth();
   const col = createColumnHelper<Record<string, unknown>>();
 
   const dashboard = useQuery({
@@ -122,6 +128,7 @@ export default function CitizenPlatformPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="مساحة المواطن" description="مساحة عمل صحية مرتبطة بحساب GULA الموحّد" />
+      {demoMode && <CitizenRegistrationStatus status={SYNTHETIC_REGISTRATION_STATUS} />}
       <Card>
         <CardContent className="p-0">
           <div className="flex border-b flex-wrap">

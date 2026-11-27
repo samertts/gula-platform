@@ -23,6 +23,10 @@ from .config import (
     RATE_LIMIT_GLOBAL,
     RATE_LIMIT_GLOBAL_WINDOW_SECONDS,
 )
+from .contracts.integration import (
+    CORRELATION_ID_HEADER,
+    correlation_id_from_headers,
+)
 from .core.logging_config import bind_log_context
 from .core.privacy import PIIMasker
 from .security.policy import sanitize_request_id
@@ -146,12 +150,21 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Assign a unique ID to every request for tracing."""
+    """Assign request and end-to-end correlation IDs for tracing.
+
+    ``X-Request-ID`` identifies one HTTP request. ``X-Correlation-ID`` follows
+    one business transaction across APIs, outbox events, consumers and offline
+    batches (C07/C12/C14).  Caller-supplied values are sanitized before they
+    reach logs or response headers; absent values are generated from the
+    request ID so every response remains traceable.
+    """
 
     async def dispatch(self, request: Request, call_next):
         request_id = sanitize_request_id(request.headers.get("X-Request-ID"))
+        correlation_id = correlation_id_from_headers(request.headers, fallback=request_id)
         request.state.request_id = request_id
-        bind_log_context(request_id=request_id)
+        request.state.correlation_id = correlation_id
+        bind_log_context(request_id=request_id, correlation_id=correlation_id)
         from .database import _endpoint_var, _request_id_var
 
         rid_token = _request_id_var.set(request_id)
@@ -162,6 +175,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             _request_id_var.reset(rid_token)
             _endpoint_var.reset(ep_token)
         response.headers["X-Request-ID"] = request_id
+        response.headers[CORRELATION_ID_HEADER] = correlation_id
         return response
 
 
@@ -169,7 +183,7 @@ _SILENT_PATHS: frozenset[str] = frozenset({"/health", "/health/ready", "/health/
 
 
 class RequestTimingMiddleware(BaseHTTPMiddleware):
-    """Emit a structured access-log line per request."""
+    """Emit a structured access-log line per request and record SLO metrics."""
 
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
@@ -184,6 +198,18 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
                 request.method, path, status,
                 extra={"path": path, "latency_ms": elapsed_ms, "status": status},
             )
+        # Record Prometheus SLO metrics (in-process counters + latency histogram).
+        try:
+            from .services.metrics_service import record_request, record_security_event
+
+            route = getattr(request.scope.get("route"), "path", path) or path
+            record_request(request.method, route, status, elapsed_ms / 1000.0)
+            if status in (401, 403, 429):
+                event_type = {401: "auth_failure", 403: "permission_denied", 429: "rate_limit_block"}[status]
+                record_security_event(event_type, request.method, route)
+        except Exception:
+            # Metrics must never break the request path.
+            pass
         response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
         response.headers["X-API-Version"] = APP_VERSION
         return response

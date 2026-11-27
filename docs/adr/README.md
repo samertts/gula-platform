@@ -90,6 +90,7 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-023](ADR-023-laboratory-desktop.md) | National Laboratory Desktop Professional | Accepted | 2026-07-15 |
 | [ADR-024](ADR-024-Platform-Constitution.md) | Platform Constitution | Accepted | 2026-07-16 |
 | [ADR-025](ADR-025-data-preservation-constitution.md) | Data Preservation Constitution | Accepted | 2026-07-22 |
+| [ADR-053-09](ADR-053-09-ORIGINAL-IRAQI-NATIONAL-IDENTITY-CARD.md) | Original Iraqi National Identity Card and Live Document Authenticity Policy | Proposed | 2026-11-25 |
 
 ## Constitution Reference
 

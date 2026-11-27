@@ -23,16 +23,29 @@ class TestABACEngine:
 
     def test_sensitive_record_allows_authorized(self):
         engine = ABACEngine()
-        request = AccessRequest(subject_id="user1", subject_roles=["doctor", "sensitive_access"], resource_is_sensitive=True, action="read")
+        request = AccessRequest(subject_id="user1", subject_roles=["doctor", "sensitive_access"], resource_is_sensitive=True, purpose_of_use="treatment", action="read")
         decision = engine.evaluate(request)
         assert decision.granted is True
 
-    def test_emergency_grants_access(self):
+    def test_emergency_grants_access_with_explicit_purpose(self):
         engine = ABACEngine()
-        request = AccessRequest(subject_id="user1", subject_roles=["doctor"], environment_is_emergency=True, action="read")
+        request = AccessRequest(
+            subject_id="user1",
+            subject_roles=["doctor"],
+            environment_is_emergency=True,
+            purpose_of_use="emergency",
+            action="read",
+        )
         decision = engine.evaluate(request)
         assert decision.granted is True
         assert "log_break_glass" in decision.obligations
+
+    def test_missing_purpose_fails_closed(self):
+        engine = ABACEngine()
+        request = AccessRequest(subject_id="user1", subject_roles=["doctor"], action="read")
+        decision = engine.evaluate(request)
+        assert decision.granted is False
+        assert decision.reason == "Purpose of use required"
 
     def test_vip_protection_blocks(self):
         engine = ABACEngine()
@@ -80,6 +93,7 @@ class TestBreakGlass:
         )
         assert access.access_id is not None
         assert access.is_active is True
+        assert access.expires_at is not None
 
     def test_revoke_access(self):
         svc = BreakGlassService()

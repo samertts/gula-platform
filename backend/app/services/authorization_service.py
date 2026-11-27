@@ -281,9 +281,11 @@ class PolicyService:
             return False
         if target.get("user_types") and subject.get("user_type") not in target["user_types"]:
             return False
-        if conditions.get("governorate"):
-            if subject.get("governorate_id") not in conditions["governorate"]:
-                return False
+        if (
+            conditions.get("governorate")
+            and subject.get("governorate_id") not in conditions["governorate"]
+        ):
+            return False
         if conditions.get("time_of_day"):
             current_hour = datetime.now(UTC).hour
             allowed = conditions["time_of_day"]
@@ -961,9 +963,22 @@ class BreakGlassService:
         self.db.refresh(session)
         return session
 
-    def deactivate(self, session_id: int) -> bool:
-        session = self.db.query(BreakGlassSession).filter(BreakGlassSession.id == session_id).first()
-        if not session or session.status != "active":
+    def deactivate(self, session_id: int, user_id: int) -> bool:
+        """Deactivate only the caller's own active break-glass session.
+
+        The user id must originate from the trusted authenticated actor at the
+        route boundary; caller-supplied session ids alone are never sufficient.
+        """
+        session = (
+            self.db.query(BreakGlassSession)
+            .filter(
+                BreakGlassSession.id == session_id,
+                BreakGlassSession.user_id == user_id,
+                BreakGlassSession.status == "active",
+            )
+            .first()
+        )
+        if not session:
             return False
         session.status = "deactivated"
         session.deactivated_at = datetime.now(UTC)

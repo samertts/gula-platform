@@ -207,6 +207,7 @@ type RestWriteMethod = "post" | "put" | "patch" | "delete";
 const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
   "POST /login",
   "POST /logout",
+  "POST /auth/refresh",
   "POST /demo/access",
   "POST /auth/verification/request",
   "POST /auth/verification/confirm",
